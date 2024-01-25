@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.*.credentials.json
+build/
+*.pyc
+**/.ipynb_checkpoints
+**/.DS_Store
+**/lib/
+notebooks/data/
