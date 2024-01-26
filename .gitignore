@@ -3,6 +3,7 @@ dist/
 .env
 .*.credentials.json
 build/
+.venv
 *.pyc
 **/.ipynb_checkpoints
 **/.DS_Store
