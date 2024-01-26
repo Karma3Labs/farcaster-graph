@@ -69,5 +69,6 @@ sed -i${SP}'' '1s/^/i,j,v\n/' /tmp/lt_l1rep6rec3m12enhancedConnections.csv
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python gen_igraph.py
+python gen_igraph.py -i /tmp/lt_existingConnections.csv -o /tmp/fc_following.pkl 
+python gen_igraph.py -i /tmp/lt_l1rep6rec3m12enhancedConnections.csv -o /tmp/fc_engagement.pkl 
 deactivate
