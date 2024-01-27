@@ -1,16 +1,12 @@
 import os
-from typing import NamedTuple
 import math
 
 from . import utils 
 from .config import settings
+from .models.graph_model import Graph, GraphType
+
 import igraph
 from loguru import logger
-
-class Graph(NamedTuple):
-  graph_file: str
-  graph: igraph.Graph
-  mtime: float
 
 
 class GraphLoader:
@@ -21,13 +17,14 @@ class GraphLoader:
   def get_graphs(self):
     return self.graphs
 
-  def load_graph(self, graph_file):
+  def load_graph(self, graph_file, graph_type: GraphType):
     logger.info(f"loading {graph_file}")
     g = igraph.Graph.Read_Pickle(str(graph_file))
     utils.log_memusage(logger)
     return Graph(
       graph_file = graph_file,
       graph = g,
+      type = graph_type,
       mtime = os.path.getmtime(graph_file)
     )
 
@@ -36,11 +33,13 @@ class GraphLoader:
     graphs = {}
 
     # TODO fix hardcoding of name -> file, type of model
-    graphs['following'] = self.load_graph(settings.FOLLOW_GRAPH)
-    logger.info(f"loaded {graphs['following']}")
+    graphs[GraphType.following] = self.load_graph(settings.FOLLOW_GRAPH, GraphType.following)
+    logger.info(f"loaded {graphs[GraphType.following]}")
+    logger.info(graphs[GraphType.following].graph.summary())
 
-    graphs['engagement'] = self.load_graph(settings.ENGAGEMENT_GRAPH)
-    logger.info(f"loaded {graphs['engagement']}")
+    graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH, GraphType.engagement)
+    logger.info(f"loaded {graphs[GraphType.engagement]}")
+    logger.info(graphs[GraphType.engagement].graph.summary())
 
     return graphs
 

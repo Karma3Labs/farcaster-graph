@@ -64,7 +64,7 @@ async def session_middleware(request: Request, call_next):
     start_time = time.perf_counter()
     logger.info(f"{request.method} {request.url}")
     response = Response("Internal server error", status_code=500)
-    request.state.models = app_state['graph_loader'].get_graphs()
+    request.state.graphs = app_state['graph_loader'].get_graphs()
     request.state.db_pool = app_state['db_pool']
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
