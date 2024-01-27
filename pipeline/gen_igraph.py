@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 import logging
+import os
 
 # local dependencies
 import utils
@@ -12,7 +13,7 @@ from timer import Timer
 import igraph as ig
 import pandas as pd
 
-def main(incsv:Path,  outpkl:Path, logger:logging.Logger):
+def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   with Timer(name="read_csv"):
     edges_df = pd.read_csv(incsv)
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
@@ -20,7 +21,11 @@ def main(incsv:Path,  outpkl:Path, logger:logging.Logger):
     g = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
   logger.info(ig.summary(g))
   with Timer(name="write_pickle"):
-    g.write_pickle(outpkl)
+    dfile = os.path.join(outdir, f"{prefix}_df.pkl")
+    gfile = os.path.join(outdir, f"{prefix}_ig.pkl")
+    logger.info(f"Saving dataframe to {dfile}  and graph to {gfile}")
+    edges_df.to_pickle(dfile)
+    g.write_pickle(gfile)
 
 
 if __name__ == '__main__':
@@ -30,10 +35,14 @@ if __name__ == '__main__':
                       help="input localtrust csv file",
                       required=True,
                       type=lambda f: Path(f).expanduser().resolve())  
-  parser.add_argument("-o", "--outpkl",
-                    help="output igraph pickle file",
+  parser.add_argument("-o", "--outdir",
+                    help="output directory for pickle files",
                     required=True,
                     type=lambda f: Path(f).expanduser().resolve())
+  parser.add_argument("-p", "--prefix",
+                    help="file prefixes for pickle files",
+                    required=True,
+                    type=str)
   args = parser.parse_args()
   print(args)
   print(Config.__dict__)
@@ -43,4 +52,4 @@ if __name__ == '__main__':
   logger.setLevel(logging.DEBUG)
   utils.setup_consolelogger(logger)
 
-  main(incsv=args.incsv, outpkl=args.outpkl, logger=logger)
+  main(incsv=args.incsv, outdir=args.outdir, prefix=args.prefix, logger=logger)

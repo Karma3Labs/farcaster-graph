@@ -9,7 +9,15 @@ curl -X 'GET' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
-  -i -s -o /dev/null -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+  -s -o /tmp/fc_out.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+
+curl -X 'GET' \
+  'http://127.0.0.1:8000/graph/handles' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
+  -s -o /tmp/fc_handles.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+
 
 https://dune.com/queries/3026245/5027754
 
