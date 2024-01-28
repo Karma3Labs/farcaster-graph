@@ -1,0 +1,55 @@
+# Pre-requisites
+1. Generate graph artifacts by running the [pipeline](../pipeline/Readme.md) from the `pipeline` sub-project in the parent folder. *Note: if you are in a rush, you can try the sample artifacts found in the `samples` folder of this sub-project*
+2. An instance of Postgres DB with data from Farcaster (installed locally or on a remote server)  - for example, a database instance of [Farcaster Replicator](https://github.com/farcasterxyz/hub-monorepo/tree/main/apps/replicator) 
+3. Copy/rename `.env.sample` to `.env` and udpate the properties.
+4. Install [Python 3.12](https://www.python.org/downloads/)
+5. Install [Poetry](https://python-poetry.org) for depenedency management:
+`curl -sSL https://install.python-poetry.org | python3 -`
+6. Create a [virtualenv](https://docs.python.org/3/library/venv.html) somewhere on your machine - for example,`python3 -m venv .venv` will create a virtualenv in your current directory.
+
+## Setup virtual environment
+1. Activate the virtual environment that your created in the steps above: `source .venv/bin/activate`
+2. Install dependencies `poetry install`
+
+# Start the server
+1. Activate the virtual environment if it is not already active.
+2. Start the server
+
+	- local machine for development: `uvicorn app.main:app --reload`
+	- production: `uvicorn app.main:app --host 0.0.0.0 --port 8080 > /tmp/uvicorn.log 2>&1 &`
+
+# Try the API
+
+Query the engagement-based graph:
+
+```
+curl -X 'GET' \
+  'http://127.0.0.1:8000/graph/neighbors/engagement' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
+  -s -o /tmp/fc_engagement_out.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+```
+
+Query the following-based graph:
+
+```
+curl -X 'GET' \
+  'http://127.0.0.1:8000/graph/neighbors/following' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
+  -s -o /tmp/fc_following_out.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+```
+
+Get handles for eth addresses:
+
+```
+curl -X 'GET' \
+  'http://127.0.0.1:8000/metadata/handles' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
+  -s -o /tmp/fc_handles.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+```
+	
