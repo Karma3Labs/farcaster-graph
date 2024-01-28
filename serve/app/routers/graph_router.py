@@ -5,14 +5,11 @@ import json
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
-from asyncpg.pool import Pool
 
-from .config import settings
-from .dependencies.db_pool import get_db
-from .dependencies.graph import get_engagement_graph, get_following_graph
-from .models.graph_model import Graph
+from ..dependencies.graph import get_engagement_graph, get_following_graph
+from ..models.graph_model import Graph
 
-router = APIRouter(tags=["eoas"])
+router = APIRouter(tags=["graphs"])
 
 async def fetch_korder_neighbors(
   addresses: list[str],
@@ -73,34 +70,3 @@ async def get_neighbors_following(
   logger.debug(addresses)
   res = await get_neighbors_edges(addresses, graph, k, limit)
   return {"result": json.loads(res)}
-
-@router.get("/handles")
-async def get_neighbors_engagement(
-  addresses: list[str],
-  pool: Pool = Depends(get_db)
-):
-  logger.debug(addresses)
-  start_time = time.perf_counter()
-  sql_query = """
-    SELECT 
-      '0x' || encode(fids.custody_address, 'hex') as address,
-      username
-    FROM fnames
-    INNER JOIN fids ON (fids.fid = fnames.fid)
-    WHERE 
-        '0x' || encode(fids.custody_address, 'hex') = ANY($1::text[])
-        -- fids.custody_address = ANY($1::bytea[])
-  """
-  # Take a connection from the pool.
-  async with pool.acquire() as connection:
-      # Open a transaction.
-      async with connection.transaction():
-          with connection.query_logger(logger.trace):
-              # Run the query passing the request argument.
-              rows = await connection.fetch(
-                                        sql_query, 
-                                        addresses, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                      )
-  logger.info(f"query took {time.perf_counter() - start_time} secs")
-  return {"result": rows}
