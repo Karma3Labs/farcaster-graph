@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+.env.docker
 .*.credentials.json
 build/
 .venv

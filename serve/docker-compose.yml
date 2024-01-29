@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    container_name: farcaster-graph
+    image: farcaster-graph:latest
+    volumes:
+      - /tmp:/tmp
+    environment:
+      PORT: 8000
+    ports:
+      - '8000:8000'
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
