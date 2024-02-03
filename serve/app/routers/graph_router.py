@@ -51,6 +51,7 @@ async def get_neighbors_edges(  addresses: list[str],
 
 @router.get("/neighbors/engagement")
 async def get_neighbors_engagement(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
