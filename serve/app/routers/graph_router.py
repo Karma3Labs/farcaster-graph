@@ -1,5 +1,6 @@
 import itertools
 import time
+import igraph
 from typing import Annotated
 import json
 
@@ -11,12 +12,23 @@ from ..models.graph_model import Graph
 
 router = APIRouter(tags=["graphs"])
 
+def is_vertex(ig: igraph.GraphBase, addr:str) -> bool:
+  try:
+      ig.vs.find(name=addr)
+      logger.debug(addr)
+      return True
+  except:
+      return False
+
 async def fetch_korder_neighbors(
   addresses: list[str],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list :
+  addresses = list(filter(lambda x: is_vertex(graph.graph, x), addresses))
+  if len(addresses) <= 0:
+    raise HTTPException(status_code=404, detail="Invalid Addresses")
   try:
     klists = []
     mindist_and_order = 1
