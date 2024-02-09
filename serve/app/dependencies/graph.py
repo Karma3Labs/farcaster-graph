@@ -34,7 +34,7 @@ async def get_neighbors_edges_json(
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> str:
    df = await _get_neighbors_edges(addresses, graph, max_degree, max_neighbors)
-   return df.to_json(orient="records")
+   return df[['i', 'j', 'v']].to_json(orient="records")
 
 async def _get_neighbors_edges(  
   addresses: list[str],
