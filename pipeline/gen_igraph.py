@@ -12,10 +12,19 @@ from timer import Timer
 # 3rd party dependencies
 import igraph as ig
 import pandas as pd
+import numpy as np
 
 def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   with Timer(name="read_csv"):
     edges_df = pd.read_csv(incsv)
+    i_codes, i_uniques = pd.factorize(edges_df['i'])
+    logger.info(f"{i_codes.shape}, {i_uniques.shape}")
+    assert np.all(i_codes >= 0)
+    j_codes, j_uniques = pd.factorize(edges_df['j'])
+    logger.info(f"{j_codes.shape}, {j_uniques.shape}")
+    assert np.all(j_codes >= 0)
+    edges_df['i_code'] = i_codes
+    edges_df['j_code'] = j_codes
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
   with Timer(name="df_to_igraph"):
     g = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
