@@ -4,90 +4,30 @@ from fastapi import APIRouter, Depends
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..config import settings
-from ..dependencies.db_pool import get_db
+from ..dependencies import db_pool, db_utils
 
 router = APIRouter(tags=["metadata"])
 
 @router.get("/handles")
 async def get_handles(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
-  pool: Pool = Depends(get_db)
+  pool: Pool = Depends(db_pool.get_db)
 ):
   logger.debug(addresses)
   start_time = time.perf_counter()
-  sql_query = """
-    SELECT 
-      distinct fnames.username as username, user_data.value as display_name
-    FROM fnames
-    INNER JOIN fids ON (fids.fid = fnames.fid)
-    INNER JOIN verifications ON (verifications.fid = fnames.fid)
-    INNER JOIN user_data ON (fids.fid = user_data.fid and user_data.type=6)
-    WHERE 
-        ('0x' || encode(fids.custody_address, 'hex') = ANY($1::text[]))
-        OR
-        ('0x' || encode(verifications.signer_address, 'hex') = ANY($1::text[]))
-  """
-  # Take a connection from the pool.
-  async with pool.acquire() as connection:
-      # Open a transaction.
-      async with connection.transaction():
-          with connection.query_logger(logger.trace):
-              # Run the query passing the request argument.
-              rows = await connection.fetch(
-                                        sql_query, 
-                                        addresses, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                      )
+  rows = await db_utils.get_handles(addresses, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 
 @router.get("/addresses")
-async def get_handles(
+async def get_addresses(
+  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
-  pool: Pool = Depends(get_db)
+  pool: Pool = Depends(db_pool.get_db)
 ):
   logger.debug(handles)
   start_time = time.perf_counter()
-  sql_query = """
-    (
-      SELECT 
-        '0x' || encode(custody_address, 'hex') as address,
-        fnames.username as username,
-        user_data.value as display_name
-      FROM fnames
-      INNER JOIN fids ON (fids.fid = fnames.fid)
-      INNER JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
-      WHERE 
-        (fnames.username = ANY($1::text[]))
-        OR
-        (user_data.value = ANY($1::text[]))
-    UNION
-      SELECT
-        '0x' || encode(signer_address, 'hex') as address,
-        fnames.username as username,
-        user_data.value as display_name
-      FROM fnames
-      INNER JOIN verifications ON (verifications.fid = fnames.fid)
-      INNER JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
-      WHERE 
-        (fnames.username = ANY($1::text[]))
-        OR
-        (user_data.value = ANY($1::text[]))
-    )
-    ORDER BY display_name
-    LIMIT 1000
-  """
-  # Take a connection from the pool.
-  async with pool.acquire() as connection:
-      # Open a transaction.
-      async with connection.transaction():
-          with connection.query_logger(logger.trace):
-              # Run the query passing the request argument.
-              rows = await connection.fetch(
-                                        sql_query, 
-                                        handles, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                      )
+  rows = await db_utils.get_addresses(handles, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}

@@ -13,6 +13,7 @@ from .config import settings
 from .graph_loader import GraphLoader
 from .routers.graph_router import router as graph_router
 from .routers.metadata_router import router as metadata_router
+from .routers.trust_router import router as trust_router
 
 from loguru import logger
 
@@ -60,6 +61,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)])
 app.include_router(graph_router, prefix='/graph')
 app.include_router(metadata_router, prefix='/metadata')
+app.include_router(trust_router, prefix='/scores')
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):

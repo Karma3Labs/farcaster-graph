@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     POSTGRES_POOL_SIZE: int = 5
     POSTGRES_ECHO: bool = False
     POSTGRES_TIMEOUT_SECS: int = 60
+    GO_EIGENTRUST_URL:str = 'http://localhost:8080'
+    EIGENTRUST_ALPHA:float = 0.5
+    EIGENTRUST_EPSILON:float = 1.0
+    EIGENTRUST_MAX_ITER:int = 50
+    EIGENTRUST_FLAT_TAIL:int = 2
 
     LOG_LEVEL: str = 'INFO'
 
