@@ -17,6 +17,8 @@ import numpy as np
 def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   with Timer(name="read_csv"):
     edges_df = pd.read_csv(incsv)
+  logger.info(utils.df_info_to_string(edges_df, with_sample=True))
+  with Timer(name="factorize"):
     stacked = edges_df[['i','j']].stack()
     edges_df[['i_code', 'j_code']] = pd.Series(stacked.factorize()[0], index=stacked.index).unstack()
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
