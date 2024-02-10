@@ -54,7 +54,7 @@ function log() {
 mkdir -p $OUT_DIR
 
 # TODO parametrize strategy names in .sql files
-log "Exporting localtrust existingConnections from Postgres to tmp folder"
+log "Exporting localtrust existingConnections from Postgres to $OUT_DIR folder"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f export_existingConnections_addr.sql -o $OUT_DIR/lt_existingConnections.csv
@@ -62,7 +62,7 @@ $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
 # We need to add column headers back.
 sed -i${SP}'' '1s/^/i,j,v\n/' $OUT_DIR/lt_existingConnections.csv
 
-log "Exporting localtrust l1rep6rec3m12enhancedConnections from Postgres to tmp folder"
+log "Exporting localtrust l1rep6rec3m12enhancedConnections from Postgres to $OUT_DIR folder"
 PGPASSWORD=$DB_PASSWORD $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f export_l1rep6rec3m12enhancedConnections_addr.sql -o $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv
 # NOTE: the -t option turns off headers and footers in the output. 
