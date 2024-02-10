@@ -18,9 +18,9 @@ WORKDIR /code
 COPY pyproject.toml poetry.lock ./
 COPY README.md ./
 
-# ignore dev dependencies and ignore our app code
-# we don't want to rebuild layers after every app code change
-# uncomment the next life if we start using dev/test specific dependencies
+# we don't want to rebuild all the layers after every app code change
+# ignore app code for now
+# uncomment the next line if we start using dev/test specific dependencies
 # RUN poetry install --without dev,test --no-root
 RUN poetry install --no-root
 
@@ -28,7 +28,9 @@ COPY ./app /code/app
 COPY .env.docker ./.env
 
 # install app code, this is the last image layer and has to be rebuilt
-RUN poetry install --without dev,test
+# uncomment the next line if we start using dev/test specific dependencies
+# RUN poetry install --without dev,test
+RUN poetry install
 
 EXPOSE 8000
 
