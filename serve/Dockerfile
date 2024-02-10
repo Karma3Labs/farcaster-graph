@@ -20,7 +20,9 @@ COPY README.md ./
 
 # ignore dev dependencies and ignore our app code
 # we don't want to rebuild layers after every app code change
-RUN poetry install --without dev,test --no-root
+# uncomment the next life if we start using dev/test specific dependencies
+# RUN poetry install --without dev,test --no-root
+RUN poetry install --no-root
 
 COPY ./app /code/app
 COPY .env.docker ./.env
