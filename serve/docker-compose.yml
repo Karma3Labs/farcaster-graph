@@ -1,5 +1,5 @@
 services:
-  api:
+  farcaster-graph:
     build: .
     container_name: farcaster-graph
     image: farcaster-graph:latest
