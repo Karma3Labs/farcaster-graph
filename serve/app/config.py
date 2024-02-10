@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     POSTGRES_ECHO: bool = False
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
+    GO_EIGENTRUST_TIMEOUT_MS:int = 3000
     EIGENTRUST_ALPHA:float = 0.5
     EIGENTRUST_EPSILON:float = 1.0
     EIGENTRUST_MAX_ITER:int = 50

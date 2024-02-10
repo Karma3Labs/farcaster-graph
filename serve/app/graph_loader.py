@@ -20,16 +20,25 @@ class GraphLoader:
   def load_graph(self, path_prefix, graph_type: GraphType):
     sfile = f"{path_prefix}_SUCCESS"
     dfile = f"{path_prefix}_df.pkl"
+    ifile = f"{path_prefix}_idx.pkl"
+
     utils.log_memusage(logger)
     logger.info(f"loading {dfile}")
     df = pandas.read_pickle(dfile)
+
+    utils.log_memusage(logger)
+    logger.info(f"loading {ifile}")
+    idx_df = pandas.read_pickle(ifile)
+
     gfile = f"{path_prefix}_ig.pkl"
     logger.info(f"loading {gfile}")
     g = igraph.Graph.Read_Pickle(gfile)
     utils.log_memusage(logger)
+
     return Graph(
       success_file=sfile,
       df=df,
+      idx=idx_df,
       graph=g,
       type=graph_type,
       mtime=os.path.getmtime(sfile),
