@@ -22,7 +22,7 @@ async def get_personalized_engagement_for_addresses(
   return {"result": res}
 
 @router.get("/personalized/engagement/handles")
-async def get_personalized_engagement_for_addresses(  
+async def get_personalized_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
   k: Annotated[int, Query(le=5)] = 2,
@@ -31,7 +31,36 @@ async def get_personalized_engagement_for_addresses(
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   logger.debug(handles)
-  addrs = await db_utils.get_addresses(handles, pool)
-  addresses = [addr["address"] for addr in addrs]
-  res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  # fetch handle-address pairs for given handles
+  handle_addrs = await db_utils.get_addresses(handles, pool)
+
+  # extract addresses from the handle-address pairs
+  addresses = [addr["address"] for addr in handle_addrs]
+
+  # compute eigentrust on the neighbor graph using addresses
+  trust_scores = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+
+  # extract addresses from the address-score pairs
+  trusted_addresses = [ score['address'] for score in trust_scores ]
+
+  # fetch address-handle pairs for trusted neighbor addresses
+  trusted_addr_handles = await db_utils.get_handles(trusted_addresses, pool)
+
+  # convert list of address-handle pairs that we got ...
+  # ... from the db into a hashmap with address as key
+  # [{address,handle}] into {address -> {address,handle}}
+  trusted_addrs_handles_map = {}
+  for addr_handle in trusted_addr_handles:
+    trusted_addrs_handles_map[addr_handle['address']]=addr_handle
+
+  # for every address-score pair, combine address and score with handle
+  # {address,score} into {address,score,fname,username}
+  def trust_score_with_handle(trust_score: dict) -> dict:
+    addr_handle = trusted_addrs_handles_map[trust_score['address']]
+    return {'address': addr_handle['address'], 
+            'fname': addr_handle['fname'],
+            'username': addr_handle['username'],
+            'score': trust_score['score']
+            }
+  res = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
   return {"result": res}

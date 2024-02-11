@@ -100,7 +100,7 @@ async def get_neighbor_scores(
   # we get back {'i': some_icode, 'v': some_score}
   # lookup address corresponding to some_icode in idx
   # return {'i': some_address, 'v': some_score}
-  addr_scores = [ {'i': graph.idx.iloc[score['i']][0], 'v': score['v']} for score in i_scores ]
+  addr_scores = [ {'address': graph.idx.iloc[score['i']][0], 'score': score['v']} for score in i_scores ]
   return addr_scores
 
 async def get_neighbors_edges_json(  

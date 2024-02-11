@@ -49,8 +49,8 @@ curl -X 'GET' \
   'http://127.0.0.1:8000/metadata/handles' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]' \
-  -s -o /tmp/fc_handles.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+  -d '["0x86924c37a93734e8611eb081238928a9d18a63c0", "0x8773442740c17c9d0f0b87022c722f9a136206ed", "0x91031dcfdea024b4d51e775486111d2b2a715871", "0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x182327170fc284caaa5b1bc3e3878233f529d741"]' \
+  -s -o /tmp/fc_handles_out.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
 ```
 	
 Get eth addresses for handles:
@@ -61,7 +61,7 @@ curl -X 'GET' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]' \
-  -s -o /tmp/fc_addresses.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
+  -s -o /tmp/fc_addresses_out.json -w "\ndnslookup: %{time_namelookup} | connect: %{time_connect} | appconnect: %{time_appconnect} | pretransfer: %{time_pretransfer} | redirect: %{time_redirect} | starttransfer: %{time_starttransfer} | total: %{time_total} | size: %{size_download}\n"
 ```
 
 Personalized ranking based on the engagement-based graph:
