@@ -1,7 +1,6 @@
 from typing import Annotated
 import itertools
 import time
-import json
 import requests
 
 import pandas
