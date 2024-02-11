@@ -21,6 +21,18 @@ async def get_personalized_engagement_for_addresses(
   res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
   return {"result": res}
 
+@router.get("/personalized/following/addresses")
+async def get_personalized_following_for_addresses(  
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
+  addresses: list[str],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  graph_model: Graph = Depends(graph.get_following_graph),
+):
+  logger.debug(addresses)
+  res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  return {"result": res}
+
 @router.get("/personalized/engagement/handles")
 async def get_personalized_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
@@ -31,6 +43,30 @@ async def get_personalized_engagement_for_handles(
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   logger.debug(handles)
+  res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
+  return {"result": res}
+
+@router.get("/personalized/following/handles")
+async def get_personalized_following_for_handles(  
+  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
+  handles: list[str],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_following_graph),
+):
+  logger.debug(handles)
+  res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
+  return {"result": res}
+
+async def get_personalized_scores_for_handles(
+  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
+  handles: list[str],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
   # fetch handle-address pairs for given handles
   handle_addrs = await db_utils.get_addresses(handles, pool)
 
@@ -63,4 +99,7 @@ async def get_personalized_engagement_for_handles(
             'score': trust_score['score']
             }
   res = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
-  return {"result": res}
+  return res  
+
+
+
