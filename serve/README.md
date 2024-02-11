@@ -22,6 +22,8 @@
 
 Query the engagement-based graph:
 
+**NOTE: the server supports both GET and POST methods work but since we use a request body, most http clients prefer POST**
+
 ```
 curl -X 'POST' \
   'http://127.0.0.1:8000/graph/neighbors/engagement' \
