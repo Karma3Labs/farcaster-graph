@@ -23,7 +23,7 @@
 Query the engagement-based graph:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/graph/neighbors/engagement' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -34,7 +34,7 @@ curl -X 'GET' \
 Query the following-based graph:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/graph/neighbors/following' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -45,7 +45,7 @@ curl -X 'GET' \
 Get handles for eth addresses:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/metadata/handles' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -56,7 +56,7 @@ curl -X 'GET' \
 Get eth addresses for handles:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/metadata/addresses' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -67,7 +67,7 @@ curl -X 'GET' \
 Personalized ranking based on the engagement-based graph:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/scores/personalized/engagement/addresses' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -76,7 +76,7 @@ curl -X 'GET' \
 ```
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/scores/personalized/engagement/handles' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -87,7 +87,7 @@ curl -X 'GET' \
 Personalized ranking based on the following-based graph:
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/scores/personalized/following/addresses' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
@@ -96,7 +96,7 @@ curl -X 'GET' \
 ```
 
 ```
-curl -X 'GET' \
+curl -X 'POST' \
   'http://127.0.0.1:8000/scores/personalized/following/handles' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \

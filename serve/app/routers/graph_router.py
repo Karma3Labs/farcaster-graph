@@ -9,6 +9,7 @@ from ..dependencies import graph
 
 router = APIRouter(tags=["graphs"])
 
+@router.post("/neighbors/engagement")
 @router.get("/neighbors/engagement")
 async def get_neighbors_engagement(
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
@@ -21,6 +22,7 @@ async def get_neighbors_engagement(
   res = await graph.get_neighbors_edges_json(addresses, graph_model, k, limit)
   return {"result": json.loads(res)}
 
+@router.post("/neighbors/following")
 @router.get("/neighbors/following")
 async def get_neighbors_following(
   addresses: list[str],

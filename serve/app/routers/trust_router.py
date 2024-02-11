@@ -9,6 +9,7 @@ from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["scores"])
 
+@router.post("/personalized/engagement/addresses")
 @router.get("/personalized/engagement/addresses")
 async def get_personalized_engagement_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
@@ -21,6 +22,7 @@ async def get_personalized_engagement_for_addresses(
   res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
   return {"result": res}
 
+@router.post("/personalized/following/addresses")
 @router.get("/personalized/following/addresses")
 async def get_personalized_following_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
@@ -33,6 +35,7 @@ async def get_personalized_following_for_addresses(
   res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
   return {"result": res}
 
+@router.post("/personalized/engagement/handles")
 @router.get("/personalized/engagement/handles")
 async def get_personalized_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
@@ -46,6 +49,7 @@ async def get_personalized_engagement_for_handles(
   res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
   return {"result": res}
 
+@router.post("/personalized/following/handles")
 @router.get("/personalized/following/handles")
 async def get_personalized_following_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
