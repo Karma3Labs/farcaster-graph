@@ -119,11 +119,11 @@ async def _get_neighbors_edges(
 ) -> pandas.DataFrame: 
   start_time = time.perf_counter()
   neighbors = await _fetch_korder_neighbors(addresses, graph, max_degree, max_neighbors)
-  logger.info(f"graph took {time.perf_counter() - start_time} secs")
+  logger.info(f"graph took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
   logger.debug(neighbors)
   start_time = time.perf_counter()
   res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
-  logger.info(f"dataframe took {time.perf_counter() - start_time} secs")
+  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(res)} edges")
   return res
 
 async def _fetch_korder_neighbors(
