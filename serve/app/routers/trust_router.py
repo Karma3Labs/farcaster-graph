@@ -112,8 +112,10 @@ async def get_personalized_scores_for_handles(
     return None
   # end of def trust_score_with_handle
 
-  res = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
-  return res  
+  results = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
+  # filter out nulls from the previous step
+  results = [ result for result in results if result is not None]
+  return results  
 
 
 
