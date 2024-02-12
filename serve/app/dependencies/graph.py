@@ -24,7 +24,7 @@ def get_engagement_graph(request: Request) -> Graph:
 def is_vertex(ig: igraph.GraphBase, addr:str) -> bool:
   try:
       ig.vs.find(name=addr)
-      logger.debug(addr)
+      logger.trace(addr)
       return True
   except:
       return False
@@ -36,7 +36,7 @@ async def go_eigentrust(
     localtrust: list[dict],
     max_lt_id: np.int64,
 ):
-
+  start_time = time.perf_counter()
   req = {
   	"pretrust": {
   		"scheme": 'inline',
@@ -54,7 +54,7 @@ async def go_eigentrust(
   	"flatTail": settings.EIGENTRUST_FLAT_TAIL
   }
 
-  logger.debug(req)
+  logger.trace(req)
   response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                            json=req,
                            headers = {
@@ -67,6 +67,7 @@ async def go_eigentrust(
       logger.error(f"Server error: {response.status_code}:{response.reason}")
       raise HTTPException(status_code=500, detail="Unknown error")
   trustscores = response.json()['entries']
+  logger.info(f"eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
   return trustscores
 
 async def get_neighbor_scores(
@@ -120,7 +121,7 @@ async def _get_neighbors_edges(
   start_time = time.perf_counter()
   neighbors = await _fetch_korder_neighbors(addresses, graph, max_degree, max_neighbors)
   logger.info(f"graph took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
-  logger.debug(neighbors)
+  logger.trace(neighbors)
   start_time = time.perf_counter()
   res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(res)} edges")

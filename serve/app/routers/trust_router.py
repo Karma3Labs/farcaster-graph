@@ -20,6 +20,7 @@ async def get_personalized_engagement_for_addresses(
 ):
   logger.debug(addresses)
   res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
 @router.post("/personalized/following/addresses")
@@ -36,6 +37,7 @@ async def get_personalized_following_for_addresses(
 
   # filter out the input address
   res = [ score for score in scores if not score['address'] in addresses]
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
 @router.post("/personalized/engagement/handles")
@@ -50,6 +52,7 @@ async def get_personalized_engagement_for_handles(
 ):
   logger.debug(handles)
   res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
 @router.post("/personalized/following/handles")
@@ -64,6 +67,7 @@ async def get_personalized_following_for_handles(
 ):
   logger.debug(handles)
   res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
 async def get_personalized_scores_for_handles(
