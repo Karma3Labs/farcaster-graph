@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -18,6 +18,8 @@ async def get_personalized_engagement_for_addresses(
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  if not (1 <= len(addresses) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
   res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
   logger.debug(f"Result has {len(res)} rows")
@@ -32,6 +34,8 @@ async def get_personalized_following_for_addresses(
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  if not (1 <= len(addresses) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
   scores = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
 
@@ -50,6 +54,8 @@ async def get_personalized_engagement_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  if not (1 <= len(handles) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
   res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
@@ -65,6 +71,8 @@ async def get_personalized_following_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  if not (1 <= len(handles) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
   res = await get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
