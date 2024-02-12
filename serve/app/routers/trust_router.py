@@ -32,7 +32,10 @@ async def get_personalized_following_for_addresses(
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
   logger.debug(addresses)
-  res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  scores = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+
+  # filter out the input address
+  res = [ score for score in scores if not score['address'] in addresses]
   return {"result": res}
 
 @router.post("/personalized/engagement/handles")
@@ -97,11 +100,18 @@ async def get_personalized_scores_for_handles(
   # {address,score} into {address,score,fname,username}
   def trust_score_with_handle(trust_score: dict) -> dict:
     addr_handle = trusted_addrs_handles_map[trust_score['address']]
-    return {'address': addr_handle['address'], 
-            'fname': addr_handle['fname'],
-            'username': addr_handle['username'],
-            'score': trust_score['score']
-            }
+    # filter out input handles
+    if addr_handle and not (addr_handle['username'] in handles or 
+                            addr_handle['fname'] in handles 
+    ): 
+      return {'address': addr_handle['address'], 
+              'fname': addr_handle['fname'],
+              'username': addr_handle['username'],
+              'score': trust_score['score']
+              }
+    return None
+  # end of def trust_score_with_handle
+
   res = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
   return res  
 
