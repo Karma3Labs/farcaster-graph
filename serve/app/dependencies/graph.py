@@ -80,6 +80,7 @@ async def get_neighbor_scores(
 
   # go-et expects ids.
   # convert input addresses to ids by looking up the i_code column in the edges dataframe
+  # ASSUMPTION: pre-trust considers only i_code because we only care about outgoing edges.
   pt_series = df[df['i'].isin(addresses)].groupby(by='i').first()['i_code']
   pt_len = len(pt_series)
   pretrust = [{'i': id, 'v': 1/pt_len} for id in pt_series]
@@ -98,7 +99,13 @@ async def get_neighbor_scores(
                              max_lt_id=max_lt_id
                             )
   # we get back {'i': some_icode, 'v': some_score}
-  # lookup address corresponding to some_icode in idx
+  # lookup code in the entire FC graph and not just this small localtrust slice
+  # ASSUMPTION: we only lookup i_code and ignore j_code lookup
+  #.............because we don't care about terminal nodes 
+  # ............who have had no interactions with others
+  # ............For example, if 1000 profiles interact with 1 profile 
+  # ............but that 1 profile has no interactions (no out edges and not present in i_code)
+  # ............then that profile is most likely a bot account being boosted by sybils.
   # return {'i': some_address, 'v': some_score}
   addr_scores = [ {'address': graph.idx.iloc[score['i']][0], 'score': score['v']} for score in i_scores ]
   return addr_scores
