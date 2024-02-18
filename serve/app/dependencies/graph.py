@@ -70,7 +70,7 @@ async def go_eigentrust(
   logger.info(f"eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
   return trustscores
 
-async def get_neighbor_scores(
+async def get_neighbors_scores(
   addresses: list[str],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,

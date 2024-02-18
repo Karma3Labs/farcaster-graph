@@ -21,7 +21,7 @@ async def get_personalized_engagement_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  res = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  res = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -37,7 +37,7 @@ async def get_personalized_following_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  scores = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
 
   # filter out the input address
   res = [ score for score in scores if not score['address'] in addresses]
@@ -93,7 +93,7 @@ async def get_personalized_scores_for_handles(
   addresses = [addr["address"] for addr in handle_addrs]
 
   # compute eigentrust on the neighbor graph using addresses
-  trust_scores = await graph.get_neighbor_scores(addresses, graph_model, k, limit)
+  trust_scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
 
   # extract addresses from the address-score pairs
   trusted_addresses = [ score['address'] for score in trust_scores ]
