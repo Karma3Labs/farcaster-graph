@@ -19,7 +19,7 @@ from loguru import logger
 
 logger.remove()
 logger.add(sys.stdout, colorize=True, 
-           format="<green>{time:HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
+           format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
            level=settings.LOG_LEVEL)
 
 log.basicConfig(handlers=[logging.InterceptHandler()], level=0, force=True)
