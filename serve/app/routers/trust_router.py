@@ -111,7 +111,7 @@ async def get_personalized_scores_for_handles(
   # for every address-score pair, combine address and score with handle
   # {address,score} into {address,score,fname,username}
   def trust_score_with_handle(trust_score: dict) -> dict:
-    addr_handle = trusted_addrs_handles_map[trust_score['address']]
+    addr_handle = trusted_addrs_handles_map.get(trust_score['address'], None)
     # filter out input handles
     if addr_handle and not (addr_handle['username'] in handles or 
                             addr_handle['fname'] in handles 
