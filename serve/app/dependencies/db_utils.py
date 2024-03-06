@@ -41,7 +41,7 @@ async def get_handles(
             user_data.value as username
         FROM fnames
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
-        INNER JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         WHERE 
             '0x' || encode(verifications.signer_address, 'hex') = ANY($1::text[])
     UNION
@@ -51,7 +51,7 @@ async def get_handles(
             user_data.value as username
         FROM fnames
         INNER JOIN fids ON (fids.fid = fnames.fid)
-        INNER JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
             WHERE 
                 '0x' || encode(fids.custody_address, 'hex') = ANY($1::text[])
     )
