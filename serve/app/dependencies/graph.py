@@ -110,14 +110,17 @@ async def get_neighbors_scores(
   addr_scores = [ {'address': graph.idx.iloc[score['i']][0], 'score': score['v']} for score in i_scores ]
   return addr_scores
 
-async def get_neighbors_edges_json(  
+async def get_neighbors_list(  
   addresses: list[str],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> str:
-   df = await _get_neighbors_edges(addresses, graph, max_degree, max_neighbors)
-   return df[['i', 'j', 'v']].to_json(orient="records")
+  df = await _get_neighbors_edges(addresses, graph, max_degree, max_neighbors)
+  # WARNING we are operating on a shared dataframe...
+  # ...inplace=False by default, explicitly setting here for emphasis
+  out_df = df.groupby(by='j')[['v']].sum().sort_values(by=['v'], ascending=False, inplace=False)
+  return out_df.index.to_list()
 
 async def _get_neighbors_edges(  
   addresses: list[str],
