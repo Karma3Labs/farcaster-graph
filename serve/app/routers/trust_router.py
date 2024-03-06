@@ -21,7 +21,10 @@ async def get_personalized_engagement_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  res = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
+  scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
+
+  # filter out the input address
+  res = [ score for score in scores if not score['address'] in addresses]
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
