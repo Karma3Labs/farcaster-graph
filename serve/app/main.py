@@ -3,6 +3,10 @@ import time
 import logging as log
 
 from fastapi import FastAPI, Depends, Request, Response
+from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
+
 from contextlib import asynccontextmanager
 import uvicorn
 import asyncio
@@ -31,6 +35,22 @@ log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
 # LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
 #     '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
 
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Farcaster Graph by Karma3Labs",
+        version="1.0.0",
+        summary="OpenAPI schema",
+        description="This API provides reputation graphs based on social interactions on the Farcaster Protocol",
+        routes=app.routes,
+    )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "/static/favicon.png"
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
 app_state = {}
 
 async def check_and_reload_models(loader: GraphLoader):
@@ -58,10 +78,13 @@ async def lifespan(app: FastAPI):
     await app_state['db_pool'].close()
     app_state['graph_loader_task'].cancel()
 
-app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)])
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
 app.include_router(graph_router, prefix='/graph')
 app.include_router(metadata_router, prefix='/metadata')
 app.include_router(trust_router, prefix='/scores')
+app.openapi = custom_openapi
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
@@ -80,6 +103,14 @@ def get_health():
     logger.info("health check")
     return {'status': 'ok'}
 
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="Farcaster Graph by Karma3Labs",
+        swagger_favicon_url="/static/favicon.png"
+    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

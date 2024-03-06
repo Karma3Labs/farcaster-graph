@@ -25,6 +25,7 @@ COPY README.md ./
 RUN poetry install --no-root
 
 COPY ./app /code/app
+COPY ./static /code/static
 COPY .env.docker ./.env
 
 # install app code, this is the last image layer and has to be rebuilt
