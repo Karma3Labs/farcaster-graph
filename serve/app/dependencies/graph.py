@@ -98,6 +98,10 @@ async def get_neighbors_scores(
                              localtrust=localtrust,
                              max_lt_id=max_lt_id
                             )
+  
+  # sort by score
+  i_scores = sorted(i_scores, key=lambda d: d['v'], reverse=True)
+
   # we get back {'i': some_icode, 'v': some_score}
   # lookup code in the entire FC graph and not just this small localtrust slice
   # ASSUMPTION: we only lookup i_code and ignore j_code lookup
