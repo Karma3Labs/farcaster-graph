@@ -43,7 +43,8 @@ else
   PSQL=/usr/bin/psql
 fi
 
-if [[ $(uname) == "Darwin" ]]; then
+if [[ $(uname) == "Darwin" ]]; 
+then
     SP=" " # Needed for portability with sed
 fi
 
@@ -60,14 +61,14 @@ $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f export_existingConnections_addr.sql -o $OUT_DIR/lt_existingConnections.csv
 # NOTE: the -t option turns off headers and footers in the output. 
 # We need to add column headers back.
-sed -i${SP}'' '1s/^/i,j,v\n/' $OUT_DIR/lt_existingConnections.csv
+sed -i${SP}'.bk' '1s/^/i,j,v\n/' $OUT_DIR/lt_existingConnections.csv
 
 log "Exporting localtrust l1rep6rec3m12enhancedConnections from Postgres to $OUT_DIR folder"
 PGPASSWORD=$DB_PASSWORD $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f export_l1rep6rec3m12enhancedConnections_addr.sql -o $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv
 # NOTE: the -t option turns off headers and footers in the output. 
 # We need to add column headers back
-sed -i${SP}'' '1s/^/i,j,v\n/' $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv
+sed -i${SP}'.bk' '1s/^/i,j,v\n/' $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv
 
 source $VENV/bin/activate
 pip install -r requirements.txt
