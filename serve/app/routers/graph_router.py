@@ -11,7 +11,6 @@ from ..dependencies import graph, db_pool, db_utils
 router = APIRouter(tags=["graphs"])
 
 @router.post("/neighbors/engagement/addresses")
-@router.get("/neighbors/engagement/addresses")
 async def get_neighbors_engagement(
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
@@ -19,24 +18,36 @@ async def get_neighbors_engagement(
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  """
+  Given a list of input addresses, return a list of addresses
+    that the input addresses have engaged with. \n
+  We do a BFS traversal of the social engagement graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+  """
   logger.debug(addresses)
   res = await graph.get_neighbors_list(addresses, graph_model, k, limit)
   return {"result": res}
 
 @router.post("/neighbors/following/addresses")
-@router.get("/neighbors/following/addresses")
 async def get_neighbors_following(
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  """
+  Given a list of input addresses, return a list of addresses
+    that the input addresses are following. \n
+  We do a BFS traversal of the social follower graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+  """
   logger.debug(addresses)
   res = await graph.get_neighbors_list(addresses, graph_model, k, limit)
   return {"result": res}
 
 @router.post("/neighbors/engagement/handles")
-@router.get("/neighbors/engagement/handles")
 async def get_neighbors_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
@@ -45,6 +56,13 @@ async def get_neighbors_engagement_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  """
+  Given a list of input handles, return a list of handles
+    that the input handles have engaged with. \n
+  We do a BFS traversal of the social engagement graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
+  """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
@@ -53,7 +71,6 @@ async def get_neighbors_engagement_for_handles(
   return {"result": res}
 
 @router.post("/neighbors/following/handles")
-@router.get("/neighbors/following/handles")
 async def get_neighbors_following_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
@@ -62,6 +79,13 @@ async def get_neighbors_following_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  """
+  Given a list of input handles, return a list of handles
+    that the input handles are following. \n
+  We do a BFS traversal of the social follower graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
+  """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)

@@ -18,6 +18,17 @@ async def get_personalized_engagement_for_addresses(
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  """
+  Given a list of input addresses, return a list of addresses
+    trusted by the extended network of the input addresses. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social engagement graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
+
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
@@ -37,6 +48,16 @@ async def get_personalized_following_for_addresses(
   limit: Annotated[int | None, Query(le=1000)] = 100,
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  """
+  Given a list of input addresses, return a list of addresses
+    trusted by the extended network of the input addresses. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social following graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
@@ -57,6 +78,16 @@ async def get_personalized_engagement_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
+  """
+  Given a list of input handles, return a list of handles
+    trusted by the extended network of the input handles. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social engagement graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
@@ -74,6 +105,16 @@ async def get_personalized_following_for_handles(
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
+  """
+  Given a list of input handles, return a list of handles
+    trusted by the extended network of the input handles. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social following graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
