@@ -29,7 +29,7 @@ SessionLocal = sessionmaker(
 #         finally:
 #             await session.close()
 
-async def get_handles(
+async def get_handle_fids(
   addresses: list[str],
   pool: Pool
 ):
@@ -38,7 +38,8 @@ async def get_handles(
         SELECT 
             '0x' || encode(verifications.signer_address, 'hex') as address,
             fnames.username as fname,
-            user_data.value as username
+            user_data.value as username,
+            fnames.fid as fid
         FROM fnames
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
@@ -48,7 +49,8 @@ async def get_handles(
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.username as fname,
-            user_data.value as username
+            user_data.value as username,
+            fnames.fid as fid
         FROM fnames
         INNER JOIN fids ON (fids.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
@@ -71,7 +73,7 @@ async def get_handles(
                                         )
     return rows
 
-async def get_addresses(
+async def get_addresses_for_handles(
   handles: list[str],
   pool: Pool,
 ):
@@ -80,7 +82,8 @@ async def get_addresses(
         SELECT 
             '0x' || encode(custody_address, 'hex') as address,
             fnames.username as fname,
-            user_data.value as username
+            user_data.value as username,
+            fnames.fid as fid
         FROM fnames
         INNER JOIN fids ON (fids.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
@@ -92,7 +95,8 @@ async def get_addresses(
         SELECT
             '0x' || encode(signer_address, 'hex') as address,
             fnames.username as fname,
-            user_data.value as username
+            user_data.value as username,
+            fnames.fid as fid
         FROM fnames
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
@@ -100,6 +104,50 @@ async def get_addresses(
             (fnames.username = ANY($1::text[]))
             OR
             (user_data.value = ANY($1::text[]))
+    )
+    ORDER BY username
+    LIMIT 1000 -- safety valve
+    """
+    # Take a connection from the pool.
+    async with pool.acquire() as connection:
+        # Open a transaction.
+        async with connection.transaction():
+            with connection.query_logger(logger.trace):
+                # Run the query passing the request argument.
+                rows = await connection.fetch(
+                                        sql_query, 
+                                        handles, 
+                                        timeout=settings.POSTGRES_TIMEOUT_SECS
+                                        )
+    return rows
+
+async def get_addresses_for_fids(
+  handles: list[str],
+  pool: Pool,
+):
+    sql_query = """
+    (
+        SELECT 
+            '0x' || encode(custody_address, 'hex') as address,
+            fnames.username as fname,
+            user_data.value as username,
+            fnames.fid as fid
+        FROM fnames
+        INNER JOIN fids ON (fids.fid = fnames.fid)
+        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        WHERE 
+            fnames.fid = ANY($1::integer[])
+    UNION
+        SELECT
+            '0x' || encode(signer_address, 'hex') as address,
+            fnames.username as fname,
+            user_data.value as username,
+            fnames.fid as fid
+        FROM fnames
+        INNER JOIN verifications ON (verifications.fid = fnames.fid)
+        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        WHERE 
+            fnames.fid = ANY($1::integer[])
     )
     ORDER BY username
     LIMIT 1000 -- safety valve

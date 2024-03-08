@@ -131,7 +131,7 @@ async def get_personalized_scores_for_handles(
   graph_model: Graph,
 ) -> list[dict]: 
   # fetch handle-address pairs for given handles
-  handle_addrs = await db_utils.get_addresses(handles, pool)
+  handle_addrs = await db_utils.get_addresses_for_handles(handles, pool)
 
   # extract addresses from the handle-address pairs
   addresses = [addr["address"] for addr in handle_addrs]
@@ -143,35 +143,135 @@ async def get_personalized_scores_for_handles(
   trusted_addresses = [ score['address'] for score in trust_scores ]
 
   # fetch address-handle pairs for trusted neighbor addresses
-  trusted_addr_handles = await db_utils.get_handles(trusted_addresses, pool)
+  trusted_addr_handle_fids = await db_utils.get_handle_fids(trusted_addresses, pool)
 
   # convert list of address-handle pairs that we got ...
   # ... from the db into a hashmap with address as key
   # [{address,handle}] into {address -> {address,handle}}
-  trusted_addrs_handles_map = {}
-  for addr_handle in trusted_addr_handles:
-    trusted_addrs_handles_map[addr_handle['address']]=addr_handle
+  trusted_addrs_handle_fids_map = {}
+  for addr_handle_fid in trusted_addr_handle_fids:
+    trusted_addrs_handle_fids_map[addr_handle_fid['address']]=addr_handle_fid
 
   # for every address-score pair, combine address and score with handle
   # {address,score} into {address,score,fname,username}
-  def trust_score_with_handle(trust_score: dict) -> dict:
-    addr_handle = trusted_addrs_handles_map.get(trust_score['address'], None)
+  def fn_trust_score_with_handle(trust_score: dict) -> dict:
+    addr_handle_fid = trusted_addrs_handle_fids_map.get(trust_score['address'], None)
     # filter out input handles
-    if addr_handle and not (addr_handle['username'] in handles or 
-                            addr_handle['fname'] in handles 
-    ): 
-      return {'address': addr_handle['address'], 
-              'fname': addr_handle['fname'],
-              'username': addr_handle['username'],
-              'score': trust_score['score']
-              }
-    return None
-  # end of def trust_score_with_handle
+    if not addr_handle_fid \
+        or addr_handle_fid['username'] in handles \
+        or addr_handle_fid['fname'] in handles: 
+      return None
+    return {'address': addr_handle_fid['address'], 
+            'fname': addr_handle_fid['fname'],
+            'username': addr_handle_fid['username'],
+            'score': trust_score['score']
+            }
+  # end of def fn_trust_score_with_handle
 
-  results = [ trust_score_with_handle(trust_score) for trust_score in trust_scores]
+  results = [ fn_trust_score_with_handle(trust_score) for trust_score in trust_scores]
   # filter out nulls from the previous step
   results = [ result for result in results if result is not None]
   return results  
 
+@router.post("/personalized/engagement/fids")
+async def get_personalized_engagement_for_fids(  
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_engagement_graph),
+):
+  """
+  Given a list of input fids, return a list of fids
+    trusted by the extended network of the input fids. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social engagement graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: [1, 2] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
+  if not (1 <= len(fids) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+  logger.debug(fids)
+  res = await get_personalized_scores_for_handles(fids, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
+  return {"result": res}
 
+@router.post("/personalized/following/fids")
+async def get_personalized_following_for_fids(  
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_following_graph),
+):
+  """
+  Given a list of input fids, return a list of fids
+    trusted by the extended network of the input fids. \n
+  The addresses in the result are ranked by a relative scoring mechanism 
+    that is based on the EigenTrust algorithm. \n
+  The extended network is derived based on a BFS traversal of the social following graph 
+    upto **k** degrees and until **limit** is reached. \n
+  Example: [1, 2] \n
+  **IMPORTANT**: Please use HTTP POST method and not GET method.
+  """
+  if not (1 <= len(fids) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+  logger.debug(fids)
+  res = await get_personalized_scores_for_handles(fids, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
+  return {"result": res}
 
+async def get_personalized_scores_for_fids(
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
+  # fetch handle-address pairs for given fids
+  fid_addrs = await db_utils.get_addresses_for_fids(fids, pool)
+
+  # extract addresses from the handle-address pairs
+  addresses = [addr["address"] for addr in fid_addrs]
+
+  # compute eigentrust on the neighbor graph using addresses
+  trust_scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
+
+  # extract addresses from the address-score pairs
+  trusted_addresses = [ score['address'] for score in trust_scores ]
+
+  # fetch address-handle pairs for trusted neighbor addresses
+  trusted_addr_handle_fids = await db_utils.get_handle_fids(trusted_addresses, pool)
+
+  # convert list of address-handle pairs that we got ...
+  # ... from the db into a hashmap with address as key
+  # [{address,handle}] into {address -> {address,handle,fid}}
+  trusted_addrs_handle_fids_map = {}
+  for addr_handle_fid in trusted_addr_handle_fids:
+    trusted_addrs_handle_fids_map[addr_handle_fid['address']]=addr_handle_fid
+
+  # for every address-score pair, combine address and score with handle and fid
+  # {address,score} into {address,score,fname,username,fid}
+  def fn_trust_score_with_handle_fid(trust_score: dict) -> dict:
+    addr_handle_fid = trusted_addrs_handle_fids_map.get(trust_score['address'], None)
+    # filter out input handles
+    if not addr_handle_fid \
+        or addr_handle_fid['fid'] in fids: 
+      return None
+    return {'address': addr_handle_fid['address'], 
+            'fname': addr_handle_fid['fname'],
+            'username': addr_handle_fid['username'],
+            'fid': addr_handle_fid['fid'],
+            'score': trust_score['score']
+            }
+  # end of def fn_trust_score_with_handle_fid
+
+  results = [ fn_trust_score_with_handle_fid(trust_score) for trust_score in trust_scores]
+  # filter out nulls from the previous step
+  results = [ result for result in results if result is not None]
+  return results  

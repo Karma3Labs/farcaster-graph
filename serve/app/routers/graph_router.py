@@ -102,7 +102,7 @@ async def get_neighbors_list_for_handles(
   graph_model: Graph,
 ) -> list[dict]: 
   # fetch handle-address pairs for given handles
-  handle_addrs = await db_utils.get_addresses(handles, pool)
+  handle_addrs = await db_utils.get_addresses_for_handles(handles, pool)
 
   # extract addresses from the handle-address pairs
   addresses = [addr["address"] for addr in handle_addrs]
@@ -111,7 +111,7 @@ async def get_neighbors_list_for_handles(
   neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
 
   # fetch address-handle pairs for neighbor addresses
-  neighbor_addr_handles = await db_utils.get_handles(neighbor_addresses, pool)
+  neighbor_addr_handles = await db_utils.get_handle_fids(neighbor_addresses, pool)
 
   # filter out input handles
   results = [ addr_handle for addr_handle in neighbor_addr_handles 
@@ -122,3 +122,76 @@ async def get_neighbors_list_for_handles(
             ] 
 
   return results  
+
+@router.post("/neighbors/engagement/fids")
+async def get_neighbors_engagement_for_fids(  
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_engagement_graph),
+):
+  """
+  Given a list of input fids, return a list of fids
+    that the input fids have engaged with. \n
+  We do a BFS traversal of the social engagement graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: [1, 2] \n
+  """
+  if not (1 <= len(fids) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+  logger.debug(fids)
+  res = await get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
+  return {"result": res}
+
+@router.post("/neighbors/following/fids")
+async def get_neighbors_following_for_fids(  
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_following_graph),
+):
+  """
+  Given a list of input fids, return a list of fids
+    that the input fids are following. \n
+  We do a BFS traversal of the social follower graph 
+    upto **k** degrees and terminate traversal when **limit** is reached. \n
+  Example: [1, 2] \n
+  """
+  if not (1 <= len(fids) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+  logger.debug(fids)
+  res = await get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
+  return {"result": res}
+
+async def get_neighbors_list_for_fids(
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
+  # fetch handle-address pairs for given fids
+  fid_addrs = await db_utils.get_addresses_for_fids(fids, pool)
+
+  # extract addresses from the handle-address pairs
+  addresses = [addr["address"] for addr in fid_addrs]
+
+  # get neighbors using addresses
+  neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
+
+  # fetch address-handle pairs for neighbor addresses
+  neighbor_addr_handles = await db_utils.get_handle_fids(neighbor_addresses, pool)
+
+  # filter out input handles
+  results = [ addr_handle for addr_handle in neighbor_addr_handles 
+                            if not addr_handle['fid'] in fids 
+            ] 
+
+  return results 

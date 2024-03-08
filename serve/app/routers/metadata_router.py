@@ -20,7 +20,23 @@ async def get_handles(
   """
   logger.debug(addresses)
   start_time = time.perf_counter()
-  rows = await db_utils.get_handles(addresses, pool)
+  rows = await db_utils.get_handle_fids(addresses, pool)
+  logger.info(f"query took {time.perf_counter() - start_time} secs")
+  return {"result": rows}
+
+@router.post("/fids")
+async def get_handles(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
+  addresses: list[str],
+  pool: Pool = Depends(db_pool.get_db)
+):
+  """
+  Given a list of addresses, this API returns a list of fids. \n
+  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+  """
+  logger.debug(addresses)
+  start_time = time.perf_counter()
+  rows = await db_utils.get_handle_fids(addresses, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 
@@ -36,6 +52,6 @@ async def get_addresses(
   """
   logger.debug(handles)
   start_time = time.perf_counter()
-  rows = await db_utils.get_addresses(handles, pool)
+  rows = await db_utils.get_addresses_for_handles(handles, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
