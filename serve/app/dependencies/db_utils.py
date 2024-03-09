@@ -99,10 +99,13 @@ async def get_addresses_for_handles(
         FROM fnames
         INNER JOIN fids ON (fids.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        LEFT JOIN username_proofs as proofs ON (proofs.fid = fnames.fid)
         WHERE 
             (fnames.username = ANY($1::text[]))
             OR
             (user_data.value = ANY($1::text[]))
+            OR
+  			(proofs.username = ANY(ARRAY['mxjxn.eth']))
     UNION
         SELECT
             '0x' || encode(signer_address, 'hex') as address,
@@ -112,10 +115,13 @@ async def get_addresses_for_handles(
         FROM fnames
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        LEFT JOIN username_proofs as proofs ON (proofs.fid = fnames.fid)
         WHERE 
             (fnames.username = ANY($1::text[]))
             OR
             (user_data.value = ANY($1::text[]))
+            OR
+  			(proofs.username = ANY(ARRAY['mxjxn.eth']))
     )
     ORDER BY username
     LIMIT 1000 -- safety valve
