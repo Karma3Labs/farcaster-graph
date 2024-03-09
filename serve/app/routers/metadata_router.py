@@ -9,7 +9,7 @@ from ..dependencies import db_pool, db_utils
 router = APIRouter(tags=["metadata"])
 
 @router.post("/handles")
-async def get_handles(
+async def get_handles_for_addresses(
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
   pool: Pool = Depends(db_pool.get_db)
@@ -25,7 +25,7 @@ async def get_handles(
   return {"result": rows}
 
 @router.post("/fids")
-async def get_handles(
+async def get_fids_for_addresses(
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
   pool: Pool = Depends(db_pool.get_db)
@@ -41,7 +41,7 @@ async def get_handles(
   return {"result": rows}
 
 @router.post("/addresses")
-async def get_addresses(
+async def get_addresses_for_handles(
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
   pool: Pool = Depends(db_pool.get_db)
