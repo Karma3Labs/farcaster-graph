@@ -111,7 +111,7 @@ async def get_neighbors_list_for_handles(
   neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
 
   # fetch address-handle pairs for neighbor addresses
-  neighbor_addr_handles = await db_utils.get_handle_fids(neighbor_addresses, pool)
+  neighbor_addr_handles = await db_utils.get_handle_fid_for_addresses(neighbor_addresses, pool)
 
   # filter out input handles
   results = [ addr_handle for addr_handle in neighbor_addr_handles 
@@ -187,7 +187,7 @@ async def get_neighbors_list_for_fids(
   neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
 
   # fetch address-handle pairs for neighbor addresses
-  neighbor_addr_handles = await db_utils.get_handle_fids(neighbor_addresses, pool)
+  neighbor_addr_handles = await db_utils.get_handle_fid_for_addresses(neighbor_addresses, pool)
 
   # filter out input handles
   results = [ addr_handle for addr_handle in neighbor_addr_handles 

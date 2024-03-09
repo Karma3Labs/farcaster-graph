@@ -143,7 +143,7 @@ async def get_personalized_scores_for_handles(
   trusted_addresses = [ score['address'] for score in trust_scores ]
 
   # fetch address-handle pairs for trusted neighbor addresses
-  trusted_addr_handle_fids = await db_utils.get_handle_fids(trusted_addresses, pool)
+  trusted_addr_handle_fids = await db_utils.get_handle_fid_for_addresses(trusted_addresses, pool)
 
   # convert list of address-handle pairs that we got ...
   # ... from the db into a hashmap with address as key
@@ -195,7 +195,7 @@ async def get_personalized_engagement_for_fids(
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await get_personalized_scores_for_handles(fids, k, limit, pool, graph_model)
+  res = await get_personalized_scores_for_fids(fids, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -221,7 +221,7 @@ async def get_personalized_following_for_fids(
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await get_personalized_scores_for_handles(fids, k, limit, pool, graph_model)
+  res = await get_personalized_scores_for_fids(fids, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -246,7 +246,7 @@ async def get_personalized_scores_for_fids(
   trusted_addresses = [ score['address'] for score in trust_scores ]
 
   # fetch address-handle pairs for trusted neighbor addresses
-  trusted_addr_handle_fids = await db_utils.get_handle_fids(trusted_addresses, pool)
+  trusted_addr_handle_fids = await db_utils.get_handle_fid_for_addresses(trusted_addresses, pool)
 
   # convert list of address-handle pairs that we got ...
   # ... from the db into a hashmap with address as key

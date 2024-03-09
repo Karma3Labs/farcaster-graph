@@ -20,7 +20,7 @@ async def get_handles(
   """
   logger.debug(addresses)
   start_time = time.perf_counter()
-  rows = await db_utils.get_handle_fids(addresses, pool)
+  rows = await db_utils.get_handle_fid_for_addresses(addresses, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 
@@ -36,7 +36,7 @@ async def get_handles(
   """
   logger.debug(addresses)
   start_time = time.perf_counter()
-  rows = await db_utils.get_handle_fids(addresses, pool)
+  rows = await db_utils.get_handle_fid_for_addresses(addresses, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 

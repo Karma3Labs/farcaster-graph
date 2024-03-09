@@ -1,3 +1,4 @@
+import time
 from ..config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -29,9 +30,30 @@ SessionLocal = sessionmaker(
 #         finally:
 #             await session.close()
 
-async def get_handle_fids(
-  addresses: list[str],
-  pool: Pool
+async def get_rows_for_input_list(
+    input: list[int|str],
+    sql_query: str,
+    pool: Pool
+):
+    start_time = time.perf_counter()
+
+    # Take a connection from the pool.
+    async with pool.acquire() as connection:
+        # Open a transaction.
+        async with connection.transaction():
+            with connection.query_logger(logger.trace):
+                # Run the query passing the request argument.
+                rows = await connection.fetch(
+                                        sql_query, 
+                                        input, 
+                                        timeout=settings.POSTGRES_TIMEOUT_SECS
+                                        )
+    logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
+    return rows
+
+async def get_handle_fid_for_addresses(
+    addresses: list[str],
+    pool: Pool
 ):
     sql_query = """
     (
@@ -60,18 +82,8 @@ async def get_handle_fids(
     ORDER BY username
     LIMIT 1000 -- safety valve
     """
-    # Take a connection from the pool.
-    async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                rows = await connection.fetch(
-                                        sql_query, 
-                                        addresses, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                        )
-    return rows
+    return await get_rows_for_input_list(input=addresses, sql_query=sql_query, pool=pool)
+
 
 async def get_addresses_for_handles(
   handles: list[str],
@@ -108,21 +120,10 @@ async def get_addresses_for_handles(
     ORDER BY username
     LIMIT 1000 -- safety valve
     """
-    # Take a connection from the pool.
-    async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                rows = await connection.fetch(
-                                        sql_query, 
-                                        handles, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                        )
-    return rows
+    return await get_rows_for_input_list(input=handles, sql_query=sql_query, pool=pool)
 
 async def get_addresses_for_fids(
-  handles: list[str],
+  fids: list[str],
   pool: Pool,
 ):
     sql_query = """
@@ -152,15 +153,5 @@ async def get_addresses_for_fids(
     ORDER BY username
     LIMIT 1000 -- safety valve
     """
-    # Take a connection from the pool.
-    async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                rows = await connection.fetch(
-                                        sql_query, 
-                                        handles, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                        )
-    return rows
+    return await get_rows_for_input_list(input=fids, sql_query=sql_query, pool=pool)
+
