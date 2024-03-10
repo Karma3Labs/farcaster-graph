@@ -6,7 +6,7 @@ from asyncpg.pool import Pool
 from loguru import logger
 
 engine = create_async_engine(
-    settings.POSTGRES_ASYNC_URI,
+    settings.POSTGRES_ASYNC_URI.get_secret_value(),
     echo=settings.POSTGRES_ECHO,
     future=True,
     pool_size=max(5, settings.POSTGRES_POOL_SIZE),

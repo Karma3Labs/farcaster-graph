@@ -1,9 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import computed_field
+from pydantic import computed_field, SecretStr
 
 class Settings(BaseSettings):  
     DB_USERNAME:str = 'postgres'
-    DB_PASSWORD:str = 'postgres'
+    DB_PASSWORD:SecretStr = 'postgres'
     DB_NAME:str = 'postgres'
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
@@ -29,11 +29,11 @@ class Settings(BaseSettings):
     )
 
     @computed_field
-    def POSTGRES_URI(self) -> str:
-        return f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def POSTGRES_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
 
     @computed_field
-    def POSTGRES_ASYNC_URI(self) -> str:
-        return f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def POSTGRES_ASYNC_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
 
 settings = Settings()
