@@ -73,8 +73,8 @@ sed -i${SP}'.bk' '1s/^/i,j,v\n/' $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.cs
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m graph.gen_igraph.py -i $OUT_DIR/lt_existingConnections.csv -o $OUT_DIR -p fc_following
+python3 -m graph.gen_igraph -i $OUT_DIR/lt_existingConnections.csv -o $OUT_DIR -p fc_following
 touch $OUT_DIR/fc_following_SUCCESS
-python3 -m graph.gen_igraph.py -i $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv -o $OUT_DIR -p fc_engagement 
+python3 -m graph.gen_igraph -i $OUT_DIR/lt_l1rep6rec3m12enhancedConnections.csv -o $OUT_DIR -p fc_engagement 
 touch $OUT_DIR/fc_engagement_SUCCESS
 deactivate
