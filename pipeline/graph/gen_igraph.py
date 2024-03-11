@@ -6,13 +6,12 @@ import os
 
 # local dependencies
 import utils
-from config import Config
+from config import settings
 from timer import Timer
 
 # 3rd party dependencies
 import igraph as ig
 import pandas as pd
-import numpy as np
 
 def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   with Timer(name="read_csv"):
@@ -54,7 +53,7 @@ if __name__ == '__main__':
                     type=str)
   args = parser.parse_args()
   print(args)
-  print(Config.__dict__)
+  print(settings)
 
   logger = logging.getLogger()
   utils.setup_filelogger(logger, __file__)

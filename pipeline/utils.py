@@ -5,7 +5,7 @@ import datetime
 import os
 from pathlib import Path
 
-from config import Config
+from config import settings
 
 import psutil
 import pandas as pd
@@ -30,7 +30,7 @@ def setup_consolelogger(logger):
   ch = logging.StreamHandler(sys.stdout)
   ch.setLevel(logging.DEBUG)
   # create a logging format
-  formatter = logging.Formatter(Config.LOG_FORMAT)
+  formatter = logging.Formatter(settings.LOG_FORMAT)
   ch.setFormatter(formatter)
   # add the handler to the logger
   logger.addHandler(ch)
@@ -38,13 +38,13 @@ def setup_consolelogger(logger):
 def setup_filelogger(logger, scriptpath):
   # create a file handler
   logfilename = f"{Path(scriptpath).expanduser().resolve().stem}.log"
-  logfilepath = Path(Config.LOG_PATH) / logfilename
+  logfilepath = Path(settings.LOG_PATH) / logfilename
   logfilepath.parent.mkdir(parents=True, exist_ok=True)
   fh = logging.handlers.RotatingFileHandler(str(logfilepath))
   # fh = logging.handlers.RotatingFileHandler('/var/log/app/myfeed/%s.log' % programname)
   fh.setLevel(logging.INFO)
   # create a logging format
-  formatter = logging.Formatter(Config.LOG_FORMAT)
+  formatter = logging.Formatter(settings.LOG_FORMAT)
   fh.setFormatter(formatter)
   # add the handler to the logger
   logger.addHandler(fh)
