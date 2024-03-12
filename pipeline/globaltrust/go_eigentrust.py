@@ -32,7 +32,7 @@ def go_eigentrust(
       "flatTail": settings.EIGENTRUST_FLAT_TAIL
     }
 
-    logger.debug(f"calling go_eigentrust with {len(req)} entries")
+    logger.info(f"calling go_eigentrust")
     response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                             json=req,
                             headers = {

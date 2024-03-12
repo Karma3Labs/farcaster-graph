@@ -110,74 +110,76 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   return _interactions_df  
 
 
-def run_strategy(
+def lt_gt_for_strategy(
     logger: logging.Logger, 
     pg_dsn: str,
     strategy: Strategy
-) -> pd.DataFrame :
-  intx_df = _fetch_interactions_df(logger, pg_dsn)
-  match strategy:
-    case Strategy.FOLLOWS:
-      pt_df = _fetch_pt_popular_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','follows_v']].rename(columns={'follows_v':'v'})
-    case Strategy.ENGAGEMENT: 
-      pt_df = _fetch_pt_popular_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','l1rep6rec3m12']] \
-            .rename(columns={'l1rep6rec3m12':'v'})
-    case Strategy.ACTIVITY:
-      pt_df = _fetch_pt_popular_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','l1rep1rec1m1']] \
-            .rename(columns={'l1rep1rec1m1':'v'})
-    case Strategy.OG_CIRCLES:
-      pt_df = _fetch_pt_og_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','follows_v']].rename(columns={'follows_v':'v'})
-    case Strategy.OG_ENGAGEMENT:
-      pt_df = _fetch_pt_og_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','l1rep6rec3m12']] \
-            .rename(columns={'l1rep6rec3m12':'v'})
-    case Strategy.OG_ACTIVITY:      
-      pt_df = _fetch_pt_og_df(logger, pg_dsn)
-      lt_df = \
-        intx_df[intx_df['follows_v'].notna()] \
-          [['i','j','l1rep1rec1m1']] \
-            .rename(columns={'l1rep1rec1m1':'v'})
-    case _:
-      raise Exception(f"Unknown Strategy: {strategy}")
-  # end of match  
+) -> tuple[pd.DataFrame, pd.DataFrame] :
+  with Timer(name=f"{strategy}"):
+    intx_df = _fetch_interactions_df(logger, pg_dsn)
+    match strategy:
+      case Strategy.FOLLOWS:
+        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','follows_v']].rename(columns={'follows_v':'v'})
+      case Strategy.ENGAGEMENT: 
+        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','l1rep6rec3m12']] \
+              .rename(columns={'l1rep6rec3m12':'v'})
+      case Strategy.ACTIVITY:
+        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','l1rep1rec1m1']] \
+              .rename(columns={'l1rep1rec1m1':'v'})
+      case Strategy.OG_CIRCLES:
+        pt_df = _fetch_pt_og_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','follows_v']].rename(columns={'follows_v':'v'})
+      case Strategy.OG_ENGAGEMENT:
+        pt_df = _fetch_pt_og_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','l1rep6rec3m12']] \
+              .rename(columns={'l1rep6rec3m12':'v'})
+      case Strategy.OG_ACTIVITY:      
+        pt_df = _fetch_pt_og_df(logger, pg_dsn)
+        lt_df = \
+          intx_df[intx_df['follows_v'].notna()] \
+            [['i','j','l1rep1rec1m1']] \
+              .rename(columns={'l1rep1rec1m1':'v'})
+      case _:
+        raise Exception(f"Unknown Strategy: {strategy}")
+    # end of match  
 
-  logger.info(f"{strategy} Pre-Trust: {utils.df_info_to_string(pt_df, with_sample=True)}")
-  logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
-  utils.log_memusage(logger)
+    logger.info(f"{strategy} Pre-Trust: {utils.df_info_to_string(pt_df, with_sample=True)}")
+    logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
+    utils.log_memusage(logger)
 
-  with Timer(name=f"prep_eigentrust_{strategy}"):
-    localtrust = lt_df.to_dict(orient="records")  
-    max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
-    pretrust = pt_df.to_dict(orient="records")
-    max_pt_id = pt_df['i'].max()
-  utils.log_memusage(logger)
+    with Timer(name=f"prep_eigentrust_{strategy}"):
+      localtrust = lt_df.to_dict(orient="records")  
+      max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
+      pretrust = pt_df.to_dict(orient="records")
+      max_pt_id = pt_df['i'].max()
+    utils.log_memusage(logger)
 
-  globaltrust = go_eigentrust.go_eigentrust(logger, 
-                                            pretrust,
-                                            max_pt_id,
-                                            localtrust,
-                                            max_lt_id
-                                            )
-  logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
-  utils.log_memusage(logger)
+    globaltrust = go_eigentrust.go_eigentrust(logger, 
+                                              pretrust,
+                                              max_pt_id,
+                                              localtrust,
+                                              max_lt_id
+                                              )
+    logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
+    utils.log_memusage(logger)
 
-  with Timer(name=f"post_eigentrust_{strategy}"):
-    gt_df = pd.DataFrame.from_records(globaltrust)
-  logger.info(utils.df_info_to_string(gt_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  return gt_df
+    with Timer(name=f"post_eigentrust_{strategy}"):
+      gt_df = pd.DataFrame.from_records(globaltrust)
+    logger.info(utils.df_info_to_string(gt_df, with_sample=True))
+    utils.log_memusage(logger)
+  # end Timer
+  return (lt_df, gt_df)
+# compute_lt_gt_for_strategy
