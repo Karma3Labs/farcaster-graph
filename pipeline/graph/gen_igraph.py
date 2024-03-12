@@ -13,19 +13,24 @@ from timer import Timer
 import igraph as ig
 import pandas as pd
 
+@Timer(name="main")
 def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
+  utils.log_memusage(logger)
   with Timer(name="read_csv"):
     edges_df = pd.read_csv(incsv)
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
+  utils.log_memusage(logger)
   with Timer(name="factorize"):
     stacked = edges_df[['i','j']].stack()
     codes, uniqs = stacked.factorize()
     edges_df[['i_code', 'j_code']] = pd.Series(codes, index=stacked.index).unstack()
     idx_df = pd.DataFrame(uniqs)
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
+  utils.log_memusage(logger)
   with Timer(name="df_to_igraph"):
     g = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
   logger.info(ig.summary(g))
+  utils.log_memusage(logger)
   with Timer(name="write_pickle"):
     dfile = os.path.join(outdir, f"{prefix}_df.pkl")
     ifile = os.path.join(outdir, f"{prefix}_idx.pkl")
