@@ -27,3 +27,7 @@ if __name__ == '__main__':
 
   num_ij_pairs = df.groupby(['i', 'j']).ngroups
   logger.info(f"Unique i,j pairs: {num_ij_pairs}")
+
+  num_selfies = len(df[df['i']==df['j']])
+  logger.info(f"Number of self followers: {num_selfies}")
+  
