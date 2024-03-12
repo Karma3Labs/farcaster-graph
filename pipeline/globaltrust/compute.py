@@ -37,7 +37,7 @@ def _fetch_pt_og_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   if _pretrust_og_df is not None:
     return _pretrust_og_df
   
-  _pretrust_og_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_POPULAR)
+  _pretrust_og_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_OG)
   return _pretrust_og_df
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
@@ -126,7 +126,7 @@ def lt_gt_for_strategy(
       case Strategy.ENGAGEMENT: 
         pt_df = _fetch_pt_popular_df(logger, pg_dsn)
         lt_df = \
-          intx_df[intx_df['follows_v'].notna()] \
+          intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
       case Strategy.ACTIVITY:
@@ -143,7 +143,7 @@ def lt_gt_for_strategy(
       case Strategy.OG_ENGAGEMENT:
         pt_df = _fetch_pt_og_df(logger, pg_dsn)
         lt_df = \
-          intx_df[intx_df['follows_v'].notna()] \
+          intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
       case Strategy.OG_ACTIVITY:      
