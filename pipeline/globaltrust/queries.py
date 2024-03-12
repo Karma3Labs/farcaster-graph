@@ -8,14 +8,12 @@ class IJVSql(SQL):
     FROM reactions 
     WHERE type=1
     GROUP BY i, j
-    LIMIT 1000
     """
   REPLIES = """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
     WHERE parent_hash IS NOT NULL
     GROUP by i, j
-    LIMIT 1000
     """
   MENTIONS = """
     WITH mention AS (
@@ -26,14 +24,12 @@ class IJVSql(SQL):
 			author_fid as i, mention_fid as j, count(1) as mentions_v
 		FROM mention
 		GROUP BY i, j
-    LIMIT 1000
     """
   RECASTS = """
     SELECT fid as i, target_cast_fid as j, count(1) as reacts_v 
     FROM reactions 
     WHERE type=2
     GROUP BY i, j
-    LIMIT 1000
     """
   FOLLOWS = """
     SELECT 
@@ -42,7 +38,6 @@ class IJVSql(SQL):
         1 as follows_v
     FROM mv_follow_links 
     ORDER BY i, j, follows_v desc
-    LIMIT 1000
     """
   
 class IVSql(SQL):
