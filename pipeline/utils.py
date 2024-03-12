@@ -21,8 +21,8 @@ def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
 def log_memusage(logger:logging.Logger):
   mem_usage = psutil.virtual_memory()
   logger.info(f"Total: {mem_usage.total/(1024**2):.2f}M")
-  logger.info(f"Used: {mem_usage.percent}%")
-  logger.info(f"Used: {mem_usage.used/(1024**2):.2f}M")
+  logger.info(f"PctUsed: {mem_usage.percent}%")
+  logger.info(f"Available: {mem_usage.available/(1024**2):.2f}M")
   logger.info(f"Free: {mem_usage.free/(1024**2):.2f}M" )
 
 def setup_consolelogger(logger):
