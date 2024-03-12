@@ -37,7 +37,7 @@ def _fetch_pt_og_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   if _pretrust_og_df is not None:
     return _pretrust_og_df
   
-  _pretrust_og_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_POPULAR)
+  _pretrust_og_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_OG)
   return _pretrust_og_df
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
