@@ -4,7 +4,7 @@ import logging
 # local dependencies
 import utils
 from config import settings
-from . import db_utils
+from . import compute
 from .queries import IJVSql
 
 # 3rd party dependencies
@@ -22,11 +22,16 @@ if __name__ == '__main__':
 
   pg_dsn = settings.POSTGRES_DSN.get_secret_value()
 
-  df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.FOLLOWS)
+  df = compute._fetch_interactions_df(logger, pg_dsn)
   logger.info(utils.df_info_to_string(df, with_sample=True))
 
-  num_ij_pairs = df.groupby(['i', 'j']).ngroups
-  logger.info(f"Unique i,j pairs: {num_ij_pairs}")
+  pkl_file = '/tmp/fc_interactions_df.pkl'
+  logger.info(f"Pickling interactions dataframe to {pkl_file}")
+  df.to_pickle(pkl_file)
+  logger.info(f"Done pickling interactions dataframe  to {pkl_file}")
+
+  num_ij_pairs = df[df['follows_v'].notna()].groupby(['i', 'j']).ngroups
+  logger.info(f"Unique i,j follow pairs: {num_ij_pairs}")
 
   num_selfies = len(df[df['i']==df['j']])
   logger.info(f"Number of self followers: {num_selfies}")
