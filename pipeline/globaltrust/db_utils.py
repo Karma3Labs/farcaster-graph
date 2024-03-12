@@ -17,13 +17,13 @@ def ijv_df_read_sql_tmpfile(logger: logging.Logger, pg_dsn: str, query: SQL) -> 
   with Timer(name=query.name):
     with tempfile.TemporaryFile() as tmpfile:
       copy_sql = f"COPY ({query.value}) TO STDOUT WITH CSV HEADER"
+      logger.debug(f"{copy_sql}")
       with psycopg2.connect(pg_dsn) as conn:
         with conn.cursor() as cursor:
           cursor.copy_expert(copy_sql, tmpfile)
           tmpfile.seek(0)
           # types = defaultdict(np.uint64, i='Int32', j='Int32')
           df = pd.read_csv(tmpfile, dtype={'i':'Int32', 'j': 'Int32'})
-          logger.info(utils.df_info_to_string(df, with_sample=True))
           return df
         
 # def create_temp_localtrust(logger: logging.Logger, pg_dsn: str) -> str:
