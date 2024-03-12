@@ -19,8 +19,8 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = 'INFO'
 
-    FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following'
-    ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement'
+    FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
+    ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement_fid'
     RELOAD_FREQ_SECS: int = 3600
 
     model_config = SettingsConfigDict(
