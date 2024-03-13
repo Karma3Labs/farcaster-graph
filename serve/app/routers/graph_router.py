@@ -10,33 +10,6 @@ from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["graphs"])
 
-async def get_neighbors_list_for_addresses(
-  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
-  addresses: list[str],
-  k: int,
-  limit: int,
-  pool: Pool,
-  graph_model: Graph,
-) -> list[dict]: 
-  # fetch fid-address pairs for given addresses
-  addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
-
-  # extract fids from the fid-address pairs
-  fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
-  uniq_fids = list(set(fids))
-
-  # get neighbors using fids
-  neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
-
-  # fetch address-fids pairs for neighbor fids
-  neighbor_fid_addrs = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
-
-  # filter out input addresses and return only addresses
-  res = [neighbor['address'] for neighbor in neighbor_fid_addrs
-                                if not neighbor['address'] in addresses]
-
-  return res  
-
 @router.post("/neighbors/engagement/addresses")
 async def get_neighbors_engagement(
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
@@ -85,36 +58,33 @@ async def get_neighbors_following(
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-async def get_neighbors_list_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+async def get_neighbors_list_for_addresses(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
+  addresses: list[str],
   k: int,
   limit: int,
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
-  # fetch fid-address pairs for given handles
-  fid_addrs = await db_utils.get_fid_addresses_for_handles(handles, pool)
+  # fetch fid-address pairs for given addresses
+  addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
 
   # extract fids from the fid-address pairs
-  fids = [int(fid_addr["fid"]) for fid_addr in fid_addrs]
+  fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
+  # multiple address can have the same fid
   uniq_fids = list(set(fids))
 
   # get neighbors using fids
   neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
 
-  # fetch address-handle pairs for neighbor addresses
-  neighbor_fid_handles = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
+  # fetch address-fids pairs for neighbor fids
+  neighbor_fid_addrs = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
 
-  # filter out input handles
-  results = [ neighbor for neighbor in neighbor_fid_handles 
-                            if not (
-                              neighbor['username'] in handles 
-                              or 
-                              neighbor['fname'] in handles) 
-            ] 
+  # filter out input addresses and return only addresses
+  res = [neighbor['address'] for neighbor in neighbor_fid_addrs
+                                if not neighbor['address'] in addresses]
 
-  return results  
+  return res  
 
 @router.post("/neighbors/engagement/handles")
 async def get_neighbors_engagement_for_handles(  
@@ -162,26 +132,37 @@ async def get_neighbors_following_for_handles(
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-async def get_neighbors_list_for_fids(
-  # Example: -d '[1, 2]'
-  fids: list[int],
+async def get_neighbors_list_for_handles(
+  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
+  handles: list[str],
   k: int,
   limit: int,
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
+  # fetch fid-address pairs for given handles
+  fid_addrs = await db_utils.get_fid_addresses_for_handles(handles, pool)
+
+  # extract fids from the fid-address pairs
+  fids = [int(fid_addr["fid"]) for fid_addr in fid_addrs]
+  # if fname and username are the same, then maybe (?) multiple fids for same input 
+  uniq_fids = list(set(fids))
+
   # get neighbors using fids
-  neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
+  neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
 
-  # fetch address-handle pairs for neighbor fids
-  neighbor_addr_handles = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
+  # fetch address-handle pairs for neighbor addresses
+  neighbor_fid_handles = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
 
-  # filter out input fids
-  results = [ addr_handle for addr_handle in neighbor_addr_handles 
-                            if not addr_handle['fid'] in fids 
+  # filter out input handles
+  results = [ neighbor for neighbor in neighbor_fid_handles 
+                            if not (
+                              neighbor['username'] in handles 
+                              or 
+                              neighbor['fname'] in handles) 
             ] 
 
-  return results 
+  return results  
 
 @router.post("/neighbors/engagement/fids")
 async def get_neighbors_engagement_for_fids(  
@@ -228,3 +209,25 @@ async def get_neighbors_following_for_fids(
   res = await get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
+
+
+async def get_neighbors_list_for_fids(
+  # Example: -d '[1, 2]'
+  fids: list[int],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
+  # get neighbors using fids
+  neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
+
+  # fetch address-handle pairs for neighbor fids
+  neighbor_addr_handles = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)
+
+  # filter out input fids
+  results = [ addr_handle for addr_handle in neighbor_addr_handles 
+                            if not addr_handle['fid'] in fids 
+            ] 
+
+  return results 

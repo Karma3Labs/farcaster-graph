@@ -16,6 +16,7 @@ async def get_personalized_engagement_for_addresses(
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   """
@@ -32,7 +33,7 @@ async def get_personalized_engagement_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
+  scores = await get_personalized_scores_for_addresses(addresses, k, limit, pool, graph_model)
 
   # filter out the input address
   res = [ score for score in scores if not score['address'] in addresses]
@@ -46,6 +47,7 @@ async def get_personalized_following_for_addresses(
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
   """
@@ -61,12 +63,54 @@ async def get_personalized_following_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  scores = await graph.get_neighbors_scores(addresses, graph_model, k, limit)
+  scores = await get_personalized_scores_for_addresses(addresses, k, limit, pool, graph_model)
 
   # filter out the input address
   res = [ score for score in scores if not score['address'] in addresses]
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
+
+async def get_personalized_scores_for_addresses(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
+  addresses: list[str],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
+  # fetch handle-address pairs for given fids
+  addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
+
+  # extract fids from the fid-address pairs typecasting to int just to be sure
+  in_fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
+  # multiple address can have the same fid, remove duplicates
+  in_fids = list(set(in_fids))
+
+  # compute eigentrust on the neighbor graph using fids
+  trust_scores = await graph.get_neighbors_scores(in_fids, graph_model, k, limit)
+
+  # convert list of fid scores into a lookup with fid as key
+  # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
+  trusted_score_fid_map = {ts['fid']:ts['score'] for ts in trust_scores }
+
+  # extract fids from the trusted neighbor fid-score pairs
+  trusted_fids = list(trusted_score_fid_map.keys())
+
+  # fetch address-handle pairs for trusted neighbor fids
+  trusted_addr_handle_fids = await db_utils.get_handle_addresses_for_fids(trusted_fids, pool)
+
+  # for every address-score pair, combine address and score with handle and fid
+  # {address,score} into {address,score,fname,username,fid}
+  def fn_include_score(trusted_addr_handle_fid: dict) -> dict:
+    trusted_addr_handle_fid['score'] = trusted_fids[trusted_addr_handle_fid['fid']]
+    return trusted_addr_handle_fid
+  # end of def fn_trust_score_with_handle_fid
+
+  results = map(fn_include_score, trusted_addr_handle_fids)
+
+  # filter out nulls from the previous step
+  results = [ result for result in results if result is not None]
+  return results  
 
 @router.post("/personalized/engagement/handles")
 @router.get("/personalized/engagement/handles")
