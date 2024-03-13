@@ -105,7 +105,7 @@ async def get_addresses_for_handles(
             OR
             (user_data.value = ANY($1::text[]))
             OR
-  			(proofs.username = ANY(ARRAY['mxjxn.eth']))
+  			(proofs.username = ANY($1::text[]))
     UNION
         SELECT
             '0x' || encode(signer_address, 'hex') as address,
@@ -121,7 +121,7 @@ async def get_addresses_for_handles(
             OR
             (user_data.value = ANY($1::text[]))
             OR
-  			(proofs.username = ANY(ARRAY['mxjxn.eth']))
+  			(proofs.username = ANY($1::text[]))
     )
     ORDER BY username
     LIMIT 1000 -- safety valve
