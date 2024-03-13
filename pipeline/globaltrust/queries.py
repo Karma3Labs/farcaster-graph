@@ -7,6 +7,7 @@ class IJVSql(SQL):
     SELECT fid as i, target_cast_fid as j, count(1) as likes_v 
     FROM reactions 
     WHERE type=1
+    AND target_cast_fid IS NOT NULL
     GROUP BY i, j
     """
   REPLIES = """
@@ -29,6 +30,7 @@ class IJVSql(SQL):
     SELECT fid as i, target_cast_fid as j, count(1) as reacts_v 
     FROM reactions 
     WHERE type=2
+    AND target_cast_fid IS NOT NULL
     GROUP BY i, j
     """
   FOLLOWS = """
