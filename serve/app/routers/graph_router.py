@@ -141,15 +141,13 @@ async def get_neighbors_list_for_handles(
   graph_model: Graph,
 ) -> list[dict]: 
   # fetch fid-address pairs for given handles
-  fid_addrs = await db_utils.get_fid_addresses_for_handles(handles, pool)
+  fid_addrs = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
 
   # extract fids from the fid-address pairs
   fids = [int(fid_addr["fid"]) for fid_addr in fid_addrs]
-  # if fname and username are the same, then maybe (?) multiple fids for same input 
-  uniq_fids = list(set(fids))
 
   # get neighbors using fids
-  neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
+  neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
 
   # fetch address-handle pairs for neighbor addresses
   neighbor_fid_handles = await db_utils.get_handle_addresses_for_fids(neighbor_fids, pool)

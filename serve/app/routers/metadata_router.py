@@ -52,6 +52,6 @@ async def get_addresses_for_handles(
   """
   logger.debug(handles)
   start_time = time.perf_counter()
-  rows = await db_utils.get_fid_addresses_for_handles(handles, pool)
+  rows = await db_utils.get_all_fid_addresses_for_handles(handles, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
