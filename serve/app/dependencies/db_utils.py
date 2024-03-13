@@ -85,7 +85,7 @@ async def get_handle_fid_for_addresses(
     return await get_rows_for_input_list(input=addresses, sql_query=sql_query, pool=pool)
 
 
-async def get_addresses_for_handles(
+async def get_fid_addresses_for_handles(
   handles: list[str],
   pool: Pool,
 ):
@@ -128,7 +128,7 @@ async def get_addresses_for_handles(
     """
     return await get_rows_for_input_list(input=handles, sql_query=sql_query, pool=pool)
 
-async def get_addresses_for_fids(
+async def get_handle_addresses_for_fids(
   fids: list[str],
   pool: Pool,
 ):

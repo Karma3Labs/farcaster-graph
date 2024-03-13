@@ -131,7 +131,7 @@ async def get_personalized_scores_for_handles(
   graph_model: Graph,
 ) -> list[dict]: 
   # fetch handle-address pairs for given handles
-  handle_addrs = await db_utils.get_addresses_for_handles(handles, pool)
+  handle_addrs = await db_utils.get_fid_addresses_for_handles(handles, pool)
 
   # extract addresses from the handle-address pairs
   addresses = [addr["address"] for addr in handle_addrs]
@@ -234,7 +234,7 @@ async def get_personalized_scores_for_fids(
   graph_model: Graph,
 ) -> list[dict]: 
   # fetch handle-address pairs for given fids
-  fid_addrs = await db_utils.get_addresses_for_fids(fids, pool)
+  fid_addrs = await db_utils.get_handle_addresses_for_fids(fids, pool)
 
   # extract addresses from the handle-address pairs
   addresses = [addr["address"] for addr in fid_addrs]
