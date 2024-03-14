@@ -275,7 +275,10 @@ async def _get_personalized_scores_for_fids(
             }
   # end of def fn_trust_score_with_handle_fid
 
+
   results = list(map(fn_include_score, trusted_fid_addr_handles))
+  # sort by score
+  results = sorted(results, key=lambda d: d['score'], reverse=True)
 
   return results  
 

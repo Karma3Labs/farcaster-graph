@@ -95,9 +95,6 @@ async def get_neighbors_scores(
   # also, filter out input fids
   fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
 
-  # sort by score
-  fid_scores = sorted(fid_scores, key=lambda d: d['score'], reverse=True)
-
   return fid_scores
 
 async def get_neighbors_list(  
