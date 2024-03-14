@@ -153,8 +153,7 @@ async def get_unique_fid_metadata_for_handles(
     """
     return await get_rows_for_input_list(input=handles, sql_query=sql_query, pool=pool)
 
-
-async def get_handle_addresses_for_fids(
+async def get_all_handle_addresses_for_fids(
   fids: list[str],
   pool: Pool,
 ):
@@ -183,6 +182,26 @@ async def get_handle_addresses_for_fids(
             fnames.fid = ANY($1::integer[])
     )
     ORDER BY username
+    LIMIT 1000 -- safety valve
+    """
+    return await get_rows_for_input_list(input=fids, sql_query=sql_query, pool=pool)
+
+async def get_unique_handle_metadata_for_fids(
+  fids: list[str],
+  pool: Pool,
+):
+    sql_query = """
+    SELECT 
+        '0x' || encode(any_value(custody_address), 'hex') as address,
+        any_value(fnames.username) as fname,
+        any_value(user_data.value) as username,
+        fids.fid as fid
+    FROM fids
+    INNER JOIN fnames ON (fids.fid = fnames.fid)
+    LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+    WHERE 
+        fids.fid = ANY($1::integer[])
+    GROUP BY fids.fid
     LIMIT 1000 -- safety valve
     """
     return await get_rows_for_input_list(input=fids, sql_query=sql_query, pool=pool)

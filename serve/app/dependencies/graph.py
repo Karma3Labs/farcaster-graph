@@ -91,10 +91,13 @@ async def get_neighbors_scores(
                              max_lt_id=max_lt_id
                             )
   
-  # sort by score
-  i_scores = sorted(i_scores, key=lambda d: d['v'], reverse=True)
+  # rename i and v to fid and score respectively
+  # also, filter out input fids
+  fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
 
-  fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores ]
+  # sort by score
+  fid_scores = sorted(fid_scores, key=lambda d: d['score'], reverse=True)
+
   return fid_scores
 
 async def get_neighbors_list(  
