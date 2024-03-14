@@ -71,27 +71,19 @@ async def go_eigentrust(
   return trustscores
 
 async def get_neighbors_scores(
-  addresses: list[str],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list[dict]:
-  df = await _get_neighbors_edges(addresses, graph, max_degree, max_neighbors)
+  df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
 
-  # go-et expects ids.
-  # convert input addresses to ids by looking up the i_code column in the edges dataframe
-  # ASSUMPTION: pre-trust considers only i_code because we only care about outgoing edges.
-  pt_series = df[df['i'].isin(addresses)].groupby(by='i').first()['i_code']
-  pt_len = len(pt_series)
-  pretrust = [{'i': id, 'v': 1/pt_len} for id in pt_series]
-  max_pt_id = max(pt_series)
+  pt_len = len(fids)
+  pretrust = [{'i': id, 'v': 1/pt_len} for id in fids]
+  max_pt_id = max(fids)
   
-  # go-et expects ids as 'i' and 'j' 
-  # rename i_code and j_code to 'i' and 'j'
-  # this rename only happens on this small localtrust slice 
-  lt_df = df[['i_code', 'j_code', 'v']].rename(columns={'i_code': 'i', 'j_code': 'j'})
-  localtrust = lt_df.to_dict(orient="records")
-  max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
+  localtrust = df.to_dict(orient="records")
+  max_lt_id = max(df['i'].max(), df['j'].max())
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -99,41 +91,35 @@ async def get_neighbors_scores(
                              max_lt_id=max_lt_id
                             )
   
-  # sort by score
-  i_scores = sorted(i_scores, key=lambda d: d['v'], reverse=True)
+  # rename i and v to fid and score respectively
+  # also, filter out input fids
+  fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
 
-  # we get back {'i': some_icode, 'v': some_score}
-  # lookup code in the entire FC graph and not just this small localtrust slice
-  # ASSUMPTION: we only lookup i_code and ignore j_code lookup
-  #.............because we don't care about terminal nodes 
-  # ............who have had no interactions with others
-  # ............For example, if 1000 profiles interact with 1 profile 
-  # ............but that 1 profile has no interactions (no out edges and not present in i_code)
-  # ............then that profile is most likely a bot account being boosted by sybils.
-  # return {'i': some_address, 'v': some_score}
-  addr_scores = [ {'address': graph.idx.iloc[score['i']][0], 'score': score['v']} for score in i_scores ]
-  return addr_scores
+  # sort by score
+  fid_scores = sorted(fid_scores, key=lambda d: d['score'], reverse=True)
+
+  return fid_scores
 
 async def get_neighbors_list(  
-  addresses: list[str],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> str:
-  df = await _get_neighbors_edges(addresses, graph, max_degree, max_neighbors)
+  df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
   out_df = df.groupby(by='j')[['v']].sum().sort_values(by=['v'], ascending=False, inplace=False)
   return out_df.index.to_list()
 
 async def _get_neighbors_edges(  
-  addresses: list[str],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> pandas.DataFrame: 
   start_time = time.perf_counter()
-  neighbors = await _fetch_korder_neighbors(addresses, graph, max_degree, max_neighbors)
+  neighbors = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors)
   logger.info(f"graph took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
   logger.trace(neighbors)
   start_time = time.perf_counter()
@@ -142,21 +128,21 @@ async def _get_neighbors_edges(
   return res
 
 async def _fetch_korder_neighbors(
-  addresses: list[str],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list :
-  addresses = list(filter(lambda x: is_vertex(graph.graph, x), addresses))
-  if len(addresses) <= 0:
-    raise HTTPException(status_code=404, detail="Invalid Addresses")
+  fids = list(filter(lambda x: is_vertex(graph.graph, x), fids))
+  if len(fids) <= 0:
+    raise HTTPException(status_code=404, detail="Invalid fids")
   try:
     klists = []
     mindist_and_order = 1
     limit = max_neighbors
     while mindist_and_order <= max_degree:
         neighbors = graph.graph.neighborhood(
-            addresses, order=mindist_and_order, mode="out", mindist=mindist_and_order
+            fids, order=mindist_and_order, mode="out", mindist=mindist_and_order
         )
         klists.append(graph.graph.vs[neighbors[0][:limit]]["name"])
         limit = limit - len(neighbors[0])
@@ -164,6 +150,6 @@ async def _fetch_korder_neighbors(
             break # we have reached limit of neighbors
         mindist_and_order += 1
     # end of while
-    return list(itertools.chain(addresses, *klists))
+    return list(itertools.chain(fids, *klists))
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")

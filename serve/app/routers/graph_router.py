@@ -16,6 +16,7 @@ async def get_neighbors_engagement(
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   """
@@ -25,15 +26,21 @@ async def get_neighbors_engagement(
     upto **k** degrees and terminate traversal when **limit** is reached. \n
   Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
   """
+  if not (1 <= len(addresses) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  res = await graph.get_neighbors_list(addresses, graph_model, k, limit)
+
+  res = await _get_neighbors_list_for_addresses(addresses, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
+
 
 @router.post("/neighbors/following/addresses")
 async def get_neighbors_following(
   addresses: list[str],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
   """
@@ -43,9 +50,41 @@ async def get_neighbors_following(
     upto **k** degrees and terminate traversal when **limit** is reached. \n
   Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
   """
+  if not (1 <= len(addresses) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  res = await graph.get_neighbors_list(addresses, graph_model, k, limit)
+
+  res = await _get_neighbors_list_for_addresses(addresses, k, limit, pool, graph_model)
+  logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
+
+async def _get_neighbors_list_for_addresses(
+  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
+  addresses: list[str],
+  k: int,
+  limit: int,
+  pool: Pool,
+  graph_model: Graph,
+) -> list[dict]: 
+  # fetch fid-address pairs for given addresses
+  addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
+
+  # extract fids from the fid-address pairs
+  fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
+  # multiple address can have the same fid
+  uniq_fids = list(set(fids))
+
+  # get neighbors using fids
+  neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
+
+  # fetch address-fids pairs for neighbor fids
+  neighbor_fid_addrs = await db_utils.get_all_handle_addresses_for_fids(neighbor_fids, pool)
+
+  # filter out input addresses and return only addresses
+  res = [neighbor['address'] for neighbor in neighbor_fid_addrs
+                                if not neighbor['address'] in addresses]
+
+  return res  
 
 @router.post("/neighbors/engagement/handles")
 async def get_neighbors_engagement_for_handles(  
@@ -66,7 +105,7 @@ async def get_neighbors_engagement_for_handles(
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
-  res = await get_neighbors_list_for_handles(handles, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_handles(handles, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -89,11 +128,11 @@ async def get_neighbors_following_for_handles(
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
-  res = await get_neighbors_list_for_handles(handles, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_handles(handles, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-async def get_neighbors_list_for_handles(
+async def _get_neighbors_list_for_handles(
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
   k: int,
@@ -101,24 +140,24 @@ async def get_neighbors_list_for_handles(
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
-  # fetch handle-address pairs for given handles
-  handle_addrs = await db_utils.get_addresses_for_handles(handles, pool)
+  # fetch fid-address pairs for given handles
+  handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
 
-  # extract addresses from the handle-address pairs
-  addresses = [addr["address"] for addr in handle_addrs]
+  # extract fids from the fid-handle pairs
+  fids = [int(hf["fid"]) for hf in handle_fids]
 
-  # get neighbors using addresses
-  neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
+  # get neighbors using fids
+  neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
 
   # fetch address-handle pairs for neighbor addresses
-  neighbor_addr_handles = await db_utils.get_handle_fid_for_addresses(neighbor_addresses, pool)
+  neighbor_fid_handles = await db_utils.get_unique_handle_metadata_for_fids(neighbor_fids, pool)
 
   # filter out input handles
-  results = [ addr_handle for addr_handle in neighbor_addr_handles 
+  results = [ neighbor for neighbor in neighbor_fid_handles 
                             if not (
-                              addr_handle['username'] in handles 
+                              neighbor['username'] in handles 
                               or 
-                              addr_handle['fname'] in handles) 
+                              neighbor['fname'] in handles) 
             ] 
 
   return results  
@@ -142,7 +181,7 @@ async def get_neighbors_engagement_for_fids(
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -165,11 +204,12 @@ async def get_neighbors_following_for_fids(
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-async def get_neighbors_list_for_fids(
+
+async def _get_neighbors_list_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
   k: int,
@@ -177,19 +217,13 @@ async def get_neighbors_list_for_fids(
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
-  # fetch handle-address pairs for given fids
-  fid_addrs = await db_utils.get_addresses_for_fids(fids, pool)
+  # get neighbors using fids
+  neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
 
-  # extract addresses from the handle-address pairs
-  addresses = [addr["address"] for addr in fid_addrs]
+  # fetch address-handle pairs for neighbor fids
+  neighbor_addr_handles = await db_utils.get_unique_handle_metadata_for_fids(neighbor_fids, pool)
 
-  # get neighbors using addresses
-  neighbor_addresses = await graph.get_neighbors_list(addresses, graph_model, k, limit)
-
-  # fetch address-handle pairs for neighbor addresses
-  neighbor_addr_handles = await db_utils.get_handle_fid_for_addresses(neighbor_addresses, pool)
-
-  # filter out input handles
+  # filter out input fids
   results = [ addr_handle for addr_handle in neighbor_addr_handles 
                             if not addr_handle['fid'] in fids 
             ] 
