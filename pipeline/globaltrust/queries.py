@@ -43,6 +43,16 @@ class IJVSql(SQL):
     """
   
 class IVSql(SQL):
+  PRETRUST_TOP_TIER = """
+    WITH pt_size AS (
+      select count(*) as ct from pretrust 
+      where insert_ts=(select max(insert_ts) from pretrust)
+    ) 
+    SELECT fid as i, 1/ct::numeric as v
+    FROM pretrust, pt_size
+    WHERE insert_ts=(select max(insert_ts) from pretrust)
+    LIMIT 100
+    """
   PRETRUST_POPULAR = """
     SELECT
 			c.fid AS i, 

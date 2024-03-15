@@ -10,35 +10,22 @@ from . import go_eigentrust
 import pandas as pd
 
 # global variable to cache fetching from db
-_pretrust_popular_df: pd.DataFrame = None
-_pretrust_og_df: pd.DataFrame = None
+_pretrust_toptier_df: pd.DataFrame = None
 _interactions_df: pd.DataFrame = None
 
 class Strategy(Enum):
   FOLLOWS = ('follows', 1)
   ENGAGEMENT = ('engagement', 3)
   ACTIVITY = ('activity', 5)
-  OG_CIRCLES = ('OG circles', 7)
-  OG_ENGAGEMENT = ('OG engagement', 9)
-  OG_ACTIVITY = ('OG activity', 11)
 
-def _fetch_pt_popular_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
-  global _pretrust_popular_df
+def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
+  global _pretrust_toptier_df
 
-  if _pretrust_popular_df is not None:
-    return _pretrust_popular_df
+  if _pretrust_toptier_df is not None:
+    return _pretrust_toptier_df
   
-  _pretrust_popular_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_POPULAR)
-  return _pretrust_popular_df
-
-def _fetch_pt_og_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
-  global _pretrust_og_df
-
-  if _pretrust_og_df is not None:
-    return _pretrust_og_df
-  
-  _pretrust_og_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_OG)
-  return _pretrust_og_df
+  _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_TOP_TIER)
+  return _pretrust_toptier_df
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   global _interactions_df
@@ -119,35 +106,18 @@ def lt_gt_for_strategy(
     intx_df = _fetch_interactions_df(logger, pg_dsn)
     match strategy:
       case Strategy.FOLLOWS:
-        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','follows_v']].rename(columns={'follows_v':'v'})
       case Strategy.ENGAGEMENT: 
-        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
         lt_df = \
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
       case Strategy.ACTIVITY:
-        pt_df = _fetch_pt_popular_df(logger, pg_dsn)
-        lt_df = \
-          intx_df[intx_df['follows_v'].notna()] \
-            [['i','j','l1rep1rec1m1']] \
-              .rename(columns={'l1rep1rec1m1':'v'})
-      case Strategy.OG_CIRCLES:
-        pt_df = _fetch_pt_og_df(logger, pg_dsn)
-        lt_df = \
-          intx_df[intx_df['follows_v'].notna()] \
-            [['i','j','follows_v']].rename(columns={'follows_v':'v'})
-      case Strategy.OG_ENGAGEMENT:
-        pt_df = _fetch_pt_og_df(logger, pg_dsn)
-        lt_df = \
-          intx_df[intx_df['l1rep6rec3m12'] > 0] \
-            [['i','j','l1rep6rec3m12']] \
-              .rename(columns={'l1rep6rec3m12':'v'})
-      case Strategy.OG_ACTIVITY:      
-        pt_df = _fetch_pt_og_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','l1rep1rec1m1']] \

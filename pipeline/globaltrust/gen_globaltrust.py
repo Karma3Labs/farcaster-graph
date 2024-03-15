@@ -54,10 +54,8 @@ def main(pg_dsn: str, pg_url: str):
                               orig_tbl=settings.DB_GLOBALTRUST)
   run_strategy(pg_dsn, pg_url, compute.Strategy.FOLLOWS)
   run_strategy(pg_dsn, pg_url, compute.Strategy.ENGAGEMENT)
-  run_strategy(pg_dsn, pg_url, compute.Strategy.ACTIVITY)
-  run_strategy(pg_dsn, pg_url, compute.Strategy.OG_CIRCLES)
-  run_strategy(pg_dsn, pg_url, compute.Strategy.OG_ENGAGEMENT)
-  run_strategy(pg_dsn, pg_url, compute.Strategy.OG_ACTIVITY)
+  # run_strategy(pg_dsn, pg_url, compute.Strategy.ACTIVITY)
+
 
 if __name__ == '__main__':
   load_dotenv()
