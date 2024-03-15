@@ -79,7 +79,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
                           ['likes_v',
                            'replies_v',
                            'mentions_v',
-                           'reacts_v',
+                           'recasts_v',
                            'follows_v']].sum(axis=1)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
@@ -88,7 +88,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
     _interactions_df['l1rep6rec3m12'] = \
                         _interactions_df['likes_v'].fillna(0) \
                           + (_interactions_df['replies_v'].fillna(0) * 6.0) \
-                          + (_interactions_df['reacts_v'].fillna(0) * 3.0) \
+                          + (_interactions_df['recasts_v'].fillna(0) * 3.0) \
                           + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
                           + _interactions_df['follows_v'].fillna(0)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))

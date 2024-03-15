@@ -27,7 +27,7 @@ class IJVSql(SQL):
 		GROUP BY i, j
     """
   RECASTS = """
-    SELECT fid as i, target_cast_fid as j, count(1) as reacts_v 
+    SELECT fid as i, target_cast_fid as j, count(1) as recasts_v 
     FROM reactions 
     WHERE type=2
     AND target_cast_fid IS NOT NULL
