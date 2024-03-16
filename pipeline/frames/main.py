@@ -4,6 +4,8 @@ import time
 from random import sample
 import asyncio
 
+import aiohttp
+
 # local dependencies
 from config import settings
 from . import frames_db_utils
@@ -27,28 +29,39 @@ logger.add(sys.stdout,
 
 
 async def main():
-  logger.debug(f"{settings.FRAMES_TIMER_SECS}s job current time : {time.ctime()}")
-  pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+  while True:
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
 
-  url_records = frames_db_utils.fetch_unprocessed_urls(logger, 
-                                                       pg_dsn, 
-                                                       settings.FRAMES_SCRAPE_CONCURRENCY)
-  logger.info(f"Fetched {len(url_records)} rows from db")
-  logger.info(f"Sample rows: {sample(url_records, 5)}")
+    url_records = frames_db_utils.fetch_unprocessed_urls(logger, 
+                                                        pg_dsn, 
+                                                        settings.FRAMES_BATCH_SIZE)
+    logger.info(f"Fetched {len(url_records)} rows from db")
+    logger.info(f"Sample rows: {sample(url_records, 5)}")
 
-  tasks = []
-  with Timer(name="categorize_url"):
-    for record in url_records:
-        tasks.append(
-          asyncio.create_task(
-            scrape_utils.categorize_url(logger=logger,
-                                        url_id=record[0],
-                                        url=record[1],
-                                        timeout=settings.FRAMES_SCRAPE_TIMEOUT_SECS)))
-    url_categories = await asyncio.gather(*tasks, return_exceptions=True)
-  logger.info(f"Sample rows: {sample(url_categories, 5)}")
+    http_timeout = aiohttp.ClientTimeout(total=settings.FRAMES_SCRAPE_TIMEOUT_SECS)
+    connector = aiohttp.TCPConnector(ttl_dns_cache=3000, limit=settings.FRAMES_SCRAPE_CONCURRENCY)
+    http_conn_pool = aiohttp.ClientSession(connector=connector, timeout=http_timeout)
+    tasks = []
+    with Timer(name="categorize_url"):
+      async with http_conn_pool:
+        for record in url_records:
+            tasks.append(
+              asyncio.create_task(
+                scrape_utils.categorize_url(logger=logger,
+                                            url_id=record[0],
+                                            url=record[1],
+                                            session=http_conn_pool)))
+        url_categories = await asyncio.gather(*tasks, return_exceptions=True)
 
-  frames_db_utils.update_urls(logger, pg_dsn, url_categories)
+    logger.info(f"Sample rows: {sample(url_categories, 5)}")
+    logger.info(url_categories)
+
+    frames_db_utils.update_urls(logger, pg_dsn, url_categories)
+
+    logger.info(f"sleeping for {settings.FRAMES_TIMER_SECS}s")
+    await asyncio.sleep(settings.FRAMES_TIMER_SECS)
+    logger.info(f"waking up after {settings.FRAMES_TIMER_SECS}s sleep")
+
 
 if __name__ == "__main__":
   load_dotenv()

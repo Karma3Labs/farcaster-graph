@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
-    FRAMES_TIMER_SECS: int = 300
+    FRAMES_TIMER_SECS: int = 10
+    FRAMES_BATCH_SIZE: int = 100
     FRAMES_SCRAPE_CONCURRENCY: int = 10
     FRAMES_SCRAPE_TIMEOUT_SECS: int = 10
 
