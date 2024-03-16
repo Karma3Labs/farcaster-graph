@@ -14,7 +14,7 @@ from ..models.graph_model import Graph, GraphType
 
 # dependency to make it explicit that routers are accessing hidden state
 # to avoid model name hardcoding in routers
-# TODO clean up hardcoded names; use enums
+# TODO clean up hardcoded names in function names; use enums
 def get_following_graph(request: Request) -> Graph:
     return request.state.graphs[GraphType.following]
 
@@ -141,6 +141,7 @@ async def _fetch_korder_neighbors(
         neighbors = graph.graph.neighborhood(
             fids, order=mindist_and_order, mode="out", mindist=mindist_and_order
         )
+        # TODO prune the graph after sorting by edge weight
         klists.append(graph.graph.vs[neighbors[0][:limit]]["name"])
         limit = limit - len(neighbors[0])
         if limit <= 0:
