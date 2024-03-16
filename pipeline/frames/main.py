@@ -37,14 +37,14 @@ async def main():
                                                         pg_dsn, 
                                                         settings.FRAMES_BATCH_SIZE)
     logger.info(f"Fetched {len(url_records)} unparsed rows from db")
-    logger.info(f"Sample rows: {sample(url_records, max(5, len(url_records)))}")
+    logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
 
     url_parts = [scrape_utils.parse_url(logger=logger,
                                         url_id=record[0],
                                         url=record[1]) for record in url_records]
 
     logger.info(f"Parsed {len(url_parts)} rows")
-    logger.info(f"Sample rows: {sample(url_parts, max(5, len(url_parts)))}")
+    logger.info(f"Sample rows: {sample(url_parts, min(5, len(url_parts)))}")
 
     frames_db_utils.update_url_parts(logger, pg_dsn, url_parts)
 
@@ -52,7 +52,7 @@ async def main():
                                                         pg_dsn, 
                                                         settings.FRAMES_BATCH_SIZE)
     logger.info(f"Fetched {len(url_records)} unprocessed rows from db")
-    logger.info(f"Sample rows: {sample(url_records, max(5, len(url_records)))}")
+    logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
 
     if len(url_records) > 0:
       http_timeout = aiohttp.ClientTimeout(total=settings.FRAMES_SCRAPE_TIMEOUT_SECS)
