@@ -53,7 +53,7 @@ class URL_parts(NamedTuple):
   tld: str
   path: str
 
-async def parse_url(
+def parse_url(
     logger: logging.Logger, 
     url_id: int, 
     url:str
