@@ -51,19 +51,27 @@ async def main():
                                             url_id=record[0],
                                             url=record[1],
                                             session=http_conn_pool)))
+        # end task append loop
         url_categories = await asyncio.gather(*tasks, return_exceptions=True)
-
-    logger.info(f"Sample rows: {sample(url_categories, 5)}")
+      #end http_conn_pool
+    # end timer
     logger.info(url_categories)
+    
+    sleep_duration = settings.FRAMES_NAP_SECS
 
-    frames_db_utils.update_urls(logger, pg_dsn, url_categories)
+    if len(url_categories) > 0:
+      frames_db_utils.update_urls(logger, pg_dsn, url_categories)
+    else:
+      sleep_duration = settings.FRAMES_SLEEP_SECS
 
-    logger.info(f"sleeping for {settings.FRAMES_TIMER_SECS}s")
-    await asyncio.sleep(settings.FRAMES_TIMER_SECS)
-    logger.info(f"waking up after {settings.FRAMES_TIMER_SECS}s sleep")
+    logger.info(f"sleeping for {sleep_duration}s")
+    await asyncio.sleep(sleep_duration)
+    logger.info(f"waking up after {sleep_duration}s sleep")
+  # end infinite loop
 
 
 if __name__ == "__main__":
+  # TODO don't depend on current directory to find .env
   load_dotenv()
   print(settings)
 
