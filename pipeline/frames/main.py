@@ -39,14 +39,19 @@ async def main():
     logger.info(f"Fetched {len(url_records)} unparsed rows from db")
     logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
 
-    url_parts = [scrape_utils.parse_url(logger=logger,
-                                        url_id=record[0],
-                                        url=record[1]) for record in url_records]
+    if len(url_records) > 0:
+      url_parts = [scrape_utils.parse_url(logger=logger,
+                                          url_id=record[0],
+                                          url=record[1]) for record in url_records]
 
-    logger.info(f"Parsed {len(url_parts)} rows")
-    logger.info(f"Sample rows: {sample(url_parts, min(5, len(url_parts)))}")
+      logger.info(f"Parsed {len(url_parts)} rows")
+      logger.info(f"Sample rows: {sample(url_parts, min(5, len(url_parts)))}")
 
-    frames_db_utils.update_url_parts(logger, pg_dsn, url_parts)
+      frames_db_utils.update_url_parts(logger, pg_dsn, url_parts)
+
+      # there may be more rows to process, nap don't sleep
+      sleep_duration = settings.FRAMES_NAP_SECS
+    # end if len(url_records) > 0
 
     url_records = frames_db_utils.fetch_unprocessed_urls(logger, 
                                                         pg_dsn, 
