@@ -22,7 +22,7 @@ async def categorize_url(
 ) -> tuple[int, str]:
   logger.debug(f"Fetching {url_id} - {url}")
   if urlparse(url).scheme not in ['http','https']:
-    logger.error(f"bad url {url_id} - {url}: {e}")
+    logger.error(f"bad url {url_id} - {url}")
     return (url_id, URLCategory.BAD.value)
       
   try:
