@@ -250,10 +250,14 @@ async def get_top_frames(offset:int, limit:int, pool: Pool):
         sqrt(avg(power(k3l_rank.score,2))) as score, -- root mean square
     --   avg(power(k3l_rank.score,2)) as score, -- mean square
     -- 	sum(k3l_rank.score) as score, -- sum
-        array_agg(foo.fid::integer) as used_by
+        array_agg(foo.fid::integer) as used_by_fids,
+        array_agg(fnames.username) as used_by_fnames,
+        array_agg(user_data.value) as used_by_usernames
     FROM frame_users as foo
     INNER JOIN 
         k3l_rank on (k3l_rank.profile_id = foo.fid and k3l_rank.strategy_id=3)
+    INNER JOIN fnames on (fnames.fid = foo.fid)
+    LEFT JOIN user_data on (user_data.fid = foo.fid and user_data.type=6)
     GROUP BY foo.url
     ORDER by score DESC
     OFFSET $1
@@ -276,10 +280,14 @@ async def get_neighbors_frames(trust_scores: list[dict], limit:int, pool: Pool):
         sqrt(avg(power(trust.score,2))) as score, -- root mean square
     --   avg(power(trust.score,2)) as score, -- mean square
     -- 	sum(trust.score) as score, -- sum
-        array_agg(foo.fid::integer) as used_by
+        array_agg(foo.fid::integer) as used_by_fids,
+        array_agg(fnames.username) as used_by_fnames,
+        array_agg(user_data.value) as used_by_usernames
     FROM frame_users as foo
     INNER JOIN json_to_recordset($1::json)
         AS trust(fid int, score numeric) ON (trust.fid = foo.fid)
+    INNER JOIN fnames on (fnames.fid = foo.fid)
+    LEFT JOIN user_data on (user_data.fid = foo.fid and user_data.type=6)
     GROUP BY foo.url
     ORDER by score DESC
     LIMIT $2
