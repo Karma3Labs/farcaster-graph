@@ -24,7 +24,7 @@ async def get_top_frames(
   return {"result": frames}
 
 @router.post("/personalized/rankings/fids")
-async def get_top_frames(
+async def get_personalized_frames_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
@@ -42,6 +42,32 @@ async def get_top_frames(
 
   # compute eigentrust on the neighbor graph using fids
   trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
+
+  frames = await db_utils.get_neighbors_frames(trust_scores=trust_scores, limit=limit, pool=pool)
+  return {"result": frames}
+
+@router.post("/personalized/rankings/handles")
+async def get_personalized_frames_for_handles(
+  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
+  handles: list[str],
+  k: Annotated[int, Query(le=5)] = 2,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db),
+  graph_model: Graph = Depends(graph.get_engagement_graph)
+):
+  """
+  Given a list of input handles, return a list of frame urls 
+    used by the extended trust network of the input handles. \n
+  """
+  if not (1 <= len(handles) <= 100):
+    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+  logger.debug(handles)
+
+  # fetch handle-address pairs for given handles
+  handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
+
+  # compute eigentrust on the neighbor graph using fids
+  trust_scores = await graph.get_neighbors_scores(handle_fids, graph_model, k, limit)
 
   frames = await db_utils.get_neighbors_frames(trust_scores=trust_scores, limit=limit, pool=pool)
   return {"result": frames}
