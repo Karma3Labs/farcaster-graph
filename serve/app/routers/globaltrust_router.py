@@ -79,10 +79,14 @@ async def get_following_rank_for_handles(
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  # fetch handle-address pairs for given handles
+  # fetch handle-fid pairs for given handles
   handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
+
+  # extract fids from the handle-fid pairs 
+  fids = [hf["fid"] for hf in handle_fids]
+
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.following.value, 
-                                           fids=handle_fids, 
+                                           fids=fids, 
                                            pool=pool)
   return {"result": ranks}
 
@@ -120,9 +124,13 @@ async def get_engagement_rank_for_handles(
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  # fetch handle-address pairs for given handles
+  # fetch handle-fid pairs for given handles
   handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
+
+  # extract fids from the handle-fid pairs 
+  fids = [hf["fid"] for hf in handle_fids]
+
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.engagement.value, 
-                                           fids=handle_fids, 
+                                           fids=fids, 
                                            pool=pool)
   return {"result": ranks}
