@@ -34,10 +34,13 @@ curl -X 'GET' 'http://localhost:8000/scores/global/engagement/rankings?offset=10
 
 curl -X 'POST' 'http://localhost:8000/scores/global/engagement/fids' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
+curl -X 'POST' 'http://localhost:8000/scores/global/engagement/handles' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '["v", "danromero.eth"]'
 
 curl -X 'GET' 'http://localhost:8000/scores/global/following/rankings?offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
 curl -X 'POST' 'http://localhost:8000/scores/global/following/fids' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
+
+curl -X 'POST' 'http://localhost:8000/scores/global/following/handles' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '["v", "danromero.eth"]'
 
 ## Farcaster Fid <-> Handles <-> Addresses lookup
 
