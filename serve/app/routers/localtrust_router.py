@@ -9,8 +9,8 @@ from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["scores"])
 
-@router.post("/personalized/engagement/addresses")
-@router.get("/personalized/engagement/addresses")
+@router.post("/engagement/addresses")
+@router.get("/engagement/addresses")
 async def get_personalized_engagement_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
@@ -38,8 +38,8 @@ async def get_personalized_engagement_for_addresses(
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-@router.post("/personalized/following/addresses")
-@router.get("/personalized/following/addresses")
+@router.post("/following/addresses")
+@router.get("/following/addresses")
 async def get_personalized_following_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
@@ -92,8 +92,8 @@ async def _get_personalized_scores_for_addresses(
 
   return res  
 
-@router.post("/personalized/engagement/handles")
-@router.get("/personalized/engagement/handles")
+@router.post("/engagement/handles")
+@router.get("/engagement/handles")
 async def get_personalized_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
@@ -119,8 +119,8 @@ async def get_personalized_engagement_for_handles(
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-@router.post("/personalized/following/handles")
-@router.get("/personalized/following/handles")
+@router.post("/following/handles")
+@router.get("/following/handles")
 async def get_personalized_following_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
@@ -170,7 +170,7 @@ async def _get_personalized_scores_for_handles(
 
   return res  
 
-@router.post("/personalized/engagement/fids")
+@router.post("/engagement/fids")
 async def get_personalized_engagement_for_fids(  
   # Example: -d '[1, 2]'
   fids: list[int],
@@ -202,7 +202,7 @@ async def get_personalized_engagement_for_fids(
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-@router.post("/personalized/following/fids")
+@router.post("/following/fids")
 async def get_personalized_following_for_fids(  
   # Example: -d '[1, 2]'
   fids: list[int],
@@ -243,7 +243,7 @@ async def _get_personalized_scores_for_fids(
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
-  # compute eigentrust on the neighbor graph using addresses
+  # compute eigentrust on the neighbor graph using fids
   trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
 
   # convert list of fid scores into a lookup with fid as key
