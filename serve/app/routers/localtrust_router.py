@@ -157,7 +157,7 @@ async def _get_personalized_scores_for_handles(
   # fetch handle-address pairs for given handles
   handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
 
-  # extract addresses from the handle-fid pairs 
+  # extract fids from the handle-fid pairs 
   fids = [hf["fid"] for hf in handle_fids]
 
   res = await _get_personalized_scores_for_fids(
