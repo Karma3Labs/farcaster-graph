@@ -210,11 +210,20 @@ async def get_unique_handle_metadata_for_fids(
 
 async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
     sql_query = """
+    WITH total AS (
+        SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+    )
     SELECT 
         profile_id as fid,
+        fnames.username as fname,
+        user_data.value as username,
         rank, 
-        score
-    FROM k3l_rank 
+        score,
+        ((total.total - (rank - 1))*100 / total.total) as percentile
+    FROM k3l_rank
+    CROSS JOIN total 
+    INNER JOIN fnames on (fnames.fid = profile_id)
+    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE strategy_id = $1
     ORDER BY rank
     OFFSET $2
@@ -224,11 +233,20 @@ async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
 
 async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     sql_query = """
+    WITH total AS (
+        SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+    )
     SELECT 
         profile_id as fid,
+        fnames.username as fname,
+        user_data.value as username,
         rank, 
-        score
-    FROM k3l_rank 
+        score,
+        ((total.total - (rank - 1))*100 / total.total) as percentile
+    FROM k3l_rank
+    CROSS JOIN total 
+    INNER JOIN fnames on (fnames.fid = profile_id)
+    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE 
         strategy_id = $1
         AND profile_id = ANY($2::integer[])

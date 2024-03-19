@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, Path, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -12,6 +12,7 @@ router = APIRouter(tags=["frames"])
 
 @router.get("/global/rankings")
 async def get_top_frames(
+  # TODO consider using path parameter for better observality
   agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.RMS,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -19,8 +20,10 @@ async def get_top_frames(
 ):
   """
   Get a list of frame urls that are used by highly ranked profiles. \n
-  This API takes two optional parameters - offset and limit. \n
-  By default, limit is 100 and offset is 0 i.e., returns top 100 frame urls.
+  This API takes three optional parameters - agg, offset and limit. \n
+  Parameter agg is used to define the aggregation function and 
+    can take any of the following values - `rms`, `meansquare`, `sum` \n
+  By default, agg=rms, offset=0 and limit=100 i.e., returns top 100 frame urls.
   """
   frames = await db_utils.get_top_frames(agg, offset=offset, limit=limit, pool=pool)
   return {"result": frames}
@@ -29,6 +32,7 @@ async def get_top_frames(
 async def get_personalized_frames_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
+  # TODO consider using path parameter for better observality
   agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.RMS,
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -38,6 +42,11 @@ async def get_personalized_frames_for_fids(
   """
   Given a list of input fids, return a list of frame urls 
     used by the extended trust network of the input fids. \n
+  This API takes three optional parameters - agg, k and limit. \n
+  Parameter agg is used to define the aggregation function and 
+    can take any of the following values - `rms`, `meansquare`, `sum` \n
+  Parameter k is used to constrain the network to k-degrees of separation. \n
+  By default, agg=rms, k=2 and limit=100.
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
@@ -53,6 +62,7 @@ async def get_personalized_frames_for_fids(
 async def get_personalized_frames_for_handles(
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
+  # TODO consider using path parameter for better observality
   agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.RMS,
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -62,6 +72,11 @@ async def get_personalized_frames_for_handles(
   """
   Given a list of input handles, return a list of frame urls 
     used by the extended trust network of the input handles. \n
+  This API takes three optional parameters - agg, k and limit. \n
+  Parameter agg is used to define the aggregation function and 
+    can take any of the following values - `rms`, `meansquare`, `sum` \n
+  Parameter k is used to constrain the network to k-degrees of separation. \n
+  By default, agg=rms, k=2 and limit=100.
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
