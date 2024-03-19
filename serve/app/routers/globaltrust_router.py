@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..config import settings
+from ..models.graph_model import GraphType
 from ..dependencies import  db_pool, db_utils
 
 router = APIRouter(tags=["scores"])
@@ -21,7 +21,7 @@ async def get_top_following_profiles(
   This API takes two optional parameters - offset and limit. \n
   By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
   """
-  ranks = await db_utils.get_top_profiles(strategy_id=settings.GT_STRATEGY_ID_FOLLOWS, 
+  ranks = await db_utils.get_top_profiles(strategy_id=GraphType.following.value, 
                                           offset=offset, 
                                           limit=limit, 
                                           pool=pool)
@@ -39,7 +39,7 @@ async def get_top_engagement_profiles(
   This API takes two optional parameters - offset and limit. \n
   By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
   """
-  ranks = await db_utils.get_top_profiles(strategy_id=settings.GT_STRATEGY_ID_ENGAGEMENT, 
+  ranks = await db_utils.get_top_profiles(strategy_id=GraphType.engagement.value, 
                                           offset=offset, 
                                           limit=limit, 
                                           pool=pool)
@@ -59,7 +59,7 @@ async def get_profile_following_ranks(
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  ranks = await db_utils.get_profile_ranks(strategy_id=settings.GT_STRATEGY_ID_FOLLOWS, 
+  ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.following.value, 
                                            fids=fids, 
                                            pool=pool)
   return {"result": ranks}
@@ -78,7 +78,7 @@ async def get_profile_engagement_ranks(
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  ranks = await db_utils.get_profile_ranks(strategy_id=settings.GT_STRATEGY_ID_ENGAGEMENT, 
+  ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.engagement.value, 
                                            fids=fids, 
                                            pool=pool)
   return {"result": ranks}

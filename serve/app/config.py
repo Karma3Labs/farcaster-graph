@@ -17,9 +17,6 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
-    GT_STRATEGY_ID_FOLLOWS:int = 1
-    GT_STRATEGY_ID_ENGAGEMENT:int = 3
-
     LOG_LEVEL: str = 'INFO'
 
     FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'

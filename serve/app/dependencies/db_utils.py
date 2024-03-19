@@ -1,6 +1,7 @@
 import time
 import json
 from ..config import settings
+from ..models.frame_model import ScoreAgg
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -37,7 +38,7 @@ async def fetch_rows(
     pool: Pool
 ):
     start_time = time.perf_counter()
-
+    logger.debug(f"executing query: {sql_query}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         # Open a transaction.
@@ -235,11 +236,23 @@ async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
-async def get_top_frames(offset:int, limit:int, pool: Pool):
-    sql_query = """
+async def get_top_frames(agg: ScoreAgg, offset:int, limit:int, pool: Pool):
+    match agg:
+        case ScoreAgg.RMS: 
+            agg_sql = 'sqrt(avg(power(score,2)))'
+        case ScoreAgg.MEAN_SQ: 
+            agg_sql = 'avg(power(score,2))'
+        case ScoreAgg.SUM:
+            agg_sql = 'sum(score)'
+        case _: 
+            agg_sql = 'sum(score)'    
+
+    sql_query = f"""
     WITH frame_users AS (
         SELECT 
-            casts.fid, urls.url
+            casts.fid, 
+            --urls.subdomain || urls.domain || urls.path as url
+            urls.url
         FROM casts 
         INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.cast_id = casts.id)
         INNER JOIN k3l_url_labels as urls on (urls.url_id = url_map.url_id and urls.category='frame')
@@ -247,9 +260,7 @@ async def get_top_frames(offset:int, limit:int, pool: Pool):
     )
     SELECT 
         foo.url as url,
-        sqrt(avg(power(k3l_rank.score,2))) as score, -- root mean square
-    --   avg(power(k3l_rank.score,2)) as score, -- mean square
-    -- 	sum(k3l_rank.score) as score, -- sum
+        {agg_sql} as score,
         array_agg(foo.fid::integer) as used_by_fids,
         array_agg(fnames.username) as used_by_fnames,
         array_agg(user_data.value) as used_by_usernames
@@ -265,11 +276,23 @@ async def get_top_frames(offset:int, limit:int, pool: Pool):
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_neighbors_frames(trust_scores: list[dict], limit:int, pool: Pool):
-    sql_query = """
+async def get_neighbors_frames(agg: ScoreAgg, trust_scores: list[dict], limit:int, pool: Pool):
+    match agg:
+        case ScoreAgg.RMS: 
+            agg_sql = 'sqrt(avg(power(score,2)))'
+        case ScoreAgg.MEAN_SQ: 
+            agg_sql = 'avg(power(score,2))'
+        case ScoreAgg.SUM:
+            agg_sql = 'sum(score)'
+        case _: 
+            agg_sql = 'sum(score)'    
+
+    sql_query = f"""
     WITH frame_users AS (
         SELECT 
-            casts.fid, urls.url
+            casts.fid, 
+            --urls.subdomain || urls.domain || urls.path as url
+            urls.url
         FROM casts 
         INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.cast_id = casts.id)
         INNER JOIN k3l_url_labels as urls on (urls.url_id = url_map.url_id and urls.category='frame')
@@ -277,9 +300,7 @@ async def get_neighbors_frames(trust_scores: list[dict], limit:int, pool: Pool):
     )
     SELECT 
         foo.url as url,
-        sqrt(avg(power(trust.score,2))) as score, -- root mean square
-    --   avg(power(trust.score,2)) as score, -- mean square
-    -- 	sum(trust.score) as score, -- sum
+        {agg_sql} as score,
         array_agg(foo.fid::integer) as used_by_fids,
         array_agg(fnames.username) as used_by_fnames,
         array_agg(user_data.value) as used_by_usernames

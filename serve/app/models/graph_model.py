@@ -6,8 +6,8 @@ import igraph
 import pandas
 
 class GraphType(Enum):
-  following = 'following'
-  engagement = 'engagement'
+  following = 1
+  engagement = 3
 
 class Graph(NamedTuple):
   success_file: str
