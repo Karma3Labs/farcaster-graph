@@ -54,13 +54,13 @@ curl -X 'POST' 'http://localhost:8000/metadata/addresses' -H 'accept: applicatio
 
 curl -X 'GET' 'http://localhost:8000/frames/global/rankings' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
-curl -X 'GET' 'http://localhost:8000/frames/global/rankings?offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
+curl -X 'GET' 'http://localhost:8000/frames/global/rankings?agg=rms&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
 ## Personalized Frames Rankings
 
 curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
-curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
+curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=rms&weights=L1C10R5&ok=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
 
 
