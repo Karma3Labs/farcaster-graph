@@ -75,7 +75,7 @@ async def get_following_rank_for_handles(
   Given a list of input handles, return a list of fids
     that are ranked based on the follows relationships in the Fracaster network
     and scored by Eigentrust algorithm. \n
-    Example: [1, 2] \n
+    Example: ["dwr.eth", "varunsrin.eth"] \n
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
@@ -120,7 +120,7 @@ async def get_engagement_rank_for_handles(
   Given a list of input fids, return a list of fids
     that are ranked based on the engagement relationships in the Fracaster network
     and scored by Eigentrust algorithm. \n
-    Example: [1, 2] \n
+    Example: ["dwr.eth", "varunsrin.eth"] \n
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
