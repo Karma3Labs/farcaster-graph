@@ -1,7 +1,7 @@
 import time
 import json
 from ..config import settings
-from ..models.frame_model import ScoreAgg
+from ..models.frame_model import ScoreAgg, Weights
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -254,80 +254,99 @@ async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
-async def get_top_frames(agg: ScoreAgg, offset:int, limit:int, pool: Pool):
+async def get_top_frames(
+        agg: ScoreAgg, 
+        weights: Weights, 
+        offset:int, 
+        limit:int, 
+        pool: Pool
+):
     match agg:
         case ScoreAgg.RMS: 
-            agg_sql = 'sqrt(avg(power(score,2)))'
-        case ScoreAgg.MEAN_SQ: 
-            agg_sql = 'avg(power(score,2))'
-        case ScoreAgg.SUM:
-            agg_sql = 'sum(score)'
-        case _: 
-            agg_sql = 'sum(score)'    
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+        case ScoreAgg.SUM_SQ:
+            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+        case ScoreAgg.SUM | _: 
+            agg_sql = 'sum(weights.score * weights.weight)'   
 
     sql_query = f"""
-    WITH frame_users AS (
-        SELECT 
-            casts.fid, 
-            --urls.subdomain || urls.domain || urls.path as url
-            urls.url
-        FROM casts 
-        INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.cast_id = casts.id)
-        INNER JOIN k3l_url_labels as urls on (urls.url_id = url_map.url_id and urls.category='frame')
-        GROUP BY 1, 2
+    WITH weights AS 
+    (
+        SELECT
+            interactions.url,
+            interactions.fid,
+            k3l_rank.score,
+            interactions.action_type,
+            case interactions.action_type 
+                when 'cast' then {weights.cast}
+                when 'recast' then {weights.recast}
+                else {weights.like}
+                end as weight
+        FROM k3l_frame_interaction as interactions
+            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        INNER JOIN 
+            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
     )
     SELECT 
-        foo.url as url,
-        {agg_sql} as score,
-        array_agg(foo.fid::integer) as used_by_fids,
-        array_agg(fnames.username) as used_by_fnames,
-        array_agg(user_data.value) as used_by_usernames
-    FROM frame_users as foo
-    INNER JOIN 
-        k3l_rank on (k3l_rank.profile_id = foo.fid and k3l_rank.strategy_id=3)
-    INNER JOIN fnames on (fnames.fid = foo.fid)
-    LEFT JOIN user_data on (user_data.fid = foo.fid and user_data.type=6)
-    GROUP BY foo.url
+        weights.url as url,
+        {agg_sql} as score
+        --sum(case weights.action_type when 'cast' then 1 else 0 end) as total_casts,
+        --sum(case weights.action_type when 'like' then 1 else 0 end) as total_likes,
+        --sum(case weights.action_type when 'recast' then 1 else 0 end) as total_recasts,
+        --count(1) as total_interactions
+    FROM weights
+    GROUP BY weights.url
     ORDER by score DESC
     OFFSET $1
     LIMIT $2
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_neighbors_frames(agg: ScoreAgg, trust_scores: list[dict], limit:int, pool: Pool):
+async def get_neighbors_frames(
+        agg: ScoreAgg, 
+        weights: Weights, 
+        trust_scores: list[dict], 
+        limit:int, 
+        pool: Pool
+):
     match agg:
         case ScoreAgg.RMS: 
-            agg_sql = 'sqrt(avg(power(score,2)))'
-        case ScoreAgg.MEAN_SQ: 
-            agg_sql = 'avg(power(score,2))'
-        case ScoreAgg.SUM:
-            agg_sql = 'sum(score)'
-        case _: 
-            agg_sql = 'sum(score)'    
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+        case ScoreAgg.SUM_SQ:
+            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+        case ScoreAgg.SUM | _: 
+            agg_sql = 'sum(weights.score * weights.weight)'    
 
     sql_query = f"""
-    WITH frame_users AS (
-        SELECT 
-            casts.fid, 
-            --urls.subdomain || urls.domain || urls.path as url
-            urls.url
-        FROM casts 
-        INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.cast_id = casts.id)
-        INNER JOIN k3l_url_labels as urls on (urls.url_id = url_map.url_id and urls.category='frame')
-        GROUP BY 1, 2
+    WITH weights AS 
+    (
+        SELECT
+            interactions.url,
+            interactions.fid,
+            k3l_rank.score,
+            interactions.action_type,
+            case interactions.action_type 
+                when 'cast' then {weights.cast}
+                when 'recast' then {weights.recast}
+                else {weights.like}
+                end as weight
+        FROM k3l_frame_interaction as interactions
+            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        INNER JOIN 
+            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
     )
     SELECT 
-        foo.url as url,
+        weights.url as url,
         {agg_sql} as score,
-        array_agg(foo.fid::integer) as used_by_fids,
-        array_agg(fnames.username) as used_by_fnames,
-        array_agg(user_data.value) as used_by_usernames
-    FROM frame_users as foo
+        array_agg(weights.fid::integer) as interacted_by_fids,
+        array_agg(fnames.username) as interacted_by_fnames,
+        array_agg(user_data.value) as interacted_by_usernames
+    FROM weights
     INNER JOIN json_to_recordset($1::json)
-        AS trust(fid int, score numeric) ON (trust.fid = foo.fid)
-    INNER JOIN fnames on (fnames.fid = foo.fid)
-    LEFT JOIN user_data on (user_data.fid = foo.fid and user_data.type=6)
-    GROUP BY foo.url
+        AS trust(fid int, score numeric) ON (trust.fid = weights.fid)
+    INNER JOIN fnames on (fnames.fid = weights.fid)
+    LEFT JOIN user_data on (user_data.fid = weights.fid and user_data.type=6)
+    GROUP BY weights.url
     ORDER by score DESC
     LIMIT $2
     """
