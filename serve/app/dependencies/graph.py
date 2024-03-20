@@ -21,13 +21,12 @@ def get_following_graph(request: Request) -> Graph:
 def get_engagement_graph(request: Request) -> Graph:
     return request.state.graphs[GraphType.engagement]
 
-def is_vertex(ig: igraph.GraphBase, addr:str) -> bool:
+def find_vertex_idx(ig: igraph.GraphBase, fid:int) -> int:
   try:
-      ig.vs.find(name=addr)
-      logger.trace(addr)
-      return True
+      logger.debug(fid)
+      return ig.vs.find(name=fid).index
   except:
-      return False
+      return None
 
 
 async def go_eigentrust(
@@ -117,7 +116,7 @@ async def _get_neighbors_edges(
 ) -> pandas.DataFrame: 
   start_time = time.perf_counter()
   neighbors = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors)
-  logger.info(f"graph took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
+  logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
   logger.debug(neighbors)
   start_time = time.perf_counter()
   res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
@@ -130,8 +129,9 @@ async def _fetch_korder_neighbors(
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list :
-  fids = list(filter(lambda x: is_vertex(graph.graph, x), fids))
-  if len(fids) <= 0:
+  vids = [find_vertex_idx(graph.graph, fid) for fid in fids]
+  vids = list(filter(None, vids))
+  if len(vids) <= 0:
     raise HTTPException(status_code=404, detail="Invalid fids")
   try:
     klists = []
@@ -139,7 +139,7 @@ async def _fetch_korder_neighbors(
     limit = max_neighbors
     while mindist_and_order <= max_degree:
         neighbors = graph.graph.neighborhood(
-            fids, order=mindist_and_order, mode="out", mindist=mindist_and_order
+            vids, order=mindist_and_order, mode="out", mindist=mindist_and_order
         )
         # TODO prune the graph after sorting by edge weight
         klists.append(graph.graph.vs[neighbors[0][:limit]]["name"])

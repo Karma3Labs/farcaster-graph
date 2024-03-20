@@ -24,6 +24,8 @@ class GraphLoader:
     utils.log_memusage(logger)
     logger.info(f"loading {dfile}")
     df = pandas.read_pickle(dfile)
+    logger.info(utils.df_info_to_string(df, with_sample=True))
+    utils.log_memusage(logger)
 
     gfile = f"{path_prefix}_ig.pkl"
     logger.info(f"loading {gfile}")
