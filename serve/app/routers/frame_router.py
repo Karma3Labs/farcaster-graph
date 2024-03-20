@@ -108,8 +108,11 @@ async def get_personalized_frames_for_handles(
   # fetch handle-address pairs for given handles
   handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
 
+  # extract fids from the fid-handle pairs
+  fids = [int(hf["fid"]) for hf in handle_fids]
+
   # compute eigentrust on the neighbor graph using fids
-  trust_scores = await graph.get_neighbors_scores(handle_fids, graph_model, k, limit)
+  trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
 
   frames = await db_utils.get_neighbors_frames(agg, weights, trust_scores=trust_scores, limit=limit, pool=pool)
   return {"result": frames}
