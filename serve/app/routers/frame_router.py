@@ -56,8 +56,10 @@ async def get_personalized_frames_for_fids(
     can take any of the following values - `rms`, `sumsquare`, `sum` \n
   Parameter 'weights' is used to define the weights to be assigned
     to like, cast and recast actions by profiles. \n
+  Parameter 'voting' is used to decide whether there is a single vote per neighbor
+    or multiple votes per neigbor when deriving the frames score. \n
   Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
-  By default, agg=rms, weights='L1C10R5', k=2 and limit=100.
+  By default, agg=rms, weights='L1C10R5', voting='single', k=2 and limit=100.
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
@@ -100,8 +102,10 @@ async def get_personalized_frames_for_handles(
     can take any of the following values - `rms`, `sumsquare`, `sum` \n
   Parameter 'weights' is used to define the weights to be assigned
     to like, cast and recast actions by profiles. \n
+  Parameter 'voting' is used to decide whether there is a single vote per neighbor
+    or multiple votes per neigbor when deriving the frames score. \n
   Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
-  By default, agg=rms, weights='L1C10R5',  k=2 and limit=100.
+  By default, agg=rms, weights='L1C10R5', voting='single', k=2 and limit=100.
   """
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
