@@ -132,7 +132,7 @@ async def _fetch_korder_neighbors(
   
   # vids = [find_vertex_idx(graph.graph, fid) for fid in fids]
   # vids = list(filter(None, vids)) # WARNING - this filters vertex id 0 also
-  vids = [vid for fid in fids for vid in [find_vertex_idx(g, fid)] if vid is not None ]
+  vids = [vid for fid in fids for vid in [find_vertex_idx(graph.graph, fid)] if vid is not None ]
   if len(vids) <= 0:
     raise HTTPException(status_code=404, detail="Invalid fids")
   try:
