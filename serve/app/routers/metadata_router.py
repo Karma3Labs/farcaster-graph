@@ -40,6 +40,23 @@ async def get_fids_for_addresses(
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 
+@router.post("/addresses/fids")
+async def get_addresses_for_fidss(
+  # Example: -d '[2,3]'
+  fids: list[int],
+  pool: Pool = Depends(db_pool.get_db)
+):
+  """
+  Given a list of handles, this API returns a list of addresses. \n
+  Example: [2,3] \n
+  """
+  logger.debug(fids)
+  start_time = time.perf_counter()
+  rows = await db_utils.get_all_handle_addresses_for_fids(fids, pool)
+  logger.info(f"query took {time.perf_counter() - start_time} secs")
+  return {"result": rows}
+
+@router.post("/addresses/handles")
 @router.post("/addresses")
 async def get_addresses_for_handles(
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
@@ -55,3 +72,5 @@ async def get_addresses_for_handles(
   rows = await db_utils.get_all_fid_addresses_for_handles(handles, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
+
+

@@ -50,6 +50,10 @@ curl -X 'POST' 'http://localhost:8000/metadata/fids' -H 'accept: application/jso
 
 curl -X 'POST' 'http://localhost:8000/metadata/addresses' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["v", "danromero.eth"]' 
 
+curl -X 'POST' 'http://localhost:8000/metadata/addresses/handles' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["v", "danromero.eth"]' 
+
+curl -X 'POST' 'http://localhost:8000/metadata/addresses/fids' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '[2,3]' 
+
 ## Global Frames Rankings
 
 curl -X 'GET' 'http://localhost:8000/frames/global/rankings' -H 'accept: application/json'   -H 'Content-Type: application/json'
@@ -60,8 +64,7 @@ curl -X 'GET' 'http://localhost:8000/frames/global/rankings?agg=rms&weights=L1C1
 
 curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
-curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=rms&weights=L1C10R5&ok=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
-
+curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=sumsquare&weights=L1C10R5&voting=single&k=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
 
 

@@ -7,6 +7,12 @@ class ScoreAgg(StrEnum):
   SUM_SQ = 'sumsquare'
   SUM = 'sum'
 
+class Voting(StrEnum):
+  SINGLE = 'single'
+  MULTIPLE = 'multiple'
+  # TODO
+  # QUADRATIC = 'quadratic'
+
 class Weights(NamedTuple):
   cast:int = 10
   recast:int = 5

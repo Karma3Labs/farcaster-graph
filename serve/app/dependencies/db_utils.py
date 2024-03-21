@@ -1,7 +1,7 @@
 import time
 import json
 from ..config import settings
-from ..models.frame_model import ScoreAgg, Weights
+from ..models.frame_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -304,7 +304,8 @@ async def get_top_frames(
 
 async def get_neighbors_frames(
         agg: ScoreAgg, 
-        weights: Weights, 
+        weights: Weights,
+        voting: Voting,
         trust_scores: list[dict], 
         limit:int, 
         pool: Pool
@@ -316,6 +317,28 @@ async def get_neighbors_frames(
             agg_sql = 'sum(power(weights.score * weights.weight,2))'
         case ScoreAgg.SUM | _: 
             agg_sql = 'sum(weights.score * weights.weight)'    
+    
+    match voting:
+        case Voting.SINGLE:
+            wt_score_sql = 'max(k3l_rank.score)'
+            wt_weight_sql = f"""
+                            max(case interactions.action_type 
+                                when 'cast' then {weights.cast}
+                                when 'recast' then {weights.recast}
+                                else {weights.like}
+                                end)
+                            """
+            wt_group_by_sql = 'GROUP BY interactions.url, interactions.fid'
+        case _:
+            wt_score_sql = 'k3l_rank.score'
+            wt_weight_sql = f"""
+                            case interactions.action_type 
+                                when 'cast' then {weights.cast}
+                                when 'recast' then {weights.recast}
+                                else {weights.like}
+                                end
+                            """
+            wt_group_by_sql = ''
 
     sql_query = f"""
     WITH weights AS 
@@ -323,27 +346,23 @@ async def get_neighbors_frames(
         SELECT
             interactions.url,
             interactions.fid,
-            k3l_rank.score,
-            interactions.action_type,
-            case interactions.action_type 
-                when 'cast' then {weights.cast}
-                when 'recast' then {weights.recast}
-                else {weights.like}
-                end as weight
+            {wt_score_sql} as score,
+            {wt_weight_sql} as weight
         FROM k3l_frame_interaction as interactions
             INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
         INNER JOIN 
             k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
+        INNER JOIN json_to_recordset($1::json)
+            AS trust(fid int, score numeric) ON (trust.fid = interactions.fid)
+        {wt_group_by_sql}
     )
     SELECT 
         weights.url as url,
         {agg_sql} as score,
-        array_agg(weights.fid::integer) as interacted_by_fids,
-        array_agg(fnames.username) as interacted_by_fnames,
-        array_agg(user_data.value) as interacted_by_usernames
+        array_agg(distinct(weights.fid::integer)) as interacted_by_fids,
+        array_agg(distinct(fnames.username)) as interacted_by_fnames,
+        array_agg(distinct(user_data.value)) as interacted_by_usernames
     FROM weights
-    INNER JOIN json_to_recordset($1::json)
-        AS trust(fid int, score numeric) ON (trust.fid = weights.fid)
     INNER JOIN fnames on (fnames.fid = weights.fid)
     LEFT JOIN user_data on (user_data.fid = weights.fid and user_data.type=6)
     GROUP BY weights.url
