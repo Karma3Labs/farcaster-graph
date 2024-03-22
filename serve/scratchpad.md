@@ -58,7 +58,7 @@ curl -X 'POST' 'http://localhost:8000/metadata/addresses/fids' -H 'accept: appli
 
 curl -X 'GET' 'http://localhost:8000/frames/global/rankings' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
-curl -X 'GET' 'http://localhost:8000/frames/global/rankings?agg=rms&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
+curl -X 'GET' 'http://localhost:8000/frames/global/rankings?details=True&agg=sumsquare&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
 ## Personalized Frames Rankings
 

@@ -38,18 +38,23 @@ async def fetch_rows(
     pool: Pool
 ):
     start_time = time.perf_counter()
-    logger.debug(f"executing query: {sql_query}")
+    logger.trace(f"Execute query: {sql_query}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         # Open a transaction.
         async with connection.transaction():
             with connection.query_logger(logger.trace):
                 # Run the query passing the request argument.
-                rows = await connection.fetch(
-                                        sql_query, 
-                                        *args, 
-                                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                                        )
+                try:
+                    rows = await connection.fetch(
+                                            sql_query, 
+                                            *args, 
+                                            timeout=settings.POSTGRES_TIMEOUT_SECS
+                                            )
+                except Exception as e:
+                    logger.error(f"Failed to execute query: {sql_query}")
+                    logger.error(f"{e}")
+                    return [{"Unknown error. Contact K3L team"}]
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
 
@@ -276,7 +281,6 @@ async def get_top_frames(
             interactions.url,
             interactions.fid,
             k3l_rank.score,
-            interactions.action_type,
             case interactions.action_type 
                 when 'cast' then {weights.cast}
                 when 'recast' then {weights.recast}
@@ -290,15 +294,74 @@ async def get_top_frames(
     SELECT 
         weights.url as url,
         {agg_sql} as score
-        --sum(case weights.action_type when 'cast' then 1 else 0 end) as total_casts,
-        --sum(case weights.action_type when 'like' then 1 else 0 end) as total_likes,
-        --sum(case weights.action_type when 'recast' then 1 else 0 end) as total_recasts,
-        --count(1) as total_interactions
     FROM weights
     GROUP BY weights.url
     ORDER by score DESC
     OFFSET $1
     LIMIT $2
+    """
+    return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_top_frames_with_cast_details(
+        agg: ScoreAgg, 
+        weights: Weights, 
+        offset:int, 
+        limit:int, 
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.RMS: 
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+        case ScoreAgg.SUM_SQ:
+            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+        case ScoreAgg.SUM | _: 
+            agg_sql = 'sum(weights.score * weights.weight)'   
+
+    sql_query = f"""
+    WITH weights AS 
+    (
+        SELECT
+            interactions.url,
+            interactions.url_id,
+            k3l_rank.score,
+            case interactions.action_type 
+                when 'cast' then {weights.cast}
+                when 'recast' then {weights.recast}
+                else {weights.like}
+                end as weight
+        FROM k3l_frame_interaction as interactions
+            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        INNER JOIN 
+            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
+    ), 
+    top_frames AS (
+        SELECT 
+            weights.url as url,
+            weights.url_id,
+            {agg_sql} as score
+        FROM weights
+        GROUP BY weights.url, weights.url_id
+        ORDER by score DESC
+        OFFSET $1
+        LIMIT $2
+    )
+    SELECT 
+	    top_frames.url,
+        max(top_frames.score) as score,
+        (array_agg(distinct('0x' || encode(casts.hash, 'hex'))))[1:100] as cast_hashes,
+        (array_agg(
+            'https://warpcast.com/'|| 
+            fnames.username|| 
+            '/0x' || 
+            substring(encode(casts.hash, 'hex'), 1, 8)
+        order by casts.created_at
+        ))[1:100] as warpcast_urls
+    FROM top_frames
+	INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.url_id = top_frames.url_id)
+    INNER JOIN casts on (casts.id = url_map.cast_id)
+    INNER JOIN fnames on (fnames.fid = casts.fid)
+    GROUP BY top_frames.url
+    ORDER BY score DESC
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 

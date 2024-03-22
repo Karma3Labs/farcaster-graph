@@ -13,26 +13,39 @@ router = APIRouter(tags=["frames"])
 @router.get("/global/rankings")
 async def get_top_frames(
   # TODO consider using path parameter for better observality
-  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.RMS,
+  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
   weights: Annotated[str | None, Query()] = 'L1C10R5',
+  details: Annotated[bool | None, Query()] = False,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
   Get a list of frame urls that are used by highly ranked profiles. \n
-  This API takes four optional parameters - agg, weights, offset and limit. \n
+  This API takes five optional parameters - 
+    agg, weights, details, offset and limit. \n
   Parameter 'agg' is used to define the aggregation function and 
     can take any of the following values - `rms`, `sumsquare`, `sum`. \n
   Parameter 'weights' is used to define the weights to be assigned
     to like, cast and recast actions by profiles. \n
-  By default, agg=rms, weights='L1C10R5', offset=0 and limit=100 i.e., returns top 100 frame urls.
+  Parameter 'details' is used to specify whether 
+    the original cast list should be returned for each frame in the ranking. \n
+  (**NOTE**: `details=True` will result in a few extra hundred milliseconds in response times).\n
+  (**NOTE**: the API returns upto a max of 100 cast hashes and 100 warpcast urls when details=True).\n
+  Parameter 'offset' is used to specify how many results to skip 
+    and can be useful for paginating through results. \n
+  Parameter 'limit' is used to specify the number of results to return. \n
+  By default, agg=rms, weights='L1C10R5', details=False, offset=0 and limit=100 i.e., returns top 100 frame urls.
   """
   try:
     weights = Weights.from_str(weights)
   except:
     raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
-  frames = await db_utils.get_top_frames(agg, weights, offset=offset, limit=limit, pool=pool)
+  
+  if details:
+    frames = await db_utils.get_top_frames_with_cast_details(agg, weights, offset=offset, limit=limit, pool=pool)
+  else :
+    frames = await db_utils.get_top_frames(agg, weights, offset=offset, limit=limit, pool=pool)
   return {"result": frames}
 
 @router.post("/personalized/rankings/fids")
