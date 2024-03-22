@@ -30,7 +30,8 @@ async def get_top_frames(
     to like, cast and recast actions by profiles. \n
   Parameter 'details' is used to specify whether 
     the original cast list should be returned for each frame in the ranking. \n
-  (**NOTE**: `details=True` will result in a few extra hundred milliseconds in response times).\n
+  (Note: cast hashes and warpcast urls are returned in chronological order ie., **oldest first**)
+  (*NOTE*: `details=True` will result in a few extra hundred milliseconds in response times).\n
   (**NOTE**: the API returns upto a max of 100 cast hashes and 100 warpcast urls when details=True).\n
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
