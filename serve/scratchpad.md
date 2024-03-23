@@ -1,5 +1,15 @@
 # Sample cURL commands to test locally based on the sample graphs in the samples folder
 
+## Direct
+
+curl -X 'POST' 'http://localhost:8000/direct/following/handles?limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["v", "danromero.eth"]'
+
+curl -X 'POST' 'http://localhost:8000/direct/following/fids?limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '[2,3]'
+
+curl -X 'POST' 'http://localhost:8000/direct/engagement/handles?limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["v", "dwr.eth"]'
+
+curl -X 'POST' 'http://localhost:8000/direct/engagement/handles?limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["vijaypm"]'
+
 ## Neighbors
 
 curl -X 'POST' 'http://localhost:8000/graph/neighbors/engagement/handles?k=1&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '["v", "danromero.eth"]'

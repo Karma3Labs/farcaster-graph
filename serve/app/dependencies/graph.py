@@ -153,3 +153,15 @@ async def _fetch_korder_neighbors(
     return list(itertools.chain(fids, *klists))
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")
+
+async def get_direct_edges_list(  
+  fids: list[int],
+  graph: Graph,        
+  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+) -> pandas.DataFrame: 
+  start_time = time.perf_counter()
+  # WARNING we are operating on a shared dataframe...
+  # ...inplace=False by default, explicitly setting here for emphasis
+  out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(out_df)} edges")
+  return out_df[['j','v']].to_dict('records')

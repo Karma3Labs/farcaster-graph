@@ -15,6 +15,7 @@ import asyncpg
 from .dependencies import logging
 from .config import settings
 from .graph_loader import GraphLoader
+from .routers.direct_router import router as direct_router
 from .routers.graph_router import router as graph_router
 from .routers.metadata_router import router as metadata_router
 from .routers.localtrust_router import router as lt_router
@@ -81,6 +82,7 @@ async def lifespan(app: FastAPI):
     app_state['graph_loader_task'].cancel()
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
+app.include_router(direct_router, prefix='/links')
 app.include_router(graph_router, prefix='/graph')
 app.include_router(metadata_router, prefix='/metadata')
 app.include_router(lt_router, prefix='/scores/personalized')

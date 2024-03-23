@@ -6,7 +6,7 @@ from asyncpg.pool import Pool
 
 from ..dependencies import db_pool, db_utils
 
-router = APIRouter(tags=["metadata"])
+router = APIRouter(tags=["Metadata"])
 
 @router.post("/handles")
 async def get_handles_for_addresses(

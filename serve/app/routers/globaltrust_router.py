@@ -7,7 +7,7 @@ from asyncpg.pool import Pool
 from ..models.graph_model import GraphType
 from ..dependencies import  db_pool, db_utils
 
-router = APIRouter(tags=["scores"])
+router = APIRouter(tags=["Global OpenRank Scores"])
 
 @router.get("/following/rankings")
 async def get_top_following_profiles(

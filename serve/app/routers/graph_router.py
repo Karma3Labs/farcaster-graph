@@ -8,7 +8,7 @@ from asyncpg.pool import Pool
 from ..models.graph_model import Graph
 from ..dependencies import graph, db_pool, db_utils
 
-router = APIRouter(tags=["graphs"])
+router = APIRouter(tags=["Graphs"])
 
 @router.post("/neighbors/engagement/addresses")
 async def get_neighbors_engagement(

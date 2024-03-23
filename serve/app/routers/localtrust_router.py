@@ -7,7 +7,7 @@ from asyncpg.pool import Pool
 from ..models.graph_model import Graph
 from ..dependencies import graph, db_pool, db_utils
 
-router = APIRouter(tags=["scores"])
+router = APIRouter(tags=["Personalized OpenRank Scores"])
 
 @router.post("/engagement/addresses")
 @router.get("/engagement/addresses")

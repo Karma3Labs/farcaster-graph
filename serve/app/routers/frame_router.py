@@ -8,7 +8,7 @@ from ..models.graph_model import Graph
 from ..models.frame_model import ScoreAgg, Weights, Voting
 from ..dependencies import graph, db_pool, db_utils
 
-router = APIRouter(tags=["frames"])
+router = APIRouter(tags=["Frames"])
 
 @router.get("/global/rankings")
 async def get_top_frames(
