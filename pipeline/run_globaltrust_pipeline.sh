@@ -70,3 +70,7 @@ $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   WHERE main.date = tmp.date AND main.strategy_id=tmp.strategy_id;
 INSERT INTO $DB_GLOBALTRUST SELECT * FROM $DB_TEMP_GLOBALTRUST;
 DROP TABLE $DB_TEMP_GLOBALTRUST;"
+
+wait
+this_name=`basename "$0"`
+log "$this_name done!"
