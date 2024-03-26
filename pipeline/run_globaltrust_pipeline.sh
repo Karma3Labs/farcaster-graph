@@ -65,14 +65,20 @@ $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
 
 wait $!
 
-log "Upserting $DB_GLOBALTRUST "
+log "Upserting $DB_GLOBALTRUST"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -c "DELETE FROM $DB_GLOBALTRUST AS main USING $DB_TEMP_GLOBALTRUST AS tmp 
   WHERE main.date = tmp.date AND main.strategy_id=tmp.strategy_id;
-INSERT INTO $DB_GLOBALTRUST SELECT * FROM $DB_TEMP_GLOBALTRUST;
-DROP TABLE $DB_TEMP_GLOBALTRUST;"
+INSERT INTO $DB_GLOBALTRUST SELECT * FROM $DB_TEMP_GLOBALTRUST;"
 
 wait $!
+
+log "Dropping $DB_TEMP_GLOBALTRUST"
+$PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+  -c "DROP TABLE $DB_TEMP_GLOBALTRUST;"
+
+wait $!
+
 this_name=`basename "$0"`
 log "$this_name done!"
