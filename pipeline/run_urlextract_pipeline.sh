@@ -56,3 +56,7 @@ log "Inserting into k3l_cast_embed_url_mapping"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f $WORK_DIR/frames/incremental_load_cast_mapping.sql
+
+wait
+this_name=`basename "$0"`
+log "$this_name done!"
