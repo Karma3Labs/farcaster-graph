@@ -24,6 +24,8 @@ from .routers.frame_router import router as frame_router
 
 from loguru import logger
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 logger.remove()
 logger.add(sys.stdout, colorize=True, 
            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
@@ -92,6 +94,7 @@ app.include_router(frame_router, prefix='/frames')
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+Instrumentator().instrument(app).expose(app)
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
