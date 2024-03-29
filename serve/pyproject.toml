@@ -18,6 +18,7 @@ psutil = "^5.9.8"
 pandas = "^2.2.0"
 numpy = "^1.26.4"
 requests = "^2.31.0"
+prometheus-fastapi-instrumentator = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]
