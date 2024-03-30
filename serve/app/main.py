@@ -93,6 +93,9 @@ async def lifespan(app: FastAPI):
     await app_state['db_pool'].close()
     app_state['graph_loader_task'].cancel()
 
+# TODO: change this to os env var once blue-green deployment is set up
+APP_NAME = "farcaster-graph-a" #os.environ.get("APP_NAME", "farcaster-graph-a")
+
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
 app.include_router(direct_router, prefix='/links')
 app.include_router(graph_router, prefix='/graph')
@@ -105,7 +108,7 @@ app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Setting metrics middleware
-app.add_middleware(PrometheusMiddleware)
+app.add_middleware(PrometheusMiddleware, app_name=APP_NAME)
 app.add_route("/metrics", metrics)
 
 @app.middleware("http")
