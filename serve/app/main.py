@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import logging as log
 
@@ -24,7 +25,9 @@ from .routers.frame_router import router as frame_router
 
 from loguru import logger
 
-from prometheus_fastapi_instrumentator import Instrumentator
+from opentelemetry.propagate import inject
+from .telemetry import PrometheusMiddleware, metrics, setting_otlp
+
 
 logger.remove()
 logger.add(sys.stdout, colorize=True, 
@@ -39,6 +42,13 @@ log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
 # from uvicorn.config import LOGGING_CONFIG
 # LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
 #     '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+class EndpointFilter(log.Filter):
+    # Uvicorn endpoint access log filter
+    def filter(self, record: log.LogRecord) -> bool:
+        return record.getMessage().find("GET /metrics") == -1
+
+# Filter out /metrics
+log.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 def custom_openapi():
     if app.openapi_schema:
@@ -94,7 +104,9 @@ app.include_router(frame_router, prefix='/frames')
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-Instrumentator().instrument(app).expose(app)
+# Setting metrics middleware
+app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics", metrics)
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
