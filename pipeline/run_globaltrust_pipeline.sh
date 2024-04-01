@@ -58,13 +58,6 @@ deactivate
 # .. separating out like this helps us run steps in isolation. 
 # For example, we can comment out the below code and ..
 # .. experiment with the python code (weights for example) without worrying about affecting prod.
-log "Inserting localtrust stats"
-PGPASSWORD=$DB_PASSWORD \
-$PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-  -f graph/export_localtrust_daily_stats.sql
-
-wait $!
-
 log "Replacing $DB_LOCALTRUST"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
@@ -78,6 +71,13 @@ $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -c "DELETE FROM $DB_GLOBALTRUST WHERE date = (SELECT min(date) FROM $DB_TEMP_GLOBALTRUST);
 INSERT INTO $DB_GLOBALTRUST SELECT * FROM $DB_TEMP_GLOBALTRUST;
 DROP TABLE $DB_TEMP_GLOBALTRUST;"
+
+wait $!
+
+log "Inserting localtrust stats"
+PGPASSWORD=$DB_PASSWORD \
+$PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+  -f graph/export_localtrust_daily_stats.sql
 
 wait $!
 
