@@ -1,5 +1,5 @@
 with stats_per_strategy_per_date as (SELECT
-  date,
+  max(date) AS date,
   COUNT(CASE WHEN strategy_id = 1 THEN 1 END) AS strategy_id_1_row_count,
   AVG(CASE WHEN strategy_id = 1 THEN v END) AS strategy_id_1_mean,
   STDDEV(CASE WHEN strategy_id = 1 THEN v END) AS strategy_id_1_stddev,
@@ -10,8 +10,8 @@ with stats_per_strategy_per_date as (SELECT
   MAX(CASE WHEN strategy_id = 3 THEN v END) - MIN(CASE WHEN strategy_id = 3 THEN v END) AS strategy_id_3_range
 FROM
   localtrust
-GROUP BY
-  date
+-- GROUP BY
+--   date
 )
   
 INSERT INTO localtrust_stats (
