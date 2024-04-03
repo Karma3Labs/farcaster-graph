@@ -1,16 +1,4 @@
-x-logging:
-  # anchor(&): 'default-logging' for defines a chunk of configuration
-  &default-logging
-  driver: loki
-  options:
-    loki-url: 'http://localhost:3100/api/prom/push'
-    loki-pipeline-stages: |
-      - multiline:
-          firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}'
-          max_wait_time: 3s
-      - regex:
-          expression: '^(?P<time>\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},d{3}) (?P<message>(?s:.*))$$'
-# Use $$ (double-dollar sign) when your configuration needs a literal dollar sign.
+name: farcaster-graph
 
 services:
   farcaster-graph:
