@@ -14,4 +14,3 @@ services:
     restart: "no"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    logging: *default-logging
