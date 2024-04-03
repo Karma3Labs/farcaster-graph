@@ -1,3 +1,5 @@
+name: farcaster-graph
+
 x-logging:
   # anchor(&): 'default-logging' for defines a chunk of configuration
   &default-logging
