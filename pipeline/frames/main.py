@@ -21,8 +21,8 @@ level_per_module = {
     "": settings.LOG_LEVEL,
     "silentlib": False
 }
-logger.add(sys.stdout, 
-           colorize=True, 
+logger.add(sys.stdout,
+           colorize=True,
            format=settings.LOGURU_FORMAT,
            filter=level_per_module,
            level=0)
@@ -33,8 +33,8 @@ async def main():
     sleep_duration = settings.FRAMES_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
 
-    url_records = frames_db_utils.fetch_unparsed_urls(logger, 
-                                                        pg_dsn, 
+    url_records = frames_db_utils.fetch_unparsed_urls(logger,
+                                                        pg_dsn,
                                                         settings.FRAMES_BATCH_SIZE)
     logger.info(f"Fetched {len(url_records)} unparsed rows from db")
     logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
@@ -53,8 +53,8 @@ async def main():
       sleep_duration = settings.FRAMES_NAP_SECS
     # end if len(url_records) > 0
 
-    url_records = frames_db_utils.fetch_unprocessed_urls(logger, 
-                                                        pg_dsn, 
+    url_records = frames_db_utils.fetch_unprocessed_urls(logger,
+                                                        pg_dsn,
                                                         settings.FRAMES_BATCH_SIZE)
     logger.info(f"Fetched {len(url_records)} unprocessed rows from db")
     logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
