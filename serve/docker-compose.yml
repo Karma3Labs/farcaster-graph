@@ -12,3 +12,10 @@ services:
     restart: "no"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - replicator-network
+
+networks:
+  replicator-network:
+    name: replicator_replicator-network
+    external: true
