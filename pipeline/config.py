@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
-class Settings(BaseSettings):  
+class Settings(BaseSettings):
     DB_USER:str = 'replicator'
     DB_PASSWORD:SecretStr
     DB_NAME:str = 'replicator'
@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     FRAMES_SCRAPE_CONCURRENCY: int = 10
     FRAMES_SCRAPE_TIMEOUT_SECS: int = 10
 
+    WARPCAST_CHANNELS_TIMEOUT: int = 30000
+
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = '[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s'
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
@@ -40,11 +42,11 @@ class Settings(BaseSettings):
     @computed_field
     def POSTGRES_DSN(self) -> SecretStr:
       return SecretStr(f" dbname={self.DB_NAME}"
-                       f" user={self.DB_USER}" 
-                       f" host={self.DB_HOST}" 
-                       f" port={self.DB_PORT}" 
+                       f" user={self.DB_USER}"
+                       f" host={self.DB_HOST}"
+                       f" port={self.DB_PORT}"
                        f" password={self.DB_PASSWORD.get_secret_value()}")
-    
+
     @computed_field
     def POSTGRES_URL(self) -> SecretStr:
       return SecretStr(f"postgresql+psycopg2://"
@@ -52,5 +54,5 @@ class Settings(BaseSettings):
                        f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
 
 settings = Settings()
-  
+
 
