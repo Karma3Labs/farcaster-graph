@@ -22,6 +22,7 @@ from .routers.metadata_router import router as metadata_router
 from .routers.localtrust_router import router as lt_router
 from .routers.globaltrust_router import router as gt_router
 from .routers.frame_router import router as frame_router
+from .routers.cast_router import router as cast_router
 
 from loguru import logger
 
@@ -30,7 +31,7 @@ from .telemetry import PrometheusMiddleware, metrics, setting_otlp
 
 
 logger.remove()
-logger.add(sys.stdout, colorize=True, 
+logger.add(sys.stdout, colorize=True,
            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
            level=settings.LOG_LEVEL)
 
@@ -81,13 +82,13 @@ async def check_and_reload_models(loader: GraphLoader):
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
-    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(), 
-                                         min_size=1, 
-                                         max_size=settings.POSTGRES_POOL_SIZE)
     app_state['graph_loader'] = GraphLoader()
     app_state['graph_loader_task'] = asyncio.create_task(
         check_and_reload_models(app_state['graph_loader'])
     )
+    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
+                                         min_size=1,
+                                         max_size=settings.POSTGRES_POOL_SIZE)
     yield
     """Execute when API is shutdown"""
     await app_state['db_pool'].close()
@@ -103,6 +104,7 @@ app.include_router(metadata_router, prefix='/metadata')
 app.include_router(lt_router, prefix='/scores/personalized')
 app.include_router(gt_router, prefix='/scores/global')
 app.include_router(frame_router, prefix='/frames')
+app.include_router(cast_router, prefix='/casts')
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")

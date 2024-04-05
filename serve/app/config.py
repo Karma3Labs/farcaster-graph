@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
-class Settings(BaseSettings):  
+class Settings(BaseSettings):
     DB_USERNAME:str = 'postgres'
     DB_PASSWORD:SecretStr = 'postgres'
     DB_NAME:str = 'postgres'
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     EIGENTRUST_EPSILON:float = 1.0
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
+
+    WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
     LOG_LEVEL: str = 'INFO'
 
