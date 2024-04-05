@@ -81,13 +81,13 @@ async def check_and_reload_models(loader: GraphLoader):
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
-    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(), 
-                                         min_size=1, 
-                                         max_size=settings.POSTGRES_POOL_SIZE)
     app_state['graph_loader'] = GraphLoader()
     app_state['graph_loader_task'] = asyncio.create_task(
         check_and_reload_models(app_state['graph_loader'])
     )
+    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
+                                         min_size=1,
+                                         max_size=settings.POSTGRES_POOL_SIZE)
     yield
     """Execute when API is shutdown"""
     await app_state['db_pool'].close()
