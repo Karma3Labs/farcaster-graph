@@ -26,14 +26,20 @@ from .routers.cast_router import router as cast_router
 
 from loguru import logger
 
-from opentelemetry.propagate import inject
-from .telemetry import PrometheusMiddleware, metrics, setting_otlp
+from .telemetry import PrometheusMiddleware, metrics
 
 
 logger.remove()
+level_per_module = {
+   "": settings.LOG_LEVEL,
+   "app.dependencies.db_utils": settings.LOG_LEVEL,
+   "silentlib": False
+}
+
 logger.add(sys.stdout, colorize=True,
            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
-           level=settings.LOG_LEVEL)
+           filter=level_per_module,
+           level=0)
 
 log.basicConfig(handlers=[logging.InterceptHandler()], level=0, force=True)
 log.getLogger("uvicorn").handlers = [logging.InterceptHandler()]
