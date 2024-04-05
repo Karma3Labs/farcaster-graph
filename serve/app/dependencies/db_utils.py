@@ -433,3 +433,111 @@ async def get_neighbors_frames(
     LIMIT $2
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+
+async def get_casts_from_trusted(
+        agg: ScoreAgg,
+        weights: Weights,
+        trust_scores: list[dict],
+        limit:int,
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+        case ScoreAgg.SUM_SQ:
+            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(weights.score * weights.weight)'
+
+    sql_query = f"""
+    with casts_from_neighbors as (
+        select
+            hash
+        from casts
+            INNER JOIN json_to_recordset($1::json)
+                AS trust(fid int, score numeric) ON (trust.fid = casts.fid)
+    ), weights AS
+        (
+            SELECT
+                reactions.target_cast_hash as cast_hash,
+                reactions.target_cast_fid as fid,
+                k3l_rank.score as score,
+                case reactions.type
+                    when 1 then {weights.like}
+                    when 2 then {weights.recast}
+                    else {weights.like}
+                end as weight
+            FROM reactions
+            INNER JOIN
+                casts_from_neighbors on (casts_from_neighbors.hash = reactions.target_cast_hash)
+            INNER JOIN
+                k3l_rank on (k3l_rank.profile_id = reactions.target_cast_fid and k3l_rank.strategy_id=3)
+            INNER JOIN json_to_recordset($1::json)
+                AS trust(fid int, score numeric) ON (trust.fid = reactions.target_cast_fid)
+        )
+    SELECT
+        distinct('0x' || encode( weights.cast_hash, 'hex')) as hash,
+        weights.fid,
+        {agg_sql} as score,
+        casts.text
+
+    FROM weights
+    INNER JOIN casts on (casts.hash = weights.cast_hash)
+    GROUP BY weights.cast_hash, weights.fid, casts.text
+    ORDER by score DESC
+    LIMIT $2
+    """
+    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+
+async def get_ranked_casts_from_channel(
+        channel_id: str,
+        agg: ScoreAgg,
+        weights: Weights,
+        trust_scores: list[dict],
+        limit:int,
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+        case ScoreAgg.SUM_SQ:
+            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(weights.score * weights.weight)'
+
+    sql_query = f"""
+    with casts_from_channel as (
+        select
+            hash
+        from casts where root_parent_url = 'https://warpcast.com/~/channel/{channel_id}'
+    ), weights AS
+        (
+            SELECT
+                reactions.target_cast_hash as cast_hash,
+                reactions.target_cast_fid as fid,
+                k3l_rank.score as score,
+                case reactions.type
+                    when 1 then {weights.like}
+                    when 2 then {weights.recast}
+                    else {weights.like}
+                end as weight
+            FROM reactions
+            INNER JOIN
+                casts_from_channel on (casts_from_channel.hash = reactions.target_cast_hash)
+            INNER JOIN
+                k3l_rank on (k3l_rank.profile_id = reactions.target_cast_fid and k3l_rank.strategy_id=3)
+            INNER JOIN json_to_recordset($1::json)
+                AS trust(fid int, score numeric) ON (trust.fid = reactions.target_cast_fid)
+        )
+    SELECT
+        distinct('0x' || encode( weights.cast_hash, 'hex')) as hash,
+        weights.fid,
+        {agg_sql} as score,
+        casts.text
+    FROM weights
+    INNER JOIN casts on (casts.hash = weights.cast_hash)
+    GROUP BY weights.cast_hash, weights.fid, casts.text
+    ORDER by score DESC
+    LIMIT $2
+    """
+    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
