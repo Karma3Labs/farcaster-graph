@@ -167,6 +167,7 @@ async def get_neighbors_engagement_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
+  lite: Annotated[bool, Query()] = False,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
@@ -176,12 +177,14 @@ async def get_neighbors_engagement_for_fids(
     that the input fids have engaged with. \n
   We do a BFS traversal of the social engagement graph
     upto **k** degrees and terminate traversal when **limit** is reached. \n
+  The API returns fnames and usernames by default. 
+    If you want a lighter and faster response, just pass in `lite=true`. \n
   Example: [1, 2] \n
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await _get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_fids(fids, k, limit, lite, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -191,6 +194,7 @@ async def get_neighbors_following_for_fids(
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
@@ -199,12 +203,14 @@ async def get_neighbors_following_for_fids(
     that the input fids are following. \n
   We do a BFS traversal of the social follower graph
     upto **k** degrees and terminate traversal when **limit** is reached. \n
+  The API returns fnames and usernames by default. 
+    If you want a lighter and faster response, just pass in `lite=true`. \n
   Example: [1, 2] \n
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(fids)
-  res = await _get_neighbors_list_for_fids(fids, k, limit, pool, graph_model)
+  res = await _get_neighbors_list_for_fids(fids, k, limit, lite, pool, graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -214,11 +220,15 @@ async def _get_neighbors_list_for_fids(
   fids: list[int],
   k: int,
   limit: int,
+  lite: bool,
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]:
   # get neighbors using fids
   neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
+
+  if lite: 
+    return neighbor_fids
 
   # fetch address-handle pairs for neighbor fids
   neighbor_addr_handles = await db_utils.get_unique_handle_metadata_for_fids(neighbor_fids, pool)

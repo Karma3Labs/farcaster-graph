@@ -383,7 +383,7 @@ async def get_neighbors_frames(
 
     match voting:
         case Voting.SINGLE:
-            wt_score_sql = 'max(k3l_rank.score)'
+            wt_score_sql = 'max(score)'
             wt_weight_sql = f"""
                             max(case interactions.action_type
                                 when 'cast' then {weights.cast}
@@ -413,8 +413,6 @@ async def get_neighbors_frames(
             {wt_weight_sql} as weight
         FROM k3l_frame_interaction as interactions
             INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
-        INNER JOIN
-            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
         INNER JOIN json_to_recordset($1::json)
             AS trust(fid int, score numeric) ON (trust.fid = interactions.fid)
         {wt_group_by_sql}

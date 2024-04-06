@@ -87,6 +87,7 @@ async def _get_personalized_scores_for_addresses(
                     fids=fids, 
                     k=k, 
                     limit=limit, 
+                    lite=False,
                     pool=pool, 
                     graph_model=graph_model)
 
@@ -164,7 +165,8 @@ async def _get_personalized_scores_for_handles(
                     fetch_all_addrs=False, 
                     fids=fids, 
                     k=k, 
-                    limit=limit, 
+                    limit=limit,
+                    lite=False, 
                     pool=pool, 
                     graph_model=graph_model)
 
@@ -176,6 +178,7 @@ async def get_personalized_engagement_for_fids(
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
@@ -186,6 +189,8 @@ async def get_personalized_engagement_for_fids(
     that is based on the EigenTrust algorithm. \n
   The extended network is derived based on a BFS traversal of the social engagement graph 
     upto **k** degrees and until **limit** is reached. \n
+  The API returns fnames and usernames by default. 
+    If you want a lighter and faster response, just pass in `lite=true`. \n
   Example: [1, 2] \n
   **IMPORTANT**: Please use HTTP POST method and not GET method.
   """
@@ -197,6 +202,7 @@ async def get_personalized_engagement_for_fids(
                     fids=fids, 
                     k=k, 
                     limit=limit, 
+                    lite=lite,
                     pool=pool, 
                     graph_model=graph_model)
   logger.debug(f"Result has {len(res)} rows")
@@ -208,6 +214,7 @@ async def get_personalized_following_for_fids(
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
 ):
@@ -218,6 +225,8 @@ async def get_personalized_following_for_fids(
     that is based on the EigenTrust algorithm. \n
   The extended network is derived based on a BFS traversal of the social following graph 
     upto **k** degrees and until **limit** is reached. \n
+  The API returns fnames and usernames by default. 
+    If you want a lighter and faster response, just pass in `lite=true`. \n
   Example: [1, 2] \n
   **IMPORTANT**: Please use HTTP POST method and not GET method.
   """
@@ -229,6 +238,7 @@ async def get_personalized_following_for_fids(
                     fids=fids, 
                     k=k, 
                     limit=limit, 
+                    lite=lite,
                     pool=pool, 
                     graph_model=graph_model)
   logger.debug(f"Result has {len(res)} rows")
@@ -240,11 +250,15 @@ async def _get_personalized_scores_for_fids(
   fids: list[int],
   k: int,
   limit: int,
+  lite: bool,
   pool: Pool,
   graph_model: Graph,
 ) -> list[dict]: 
   # compute eigentrust on the neighbor graph using fids
   trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
+
+  if lite:
+    return sorted(trust_scores, key=lambda d: d['score'], reverse=True)
 
   # convert list of fid scores into a lookup with fid as key
   # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
