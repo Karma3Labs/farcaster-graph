@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
-    GO_EIGENTRUST_TIMEOUT_MS:int = 600000 # 10 mins
+    GO_EIGENTRUST_TIMEOUT_MS:int = 600_000 # 10 mins
     EIGENTRUST_ALPHA:float = 0.5
     EIGENTRUST_EPSILON:float = 1.0
     EIGENTRUST_MAX_ITER:int = 50
@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     FRAMES_BATCH_SIZE: int = 100
     FRAMES_SCRAPE_CONCURRENCY: int = 10
     FRAMES_SCRAPE_TIMEOUT_SECS: int = 10
+
+    CASTS_SLEEP_SECS: int = 10
+    CASTS_BATCH_SIZE: int = 100_000
 
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
