@@ -25,7 +25,7 @@ def ijv_df_read_sql_tmpfile(logger: logging.Logger, pg_dsn: str, query: SQL) -> 
           return df
         
 def create_temp_table(logger: logging.Logger, pg_dsn: str, temp_tbl: str, orig_tbl: str ):
-  create_sql = f"CREATE TABLE {temp_tbl} AS SELECT * FROM {orig_tbl} LIMIT 0;"
+  create_sql = f"CREATE UNLOGGED TABLE {temp_tbl} AS SELECT * FROM {orig_tbl} LIMIT 0;"
   with psycopg2.connect(pg_dsn) as conn:
     with conn.cursor() as cursor:
         logger.info(f"Executing: {create_sql}")
