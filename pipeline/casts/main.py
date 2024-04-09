@@ -25,7 +25,7 @@ logger.add(sys.stdout,
            level=0)
 
 
-async def main(forever: bool):
+async def main(daemon: bool):
   while True:
     sleep_duration = settings.CASTS_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -34,7 +34,7 @@ async def main(forever: bool):
                                           pg_dsn,
                                           settings.CASTS_BATCH_SIZE)
 
-    if forever:
+    if daemon:
       logger.info(f"sleeping for {sleep_duration}s")
       await asyncio.sleep(sleep_duration)
       logger.info(f"waking up after {sleep_duration}s sleep")
@@ -45,7 +45,7 @@ async def main(forever: bool):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-f", "--forever",
+  parser.add_argument("-d", "--daemon",
                    help="set or not",
                    default=False,
                    type=lambda x: (str(x).lower() == 'true'))
@@ -57,4 +57,4 @@ if __name__ == "__main__":
   print(settings)
 
   logger.debug('hello main')
-  asyncio.run(main(args.forever))
+  asyncio.run(main(args.daemon))

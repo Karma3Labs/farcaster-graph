@@ -1,8 +1,9 @@
 #!/bin/bash
 
-while getopts v: flag
+while getopts d:v: flag
 do
     case "${flag}" in
+        d) DAEMON=${OPTARG};;
         v) VENV=${OPTARG};;
     esac
 done
@@ -26,7 +27,9 @@ function log() {
   echo "`date` - $1"
 }
 
+DAEMON=${DAEMON:-false}
+
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m frames.main
+python3 -m frames.main -d $DAEMON
 deactivate

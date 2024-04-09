@@ -1,6 +1,6 @@
 # standard dependencies
 import sys
-import time
+import argparse
 from random import sample
 import asyncio
 
@@ -28,7 +28,7 @@ logger.add(sys.stdout,
            level=0)
 
 
-async def main():
+async def main(daemon: bool):
   while True:
     sleep_duration = settings.FRAMES_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -83,16 +83,27 @@ async def main():
       sleep_duration = settings.FRAMES_NAP_SECS
     # end if len(url_records) > 0
 
-    logger.info(f"sleeping for {sleep_duration}s")
-    await asyncio.sleep(sleep_duration)
-    logger.info(f"waking up after {sleep_duration}s sleep")
+    if daemon:
+      logger.info(f"sleeping for {sleep_duration}s")
+      await asyncio.sleep(sleep_duration)
+      logger.info(f"waking up after {sleep_duration}s sleep")
+    else:
+      break # don't go into infinite loop
   # end infinite loop
 
 
 if __name__ == "__main__":
-  # TODO don't depend on current directory to find .env
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-d", "--daemon",
+                   help="set or not",
+                   default=False,
+                   type=lambda x: (str(x).lower() == 'true'))
+  
+  args = parser.parse_args()
+  print(args)
+
   load_dotenv()
   print(settings)
 
   logger.debug('hello main')
-  asyncio.run(main())
+  asyncio.run(main(args.daemon))
