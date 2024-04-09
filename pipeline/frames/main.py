@@ -88,6 +88,7 @@ async def main(daemon: bool):
       await asyncio.sleep(sleep_duration)
       logger.info(f"waking up after {sleep_duration}s sleep")
     else:
+      logger.info("bye bye")
       break # don't go into infinite loop
   # end infinite loop
 
@@ -105,5 +106,5 @@ if __name__ == "__main__":
   load_dotenv()
   print(settings)
 
-  logger.debug('hello main')
+  logger.debug('hello hello')
   asyncio.run(main(args.daemon))
