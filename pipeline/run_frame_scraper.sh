@@ -3,7 +3,6 @@
 while getopts v: flag
 do
     case "${flag}" in
-        w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
     esac
 done
