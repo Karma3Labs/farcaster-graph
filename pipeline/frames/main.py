@@ -106,5 +106,5 @@ if __name__ == "__main__":
   load_dotenv()
   print(settings)
 
-  logger.debug('hello hello')
+  logger.info('hello hello')
   asyncio.run(main(args.daemon))
