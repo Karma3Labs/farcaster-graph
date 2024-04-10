@@ -2,10 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.2
--- Dumped by pg_dump version 16.1
-
--- Started on 2024-04-10 14:08:45 PDT
+-- Dumped from database version 16.0
+-- Dumped by pg_dump version 16.2 (Ubuntu 16.2-1.pgdg22.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -18,13 +16,35 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: generate_ulid(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.generate_ulid() RETURNS uuid
+    LANGUAGE sql STRICT PARALLEL SAFE
+    RETURN ((lpad(to_hex((floor((EXTRACT(epoch FROM clock_timestamp()) * (1000)::numeric)))::bigint), 12, '0'::text) || encode(public.gen_random_bytes(10), 'hex'::text)))::uuid;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- TOC entry 320 (class 1259 OID 16560)
--- Name: casts; Type: TABLE; Schema: public; Owner: replicator
+-- Name: casts; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.casts (
@@ -47,11 +67,8 @@ CREATE TABLE public.casts (
 );
 
 
-ALTER TABLE public.casts OWNER TO replicator;
-
 --
--- TOC entry 314 (class 1259 OID 16436)
--- Name: chain_events; Type: TABLE; Schema: public; Owner: replicator
+-- Name: chain_events; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.chain_events (
@@ -71,11 +88,8 @@ CREATE TABLE public.chain_events (
 );
 
 
-ALTER TABLE public.chain_events OWNER TO replicator;
-
 --
--- TOC entry 315 (class 1259 OID 16451)
--- Name: fids; Type: TABLE; Schema: public; Owner: replicator
+-- Name: fids; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.fids (
@@ -89,11 +103,8 @@ CREATE TABLE public.fids (
 );
 
 
-ALTER TABLE public.fids OWNER TO replicator;
-
 --
--- TOC entry 318 (class 1259 OID 16516)
--- Name: fnames; Type: TABLE; Schema: public; Owner: replicator
+-- Name: fnames; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.fnames (
@@ -108,14 +119,11 @@ CREATE TABLE public.fnames (
 );
 
 
-ALTER TABLE public.fnames OWNER TO replicator;
-
 --
--- TOC entry 326 (class 1259 OID 16749)
--- Name: globaltrust; Type: TABLE; Schema: public; Owner: replicator
+-- Name: globaltrust; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.globaltrust (
+CREATE UNLOGGED TABLE public.globaltrust (
     strategy_id integer,
     i bigint,
     v real,
@@ -123,11 +131,9 @@ CREATE TABLE public.globaltrust (
 );
 
 
-ALTER TABLE public.globaltrust OWNER TO replicator;
 
 --
--- TOC entry 327 (class 1259 OID 16753)
--- Name: globaltrust_config; Type: TABLE; Schema: public; Owner: replicator
+-- Name: globaltrust_config; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.globaltrust_config (
@@ -140,11 +146,8 @@ CREATE TABLE public.globaltrust_config (
 );
 
 
-ALTER TABLE public.globaltrust_config OWNER TO replicator;
-
 --
--- TOC entry 328 (class 1259 OID 16759)
--- Name: k3l_cast_embed_url_mapping; Type: TABLE; Schema: public; Owner: replicator
+-- Name: k3l_cast_embed_url_mapping; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.k3l_cast_embed_url_mapping (
@@ -153,11 +156,320 @@ CREATE TABLE public.k3l_cast_embed_url_mapping (
 );
 
 
-ALTER TABLE public.k3l_cast_embed_url_mapping OWNER TO replicator;
+--
+-- Name: k3l_casts_replica; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+)
+PARTITION BY RANGE (cast_ts);
+
 
 --
--- TOC entry 329 (class 1259 OID 16762)
--- Name: k3l_url_labels; Type: TABLE; Schema: public; Owner: replicator
+-- Name: k3l_casts_replica_y2024m01; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m01 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m02; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m02 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m03; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m03 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m04; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m04 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m05; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m05 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m06; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m06 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m07; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m07 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m08; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m08 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_casts_replica_y2024m09; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_casts_replica_y2024m09 (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+)
+PARTITION BY RANGE (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m01 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m02 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m03 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m04 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m05 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m06 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m07 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m08 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m09 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: k3l_url_labels; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.k3l_url_labels (
@@ -177,11 +489,8 @@ CREATE TABLE public.k3l_url_labels (
 );
 
 
-ALTER TABLE public.k3l_url_labels OWNER TO replicator;
-
 --
--- TOC entry 321 (class 1259 OID 16591)
--- Name: reactions; Type: TABLE; Schema: public; Owner: replicator
+-- Name: reactions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.reactions (
@@ -199,11 +508,8 @@ CREATE TABLE public.reactions (
 );
 
 
-ALTER TABLE public.reactions OWNER TO replicator;
-
 --
--- TOC entry 330 (class 1259 OID 16768)
--- Name: k3l_frame_interaction; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+-- Name: k3l_frame_interaction; Type: MATERIALIZED VIEW; Schema: public; Owner: -
 --
 
 CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
@@ -262,11 +568,8 @@ UNION
   WITH NO DATA;
 
 
-ALTER MATERIALIZED VIEW public.k3l_frame_interaction OWNER TO replicator;
-
 --
--- TOC entry 331 (class 1259 OID 16775)
--- Name: k3l_rank; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+-- Name: k3l_rank; Type: MATERIALIZED VIEW; Schema: public; Owner: -
 --
 
 CREATE MATERIALIZED VIEW public.k3l_rank AS
@@ -294,11 +597,8 @@ CREATE MATERIALIZED VIEW public.k3l_rank AS
   WITH NO DATA;
 
 
-ALTER MATERIALIZED VIEW public.k3l_rank OWNER TO replicator;
-
 --
--- TOC entry 332 (class 1259 OID 16780)
--- Name: k3l_url_labels_url_id_seq; Type: SEQUENCE; Schema: public; Owner: replicator
+-- Name: k3l_url_labels_url_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 ALTER TABLE public.k3l_url_labels ALTER COLUMN url_id ADD GENERATED ALWAYS AS IDENTITY (
@@ -312,8 +612,7 @@ ALTER TABLE public.k3l_url_labels ALTER COLUMN url_id ADD GENERATED ALWAYS AS ID
 
 
 --
--- TOC entry 312 (class 1259 OID 16385)
--- Name: kysely_migration; Type: TABLE; Schema: public; Owner: replicator
+-- Name: kysely_migration; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.kysely_migration (
@@ -322,11 +621,8 @@ CREATE TABLE public.kysely_migration (
 );
 
 
-ALTER TABLE public.kysely_migration OWNER TO replicator;
-
 --
--- TOC entry 313 (class 1259 OID 16392)
--- Name: kysely_migration_lock; Type: TABLE; Schema: public; Owner: replicator
+-- Name: kysely_migration_lock; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.kysely_migration_lock (
@@ -335,11 +631,8 @@ CREATE TABLE public.kysely_migration_lock (
 );
 
 
-ALTER TABLE public.kysely_migration_lock OWNER TO replicator;
-
 --
--- TOC entry 322 (class 1259 OID 16623)
--- Name: links; Type: TABLE; Schema: public; Owner: replicator
+-- Name: links; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.links (
@@ -356,14 +649,11 @@ CREATE TABLE public.links (
 );
 
 
-ALTER TABLE public.links OWNER TO replicator;
-
 --
--- TOC entry 336 (class 1259 OID 18691)
--- Name: localtrust; Type: TABLE; Schema: public; Owner: replicator
+-- Name: localtrust; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.localtrust (
+CREATE UNLOGGED TABLE public.localtrust (
     strategy_id integer,
     i character varying(255),
     j character varying(255),
@@ -372,11 +662,8 @@ CREATE TABLE public.localtrust (
 );
 
 
-ALTER TABLE public.localtrust OWNER TO replicator;
-
 --
--- TOC entry 335 (class 1259 OID 18687)
--- Name: localtrust_stats; Type: TABLE; Schema: public; Owner: replicator
+-- Name: localtrust_stats; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.localtrust_stats (
@@ -393,11 +680,8 @@ CREATE TABLE public.localtrust_stats (
 );
 
 
-ALTER TABLE public.localtrust_stats OWNER TO replicator;
-
 --
--- TOC entry 319 (class 1259 OID 16535)
--- Name: messages; Type: TABLE; Schema: public; Owner: replicator
+-- Name: messages; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.messages (
@@ -420,61 +704,8 @@ CREATE TABLE public.messages (
 );
 
 
-ALTER TABLE public.messages OWNER TO replicator;
-
 --
--- TOC entry 338 (class 1259 OID 23348)
--- Name: mv_channel_fids; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
---
-
-CREATE MATERIALIZED VIEW public.mv_channel_fids AS
- SELECT "substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text) AS channel,
-    fid
-   FROM public.casts
-  WHERE (root_parent_url ~~ 'https://warpcast.com/~/channel/%'::text)
-  GROUP BY ("substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text)), fid
-  WITH NO DATA;
-
-
-ALTER MATERIALIZED VIEW public.mv_channel_fids OWNER TO replicator;
-
---
--- TOC entry 339 (class 1259 OID 23529)
--- Name: mv_channel_fids_all; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
---
-
-CREATE MATERIALIZED VIEW public.mv_channel_fids_all AS
- SELECT "substring"(root_parent_url, 'https://.*/([^/]*)$'::text) AS channel,
-    fid
-   FROM public.casts
-  WHERE (root_parent_url ~~ 'https://%'::text)
-  GROUP BY ("substring"(root_parent_url, 'https://.*/([^/]*)$'::text)), fid
-  WITH NO DATA;
-
-
-ALTER MATERIALIZED VIEW public.mv_channel_fids_all OWNER TO replicator;
-
---
--- TOC entry 337 (class 1259 OID 23275)
--- Name: mv_channel_stats; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
---
-
-CREATE MATERIALIZED VIEW public.mv_channel_stats AS
- SELECT "substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text) AS channel,
-    count(DISTINCT fid) AS total_unique_casters,
-    count(*) AS total_casts,
-    max(created_at) AS most_recent_cast
-   FROM public.casts
-  WHERE (root_parent_url ~~ 'https://warpcast.com/~/channel/%'::text)
-  GROUP BY ("substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text))
-  WITH NO DATA;
-
-
-ALTER MATERIALIZED VIEW public.mv_channel_stats OWNER TO replicator;
-
---
--- TOC entry 333 (class 1259 OID 16786)
--- Name: mv_follow_links; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+-- Name: mv_follow_links; Type: MATERIALIZED VIEW; Schema: public; Owner: -
 --
 
 CREATE MATERIALIZED VIEW public.mv_follow_links AS
@@ -486,11 +717,8 @@ CREATE MATERIALIZED VIEW public.mv_follow_links AS
   WITH NO DATA;
 
 
-ALTER MATERIALIZED VIEW public.mv_follow_links OWNER TO replicator;
-
 --
--- TOC entry 334 (class 1259 OID 18623)
--- Name: pretrust; Type: TABLE; Schema: public; Owner: replicator
+-- Name: pretrust; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.pretrust (
@@ -503,11 +731,8 @@ CREATE TABLE public.pretrust (
 );
 
 
-ALTER TABLE public.pretrust OWNER TO replicator;
-
 --
--- TOC entry 316 (class 1259 OID 16465)
--- Name: signers; Type: TABLE; Schema: public; Owner: replicator
+-- Name: signers; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.signers (
@@ -527,35 +752,8 @@ CREATE TABLE public.signers (
 );
 
 
-ALTER TABLE public.signers OWNER TO replicator;
-
 --
--- TOC entry 347 (class 1259 OID 39155)
--- Name: signers_new; Type: TABLE; Schema: public; Owner: replicator
---
-
-CREATE TABLE public.signers_new (
-    id uuid DEFAULT public.generate_ulid() NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    added_at timestamp with time zone NOT NULL,
-    removed_at timestamp with time zone,
-    fid bigint NOT NULL,
-    requester_fid bigint NOT NULL,
-    add_chain_event_id uuid NOT NULL,
-    remove_chain_event_id uuid,
-    key_type smallint NOT NULL,
-    metadata_type smallint NOT NULL,
-    key bytea NOT NULL,
-    metadata json NOT NULL
-);
-
-
-ALTER TABLE public.signers_new OWNER TO replicator;
-
---
--- TOC entry 325 (class 1259 OID 16693)
--- Name: storage_allocations; Type: TABLE; Schema: public; Owner: replicator
+-- Name: storage_allocations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.storage_allocations (
@@ -571,11 +769,8 @@ CREATE TABLE public.storage_allocations (
 );
 
 
-ALTER TABLE public.storage_allocations OWNER TO replicator;
-
 --
--- TOC entry 324 (class 1259 OID 16669)
--- Name: user_data; Type: TABLE; Schema: public; Owner: replicator
+-- Name: user_data; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_data (
@@ -591,11 +786,8 @@ CREATE TABLE public.user_data (
 );
 
 
-ALTER TABLE public.user_data OWNER TO replicator;
-
 --
--- TOC entry 317 (class 1259 OID 16499)
--- Name: username_proofs; Type: TABLE; Schema: public; Owner: replicator
+-- Name: username_proofs; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.username_proofs (
@@ -612,11 +804,8 @@ CREATE TABLE public.username_proofs (
 );
 
 
-ALTER TABLE public.username_proofs OWNER TO replicator;
-
 --
--- TOC entry 323 (class 1259 OID 16646)
--- Name: verifications; Type: TABLE; Schema: public; Owner: replicator
+-- Name: verifications; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.verifications (
@@ -633,11 +822,134 @@ CREATE TABLE public.verifications (
 );
 
 
-ALTER TABLE public.verifications OWNER TO replicator;
+--
+-- Name: k3l_casts_replica_y2024m01; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m01 FOR VALUES FROM ('2024-01-01 00:00:00+00') TO ('2024-02-01 00:00:00+00');
+
 
 --
--- TOC entry 3579 (class 2606 OID 16574)
--- Name: casts casts_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: k3l_casts_replica_y2024m02; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m02 FOR VALUES FROM ('2024-02-01 00:00:00+00') TO ('2024-03-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m03; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m03 FOR VALUES FROM ('2024-03-01 00:00:00+00') TO ('2024-04-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m04; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m04 FOR VALUES FROM ('2024-04-01 00:00:00+00') TO ('2024-05-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m05; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m05 FOR VALUES FROM ('2024-05-01 00:00:00+00') TO ('2024-06-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m06; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m06 FOR VALUES FROM ('2024-06-01 00:00:00+00') TO ('2024-07-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m07; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m07 FOR VALUES FROM ('2024-07-01 00:00:00+00') TO ('2024-08-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m08; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m08 FOR VALUES FROM ('2024-08-01 00:00:00+00') TO ('2024-09-01 00:00:00+00');
+
+
+--
+-- Name: k3l_casts_replica_y2024m09; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_casts_replica ATTACH PARTITION public.k3l_casts_replica_y2024m09 FOR VALUES FROM ('2024-09-01 00:00:00+00') TO ('2024-10-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m01 FOR VALUES FROM ('2024-01-01 00:00:00+00') TO ('2024-02-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m02 FOR VALUES FROM ('2024-02-01 00:00:00+00') TO ('2024-03-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m03 FOR VALUES FROM ('2024-03-01 00:00:00+00') TO ('2024-04-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m04 FOR VALUES FROM ('2024-04-01 00:00:00+00') TO ('2024-05-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m05 FOR VALUES FROM ('2024-05-01 00:00:00+00') TO ('2024-06-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m06 FOR VALUES FROM ('2024-06-01 00:00:00+00') TO ('2024-07-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m07 FOR VALUES FROM ('2024-07-01 00:00:00+00') TO ('2024-08-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m08 FOR VALUES FROM ('2024-08-01 00:00:00+00') TO ('2024-09-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action ATTACH PARTITION public.k3l_fid_cast_action_y2024m09 FOR VALUES FROM ('2024-09-01 00:00:00+00') TO ('2024-10-01 00:00:00+00');
+
+
+--
+-- Name: casts casts_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.casts
@@ -645,8 +957,7 @@ ALTER TABLE ONLY public.casts
 
 
 --
--- TOC entry 3583 (class 2606 OID 16572)
--- Name: casts casts_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: casts casts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.casts
@@ -654,8 +965,7 @@ ALTER TABLE ONLY public.casts
 
 
 --
--- TOC entry 3546 (class 2606 OID 16446)
--- Name: chain_events chain_events_block_number_log_index_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: chain_events chain_events_block_number_log_index_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chain_events
@@ -663,8 +973,7 @@ ALTER TABLE ONLY public.chain_events
 
 
 --
--- TOC entry 3550 (class 2606 OID 16444)
--- Name: chain_events chain_events_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: chain_events chain_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chain_events
@@ -672,8 +981,7 @@ ALTER TABLE ONLY public.chain_events
 
 
 --
--- TOC entry 3629 (class 2606 OID 18631)
--- Name: pretrust fid_insert_ts_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: pretrust fid_insert_ts_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.pretrust
@@ -681,8 +989,7 @@ ALTER TABLE ONLY public.pretrust
 
 
 --
--- TOC entry 3553 (class 2606 OID 16459)
--- Name: fids fids_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: fids fids_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.fids
@@ -690,8 +997,7 @@ ALTER TABLE ONLY public.fids
 
 
 --
--- TOC entry 3565 (class 2606 OID 16527)
--- Name: fnames fnames_fid_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: fnames fnames_fid_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.fnames
@@ -699,8 +1005,7 @@ ALTER TABLE ONLY public.fnames
 
 
 --
--- TOC entry 3567 (class 2606 OID 16525)
--- Name: fnames fnames_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: fnames fnames_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.fnames
@@ -708,8 +1013,7 @@ ALTER TABLE ONLY public.fnames
 
 
 --
--- TOC entry 3569 (class 2606 OID 16529)
--- Name: fnames fnames_username_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: fnames fnames_username_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.fnames
@@ -717,8 +1021,7 @@ ALTER TABLE ONLY public.fnames
 
 
 --
--- TOC entry 3621 (class 2606 OID 16791)
--- Name: globaltrust_config globaltrust_config_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: globaltrust_config globaltrust_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.globaltrust_config
@@ -726,8 +1029,7 @@ ALTER TABLE ONLY public.globaltrust_config
 
 
 --
--- TOC entry 3619 (class 2606 OID 16793)
--- Name: globaltrust globaltrust_strategy_name_date_i_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: globaltrust globaltrust_strategy_name_date_i_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.globaltrust
@@ -735,8 +1037,7 @@ ALTER TABLE ONLY public.globaltrust
 
 
 --
--- TOC entry 3623 (class 2606 OID 16795)
--- Name: k3l_url_labels k3l_url_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: k3l_url_labels k3l_url_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.k3l_url_labels
@@ -744,8 +1045,7 @@ ALTER TABLE ONLY public.k3l_url_labels
 
 
 --
--- TOC entry 3625 (class 2606 OID 16797)
--- Name: k3l_url_labels k3l_url_labels_url_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: k3l_url_labels k3l_url_labels_url_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.k3l_url_labels
@@ -753,8 +1053,7 @@ ALTER TABLE ONLY public.k3l_url_labels
 
 
 --
--- TOC entry 3543 (class 2606 OID 16397)
--- Name: kysely_migration_lock kysely_migration_lock_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: kysely_migration_lock kysely_migration_lock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.kysely_migration_lock
@@ -762,8 +1061,7 @@ ALTER TABLE ONLY public.kysely_migration_lock
 
 
 --
--- TOC entry 3541 (class 2606 OID 16391)
--- Name: kysely_migration kysely_migration_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: kysely_migration kysely_migration_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.kysely_migration
@@ -771,8 +1069,7 @@ ALTER TABLE ONLY public.kysely_migration
 
 
 --
--- TOC entry 3598 (class 2606 OID 16634)
--- Name: links links_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: links links_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.links
@@ -780,8 +1077,7 @@ ALTER TABLE ONLY public.links
 
 
 --
--- TOC entry 3600 (class 2606 OID 16632)
--- Name: links links_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: links links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.links
@@ -789,8 +1085,7 @@ ALTER TABLE ONLY public.links
 
 
 --
--- TOC entry 3572 (class 2606 OID 16546)
--- Name: messages messages_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: messages messages_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.messages
@@ -798,8 +1093,7 @@ ALTER TABLE ONLY public.messages
 
 
 --
--- TOC entry 3574 (class 2606 OID 16544)
--- Name: messages messages_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: messages messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.messages
@@ -807,8 +1101,7 @@ ALTER TABLE ONLY public.messages
 
 
 --
--- TOC entry 3589 (class 2606 OID 16619)
--- Name: reactions reactions_fid_type_target_cast_hash_target_url_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: reactions reactions_fid_type_target_cast_hash_target_url_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.reactions
@@ -816,8 +1109,7 @@ ALTER TABLE ONLY public.reactions
 
 
 --
--- TOC entry 3591 (class 2606 OID 16602)
--- Name: reactions reactions_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: reactions reactions_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.reactions
@@ -825,8 +1117,7 @@ ALTER TABLE ONLY public.reactions
 
 
 --
--- TOC entry 3593 (class 2606 OID 16600)
--- Name: reactions reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: reactions reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.reactions
@@ -834,8 +1125,7 @@ ALTER TABLE ONLY public.reactions
 
 
 --
--- TOC entry 3556 (class 2606 OID 16476)
--- Name: signers signers_fid_key_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: signers signers_fid_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.signers
@@ -843,26 +1133,7 @@ ALTER TABLE ONLY public.signers
 
 
 --
--- TOC entry 3637 (class 2606 OID 39166)
--- Name: signers_new signers_new_fid_key_key; Type: CONSTRAINT; Schema: public; Owner: replicator
---
-
-ALTER TABLE ONLY public.signers_new
-    ADD CONSTRAINT signers_new_fid_key_key UNIQUE (fid, key);
-
-
---
--- TOC entry 3639 (class 2606 OID 39164)
--- Name: signers_new signers_new_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
---
-
-ALTER TABLE ONLY public.signers_new
-    ADD CONSTRAINT signers_new_pkey PRIMARY KEY (id);
-
-
---
--- TOC entry 3558 (class 2606 OID 16474)
--- Name: signers signers_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: signers signers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.signers
@@ -870,8 +1141,7 @@ ALTER TABLE ONLY public.signers
 
 
 --
--- TOC entry 3614 (class 2606 OID 16702)
--- Name: storage_allocations storage_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: storage_allocations storage_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.storage_allocations
@@ -879,8 +1149,7 @@ ALTER TABLE ONLY public.storage_allocations
 
 
 --
--- TOC entry 3616 (class 2606 OID 16704)
--- Name: storage_allocations storage_chain_event_id_fid_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: storage_allocations storage_chain_event_id_fid_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.storage_allocations
@@ -888,8 +1157,7 @@ ALTER TABLE ONLY public.storage_allocations
 
 
 --
--- TOC entry 3607 (class 2606 OID 16680)
--- Name: user_data user_data_fid_type_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: user_data user_data_fid_type_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_data
@@ -897,8 +1165,7 @@ ALTER TABLE ONLY public.user_data
 
 
 --
--- TOC entry 3609 (class 2606 OID 16682)
--- Name: user_data user_data_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: user_data user_data_hash_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_data
@@ -906,8 +1173,7 @@ ALTER TABLE ONLY public.user_data
 
 
 --
--- TOC entry 3611 (class 2606 OID 16678)
--- Name: user_data user_data_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: user_data user_data_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_data
@@ -915,8 +1181,7 @@ ALTER TABLE ONLY public.user_data
 
 
 --
--- TOC entry 3561 (class 2606 OID 16508)
--- Name: username_proofs username_proofs_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: username_proofs username_proofs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.username_proofs
@@ -924,8 +1189,7 @@ ALTER TABLE ONLY public.username_proofs
 
 
 --
--- TOC entry 3563 (class 2606 OID 16510)
--- Name: username_proofs username_proofs_username_timestamp_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: username_proofs username_proofs_username_timestamp_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.username_proofs
@@ -933,8 +1197,7 @@ ALTER TABLE ONLY public.username_proofs
 
 
 --
--- TOC entry 3603 (class 2606 OID 16655)
--- Name: verifications verifications_pkey; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: verifications verifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.verifications
@@ -942,8 +1205,7 @@ ALTER TABLE ONLY public.verifications
 
 
 --
--- TOC entry 3605 (class 2606 OID 16657)
--- Name: verifications verifications_signer_address_fid_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
+-- Name: verifications verifications_signer_address_fid_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.verifications
@@ -951,256 +1213,913 @@ ALTER TABLE ONLY public.verifications
 
 
 --
--- TOC entry 3577 (class 1259 OID 16585)
--- Name: casts_active_fid_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_active_fid_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_active_fid_timestamp_index ON public.casts USING btree (fid, "timestamp") WHERE (deleted_at IS NULL);
 
 
 --
--- TOC entry 3580 (class 1259 OID 16587)
--- Name: casts_parent_hash_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_parent_hash_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_parent_hash_index ON public.casts USING btree (parent_hash) WHERE (parent_hash IS NOT NULL);
 
 
 --
--- TOC entry 3581 (class 1259 OID 16589)
--- Name: casts_parent_url_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_parent_url_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_parent_url_index ON public.casts USING btree (parent_url) WHERE (parent_url IS NOT NULL);
 
 
 --
--- TOC entry 3584 (class 1259 OID 16588)
--- Name: casts_root_parent_hash_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_root_parent_hash_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_root_parent_hash_index ON public.casts USING btree (root_parent_hash) WHERE (root_parent_hash IS NOT NULL);
 
 
 --
--- TOC entry 3585 (class 1259 OID 16590)
--- Name: casts_root_parent_url_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_root_parent_url_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_root_parent_url_index ON public.casts USING btree (root_parent_url) WHERE (root_parent_url IS NOT NULL);
 
 
 --
--- TOC entry 3586 (class 1259 OID 16586)
--- Name: casts_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: casts_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX casts_timestamp_index ON public.casts USING btree ("timestamp");
 
 
 --
--- TOC entry 3544 (class 1259 OID 16448)
--- Name: chain_events_block_hash_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: chain_events_block_hash_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX chain_events_block_hash_index ON public.chain_events USING hash (block_hash);
 
 
 --
--- TOC entry 3547 (class 1259 OID 16449)
--- Name: chain_events_block_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: chain_events_block_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX chain_events_block_timestamp_index ON public.chain_events USING btree (block_timestamp);
 
 
 --
--- TOC entry 3548 (class 1259 OID 16447)
--- Name: chain_events_fid_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: chain_events_fid_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX chain_events_fid_index ON public.chain_events USING btree (fid);
 
 
 --
--- TOC entry 3551 (class 1259 OID 16450)
--- Name: chain_events_transaction_hash_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: chain_events_transaction_hash_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX chain_events_transaction_hash_index ON public.chain_events USING hash (transaction_hash);
 
 
 --
--- TOC entry 3617 (class 1259 OID 16798)
--- Name: globaltrust_id_idx; Type: INDEX; Schema: public; Owner: replicator
+-- Name: fids_custody_address_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX fids_custody_address_index ON public.fids USING btree (custody_address);
+
+
+--
+-- Name: globaltrust_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX globaltrust_id_idx ON public.globaltrust USING btree (strategy_id);
 
 
 --
--- TOC entry 3626 (class 1259 OID 16799)
--- Name: k3l_frame_interaction_fid_action_type_url_idunique; Type: INDEX; Schema: public; Owner: replicator
+-- Name: k3l_cast_embed_url_mapping_cast_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_cast_id_index ON public.k3l_cast_embed_url_mapping USING btree (cast_id);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping_url_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_url_id_index ON public.k3l_cast_embed_url_mapping USING btree (url_id);
+
+
+--
+-- Name: k3l_casts_replica_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_cast_id_idx ON ONLY public.k3l_casts_replica USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_timestamp_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_timestamp_idx ON ONLY public.k3l_casts_replica USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m01_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m01_cast_id_idx ON public.k3l_casts_replica_y2024m01 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m01_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m01_cast_ts_idx ON public.k3l_casts_replica_y2024m01 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m02_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m02_cast_id_idx ON public.k3l_casts_replica_y2024m02 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m02_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m02_cast_ts_idx ON public.k3l_casts_replica_y2024m02 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m03_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m03_cast_id_idx ON public.k3l_casts_replica_y2024m03 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m03_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m03_cast_ts_idx ON public.k3l_casts_replica_y2024m03 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m04_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m04_cast_id_idx ON public.k3l_casts_replica_y2024m04 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m04_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m04_cast_ts_idx ON public.k3l_casts_replica_y2024m04 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m05_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m05_cast_id_idx ON public.k3l_casts_replica_y2024m05 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m05_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m05_cast_ts_idx ON public.k3l_casts_replica_y2024m05 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m06_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m06_cast_id_idx ON public.k3l_casts_replica_y2024m06 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m06_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m06_cast_ts_idx ON public.k3l_casts_replica_y2024m06 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m07_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m07_cast_id_idx ON public.k3l_casts_replica_y2024m07 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m07_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m07_cast_ts_idx ON public.k3l_casts_replica_y2024m07 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m08_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m08_cast_id_idx ON public.k3l_casts_replica_y2024m08 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m08_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m08_cast_ts_idx ON public.k3l_casts_replica_y2024m08 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_casts_replica_y2024m09_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m09_cast_id_idx ON public.k3l_casts_replica_y2024m09 USING btree (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_casts_replica_y2024m09_cast_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_casts_replica_y2024m09_cast_ts_idx ON public.k3l_casts_replica_y2024m09 USING btree (cast_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_cast_hash_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_cast_hash_idx ON ONLY public.k3l_fid_cast_action USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_fid_btree_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_fid_btree_idx ON ONLY public.k3l_fid_cast_action USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_timestamp_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_timestamp_idx ON ONLY public.k3l_fid_cast_action USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_action_ts_idx ON public.k3l_fid_cast_action_y2024m01 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_cast_id_idx ON public.k3l_fid_cast_action_y2024m01 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_fid_idx1 ON public.k3l_fid_cast_action_y2024m01 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_action_ts_idx ON public.k3l_fid_cast_action_y2024m02 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_cast_id_idx ON public.k3l_fid_cast_action_y2024m02 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_fid_idx1 ON public.k3l_fid_cast_action_y2024m02 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_action_ts_idx ON public.k3l_fid_cast_action_y2024m03 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_cast_id_idx ON public.k3l_fid_cast_action_y2024m03 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_fid_idx1 ON public.k3l_fid_cast_action_y2024m03 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_action_ts_idx ON public.k3l_fid_cast_action_y2024m04 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_cast_id_idx ON public.k3l_fid_cast_action_y2024m04 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_fid_idx1 ON public.k3l_fid_cast_action_y2024m04 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_action_ts_idx ON public.k3l_fid_cast_action_y2024m05 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_cast_id_idx ON public.k3l_fid_cast_action_y2024m05 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_fid_idx1 ON public.k3l_fid_cast_action_y2024m05 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_action_ts_idx ON public.k3l_fid_cast_action_y2024m06 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_cast_id_idx ON public.k3l_fid_cast_action_y2024m06 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_fid_idx1 ON public.k3l_fid_cast_action_y2024m06 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_action_ts_idx ON public.k3l_fid_cast_action_y2024m07 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_cast_id_idx ON public.k3l_fid_cast_action_y2024m07 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_fid_idx1 ON public.k3l_fid_cast_action_y2024m07 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_action_ts_idx ON public.k3l_fid_cast_action_y2024m08 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_cast_id_idx ON public.k3l_fid_cast_action_y2024m08 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_fid_idx1 ON public.k3l_fid_cast_action_y2024m08 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_action_ts_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_action_ts_idx ON public.k3l_fid_cast_action_y2024m09 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_cast_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_cast_id_idx ON public.k3l_fid_cast_action_y2024m09 USING hash (cast_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_fid_idx1 ON public.k3l_fid_cast_action_y2024m09 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_frame_interaction_fid_action_type_url_idunique; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX k3l_frame_interaction_fid_action_type_url_idunique ON public.k3l_frame_interaction USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
 
 
 --
--- TOC entry 3627 (class 1259 OID 16800)
--- Name: k3l_rank_idx; Type: INDEX; Schema: public; Owner: replicator
+-- Name: k3l_frame_interaction_url_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+
+
+--
+-- Name: k3l_rank_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
 
 
 --
--- TOC entry 3596 (class 1259 OID 16645)
--- Name: links_fid_target_fid_type_unique; Type: INDEX; Schema: public; Owner: replicator
+-- Name: k3l_rank_profile_id_strategy_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
+
+
+--
+-- Name: k3l_url_labels_earliest_cast_dt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_url_labels_earliest_cast_dt_idx ON public.k3l_url_labels USING btree (earliest_cast_dt);
+
+
+--
+-- Name: k3l_url_labels_latest_cast_dt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX k3l_url_labels_latest_cast_dt_idx ON public.k3l_url_labels USING btree (latest_cast_dt);
+
+
+--
+-- Name: links_fid_target_fid_type_unique; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX links_fid_target_fid_type_unique ON public.links USING btree (fid, target_fid, type) NULLS NOT DISTINCT;
 
 
 --
--- TOC entry 3570 (class 1259 OID 16558)
--- Name: messages_fid_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: messages_fid_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX messages_fid_index ON public.messages USING btree (fid);
 
 
 --
--- TOC entry 3575 (class 1259 OID 16559)
--- Name: messages_signer_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: messages_signer_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX messages_signer_index ON public.messages USING btree (signer);
 
 
 --
--- TOC entry 3576 (class 1259 OID 16557)
--- Name: messages_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: messages_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX messages_timestamp_index ON public.messages USING btree ("timestamp");
 
 
 --
--- TOC entry 3630 (class 1259 OID 23281)
--- Name: mv_channel_channel_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX mv_channel_channel_idx ON public.mv_channel_stats USING btree (channel);
-
-
---
--- TOC entry 3634 (class 1259 OID 23545)
--- Name: mv_channel_fids_all_channel_fid_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX mv_channel_fids_all_channel_fid_idx ON public.mv_channel_fids_all USING btree (channel, fid);
-
-
---
--- TOC entry 3631 (class 1259 OID 23356)
--- Name: mv_channel_fids_channel_fid_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX mv_channel_fids_channel_fid_idx ON public.mv_channel_fids USING btree (channel, fid);
-
-
---
--- TOC entry 3632 (class 1259 OID 23354)
--- Name: mv_channel_fids_channel_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX mv_channel_fids_channel_idx ON public.mv_channel_fids USING btree (channel);
-
-
---
--- TOC entry 3633 (class 1259 OID 23355)
--- Name: mv_channel_fids_fid_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX mv_channel_fids_fid_idx ON public.mv_channel_fids USING btree (fid);
-
-
---
--- TOC entry 3587 (class 1259 OID 16620)
--- Name: reactions_active_fid_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: reactions_active_fid_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX reactions_active_fid_timestamp_index ON public.reactions USING btree (fid, "timestamp") WHERE (deleted_at IS NULL);
 
 
 --
--- TOC entry 3594 (class 1259 OID 16621)
--- Name: reactions_target_cast_hash_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: reactions_target_cast_hash_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX reactions_target_cast_hash_index ON public.reactions USING btree (target_cast_hash) WHERE (target_cast_hash IS NOT NULL);
 
 
 --
--- TOC entry 3595 (class 1259 OID 16622)
--- Name: reactions_target_url_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: reactions_target_url_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX reactions_target_url_index ON public.reactions USING btree (target_url) WHERE (target_url IS NOT NULL);
 
 
 --
--- TOC entry 3554 (class 1259 OID 16497)
--- Name: signers_fid_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: signers_fid_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX signers_fid_index ON public.signers USING btree (fid);
 
 
 --
--- TOC entry 3635 (class 1259 OID 39167)
--- Name: signers_new_fid_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX signers_new_fid_idx ON public.signers_new USING btree (fid);
-
-
---
--- TOC entry 3640 (class 1259 OID 39168)
--- Name: signers_new_requester_fid_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX signers_new_requester_fid_idx ON public.signers_new USING btree (requester_fid);
-
-
---
--- TOC entry 3559 (class 1259 OID 16498)
--- Name: signers_requester_fid_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: signers_requester_fid_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX signers_requester_fid_index ON public.signers USING btree (requester_fid);
 
 
 --
--- TOC entry 3612 (class 1259 OID 16710)
--- Name: storage_allocations_fid_expires_at_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: storage_allocations_fid_expires_at_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX storage_allocations_fid_expires_at_index ON public.storage_allocations USING btree (fid, expires_at);
 
 
 --
--- TOC entry 3601 (class 1259 OID 16668)
--- Name: verifications_fid_timestamp_index; Type: INDEX; Schema: public; Owner: replicator
+-- Name: verifications_fid_timestamp_index; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX verifications_fid_timestamp_index ON public.verifications USING btree (fid, "timestamp");
 
 
 --
--- TOC entry 3641 (class 2606 OID 16801)
--- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_cast_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: replicator
+-- Name: k3l_casts_replica_y2024m01_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m01_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m01_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m01_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m02_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m02_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m02_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m02_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m03_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m03_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m03_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m03_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m04_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m04_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m04_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m04_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m05_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m05_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m05_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m05_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m06_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m06_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m06_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m06_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m07_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m07_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m07_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m07_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m08_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m08_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m08_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m08_cast_ts_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m09_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_cast_id_idx ATTACH PARTITION public.k3l_casts_replica_y2024m09_cast_id_idx;
+
+
+--
+-- Name: k3l_casts_replica_y2024m09_cast_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_casts_replica_timestamp_idx ATTACH PARTITION public.k3l_casts_replica_y2024m09_cast_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_cast_id_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_cast_id_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_fid_idx1;
+
+
+--
+-- Name: casts casts_hash_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.casts
+    ADD CONSTRAINT casts_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash) ON DELETE CASCADE;
+
+
+--
+-- Name: fids fids_chain_event_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fids
+    ADD CONSTRAINT fids_chain_event_id_foreign FOREIGN KEY (chain_event_id) REFERENCES public.chain_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: storage_allocations fids_chain_event_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.storage_allocations
+    ADD CONSTRAINT fids_chain_event_id_foreign FOREIGN KEY (chain_event_id) REFERENCES public.chain_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_cast_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
@@ -1208,15 +2127,60 @@ ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
 
 
 --
--- TOC entry 3642 (class 2606 OID 16806)
--- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_url_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: replicator
+-- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_url_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
     ADD CONSTRAINT k3l_cast_embed_url_mapping_url_id_fkey FOREIGN KEY (url_id) REFERENCES public.k3l_url_labels(url_id);
 
 
--- Completed on 2024-04-10 14:09:25 PDT
+--
+-- Name: reactions reactions_hash_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reactions
+    ADD CONSTRAINT reactions_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash) ON DELETE CASCADE;
+
+
+--
+-- Name: reactions reactions_target_hash_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reactions
+    ADD CONSTRAINT reactions_target_hash_foreign FOREIGN KEY (target_cast_hash) REFERENCES public.casts(hash) ON DELETE CASCADE;
+
+
+--
+-- Name: signers signers_add_chain_event_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.signers
+    ADD CONSTRAINT signers_add_chain_event_id_foreign FOREIGN KEY (add_chain_event_id) REFERENCES public.chain_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: signers signers_remove_chain_event_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.signers
+    ADD CONSTRAINT signers_remove_chain_event_id_foreign FOREIGN KEY (remove_chain_event_id) REFERENCES public.chain_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_data user_data_hash_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_data
+    ADD CONSTRAINT user_data_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash) ON DELETE CASCADE;
+
+
+--
+-- Name: verifications verifications_hash_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verifications
+    ADD CONSTRAINT verifications_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash) ON DELETE CASCADE;
+
 
 --
 -- PostgreSQL database dump complete
