@@ -58,7 +58,7 @@ def insert_fid_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: 
         BETWEEN max_cast_action.max_ts 
           AND max_cast_action.max_ts + interval '{interval_hours} hours'
     ORDER BY action_ts ASC
-    ON CONFLICT(cast_id, action_ts)
+    ON CONFLICT(cast_id, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """
   with psycopg2.connect(pg_dsn) as conn:
