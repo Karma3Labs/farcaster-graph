@@ -80,6 +80,7 @@ def insert_casts_replica(logger: logging.Logger, pg_dsn: str, limit: int):
       casts.hash as cast_hash,
       casts.text as cast_text,
       casts.parent_url as parent_url,
+      casts.fid as fid,
       casts.embeds as embeds,
       casts.mentions as mentions
     FROM casts, max_cast_ts
