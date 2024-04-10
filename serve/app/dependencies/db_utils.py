@@ -1,7 +1,7 @@
 import time
 import json
 from ..config import settings
-from ..models.frame_model import ScoreAgg, Weights, Voting
+from ..models.score_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -264,30 +264,50 @@ async def get_top_frames(
         weights: Weights,
         offset:int,
         limit:int,
+        recent:bool,
+        decay:bool,
         pool: Pool
 ):
     match agg:
         case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
         case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
         case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
+            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
+    if recent:
+        time_filter_sql = """
+            INNER JOIN k3l_url_labels as labels 
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+        """
+    else:
+        time_filter_sql=""
+
+    if decay:
+        # WARNING: This is still under development and can lead to high latency
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
 
     sql_query = f"""
     WITH weights AS
     (
         SELECT
             interactions.url,
-            interactions.fid,
             k3l_rank.score,
             case interactions.action_type
                 when 'cast' then {weights.cast}
                 when 'recast' then {weights.recast}
                 else {weights.like}
-                end as weight
+                end as weight,
+            {decay_sql} as decay_factor
         FROM k3l_frame_interaction as interactions
-            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        {time_filter_sql}
         INNER JOIN
             k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
     )
@@ -307,15 +327,35 @@ async def get_top_frames_with_cast_details(
         weights: Weights,
         offset:int,
         limit:int,
+        recent:bool,
+        decay:bool,
         pool: Pool
 ):
     match agg:
         case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
         case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
         case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
+            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
+    if recent:
+        time_filter_sql = """
+            INNER JOIN k3l_url_labels as labels 
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+        """
+    else:
+        time_filter_sql=""
+
+    if decay:
+        # WARNING: This is still under development and can lead to high latency
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
 
     sql_query = f"""
     WITH weights AS
@@ -328,9 +368,10 @@ async def get_top_frames_with_cast_details(
                 when 'cast' then {weights.cast}
                 when 'recast' then {weights.recast}
                 else {weights.like}
-                end as weight
+                end as weight,
+            {decay_sql} as decay_factor
         FROM k3l_frame_interaction as interactions
-            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        {time_filter_sql}
         INNER JOIN
             k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
     ),
@@ -371,6 +412,7 @@ async def get_neighbors_frames(
         voting: Voting,
         trust_scores: list[dict],
         limit:int,
+        recent:bool,
         pool: Pool
 ):
     match agg:
@@ -380,6 +422,14 @@ async def get_neighbors_frames(
             agg_sql = 'sum(power(weights.score * weights.weight,2))'
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(weights.score * weights.weight)'
+
+    if recent:
+        time_filter_sql = """
+            INNER JOIN k3l_url_labels as labels 
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+        """
+    else:
+        time_filter_sql=""
 
     match voting:
         case Voting.SINGLE:
@@ -412,7 +462,7 @@ async def get_neighbors_frames(
             {wt_score_sql} as score,
             {wt_weight_sql} as weight
         FROM k3l_frame_interaction as interactions
-            INNER JOIN k3l_url_labels as labels on (labels.url_id = interactions.url_id)
+        {time_filter_sql}
         INNER JOIN json_to_recordset($1::json)
             AS trust(fid int, score numeric) ON (trust.fid = interactions.fid)
         {wt_group_by_sql}
@@ -432,7 +482,7 @@ async def get_neighbors_frames(
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
 
-async def get_casts_from_trusted(
+async def get_neighbors_casts(
         agg: ScoreAgg,
         weights: Weights,
         trust_scores: list[dict],
@@ -441,48 +491,48 @@ async def get_casts_from_trusted(
 ):
     match agg:
         case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
+            agg_sql = 'sqrt(avg(power(scores.score,2)))'
         case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
+            agg_sql = 'sum(power(scores.score,2))'
         case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
+            agg_sql = 'sum(scores.score)'
 
     sql_query = f"""
-    with casts_from_neighbors as (
-        select
-            hash
-        from casts
-            INNER JOIN json_to_recordset($1::json)
-                AS trust(fid int, score numeric) ON (trust.fid = casts.fid)
-    ), weights AS
-        (
+        with scores as (
             SELECT
-                reactions.target_cast_hash as cast_hash,
-                reactions.target_cast_fid as fid,
-                k3l_rank.score as score,
-                case reactions.type
-                    when 1 then {weights.like}
-                    when 2 then {weights.recast}
-                    else {weights.like}
-                end as weight
-            FROM reactions
-            INNER JOIN
-                casts_from_neighbors on (casts_from_neighbors.hash = reactions.target_cast_hash)
-            INNER JOIN
-                k3l_rank on (k3l_rank.profile_id = reactions.target_cast_fid and k3l_rank.strategy_id=3)
-            INNER JOIN json_to_recordset($1::json)
-                AS trust(fid int, score numeric) ON (trust.fid = reactions.target_cast_fid)
+                ci.cast_id,
+                SUM(
+                    (
+                        ({weights.cast} * trust.score * ci.casted) 
+                        + ({weights.reply} * trust.score * ci.replied)
+                        + ({weights.recast} * trust.score * ci.recasted)
+                        + ({weights.like} * trust.score * ci.liked)
+                    )
+                    *
+                    power(
+                        1-(1/365::numeric),
+                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60 * 24))::numeric
+                    )
+                ) as score
+            FROM json_to_recordset($1::json)
+                AS trust(fid int, score numeric) 
+            INNER JOIN k3l_fid_cast_action as ci
+                ON (ci.fid = trust.fid)
+            WHERE ci.action_ts BETWEEN now() - interval '30 days' 
+  											AND now() - interval '0 days'
+            GROUP BY ci.cast_id
+            LIMIT 100000
         )
     SELECT
-        distinct('0x' || encode( weights.cast_hash, 'hex')) as hash,
-        weights.fid,
-        {agg_sql} as score,
-        casts.text
-
-    FROM weights
-    INNER JOIN casts on (casts.hash = weights.cast_hash)
-    GROUP BY weights.cast_hash, weights.fid, casts.text
-    ORDER by score DESC
+        '0x' || encode( any_value(casts.hash), 'hex') as cast_hash,
+        any_value(casts.text) as cast_text,
+        any_value(casts.embeds) as cast_embeds,
+        any_value(casts.fid) as cast_fid,
+        {agg_sql} as cast_score
+    FROM casts
+    INNER JOIN scores on (casts.id = scores.cast_id)
+    GROUP BY casts.hash
+    ORDER by cast_score DESC
     LIMIT $2
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)

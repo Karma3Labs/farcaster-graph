@@ -5,7 +5,7 @@ from loguru import logger
 from asyncpg.pool import Pool
 
 from ..models.graph_model import Graph
-from ..models.frame_model import ScoreAgg, Weights, Voting
+from ..models.score_model import ScoreAgg, Weights, Voting
 from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["Frames"])
@@ -18,6 +18,7 @@ async def get_top_frames(
   details: Annotated[bool | None, Query()] = False,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  recent: Annotated[bool | None, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -30,13 +31,16 @@ async def get_top_frames(
     to like, cast and recast actions by profiles. \n
   Parameter 'details' is used to specify whether 
     the original cast list should be returned for each frame in the ranking. \n
+  Parameter 'recent' is used to specify whether or not 
+    the age of the cast interaction should be considered.\n
   (Note: cast hashes and warpcast urls are returned in chronological order ie., **oldest first**)
   (*NOTE*: `details=True` will result in a few extra hundred milliseconds in response times).\n
   (**NOTE**: the API returns upto a max of 100 cast hashes and 100 warpcast urls when details=True).\n
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=rms, weights='L1C10R5', details=False, offset=0 and limit=100 i.e., returns top 100 frame urls.
+  By default, agg=rms, weights='L1C10R5', details=False, offset=0, limit=100 and recent=True
+    i.e., returns recent top 100 frame urls.
   """
   try:
     weights = Weights.from_str(weights)
@@ -44,9 +48,21 @@ async def get_top_frames(
     raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
   
   if details:
-    frames = await db_utils.get_top_frames_with_cast_details(agg, weights, offset=offset, limit=limit, pool=pool)
+    frames = await db_utils.get_top_frames_with_cast_details(agg, 
+                                                             weights, 
+                                                             offset=offset, 
+                                                             limit=limit, 
+                                                             recent=recent, 
+                                                             decay=False, # True results in high latency
+                                                             pool=pool)
   else :
-    frames = await db_utils.get_top_frames(agg, weights, offset=offset, limit=limit, pool=pool)
+    frames = await db_utils.get_top_frames(agg, 
+                                           weights, 
+                                           offset=offset, 
+                                           limit=limit, 
+                                           recent=recent, 
+                                           decay=False, # True results in high latency
+                                           pool=pool)
   return {"result": frames}
 
 @router.post("/personalized/rankings/fids")
@@ -59,6 +75,7 @@ async def get_personalized_frames_for_fids(
   voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  recent: Annotated[bool | None, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph)
 ):
@@ -92,6 +109,7 @@ async def get_personalized_frames_for_fids(
                                                voting, 
                                                trust_scores=trust_scores, 
                                                limit=limit, 
+                                               recent=recent,
                                                pool=pool)
   return {"result": frames}
 
@@ -105,6 +123,7 @@ async def get_personalized_frames_for_handles(
   voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  recent: Annotated[bool | None, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph)
 ):
@@ -144,6 +163,7 @@ async def get_personalized_frames_for_handles(
                                                voting,
                                                trust_scores=trust_scores, 
                                                limit=limit, 
+                                               recent=recent,
                                                pool=pool)
   return {"result": frames}
 

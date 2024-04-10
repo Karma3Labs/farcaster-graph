@@ -110,7 +110,7 @@ app.include_router(metadata_router, prefix='/metadata')
 app.include_router(lt_router, prefix='/scores/personalized')
 app.include_router(gt_router, prefix='/scores/global')
 app.include_router(frame_router, prefix='/frames')
-# app.include_router(cast_router, prefix='/casts')
+app.include_router(cast_router, prefix='/casts')
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")

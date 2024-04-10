@@ -68,7 +68,7 @@ curl -X 'POST' 'http://localhost:8000/metadata/addresses/fids' -H 'accept: appli
 
 curl -X 'GET' 'http://localhost:8000/frames/global/rankings' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
-curl -X 'GET' 'http://localhost:8000/frames/global/rankings?details=True&agg=sumsquare&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
+curl -X 'GET' 'http://localhost:8000/frames/global/rankings?recent=False&details=True&agg=sumsquare&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
 
 ## Personalized Frames Rankings
 
@@ -76,6 +76,10 @@ curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids' -H 'acc
 
 curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=sumsquare&weights=L1C10R5&voting=single&k=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
+## Personalized Cast Feed
+curl -X 'GET' 'http://localhost:8000/casts/personalized/2' 
+
+curl -X 'GET' 'http://localhost:8000/casts/personalized/2?agg=sumsquare&weights=L1C1R1Y1&k=3&limit=10' 
 
 
 # Useful Dune Queries
