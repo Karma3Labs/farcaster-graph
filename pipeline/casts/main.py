@@ -34,6 +34,10 @@ async def main(daemon: bool):
                                           pg_dsn,
                                           settings.CASTS_BATCH_SIZE)
 
+    cast_db_utils.insert_casts_replica(logger,
+                                          pg_dsn,
+                                          settings.CASTS_BATCH_SIZE)
+
     if daemon:
       logger.info(f"sleeping for {sleep_duration}s")
       await asyncio.sleep(sleep_duration)

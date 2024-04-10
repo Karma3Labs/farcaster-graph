@@ -65,3 +65,29 @@ def insert_fid_cast_action(logger: logging.Logger, pg_dsn: str, limit: int):
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
 
+@Timer(name="insert_casts_replica")
+def insert_casts_replica(logger: logging.Logger, pg_dsn: str, limit: int):
+  insert_sql = f"""
+    INSERT INTO k3l_casts_replica
+    WITH max_cast_ts AS (
+      SELECT 
+        coalesce(max(cast_ts),now() - interval '90 days')  as max_ts
+      FROM k3l_casts_replica
+    )
+    SELECT 
+      casts.id as cast_id,
+      casts.timestamp as cast_ts,
+      casts.hash as cast_hash,
+      casts.text as cast_text,
+      casts.parent_url as parent_url,
+      casts.embeds as embeds,
+      casts.mentions as mentions
+    FROM casts, max_cast_ts
+    WHERE casts.timestamp BETWEEN max_cast_ts.max_ts AND now()
+    ORDER BY casts.timestamp 
+    LIMIT {limit}
+  """
+  with psycopg2.connect(pg_dsn) as conn:
+    with conn.cursor() as cursor:
+      logger.info(f"Executing: {insert_sql}")
+      cursor.execute(insert_sql)
