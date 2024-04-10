@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     CASTS_SLEEP_SECS: int = 10
     CASTS_BATCH_SIZE: int = 100_000
+    CASTS_BATCH_INTERVAL_HRS: int = 2
 
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 

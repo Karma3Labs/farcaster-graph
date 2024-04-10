@@ -32,7 +32,7 @@ async def main(daemon: bool):
 
     cast_db_utils.insert_fid_cast_action(logger,
                                           pg_dsn,
-                                          settings.CASTS_BATCH_SIZE)
+                                          settings.CASTS_BATCH_INTERVAL_HRS)
 
     cast_db_utils.insert_casts_replica(logger,
                                           pg_dsn,
