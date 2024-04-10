@@ -10,7 +10,6 @@ from ..dependencies import graph, db_pool, db_utils
 router = APIRouter(tags=["Personalized OpenRank Scores"])
 
 @router.post("/engagement/addresses")
-@router.get("/engagement/addresses")
 async def get_personalized_engagement_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
@@ -39,7 +38,6 @@ async def get_personalized_engagement_for_addresses(
   return {"result": res}
 
 @router.post("/following/addresses")
-@router.get("/following/addresses")
 async def get_personalized_following_for_addresses(  
   # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
   addresses: list[str],
@@ -94,7 +92,6 @@ async def _get_personalized_scores_for_addresses(
   return res  
 
 @router.post("/engagement/handles")
-@router.get("/engagement/handles")
 async def get_personalized_engagement_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
@@ -121,7 +118,6 @@ async def get_personalized_engagement_for_handles(
   return {"result": res}
 
 @router.post("/following/handles")
-@router.get("/following/handles")
 async def get_personalized_following_for_handles(  
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
   handles: list[str],
