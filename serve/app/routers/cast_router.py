@@ -11,7 +11,8 @@ from ..config import settings
 
 router = APIRouter(tags=["Casts"])
 
-@router.get("/personalized/popular/{fid}")
+# turning off this API due to SQL query latency issues.
+# @router.get("/personalized/popular/{fid}")
 async def get_casts_for_fid(
   fid: int,
   agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
