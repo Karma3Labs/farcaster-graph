@@ -555,6 +555,10 @@ async def get_recent_neighbors_casts(
     sql_query = f"""
         SELECT
             '0x' || encode( casts.cast_hash, 'hex') as hash,
+            'https://warpcast.com/'||
+            fnames.username||
+            '/0x' ||
+            substring(encode(casts.cast_hash, 'hex'), 1, 8) as url,
             casts.cast_text as text,
             casts.embeds,
             casts.mentions,  
@@ -569,6 +573,7 @@ async def get_recent_neighbors_casts(
                 ON (casts.fid = trust.fid
                     AND casts.cast_ts BETWEEN now() - interval '30 days' 
   										AND now())
+        INNER JOIN fnames ON (fnames.fid = casts.fid)
         ORDER BY casts.cast_ts DESC
         OFFSET $2
         LIMIT $3
