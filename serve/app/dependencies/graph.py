@@ -93,7 +93,7 @@ async def get_neighbors_scores(
   # rename i and v to fid and score respectively
   # also, filter out input fids
   fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
-
+  logger.debug(fid_scores)
   return fid_scores
 
 async def get_neighbors_list(  
