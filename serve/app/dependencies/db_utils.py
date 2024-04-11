@@ -517,9 +517,9 @@ async def get_neighbors_casts(
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric) 
             INNER JOIN k3l_fid_cast_action as ci
-                ON (ci.fid = trust.fid)
-            WHERE ci.action_ts BETWEEN now() - interval '30 days' 
-  											AND now() - interval '0 days'
+                ON (ci.fid = trust.fid
+                    AND ci.action_ts BETWEEN now() - interval '10 days' 
+  										AND now() - interval '0 days'
             GROUP BY ci.cast_id, ci.fid
             LIMIT 100000
         )
