@@ -396,7 +396,7 @@ async def get_top_frames_with_cast_details(
             '/0x' ||
             substring(encode(casts.hash, 'hex'), 1, 8)
         order by casts.created_at
-        ))[1:100] as warpcast_urls
+        ))[1:$2] as warpcast_urls
     FROM top_frames
 	INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.url_id = top_frames.url_id)
     INNER JOIN casts on (casts.id = url_map.cast_id)
@@ -491,14 +491,14 @@ async def get_neighbors_casts(
 ):
     match agg:
         case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(scores.score,2)))'
+            agg_sql = 'sqrt(avg(power(fid_scores.score,2)))'
         case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(scores.score,2))'
+            agg_sql = 'sum(power(fid_scores.score,2))'
         case ScoreAgg.SUM | _:
-            agg_sql = 'sum(scores.score)'
+            agg_sql = 'sum(fid_scores.score)'
 
     sql_query = f"""
-        with scores as (
+        with fid_scores as (
             SELECT
                 ci.cast_id,
                 SUM(
@@ -520,72 +520,29 @@ async def get_neighbors_casts(
                 ON (ci.fid = trust.fid)
             WHERE ci.action_ts BETWEEN now() - interval '30 days' 
   											AND now() - interval '0 days'
-            GROUP BY ci.cast_id
+            GROUP BY ci.cast_id, ci.fid
             LIMIT 100000
         )
-    SELECT
-        '0x' || encode( any_value(casts.hash), 'hex') as cast_hash,
-        any_value(casts.text) as cast_text,
-        any_value(casts.embeds) as cast_embeds,
-        any_value(casts.fid) as cast_fid,
-        {agg_sql} as cast_score
-    FROM casts
-    INNER JOIN scores on (casts.id = scores.cast_id)
-    GROUP BY casts.hash
-    ORDER by cast_score DESC
-    LIMIT $2
-    """
-    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
-
-async def get_ranked_casts_from_channel(
-        channel_id: str,
-        agg: ScoreAgg,
-        weights: Weights,
-        trust_scores: list[dict],
-        limit:int,
-        pool: Pool
-):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
-        case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
-
-    sql_query = f"""
-    with casts_from_channel as (
-        select
-            hash
-        from casts where root_parent_url = 'https://warpcast.com/~/channel/{channel_id}'
-    ), weights AS
-        (
+        , scores AS (
             SELECT
-                reactions.target_cast_hash as cast_hash,
-                reactions.target_cast_fid as fid,
-                k3l_rank.score as score,
-                case reactions.type
-                    when 1 then {weights.like}
-                    when 2 then {weights.recast}
-                    else {weights.like}
-                end as weight
-            FROM reactions
-            INNER JOIN
-                casts_from_channel on (casts_from_channel.hash = reactions.target_cast_hash)
-            INNER JOIN
-                k3l_rank on (k3l_rank.profile_id = reactions.target_cast_fid and k3l_rank.strategy_id=3)
-            INNER JOIN json_to_recordset($1::json)
-                AS trust(fid int, score numeric) ON (trust.fid = reactions.target_cast_fid)
-        )
+                cast_id,
+                {agg_sql} as cast_score
+                FROM fid_scores
+                GROUP BY cast_id
+                ORDER BY cast_score DESC
+                LIMIT $2 
+            )
     SELECT
-        distinct('0x' || encode( weights.cast_hash, 'hex')) as hash,
-        weights.fid,
-        {agg_sql} as score,
-        casts.text
-    FROM weights
-    INNER JOIN casts on (casts.hash = weights.cast_hash)
-    GROUP BY weights.cast_hash, weights.fid, casts.text
-    ORDER by score DESC
-    LIMIT $2
+        '0x' || encode(casts.cast_hash, 'hex') as cast_hash,
+        casts.cast_text,
+        casts.embeds as cast_embeds,
+        casts.fid as cast_fid,
+        cast_score
+    FROM k3l_casts_replica as casts
+    INNER JOIN scores on (casts.cast_id = scores.cast_id 
+                            AND casts.cast_ts BETWEEN now() - interval '30 days' 
+  											AND now() - interval '0 days')
+    ORDER by cast_score DESC
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+
