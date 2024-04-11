@@ -482,7 +482,7 @@ async def get_neighbors_frames(
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
 
-async def get_neighbors_casts(
+async def get_popular_neighbors_casts(
         agg: ScoreAgg,
         weights: Weights,
         trust_scores: list[dict],
@@ -519,7 +519,7 @@ async def get_neighbors_casts(
             INNER JOIN k3l_fid_cast_action as ci
                 ON (ci.fid = trust.fid
                     AND ci.action_ts BETWEEN now() - interval '10 days' 
-  										AND now() - interval '0 days'
+  										AND now() - interval '10 minutes')
             GROUP BY ci.cast_id, ci.fid
             LIMIT 100000
         )
@@ -541,8 +541,37 @@ async def get_neighbors_casts(
     FROM k3l_casts_replica as casts
     INNER JOIN scores on (casts.cast_id = scores.cast_id 
                             AND casts.cast_ts BETWEEN now() - interval '30 days' 
-  											AND now() - interval '0 days')
+  											AND now() - interval '10 minutes')
     ORDER by cast_score DESC
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+
+async def get_recent_neighbors_casts(
+        trust_scores: list[dict],
+        offset:int,
+        limit:int,
+        pool: Pool
+):
+    sql_query = f"""
+        SELECT
+            '0x' || encode( casts.cast_hash, 'hex') as hash,
+            casts.cast_text as text,
+            casts.embeds,
+            casts.mentions,  
+            casts.fid,
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - cast_ts)) / (60 * 60 * 24))::numeric
+            )* trust.score as score
+        FROM k3l_casts_replica as casts 
+        INNER JOIN  json_to_recordset($1::json)
+            AS trust(fid int, score numeric) 
+                ON (casts.fid = trust.fid
+                    AND casts.cast_ts BETWEEN now() - interval '10 days' 
+  										AND now() - interval '10 minutes')
+        ORDER BY casts.cast_ts DESC
+        OFFSET $2
+        LIMIT $3
+    """
+    return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
