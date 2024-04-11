@@ -567,8 +567,8 @@ async def get_recent_neighbors_casts(
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric) 
                 ON (casts.fid = trust.fid
-                    AND casts.cast_ts BETWEEN now() - interval '10 days' 
-  										AND now() - interval '10 minutes')
+                    AND casts.cast_ts BETWEEN now() - interval '30 days' 
+  										AND now())
         ORDER BY casts.cast_ts DESC
         OFFSET $2
         LIMIT $3
