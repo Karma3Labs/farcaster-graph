@@ -77,9 +77,9 @@ curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids' -H 'acc
 curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=sumsquare&weights=L1C10R5&voting=single&k=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
 
 ## Personalized Cast Feed
-curl -X 'GET' 'http://localhost:8000/casts/personalized/2' 
+curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/2' 
 
-curl -X 'GET' 'http://localhost:8000/casts/personalized/2?agg=sumsquare&weights=L1C1R1Y1&k=3&limit=10' 
+curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/2?k=3&offset=0&limit=10' 
 
 
 # Useful Dune Queries
