@@ -119,13 +119,15 @@ async def main(localtrust_pkl: Path, channel_ids: list[str]):
     # rename i and v to fid and score respectively
     fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in globaltrust]
 
-
-
+# How to run this program:
+# cd farcaster-graph/pipeline
+# source .venv/bin/activate
+# python3 -m channels.main -i degen farcaster base -l ../serve/samples/fc_engagement_fid_df.pkl
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("-i", "--ids",
                   nargs='+',
-                  help="list of channel ids",
+                  help="list of channel ids. For example, -i farcaster base degen",
                   required=True)
   parser.add_argument("-l", "--localtrust",
                     help="input localtrust pkl file",
