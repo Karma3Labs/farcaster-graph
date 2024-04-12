@@ -11,3 +11,4 @@ timeloop-ng==1.0.0
 beautifulsoup4==4.12.3
 aiohttp==3.9.3
 tldextract==5.1.1
+niquests==3.5.5
