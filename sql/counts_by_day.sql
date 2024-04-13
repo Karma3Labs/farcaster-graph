@@ -38,9 +38,9 @@ SELECT
   COALESCE(verifications_count, 0) AS verifications_count
 FROM casts_counts casts
 FULL OUTER JOIN links_counts links ON casts.day = links.day
-FULL OUTER JOIN messages_counts messages ON COALESCE(casts.day, links.day, reactions.day, verifications.day) = messages.day
 FULL OUTER JOIN reactions_counts reactions ON COALESCE(casts.day, links.day) = reactions.day
-FULL OUTER JOIN user_data_counts user_data ON COALESCE(casts.day, links.day, reactions.day, verifications.day, messages.day) = user_data.day
 FULL OUTER JOIN verifications_counts verifications ON COALESCE(casts.day, links.day, reactions.day) = verifications.day
+FULL OUTER JOIN messages_counts messages ON COALESCE(casts.day, links.day, reactions.day, verifications.day) = messages.day
+FULL OUTER JOIN user_data_counts user_data ON COALESCE(casts.day, links.day, reactions.day, verifications.day, messages.day) = user_data.day
 ORDER BY day DESC
 LIMIT 1000;
