@@ -10,22 +10,9 @@ class IJVSql(SQL):
     AND target_cast_fid IS NOT NULL
     GROUP BY i, j
     """
-  LIKES_NEYNAR = """
-    SELECT fid as i, target_cast_fid as j, count(1) as likes_v 
-    FROM mv_reactions 
-    WHERE type=1
-    AND target_cast_fid IS NOT NULL
-    GROUP BY i, j
-    """
   REPLIES = """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
-    WHERE parent_hash IS NOT NULL
-    GROUP by i, j
-    """
-  REPLIES_NEYNAR = """
-    SELECT fid as i, parent_fid as j, count(1) as replies_v 
-    FROM mv_casts
     WHERE parent_hash IS NOT NULL
     GROUP by i, j
     """
@@ -39,16 +26,6 @@ class IJVSql(SQL):
 		FROM mention
 		GROUP BY i, j
     """
-  MENTIONS_NEYNAR = """
-    WITH mention AS (
-			SELECT fid as author_fid, mention.value as mention_fid 
-			FROM mv_casts, json_array_elements_text(mv_casts.mentions) as mention
-		)
-		SELECT 
-			author_fid as i, mention_fid as j, count(1) as mentions_v
-		FROM mention
-		GROUP BY i, j
-    """
   RECASTS = """
     SELECT fid as i, target_cast_fid as j, count(1) as recasts_v 
     FROM reactions 
@@ -56,22 +33,7 @@ class IJVSql(SQL):
     AND target_cast_fid IS NOT NULL
     GROUP BY i, j
     """
-  RECASTS_NEYNAR = """
-    SELECT fid as i, target_cast_fid as j, count(1) as recasts_v 
-    FROM mv_reactions 
-    WHERE type=2
-    AND target_cast_fid IS NOT NULL
-    GROUP BY i, j
-    """
   FOLLOWS = """
-    SELECT 
-        follower_fid as i, 
-        following_fid as j,
-        1 as follows_v
-    FROM mv_follow_links 
-    ORDER BY i, j, follows_v desc
-    """
-  FOLLOWS_NEYNAR = """
     SELECT 
         follower_fid as i, 
         following_fid as j,

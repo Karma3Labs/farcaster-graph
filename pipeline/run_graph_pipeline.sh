@@ -23,8 +23,7 @@ if [ -z "$OUT_DIR" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]; then
 fi
 
 
-#source $WORK_DIR/.env
-source $WORK_DIR/.env_neynar
+source $WORK_DIR/.env
 
 DB_HOST=${DB_HOST:-127.0.0.1}
 DB_PORT=${DB_PORT:-5432}
