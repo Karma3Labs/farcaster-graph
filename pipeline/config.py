@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
     USE_NEYNAR: bool = False
+    IS_TEST: bool = False
 
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = '[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s'

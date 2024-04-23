@@ -29,23 +29,18 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   return _pretrust_toptier_df
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
-  query = IJVSql.LIKES
-  if settings.USE_NEYNAR:
-    query = IJVSql.LIKES_NEYNAR
 
   global _interactions_df
 
   if _interactions_df is not None:
     return _interactions_df
 
+  query = IJVSql.LIKES_NEYNAR if settings.USE_NEYNAR else IJVSql.LIKES
   _interactions_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, query)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
   query = IJVSql.REPLIES
-  if settings.USE_NEYNAR:
-    query = IJVSql.REPLIES_NEYNAR
-
   with Timer(name="merge_replies"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, query),
@@ -55,10 +50,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.MENTIONS
-  if settings.USE_NEYNAR:
-    query = IJVSql.MENTIONS_NEYNAR
-
+  query = IJVSql.MENTIONS_NEYNAR if settings.USE_NEYNAR else IJVSql.MENTIONS
   with Timer(name="merge_mentions"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, query),
@@ -68,10 +60,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.RECASTS
-  if settings.USE_NEYNAR:
-    query = IJVSql.RECASTS_NEYNAR
-
+  query = IJVSql.RECASTS_NEYNAR if settings.USE_NEYNAR else IJVSql.RECASTS
   with Timer(name="merge_recasts"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, query),
@@ -81,10 +70,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.FOLLOWS
-  if settings.USE_NEYNAR:
-    query = IJVSql.FOLLOWS_NEYNAR
-
+  query = IJVSql.FOLLOWS_NEYNAR if settings.USE_NEYNAR else IJVSql.FOLLOWS
   with Timer(name="merge_follows"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, query),
