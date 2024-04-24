@@ -16,9 +16,11 @@ WITH max_cast_dt AS (
       	on (labels.url = ems->>'url'
             AND json_array_length(embeds) > 0
     				AND ems->'url' IS NOT NULL
-    				AND ems->>'url' NOT LIKE ALL(ARRAY['https://i.imgur.com/%',
-                                   'https://youtu.be/%',
-                                   'https://www.youtube.com/%',
-                                      '%.png', '%.gif', '%.pdf', '%.jpg', '%.jpeg'])  
+    				AND ems->>'url' NOT LIKE ALL(ARRAY[
+                          'https://i.imgur.com/%',
+                          'https://youtu.be/%',
+                          'https://www.youtube.com/%',
+                          'https://imagedelivery.net/%',
+                          '%.png', '%.gif', '%.pdf', '%.jpg', '%.jpeg', '%.mp4', '%.m3u8'])  
     				AND created_at >= max_cast_dt.dt
             )

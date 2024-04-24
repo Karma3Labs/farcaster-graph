@@ -22,8 +22,10 @@ WHERE
   labels.url_id IS NULL
 	AND json_array_length(embeds) > 0
   AND ems->'url' IS NOT NULL
-  AND ems->>'url' NOT LIKE ALL(ARRAY['https://i.imgur.com/%',
-                         'https://youtu.be/%',
-                         'https://www.youtube.com/%',
-                         '%.png', '%.gif', '%.pdf', '%.jpg', '%.jpeg'])
+  AND ems->>'url' NOT LIKE ALL(ARRAY[
+                          'https://i.imgur.com/%',
+                          'https://youtu.be/%',
+                          'https://www.youtube.com/%',
+                          'https://imagedelivery.net/%',
+                          '%.png', '%.gif', '%.pdf', '%.jpg', '%.jpeg', '%.mp4', '%.m3u8'])
 GROUP BY ems->>'url'
