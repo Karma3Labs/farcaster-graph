@@ -10,7 +10,7 @@ WITH max_cast_dt AS (
       casts.id as cast_id
   FROM casts 
     cross join lateral jsonb_array_elements(casts.embeds) as ems
-    inner join max_cast_dt on (casts.created_at >= max_cast_dt.dt AND casts.deleted_at IS NOT NULL)
+    inner join max_cast_dt on (casts.created_at >= max_cast_dt.dt AND casts.deleted_at IS NULL)
      inner join 
      	k3l_url_labels as labels 
       	on (labels.url = ems->>'url'
