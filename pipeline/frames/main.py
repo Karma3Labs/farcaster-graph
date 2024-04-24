@@ -62,7 +62,7 @@ async def main(daemon: bool):
     if len(url_records) > 0:
       http_timeout = aiohttp.ClientTimeout(total=settings.FRAMES_SCRAPE_TIMEOUT_SECS)
       connector = aiohttp.TCPConnector(ttl_dns_cache=3000, limit=settings.FRAMES_SCRAPE_CONCURRENCY)
-      http_conn_pool = aiohttp.ClientSession(connector=connector, timeout=http_timeout)
+      http_conn_pool = aiohttp.ClientSession(connector=connector)
       tasks = []
       with Timer(name="categorize_url"):
         async with http_conn_pool:
@@ -72,7 +72,8 @@ async def main(daemon: bool):
                   scrape_utils.categorize_url(logger=logger,
                                               url_id=record[0],
                                               url=record[1],
-                                              session=http_conn_pool)))
+                                              session=http_conn_pool,
+                                              timeout=http_timeout)))
           # end task append loop
           url_categories = await asyncio.gather(*tasks, return_exceptions=True)
         #end http_conn_pool
