@@ -77,7 +77,7 @@ wait $!
 log "Inserting localtrust stats"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-  -f graph/export_localtrust_daily_stats.sql
+  -f globaltrust/export_localtrust_daily_stats.sql
 
 wait $!
 
