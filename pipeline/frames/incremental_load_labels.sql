@@ -11,7 +11,7 @@ SELECT
    	min(created_at) as earliest_cast_dt
 FROM
 		casts
-  		cross join lateral json_array_elements(casts.embeds) as ems
+  		cross join lateral jsonb_array_elements(casts.embeds) as ems
    inner join max_cast_dt on (casts.created_at >= max_cast_dt.dt)
    left join 
    	k3l_url_labels as labels 
@@ -20,7 +20,7 @@ FROM
           )
 WHERE 
   labels.url_id IS NULL
-	AND json_array_length(embeds) > 0
+	AND jsonb_array_length(embeds) > 0
   AND ems->'url' IS NOT NULL
   AND ems->>'url' NOT LIKE ALL(ARRAY[
                           'https://i.imgur.com/%',
