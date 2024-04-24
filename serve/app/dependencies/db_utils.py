@@ -65,19 +65,19 @@ async def get_handle_fid_for_addresses(
     sql_query = """
     (
         SELECT
-            '0x' || encode(verifications.signer_address, 'hex') as address,
-            fnames.username as fname,
+            verifications.claim->'address' as address,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         WHERE
-            '0x' || encode(verifications.signer_address, 'hex') = ANY($1::text[])
+            verifications.claim->'address' = ANY($1::text[])
     UNION
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.username as fname,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
@@ -100,7 +100,7 @@ async def get_all_fid_addresses_for_handles(
     (
         SELECT
             '0x' || encode(custody_address, 'hex') as address,
-            fnames.username as fname,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
@@ -108,7 +108,7 @@ async def get_all_fid_addresses_for_handles(
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         LEFT JOIN username_proofs as proofs ON (proofs.fid = fnames.fid)
         WHERE
-            (fnames.username = ANY($1::text[]))
+            (fnames.fname = ANY($1::text[]))
             OR
             (user_data.value = ANY($1::text[]))
             OR
@@ -116,7 +116,7 @@ async def get_all_fid_addresses_for_handles(
     UNION
         SELECT
             '0x' || encode(signer_address, 'hex') as address,
-            fnames.username as fname,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
@@ -124,7 +124,7 @@ async def get_all_fid_addresses_for_handles(
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         LEFT JOIN username_proofs as proofs ON (proofs.fid = fnames.fid)
         WHERE
-            (fnames.username = ANY($1::text[]))
+            (fnames.fname = ANY($1::text[]))
             OR
             (user_data.value = ANY($1::text[]))
             OR
@@ -142,7 +142,7 @@ async def get_unique_fid_metadata_for_handles(
     sql_query = """
     SELECT
         '0x' || encode(any_value(custody_address), 'hex') as address,
-        any_value(fnames.username) as fname,
+        any_value(fnames.fname) as fname,
         any_value(user_data.value) as username,
         fids.fid as fid
     FROM fids
@@ -150,7 +150,7 @@ async def get_unique_fid_metadata_for_handles(
     LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
     LEFT JOIN username_proofs as proofs ON (proofs.fid = fids.fid)
     WHERE
-        (fnames.username = ANY($1::text[]))
+        (fnames.fname = ANY($1::text[]))
         OR
         (user_data.value = ANY($1::text[]))
         OR
@@ -168,7 +168,7 @@ async def get_all_handle_addresses_for_fids(
     (
         SELECT
             '0x' || encode(custody_address, 'hex') as address,
-            fnames.username as fname,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
@@ -179,7 +179,7 @@ async def get_all_handle_addresses_for_fids(
     UNION
         SELECT
             '0x' || encode(signer_address, 'hex') as address,
-            fnames.username as fname,
+            fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
         FROM fnames
@@ -200,7 +200,7 @@ async def get_unique_handle_metadata_for_fids(
     sql_query = """
     SELECT
         '0x' || encode(any_value(custody_address), 'hex') as address,
-        any_value(fnames.username) as fname,
+        any_value(fnames.fname) as fname,
         any_value(user_data.value) as username,
         fids.fid as fid
     FROM fids
@@ -220,7 +220,7 @@ async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
     )
     SELECT
         profile_id as fid,
-        fnames.username as fname,
+        fnames.fname as fname,
         user_data.value as username,
         rank,
         score,
@@ -243,7 +243,7 @@ async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     )
     SELECT
         profile_id as fid,
-        fnames.username as fname,
+        fnames.fname as fname,
         user_data.value as username,
         rank,
         score,
@@ -392,7 +392,7 @@ async def get_top_frames_with_cast_details(
         (array_agg(distinct('0x' || encode(casts.hash, 'hex'))))[1:100] as cast_hashes,
         (array_agg(
             'https://warpcast.com/'||
-            fnames.username||
+            fnames.fname||
             '/0x' ||
             substring(encode(casts.hash, 'hex'), 1, 8)
         order by casts.created_at
@@ -471,7 +471,7 @@ async def get_neighbors_frames(
         weights.url as url,
         {agg_sql} as score,
         array_agg(distinct(weights.fid::integer)) as interacted_by_fids,
-        array_agg(distinct(fnames.username)) as interacted_by_fnames,
+        array_agg(distinct(fnames.fname)) as interacted_by_fnames,
         array_agg(distinct(user_data.value)) as interacted_by_usernames
     FROM weights
     INNER JOIN fnames on (fnames.fid = weights.fid)
@@ -556,7 +556,7 @@ async def get_recent_neighbors_casts(
         SELECT
             '0x' || encode( casts.cast_hash, 'hex') as hash,
             'https://warpcast.com/'||
-            fnames.username||
+            fnames.fname||
             '/0x' ||
             substring(encode(casts.cast_hash, 'hex'), 1, 8) as url,
             casts.cast_text as text,
