@@ -1,7 +1,7 @@
 INSERT INTO k3l_url_labels(url, latest_cast_dt, earliest_cast_dt)
 WITH max_cast_dt AS (
   select 
-  	max(latest_cast_dt) as dt
+  	coalesce(max(latest_cast_dt),'1/26/24') as dt
 	from k3l_url_labels as labels
 	inner join k3l_cast_embed_url_mapping as url_map on (labels.url_id = url_map.url_id)
 )
