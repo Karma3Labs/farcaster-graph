@@ -78,3 +78,65 @@ ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
     ADD CONSTRAINT k3l_cast_embed_url_mapping_url_id_fkey FOREIGN KEY (url_id) REFERENCES public.k3l_url_labels(url_id);
 
 ------------------------------------------------------------------------------------
+CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
+ SELECT casts.fid,
+    'cast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM ((public.casts
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((url_map.cast_id = casts.id) AND (casts.deleted_at IS NOT NULL)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY casts.fid, 'cast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'recast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NOT NULL))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'recast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'like'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NOT NULL))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'like'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+  WITH NO DATA;
+
+CREATE UNIQUE INDEX k3l_frame_interaction_fid_action_type_url_idunique 
+ON public.k3l_frame_interaction 
+USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
+
+CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+
+------------------------------------------------------------------------------------
