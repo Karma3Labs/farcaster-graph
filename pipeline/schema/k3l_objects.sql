@@ -88,7 +88,7 @@ CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
             ELSE ''::text
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
    FROM ((public.casts
-     JOIN public.k3l_cast_embed_url_mapping url_map ON ((url_map.cast_id = casts.id) AND (casts.deleted_at IS NOT NULL)))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((url_map.cast_id = casts.id) AND (casts.deleted_at IS NULL)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
   GROUP BY casts.fid, 'cast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
         CASE
@@ -105,7 +105,8 @@ UNION
             ELSE ''::text
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
    FROM (((public.casts
-     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NOT NULL))))
+     JOIN public.reactions 
+        ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
   GROUP BY reactions.fid, 'recast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
@@ -123,7 +124,8 @@ UNION
             ELSE ''::text
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
    FROM (((public.casts
-     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NOT NULL))))
+     JOIN public.reactions 
+        ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
   GROUP BY reactions.fid, 'like'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
@@ -138,5 +140,6 @@ ON public.k3l_frame_interaction
 USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
 
 CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+
 
 ------------------------------------------------------------------------------------
