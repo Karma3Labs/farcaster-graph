@@ -60,7 +60,8 @@ async def main(daemon: bool):
     logger.info(f"Sample rows: {sample(url_records, min(5, len(url_records)))}")
 
     if len(url_records) > 0:
-      http_timeout = aiohttp.ClientTimeout(total=settings.FRAMES_SCRAPE_TIMEOUT_SECS)
+      http_timeout = aiohttp.ClientTimeout(sock_connect=settings.FRAMES_SCRAPE_CONNECT_TIMEOUT_SECS, 
+                                           sock_read=settings.FRAMES_SCRAPE_READ_TIMEOUT_SECS)
       connector = aiohttp.TCPConnector(ttl_dns_cache=3000, limit=settings.FRAMES_SCRAPE_CONCURRENCY)
       http_conn_pool = aiohttp.ClientSession(connector=connector)
       tasks = []
