@@ -491,7 +491,7 @@ async def get_popular_neighbors_casts(
     sql_query = f"""
         with fid_scores as (
             SELECT
-                ci.cast_id,
+                ci.cast_hash,
                 SUM(
                     (
                         ({weights.cast} * trust.score * ci.casted) 
@@ -509,30 +509,28 @@ async def get_popular_neighbors_casts(
                 AS trust(fid int, score numeric) 
             INNER JOIN k3l_fid_cast_action as ci
                 ON (ci.fid = trust.fid
-                    AND ci.action_ts BETWEEN now() - interval '10 days' 
+                    AND ci.action_ts BETWEEN now() - interval '5 days' 
   										AND now() - interval '10 minutes')
-            GROUP BY ci.cast_id, ci.fid
+            GROUP BY ci.cast_hash, ci.fid
             LIMIT 100000
         )
         , scores AS (
             SELECT
-                cast_id,
+                cast_hash,
                 {agg_sql} as cast_score
                 FROM fid_scores
-                GROUP BY cast_id
+                GROUP BY cast_hash
                 ORDER BY cast_score DESC
                 LIMIT $2 
             )
     SELECT
-        '0x' || encode(casts.cast_hash, 'hex') as cast_hash,
-        casts.cast_text,
+        '0x' || encode(casts.hash, 'hex') as cast_hash,
+        casts.text as cast_text,
         casts.embeds as cast_embeds,
         casts.fid as cast_fid,
         cast_score
-    FROM k3l_casts_replica as casts
-    INNER JOIN scores on (casts.cast_id = scores.cast_id 
-                            AND casts.cast_ts BETWEEN now() - interval '30 days' 
-  											AND now() - interval '10 minutes')
+    FROM k3l_recent_parent_casts as casts
+    INNER JOIN scores on casts.hash = scores.cast_hash 
     ORDER by cast_score DESC
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
@@ -545,27 +543,25 @@ async def get_recent_neighbors_casts(
 ):
     sql_query = f"""
         SELECT
-            '0x' || encode( casts.cast_hash, 'hex') as hash,
+            '0x' || encode( casts.hash, 'hex') as hash,
             'https://warpcast.com/'||
             fnames.fname||
             '/0x' ||
-            substring(encode(casts.cast_hash, 'hex'), 1, 8) as url,
-            casts.cast_text as text,
+            substring(encode(casts.hash, 'hex'), 1, 8) as url,
+            casts.text,
             casts.embeds,
             casts.mentions,  
             casts.fid,
             power(
                 1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - cast_ts)) / (60 * 60 * 24))::numeric
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60 * 24))::numeric
             )* trust.score as score
-        FROM k3l_casts_replica as casts 
+        FROM k3l_recent_parent_casts as casts 
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric) 
-                ON (casts.fid = trust.fid
-                    AND casts.cast_ts BETWEEN now() - interval '30 days' 
-  										AND now())
+                ON casts.fid = trust.fid
         INNER JOIN fnames ON (fnames.fid = casts.fid)
-        ORDER BY casts.cast_ts DESC
+        ORDER BY casts.timestamp DESC
         OFFSET $2
         LIMIT $3
     """
