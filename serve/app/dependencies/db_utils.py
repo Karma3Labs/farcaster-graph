@@ -65,7 +65,7 @@ async def get_handle_fid_for_addresses(
     sql_query = """
     (
         SELECT
-            verifications.claim->'address' as address,
+            verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
@@ -73,7 +73,7 @@ async def get_handle_fid_for_addresses(
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         WHERE
-            verifications.claim->'address' = ANY($1::text[])
+            verifications.claim->>'address' = ANY($1::text[])
     UNION
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
@@ -112,7 +112,7 @@ async def get_all_fid_addresses_for_handles(
             (user_data.value = ANY($1::text[]))
     UNION
         SELECT
-            '0x' || encode(signer_address, 'hex') as address,
+            verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
@@ -169,7 +169,7 @@ async def get_all_handle_addresses_for_fids(
             fnames.fid = ANY($1::integer[])
     UNION
         SELECT
-            '0x' || encode(signer_address, 'hex') as address,
+            verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
