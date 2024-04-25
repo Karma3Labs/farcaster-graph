@@ -99,7 +99,7 @@ async def get_all_fid_addresses_for_handles(
     sql_query = """
     (
         SELECT
-            '0x' || encode(custody_address, 'hex') as address,
+            '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
@@ -135,7 +135,7 @@ async def get_unique_fid_metadata_for_handles(
 ):
     sql_query = """
     SELECT
-        '0x' || encode(any_value(custody_address), 'hex') as address,
+        '0x' || encode(any_value(fids.custody_address), 'hex') as address,
         any_value(fnames.fname) as fname,
         any_value(user_data.value) as username,
         fids.fid as fid
@@ -158,7 +158,7 @@ async def get_all_handle_addresses_for_fids(
     sql_query = """
     (
         SELECT
-            '0x' || encode(custody_address, 'hex') as address,
+            '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.fname as fname,
             user_data.value as username,
             fnames.fid as fid
@@ -190,7 +190,7 @@ async def get_unique_handle_metadata_for_fids(
 ):
     sql_query = """
     SELECT
-        '0x' || encode(any_value(custody_address), 'hex') as address,
+        '0x' || encode(any_value(fids.custody_address), 'hex') as address,
         any_value(fnames.fname) as fname,
         any_value(user_data.value) as username,
         fids.fid as fid
