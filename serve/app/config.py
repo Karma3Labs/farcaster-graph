@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
     LOG_LEVEL: str = 'INFO'
+    LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
+    SWAGGER_BASE_URL: str
 
     FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
     ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement_fid'

@@ -37,7 +37,7 @@ level_per_module = {
 }
 
 logger.add(sys.stdout, colorize=True,
-           format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
+           format=settings.LOGURU_FORMAT,
            filter=level_per_module,
            level=0)
 
@@ -70,6 +70,9 @@ def custom_openapi():
     openapi_schema["info"]["x-logo"] = {
         "url": "/static/favicon.png"
     }
+    openapi_schema["servers"] = [{
+        "url": settings.SWAGGER_BASE_URL
+    }]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

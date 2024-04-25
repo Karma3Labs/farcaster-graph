@@ -15,7 +15,9 @@ router = APIRouter(tags=["Casts"])
 @router.get("/personalized/popular/{fid}")
 async def get_casts_for_fid(
   fid: int,
-  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
+  agg: Annotated[ScoreAgg | None, 
+                 Query(description="Define the aggregation function"\
+                       " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM_SQ,
   weights: Annotated[str | None, Query()] = 'L1C10R5Y7',
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
