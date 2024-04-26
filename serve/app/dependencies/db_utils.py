@@ -490,7 +490,7 @@ async def get_popular_neighbors_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_scores.score)'
 
-    resp_fields = "'0x' || encode(casts.hash, 'hex') as hash"
+    resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash"
     if not lite:
         resp_fields = f"""
             {resp_fields}, 
@@ -555,7 +555,7 @@ async def get_recent_neighbors_casts(
         lite:bool,
         pool: Pool
 ):
-    resp_fields = "'0x' || encode( casts.hash, 'hex') as hash"
+    resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
     if not lite:
         resp_fields = f"""
             {resp_fields},
