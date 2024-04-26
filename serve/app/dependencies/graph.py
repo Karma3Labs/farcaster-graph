@@ -84,11 +84,12 @@ async def get_neighbors_scores(
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
-  logger.debug(f"Neighbor edges:{df}")
+  logger.trace(f"Neighbor edges:{df}")
 
   stacked = df.loc[:, ('i','j')].stack()
   pseudo_id, orig_id = stacked.factorize()
 
+  # pseudo_df is a new dataframe to avoid modifying existing shared global df 
   pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
   pseudo_df.loc[:,('v')] = df.loc[:,('v')]
 
@@ -102,8 +103,8 @@ async def get_neighbors_scores(
   # max_lt_id = max(df['i'].max(), df['j'].max())
   max_lt_id = len(orig_id)
 
-  logger.debug(f"max_lt_id:{max_lt_id}, localtrust:{localtrust}")
-  logger.debug(f"max_pt_id:{max_pt_id}, pretrust:{pretrust}")
+  logger.trace(f"max_lt_id:{max_lt_id}, localtrust:{localtrust}")
+  logger.trace(f"max_pt_id:{max_pt_id}, pretrust:{pretrust}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -111,7 +112,7 @@ async def get_neighbors_scores(
                              max_lt_id=max_lt_id
                             )
   
-  logger.debug(f"i_scores:{i_scores}")
+  logger.trace(f"i_scores:{i_scores}")
 
   # rename i and v to fid and score respectively
   # also, filter out input fids
