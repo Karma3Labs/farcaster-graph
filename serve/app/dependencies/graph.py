@@ -77,6 +77,9 @@ async def get_neighbors_scores(
 ) -> list[dict]:
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
 
+  if df.shape[0] < 1:
+    raise HTTPException(status_code=404, detail="No neighbors")
+
   pt_len = len(fids)
   pretrust = [{'i': id, 'v': 1/pt_len} for id in fids]
   max_pt_id = max(fids)
