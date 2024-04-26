@@ -490,7 +490,8 @@ async def get_popular_neighbors_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_scores.cast_score)'
 
-    resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash"
+    resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash," \
+                    "DATE_TRUNC('hour', casts.timestamp) as cast_hour"
     if not lite:
         resp_fields = f"""
             {resp_fields}, 
@@ -519,8 +520,7 @@ async def get_popular_neighbors_casts(
                         1-(1/(365*24)::numeric),
                         (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60))::numeric
                     )
-                ) as cast_score,
-                min(DATE_TRUNC('hour', action_ts)) as cast_hour
+                ) as cast_score
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric) 
             INNER JOIN k3l_fid_cast_action as ci
@@ -533,11 +533,9 @@ async def get_popular_neighbors_casts(
         , scores AS (
             SELECT
                 cast_hash,
-                {agg_sql} as cast_score,
-                cast_hour
+                {agg_sql} as cast_score
                 FROM fid_scores
-                GROUP BY cast_hour, cast_hash
-                --    ORDER BY cast_hour DESC, cast_score DESC
+                GROUP BY cast_hash
                 --    OFFSET $2
                 --    LIMIT $3 
             )
@@ -546,7 +544,7 @@ async def get_popular_neighbors_casts(
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     --    ORDER BY casts.timestamp DESC
-    ORDER BY cast_hour DESC, cast_score DESC
+    ORDER BY cast_hour DESC, scores.cast_score DESC
     OFFSET $2
     LIMIT $3 
     """
