@@ -484,11 +484,11 @@ async def get_popular_neighbors_casts(
 ):
     match agg:
         case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_scores.score,2)))'
+            agg_sql = 'sqrt(avg(power(fid_scores.cast_score,2)))'
         case ScoreAgg.SUM_SQ:
-            agg_sql = 'sum(power(fid_scores.score,2))'
+            agg_sql = 'sum(power(fid_scores.cast_score,2))'
         case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_scores.score)'
+            agg_sql = 'sum(fid_scores.cast_score)'
 
     resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash"
     if not lite:
@@ -519,8 +519,8 @@ async def get_popular_neighbors_casts(
                         1-(1/(365*24)::numeric),
                         (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60))::numeric
                     )
-                ) as score,
-                min(DATE_TRUNC('hour', action_ts)) as hour
+                ) as cast_score,
+                min(DATE_TRUNC('hour', action_ts)) as cast_hour
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric) 
             INNER JOIN k3l_fid_cast_action as ci
@@ -533,18 +533,22 @@ async def get_popular_neighbors_casts(
         , scores AS (
             SELECT
                 cast_hash,
-                {agg_sql} as cast_score
+                {agg_sql} as cast_score,
+                cast_hour
                 FROM fid_scores
-                GROUP BY hour, cast_hash
-                ORDER BY hour DESC, cast_score DESC
-                OFFSET $2
-                LIMIT $3 
+                GROUP BY cast_hour, cast_hash
+                ORDER BY cast_hour DESC, cast_score DESC
+                --    OFFSET $2
+                --    LIMIT $3 
             )
     SELECT
         {resp_fields}
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
-    ORDER BY casts.timestamp DESC
+    --    ORDER BY casts.timestamp DESC
+    ORDER BY cast_hour DESC, cast_score DESC
+    OFFSET $2
+    LIMIT $3 
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
