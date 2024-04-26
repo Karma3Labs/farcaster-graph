@@ -143,7 +143,8 @@ async def _get_neighbors_edges(
   logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
   logger.debug(neighbors)
   start_time = time.perf_counter()
-  res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
+  # res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
+  res = graph.df.query('i in @neighbors & j in @neighbors')
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(res)} edges")
   return res
 
