@@ -86,23 +86,24 @@ async def get_neighbors_scores(
 
   logger.debug(f"Neighbor edges:{df}")
 
-  stacked = df[['i','j']].stack()
-  new_id, orig_id = stacked.factorize()
+  stacked = df.loc[:, ('i','j')].stack()
+  pseudo_id, orig_id = stacked.factorize()
 
-  df[['i','j']] = pandas.Series(new_id, index=stacked.index).unstack()
-  
+  pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
+  pseudo_df.loc[:,('v')] = df.loc[:,('v')]
+
   pt_len = len(fids)
   # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in fids]
   pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in fids]
   # max_pt_id = max(fids)
   max_pt_id = len(orig_id)
   
-  localtrust = df.to_dict(orient="records")
+  localtrust = pseudo_df.to_dict(orient="records")
   # max_lt_id = max(df['i'].max(), df['j'].max())
   max_lt_id = len(orig_id)
 
-  logger.debug(f"localtrust:{localtrust}")
-  logger.debug(f"pretrust:{pretrust}")
+  logger.debug(f"max_lt_id:{max_lt_id}, localtrust:{localtrust}")
+  logger.debug(f"max_pt_id:{max_pt_id}, pretrust:{pretrust}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -114,7 +115,7 @@ async def get_neighbors_scores(
 
   # rename i and v to fid and score respectively
   # also, filter out input fids
-  fid_scores = [ {'fid': orig_id[score['i']], 'score': score['v']} for score in i_scores if score['i'] not in fids]
+  fid_scores = [ {'fid': int(orig_id[score['i']]), 'score': score['v']} for score in i_scores if score['i'] not in fids]
   logger.debug(f"fid_scores:{fid_scores}")
   return fid_scores
 
