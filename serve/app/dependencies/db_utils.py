@@ -537,7 +537,7 @@ async def get_popular_neighbors_casts(
                 cast_hour
                 FROM fid_scores
                 GROUP BY cast_hour, cast_hash
-                ORDER BY cast_hour DESC, cast_score DESC
+                --    ORDER BY cast_hour DESC, cast_score DESC
                 --    OFFSET $2
                 --    LIMIT $3 
             )
