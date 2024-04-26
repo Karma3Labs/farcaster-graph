@@ -496,7 +496,9 @@ async def get_popular_neighbors_casts(
             {resp_fields}, 
             casts.text,
             casts.embeds,
+            casts.mentions,
             casts.fid,
+            casts.timestamp,
             cast_score
         """
 
@@ -514,8 +516,8 @@ async def get_popular_neighbors_casts(
                     )
                     *
                     power(
-                        1-(1/365::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60 * 24))::numeric
+                        1-(1/(365*24)::numeric),
+                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60))::numeric
                     )
                 ) as score
             FROM json_to_recordset($1::json)
@@ -541,7 +543,7 @@ async def get_popular_neighbors_casts(
         {resp_fields}
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
-    ORDER by cast_score DESC
+    ORDER BY casts.timestamp DESC
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
@@ -564,9 +566,10 @@ async def get_recent_neighbors_casts(
             casts.embeds,
             casts.mentions,  
             casts.fid,
+            casts.timestamp,
             power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60 * 24))::numeric
+                1-(1/(365*24)::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60))::numeric
             )* trust.score as cast_score
         """
     sql_query = f"""
