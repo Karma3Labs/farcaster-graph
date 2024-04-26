@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
+    USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
     SWAGGER_BASE_URL: str
