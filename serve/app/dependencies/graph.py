@@ -31,20 +31,24 @@ def find_vertex_idx(ig: igraph.GraphBase, fid:int) -> int:
 
 async def go_eigentrust(
     pretrust: list[dict],
-    max_pt_id: np.int64,
+    # max_pt_id: np.int64,
+    max_pt_id: int,
     localtrust: list[dict],
-    max_lt_id: np.int64,
+    # max_lt_id: np.int64,
+    max_lt_id: int,
 ):
   start_time = time.perf_counter()
   req = {
   	"pretrust": {
   		"scheme": 'inline',
-  		"size": int(max_pt_id)+1, #np.int64 doesn't serialize; cast to int
+  		# "size": int(max_pt_id)+1, #np.int64 doesn't serialize; cast to int
+      "size": max_pt_id,
   		"entries": pretrust,
   	},
     "localTrust": {
   		"scheme": 'inline',
-  		"size": int(max_lt_id)+1, #np.int64 doesn't serialize; cast to int
+  		# "size": int(max_lt_id)+1, #np.int64 doesn't serialize; cast to int
+      "size": max_lt_id,
   		"entries": localtrust,
   	},
   	"alpha": settings.EIGENTRUST_ALPHA, 
@@ -80,12 +84,25 @@ async def get_neighbors_scores(
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
+  logger.debug(f"Neighbor edges:{df}")
+
+  stacked = df[['i','j']].stack()
+  new_id, orig_id = stacked.factorize()
+
+  df[['i','j']] = pandas.Series(new_id, index=stacked.index).unstack()
+  
   pt_len = len(fids)
-  pretrust = [{'i': id, 'v': 1/pt_len} for id in fids]
-  max_pt_id = max(fids)
+  # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in fids]
+  pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in fids]
+  # max_pt_id = max(fids)
+  max_pt_id = len(orig_id)
   
   localtrust = df.to_dict(orient="records")
-  max_lt_id = max(df['i'].max(), df['j'].max())
+  # max_lt_id = max(df['i'].max(), df['j'].max())
+  max_lt_id = len(orig_id)
+
+  logger.debug(f"localtrust:{localtrust}")
+  logger.debug(f"pretrust:{pretrust}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -93,10 +110,12 @@ async def get_neighbors_scores(
                              max_lt_id=max_lt_id
                             )
   
+  logger.debug(f"i_scores:{i_scores}")
+
   # rename i and v to fid and score respectively
   # also, filter out input fids
-  fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
-  logger.debug(fid_scores)
+  fid_scores = [ {'fid': orig_id[score['i']], 'score': score['v']} for score in i_scores if score['i'] not in fids]
+  logger.debug(f"fid_scores:{fid_scores}")
   return fid_scores
 
 async def get_neighbors_list(  
