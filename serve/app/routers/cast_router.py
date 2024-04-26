@@ -18,9 +18,11 @@ async def get_casts_for_fid(
   agg: Annotated[ScoreAgg | None, 
                  Query(description="Define the aggregation function"\
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM_SQ,
-  weights: Annotated[str | None, Query()] = 'L1C10R5Y7',
+  weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
   k: Annotated[int, Query(le=5)] = 2,
-  limit: Annotated[int | None, Query(le=1000)] = 100,
+  offset: Annotated[int | None, Query()] = 0,
+  limit: Annotated[int | None, Query(le=1000)] = 25,
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
@@ -36,9 +38,12 @@ async def get_casts_for_fid(
   Parameter 'weights' is used to define the weights to be assigned
     to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
   Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
+  Parameter 'lite' is used to constrain the result to just cast hashes. \n
+  Parameter 'offset' is used to specify how many results to skip 
+    and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=sumsquare, weights='L1C10R5Y7', k=2, and limit=100
-    i.e., returns recent 100 popular casts.
+  By default, agg=sumsquare, weights='L1C10R5Y1', k=2, offset=0, limit=25 and lite=true
+    i.e., returns recent 25 popular casts.
 
   """
   try:
@@ -53,7 +58,9 @@ async def get_casts_for_fid(
   casts = await db_utils.get_popular_neighbors_casts(agg,
                                                weights,
                                                trust_scores=trust_scores,
+                                               offset=offset,
                                                limit=limit,
+                                               lite=lite,
                                                pool=pool)
   return {"result": casts}
 
@@ -63,7 +70,8 @@ async def get_casts_for_fid(
   fid: int,
   k: Annotated[int, Query(le=5)] = 2,
   offset: Annotated[int | None, Query()] = 0,
-  limit: Annotated[int | None, Query(le=1000)] = 100,
+  limit: Annotated[int | None, Query(le=1000)] = 25,
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
@@ -78,8 +86,9 @@ async def get_casts_for_fid(
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, k=2, offset=0, and limit=100
-    i.e., returns recent 100 frame urls casted by extended network.
+  Parameter 'lite' is used to constrain the result to just cast hashes. \n
+  By default, k=2, offset=0, limit=25, and lite=true
+    i.e., returns recent 25 frame urls casted by extended network.
   """
   # compute eigentrust on the neighbor graph using fids
   trust_scores = await graph.get_neighbors_scores([fid], graph_model, k, limit)
@@ -88,8 +97,10 @@ async def get_casts_for_fid(
                                                trust_scores=trust_scores,
                                                offset=offset,
                                                limit=limit,
+                                               lite=lite,
                                                pool=pool)
-  casts = sorted(casts, key=lambda d: d['score'], reverse=True)
+  if not lite:
+    casts = sorted(casts, key=lambda d: d['cast_score'], reverse=True)
   return {"result": casts}
 
 # @router.post("/channel/{channel_id}")

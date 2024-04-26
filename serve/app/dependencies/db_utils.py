@@ -38,7 +38,7 @@ async def fetch_rows(
     pool: Pool
 ):
     start_time = time.perf_counter()
-    logger.trace(f"Execute query: {sql_query}")
+    logger.debug(f"Execute query: {sql_query}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         # Open a transaction.
@@ -477,7 +477,9 @@ async def get_popular_neighbors_casts(
         agg: ScoreAgg,
         weights: Weights,
         trust_scores: list[dict],
+        offset: int,
         limit:int,
+        lite: bool,
         pool: Pool
 ):
     match agg:
@@ -487,6 +489,17 @@ async def get_popular_neighbors_casts(
             agg_sql = 'sum(power(fid_scores.score,2))'
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_scores.score)'
+
+    resp_fields = "'0x' || encode(casts.hash, 'hex') as hash"
+    if not lite:
+        resp_fields = f"""
+            {resp_fields}, 
+            casts.text,
+            casts.embeds,
+            casts.fid,
+            cast_score
+        """
+
 
     sql_query = f"""
         with fid_scores as (
@@ -521,29 +534,28 @@ async def get_popular_neighbors_casts(
                 FROM fid_scores
                 GROUP BY cast_hash
                 ORDER BY cast_score DESC
-                LIMIT $2 
+                OFFSET $2
+                LIMIT $3 
             )
     SELECT
-        '0x' || encode(casts.hash, 'hex') as cast_hash,
-        casts.text as cast_text,
-        casts.embeds as cast_embeds,
-        casts.fid as cast_fid,
-        cast_score
+        {resp_fields}
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     ORDER by cast_score DESC
     """
-    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
 async def get_recent_neighbors_casts(
         trust_scores: list[dict],
         offset:int,
         limit:int,
+        lite:bool,
         pool: Pool
 ):
-    sql_query = f"""
-        SELECT
-            '0x' || encode( casts.hash, 'hex') as hash,
+    resp_fields = "'0x' || encode( casts.hash, 'hex') as hash"
+    if not lite:
+        resp_fields = f"""
+            {resp_fields},
             'https://warpcast.com/'||
             fnames.fname||
             '/0x' ||
@@ -555,7 +567,11 @@ async def get_recent_neighbors_casts(
             power(
                 1-(1/365::numeric),
                 (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60 * 24))::numeric
-            )* trust.score as score
+            )* trust.score as cast_score
+        """
+    sql_query = f"""
+        SELECT
+            {resp_fields}
         FROM k3l_recent_parent_casts as casts 
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric) 
