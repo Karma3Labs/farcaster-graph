@@ -68,10 +68,10 @@ async def get_handle_fid_for_addresses(
             verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN verifications ON (verifications.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+            verifications.fid as fid
+        FROM verifications
+        LEFT JOIN fnames ON (verifications.fid = fnames.fid)
+        LEFT JOIN user_data ON (user_data.fid = verifications.fid and user_data.type=6)
         WHERE
             verifications.claim->>'address' = ANY($1::text[])
     UNION
@@ -79,10 +79,10 @@ async def get_handle_fid_for_addresses(
             '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.fname as fname,
             user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN fids ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+            fids.fid as fid
+        FROM fids
+        LEFT JOIN fnames ON (fids.fid = fnames.fid)
+        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
             WHERE
                 '0x' || encode(fids.custody_address, 'hex') = ANY($1::text[])
     )
@@ -161,23 +161,24 @@ async def get_all_handle_addresses_for_fids(
             '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.fname as fname,
             user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN fids ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+            fids.fid as fid
+        FROM fids
+        LEFT JOIN fnames ON (fids.fid = fnames.fid)
+        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
         WHERE
-            fnames.fid = ANY($1::integer[])
+            fids.fid = ANY($1::integer[])
     UNION
         SELECT
             verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
+            fids.fid as fid
+        FROM fids
         INNER JOIN verifications ON (verifications.fid = fnames.fid)
+        LEFT JOIN fnames ON (fids.fid = fnames.fid)
         LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
         WHERE
-            fnames.fid = ANY($1::integer[])
+            fids.fid = ANY($1::integer[])
     )
     ORDER BY username
     LIMIT 1000 -- safety valve
@@ -195,7 +196,7 @@ async def get_unique_handle_metadata_for_fids(
         any_value(user_data.value) as username,
         fids.fid as fid
     FROM fids
-    INNER JOIN fnames ON (fids.fid = fnames.fid)
+    LEFT JOIN fnames ON (fids.fid = fnames.fid)
     LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
     WHERE
         fids.fid = ANY($1::integer[])
@@ -218,7 +219,7 @@ async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
         ((total.total - (rank - 1))*100 / total.total) as percentile
     FROM k3l_rank
     CROSS JOIN total
-    INNER JOIN fnames on (fnames.fid = profile_id)
+    LEFT JOIN fnames on (fnames.fid = profile_id)
     LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE strategy_id = $1
     ORDER BY rank
@@ -241,7 +242,7 @@ async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
         ((total.total - (rank - 1))*100 / total.total) as percentile
     FROM k3l_rank
     CROSS JOIN total
-    INNER JOIN fnames on (fnames.fid = profile_id)
+    LEFT JOIN fnames on (fnames.fid = profile_id)
     LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE
         strategy_id = $1
@@ -465,7 +466,7 @@ async def get_neighbors_frames(
         array_agg(distinct(fnames.fname)) as interacted_by_fnames,
         array_agg(distinct(user_data.value)) as interacted_by_usernames
     FROM weights
-    INNER JOIN fnames on (fnames.fid = weights.fid)
+    LEFT JOIN fnames on (fnames.fid = weights.fid)
     LEFT JOIN user_data on (user_data.fid = weights.fid and user_data.type=6)
     GROUP BY weights.url
     ORDER by score DESC
@@ -582,7 +583,7 @@ async def get_recent_neighbors_casts(
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric) 
                 ON casts.fid = trust.fid
-        INNER JOIN fnames ON (fnames.fid = casts.fid)
+        {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
         ORDER BY casts.timestamp DESC
         OFFSET $2
         LIMIT $3
