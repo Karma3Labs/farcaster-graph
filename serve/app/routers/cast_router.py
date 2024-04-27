@@ -19,7 +19,7 @@ async def get_casts_for_fid(
                  Query(description="Define the aggregation function"\
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM_SQ,
   weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
-  k: Annotated[int, Query(le=5)] = 2,
+  k: Annotated[int, Query(le=5)] = 1,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=50)] = 25,
   graph_limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -44,7 +44,7 @@ async def get_casts_for_fid(
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
   Parameter 'graph_limit' is used to constrain the graph neighborhood. \n
-  By default, agg=sumsquare, weights='L1C10R5Y1', k=2, offset=0, 
+  By default, agg=sumsquare, weights='L1C10R5Y1', k=1, offset=0, 
     limit=25, graph_limit=100 and lite=true
     i.e., returns recent 25 popular casts.
   """
@@ -70,7 +70,7 @@ async def get_casts_for_fid(
 @router.get("/personalized/recent/{fid}")
 async def get_casts_for_fid(
   fid: int,
-  k: Annotated[int, Query(le=5)] = 2,
+  k: Annotated[int, Query(le=5)] = 1,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=50)] = 25,
   graph_limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -91,7 +91,7 @@ async def get_casts_for_fid(
   Parameter 'limit' is used to specify the number of results to return. \n
   Parameter 'graph_limit' is used to constrain the graph neighborhood. \n
   Parameter 'lite' is used to constrain the result to just cast hashes. \n
-  By default, k=2, offset=0, limit=25, graph_limit=100 and lite=true
+  By default, k=1, offset=0, limit=25, graph_limit=100 and lite=true
     i.e., returns recent 25 frame urls casted by extended network.
   """
   # compute eigentrust on the neighbor graph using fids

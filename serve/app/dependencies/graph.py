@@ -143,7 +143,7 @@ async def _get_neighbors_edges(
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
   logger.trace(f"first degree edges: {neighbors_df.to_dict('records')}")
   max_neighbors = max_neighbors - len(neighbors_df)
-  if max_neighbors > 0:
+  if max_neighbors > 0 and max_degree > 1:
     start_time = time.perf_counter()
     k_neighbors_list = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
     logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_neighbors_list)} neighbors")
