@@ -186,7 +186,7 @@ async def _fetch_korder_neighbors(
             break # we have reached limit of neighbors
         mindist_and_order += 1
     # end of while
-    return list(itertools.chain(fids, *klists))
+    return list(itertools.chain(*klists))
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")
 
