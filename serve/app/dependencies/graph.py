@@ -84,8 +84,6 @@ async def get_neighbors_scores(
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
-  logger.trace(f"Neighbor edges:{df}")
-
   stacked = df.loc[:, ('i','j')].stack()
   pseudo_id, orig_id = stacked.factorize()
 
@@ -102,9 +100,11 @@ async def get_neighbors_scores(
   localtrust = pseudo_df.to_dict(orient="records")
   # max_lt_id = max(df['i'].max(), df['j'].max())
   max_lt_id = len(orig_id)
-
-  logger.trace(f"max_lt_id:{max_lt_id}, localtrust:{localtrust}")
-  logger.trace(f"max_pt_id:{max_pt_id}, pretrust:{pretrust}")
+  
+  logger.info(f"max_lt_id:{max_lt_id}, localtrust size:{len(localtrust)}," \
+               f" max_pt_id:{max_pt_id}, pretrust size:{len(pretrust)}")
+  logger.trace(f"localtrust:{localtrust}")
+  logger.trace(f"pretrust:{pretrust}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -155,7 +155,7 @@ async def _get_neighbors_edges(
       k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
     neighbors_df = pandas.concat([neighbors_df, k_df])
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
-  logger.debug(neighbors_df)
+  logger.trace(f"neighbors: {neighbors_df}")
   return neighbors_df
 
 async def _fetch_korder_neighbors(

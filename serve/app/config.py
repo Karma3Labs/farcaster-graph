@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
+    LOG_LEVEL_CORE: str = 'DEBUG'
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
     SWAGGER_BASE_URL: str
 
