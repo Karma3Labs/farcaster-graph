@@ -13,9 +13,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - replicator-network
+      - farcaster-network
 
 networks:
-  replicator-network:
-    name: replicator_replicator-network
+  farcaster-network:
+    name: farcaster-network
     external: true
