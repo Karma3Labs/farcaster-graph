@@ -33,6 +33,7 @@ logger.remove()
 level_per_module = {
    "": settings.LOG_LEVEL,
    "app.dependencies.db_utils": settings.LOG_LEVEL,
+   "app.dependencies.graph": "TRACE",
    "silentlib": False
 }
 

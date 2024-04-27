@@ -141,11 +141,13 @@ async def _get_neighbors_edges(
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
+  logger.trace(f"first degree edges: {neighbors_df.to_dict('records')}")
   max_neighbors = max_neighbors - len(neighbors_df)
   if max_neighbors > 0:
     start_time = time.perf_counter()
     k_neighbors_list = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
     logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_neighbors_list)} neighbors")
+    logger.trace(f"k degree neighors: {k_neighbors_list}")
     if settings.USE_PANDAS_PERF:
       # if multiple CPU cores are available
       k_df = graph.df.query('i in @k_neighbors_list & j in @k_neighbors_list')
