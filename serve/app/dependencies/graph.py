@@ -79,6 +79,7 @@ async def get_neighbors_scores(
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list[dict]:
+
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
 
   if df.shape[0] < 1:
@@ -138,6 +139,10 @@ async def _get_neighbors_edges(
   max_degree: int,
   max_neighbors: int,
 ) -> pandas.DataFrame: 
+  
+  # TODO: Convert fids from list to set for a speed boost
+  # TODO: Use Dataframe Mutltiindex for a speed boost
+
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
