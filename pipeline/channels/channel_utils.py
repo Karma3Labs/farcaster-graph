@@ -1,3 +1,6 @@
+# system dependencies
+import time
+
 # local dependencies
 from config import settings
 from . import channel_model
@@ -62,7 +65,8 @@ def fetch_channel_followers(channel_id: str) -> list[int]:
       if settings.IS_TEST and ctr > 3:
         logger.warning(f"Test Environment. Breaking out of loop after {ctr-1} api calls.")
         break
-      logger.info(f"{ctr}: {url}")
+      time.sleep(settings.CHANNEL_SLEEP_SECS)
+      logger.info(f"{ctr}: {next_url}")
     else:
       break
   return fids

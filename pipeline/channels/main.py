@@ -34,7 +34,7 @@ logger.add(sys.stdout,
 
 
 @Timer(name="main")
-async def main(
+def main(
   localtrust_pkl: Path, 
   channel_ids: list[str],
   pg_url: str
@@ -113,6 +113,6 @@ if __name__ == "__main__":
   print(settings)
 
   logger.debug('hello main')
-  asyncio.run(main(localtrust_pkl=args.localtrust, 
-                   channel_ids=args.ids, 
-                   pg_url=settings.POSTGRES_URL.get_secret_value()))
+  main(localtrust_pkl=args.localtrust,
+       channel_ids=args.ids, 
+       pg_url=settings.POSTGRES_URL.get_secret_value())
