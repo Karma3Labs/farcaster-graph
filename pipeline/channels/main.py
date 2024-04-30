@@ -24,7 +24,7 @@ pandas.set_option("mode.copy_on_write", True)
 logger.remove()
 level_per_module = {
     "": settings.LOG_LEVEL,
-    "channels.channel_utils": "TRACE",
+    "db_utils": "DEBUG",
     "silentlib": False
 }
 logger.add(sys.stdout,
@@ -38,6 +38,7 @@ logger.add(sys.stdout,
 def main(
   localtrust_pkl: Path, 
   channel_ids: list[str],
+  pg_dsn: str,
   pg_url: str
 ):
   # load localtrust
@@ -63,8 +64,10 @@ def main(
     channel = channel_utils.fetch_channel(http_session=http_session,
                                           channel_id=cid)
     logger.info(f"Channel details: {channel}")
-    fids = channel_utils.fetch_channel_followers(http_session=http_session,
-                                                 channel_id=cid)
+    # fids = channel_utils.fetch_channel_followers(http_session=http_session,
+    #                                              channel_id=cid)
+    fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, 
+                                               channel_url=channel.project_url)
 
     logger.info(f"Number of channel followers: {len(fids)}")
     logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
@@ -129,4 +132,5 @@ if __name__ == "__main__":
   logger.debug('hello main')
   main(localtrust_pkl=args.localtrust,
        channel_ids=args.ids, 
+       pg_dsn=settings.POSTGRES_DSN.get_secret_value(),
        pg_url=settings.POSTGRES_URL.get_secret_value())
