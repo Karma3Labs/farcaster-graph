@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     DB_LOCALTRUST:str
     DB_TEMP_GLOBALTRUST:str = 'tmp_gt'
     DB_GLOBALTRUST:str
+    DB_CHANNEL_FIDS:str
 
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
