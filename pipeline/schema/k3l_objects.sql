@@ -193,3 +193,21 @@ WITH NO DATA;
 
 CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
 ------------------------------------------------------------------------------------
+CREATE UNLOGGED TABLE public.k3l_channel_fids (
+  channel_id text NOT NULL,
+  fid bigint NOT NULL,
+  score real NOT NULL,
+  rank bigint NOT NULL,
+  compute_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  strategy_name text NOT NULL
+ );
+
+CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, fid);
+
+CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(channel_id, rank);
+
+CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts);
+------------------------------------------------------------------------------------
+
+
+

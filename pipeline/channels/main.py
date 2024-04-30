@@ -1,6 +1,5 @@
 # standard dependencies
 import sys
-import os
 import argparse
 import asyncio
 import random
@@ -8,7 +7,7 @@ from pathlib import Path
 
 # local dependencies
 from config import settings
-import utils
+import utils, db_utils
 from timer import Timer
 from . import channel_utils
 from . import go_eigentrust
@@ -17,6 +16,9 @@ from . import go_eigentrust
 from dotenv import load_dotenv
 from loguru import logger
 import pandas
+
+# perf optimization to avoid copies unless there is a write on shared data
+pandas.set_option("mode.copy_on_write", True)
 
 logger.remove()
 level_per_module = {
@@ -35,7 +37,7 @@ logger.add(sys.stdout,
 async def main(
   localtrust_pkl: Path, 
   channel_ids: list[str],
-  outdir:Path
+  pg_url: str
 ):
   # load localtrust
   utils.log_memusage(logger)
@@ -44,7 +46,6 @@ async def main(
   logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
   utils.log_memusage(logger)
 
-  all_channel_scores_lst = []
   # for each channel, take a slice of localtrust and run go-eigentrust
   for cid in channel_ids:
     channel = channel_utils.fetch_channel(channel_id=cid)
@@ -68,20 +69,26 @@ async def main(
 
     with Timer(name="go_eigntrust"):
       scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
+
     logger.info(f"go_eigentrust returned {len(scores)} entries")
     logger.debug(f"channel user scores:{scores}")
+
     scores_df = pandas.DataFrame(data=scores)
     scores_df['channel_id'] = cid
-    all_channel_scores_lst.append(scores_df)
+    scores_df.rename(columns={'i': 'fid', 'v': 'score'}, inplace=True)
+    scores_df['rank'] = scores_df['score'].rank(
+                                          ascending=False, # highest score will get rank 1
+                                          method='first' # if there is a tie, then first entry will get rank 1
+                                          ).astype(int)
+    scores_df['strategy_name'] = 'global_engagement'
+    logger.info(utils.df_info_to_string(scores_df, with_sample=True))
     utils.log_memusage(logger)
-  # end of for loop 
 
-  all_df = pandas.concat(all_channel_scores_lst)
-  logger.info(utils.df_info_to_string(all_df, with_sample=True))
-  utils.log_memusage(logger)
-  outfile = os.path.join(outdir, "channel_ranking_df.pkl")
-  logger.info(f"Pickling channel rankings to {outfile}")
-  all_df.to_pickle(outfile)
+    with Timer(name="insert_db"):
+      db_utils.df_insert_copy(pg_url=pg_url, 
+                              df=scores_df, 
+                              dest_tablename=settings.DB_CHANNEL_FIDS)
+  # end of for loop 
 
 
 # How to run this program:
@@ -98,10 +105,6 @@ if __name__ == "__main__":
                     help="input localtrust pkl file",
                     required=True,
                     type=lambda f: Path(f).expanduser().resolve())  
-  parser.add_argument("-o", "--outdir",
-                    help="output directory for channel ranking pickle file",
-                    required=True,
-                    type=lambda f: Path(f).expanduser().resolve())
 
   args = parser.parse_args()
   print(args)
@@ -110,4 +113,6 @@ if __name__ == "__main__":
   print(settings)
 
   logger.debug('hello main')
-  asyncio.run(main(localtrust_pkl=args.localtrust, channel_ids=args.ids, outdir=args.outdir))
+  asyncio.run(main(localtrust_pkl=args.localtrust, 
+                   channel_ids=args.ids, 
+                   pg_url=settings.POSTGRES_URL.get_secret_value()))

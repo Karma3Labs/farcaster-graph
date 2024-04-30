@@ -15,7 +15,7 @@ def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
   df.info(verbose=True, buf=buf, memory_usage="deep", show_counts=True)
   if with_sample:
     buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
-    df.sample(10).to_csv(buf, index=False)
+    df.sample(min(10, len(df)-1)).to_csv(buf, index=False)
   return buf.getvalue()
 
 def log_memusage(logger:logging.Logger):

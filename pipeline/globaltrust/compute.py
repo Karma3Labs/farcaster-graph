@@ -1,8 +1,7 @@
 from enum import Enum
 import logging
 
-import utils
-from . import db_utils
+import utils, db_utils
 from timer import Timer
 from .queries import IJVSql, IVSql
 from . import go_eigentrust
