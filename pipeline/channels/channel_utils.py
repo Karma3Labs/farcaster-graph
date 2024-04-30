@@ -8,12 +8,12 @@ from timer import Timer
 
 # 3rd party dependencies
 from loguru import logger
-import niquests as requests
+import niquests
 
 @Timer(name="fetch_all_channels")
-def fetch_all_channels() -> list[channel_model.Channel]:
+def fetch_all_channels(http_session: niquests.Session) -> list[channel_model.Channel]:
   url = 'https://api.warpcast.com/v2/all-channels'
-  response = requests.get(url,headers = {
+  response = http_session.get(url,headers = {
                               'Accept': 'application/json',
                               'Content-Type': 'application/json'
                               },
@@ -25,10 +25,10 @@ def fetch_all_channels() -> list[channel_model.Channel]:
   return [channel_model.Channel(c) for c in data]
 
 @Timer(name="fetch_channel")
-def fetch_channel(channel_id: str) -> channel_model.Channel:
+def fetch_channel(http_session: niquests.Session, channel_id: str) -> channel_model.Channel:
   url = f'https://api.warpcast.com/v1/channel?channelId={channel_id}'
   logger.info(url)
-  response = requests.get(url,headers = {
+  response = http_session.get(url,headers = {
                               'Accept': 'application/json',
                               'Content-Type': 'application/json'
                               },
@@ -40,7 +40,7 @@ def fetch_channel(channel_id: str) -> channel_model.Channel:
   return channel_model.Channel(data) 
 
 @Timer(name="fetch_channel_followers")
-def fetch_channel_followers(channel_id: str) -> list[int]:
+def fetch_channel_followers(http_session: niquests.Session, channel_id: str) -> list[int]:
   url = f'https://api.warpcast.com/v1/channel-followers?channelId={channel_id}'
   logger.info(url)
   fids = []
@@ -48,7 +48,7 @@ def fetch_channel_followers(channel_id: str) -> list[int]:
   ctr = 1 # track number of API calls for a single channel
   next_url = url
   while True:
-    response = requests.get(next_url, headers = {
+    response = http_session.get(next_url, headers = {
                                 'Accept': 'application/json',
                                 'Content-Type': 'application/json'
                                 },

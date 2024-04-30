@@ -1,7 +1,6 @@
 # standard dependencies
 import sys
 import argparse
-import asyncio
 import random
 from pathlib import Path
 
@@ -16,6 +15,8 @@ from . import go_eigentrust
 from dotenv import load_dotenv
 from loguru import logger
 import pandas
+import niquests
+from urllib3.util import Retry
 
 # perf optimization to avoid copies unless there is a write on shared data
 pandas.set_option("mode.copy_on_write", True)
@@ -46,10 +47,23 @@ def main(
   logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
   utils.log_memusage(logger)
 
-  # for each channel, take a slice of localtrust and run go-eigentrust
+  # setup connection pool for querying warpcast api
+
+  retries = Retry(
+    total=3,
+    backoff_factor=0.1,
+    status_forcelist=[502, 503, 504],
+    allowed_methods={'GET'},
+  )
+  http_session = niquests.Session(retries=retries) 
+
+  # for each channel, fetch channel details, 
+  # take a slice of localtrust and run go-eigentrust
   for cid in channel_ids:
-    channel = channel_utils.fetch_channel(channel_id=cid)
-    fids = channel_utils.fetch_channel_followers(channel_id=cid)
+    channel = channel_utils.fetch_channel(http_session=http_session,
+                                          channel_id=cid)
+    fids = channel_utils.fetch_channel_followers(http_session=http_session,
+                                                 channel_id=cid)
 
     logger.info(f"Channel details: {channel}")
     logger.info(f"Number of channel followers: {len(fids)}")
