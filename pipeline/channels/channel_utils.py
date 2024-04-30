@@ -57,6 +57,7 @@ def fetch_channel_followers(http_session: niquests.Session, channel_id: str) -> 
         logger.error(f"{ctr} Server error: {response.status_code}:{response.reason}")
         raise Exception(f"{ctr} Server error: {response.status_code}:{response.reason}")
     body = response.json()
+    logger.info(f"{len(body['result']['fids'])} fids fetched")
     fids.extend(body['result']['fids'])
     if 'next' in body and 'cursor' in body['next'] and body['next']['cursor']:
       cursor = body['next']['cursor']

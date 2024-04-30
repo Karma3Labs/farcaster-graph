@@ -62,10 +62,10 @@ def main(
   for cid in channel_ids:
     channel = channel_utils.fetch_channel(http_session=http_session,
                                           channel_id=cid)
+    logger.info(f"Channel details: {channel}")
     fids = channel_utils.fetch_channel_followers(http_session=http_session,
                                                  channel_id=cid)
 
-    logger.info(f"Channel details: {channel}")
     logger.info(f"Number of channel followers: {len(fids)}")
     logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
