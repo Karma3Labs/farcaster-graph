@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     CASTS_SLEEP_SECS: int = 10
     CASTS_BATCH_INTERVAL_HRS: int = 1
 
-    WARPCAST_CHANNELS_TIMEOUT: int = 30_000
+    WARPCAST_CHANNELS_TIMEOUT: int = 5
+    CHANNEL_SLEEP_SECS:int = 1
 
     USE_NEYNAR: bool = False
     IS_TEST: bool = False

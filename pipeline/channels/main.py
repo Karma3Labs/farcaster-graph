@@ -1,7 +1,6 @@
 # standard dependencies
 import sys
 import argparse
-import asyncio
 import random
 from pathlib import Path
 
@@ -16,6 +15,8 @@ from . import go_eigentrust
 from dotenv import load_dotenv
 from loguru import logger
 import pandas
+import niquests
+from urllib3.util import Retry
 
 # perf optimization to avoid copies unless there is a write on shared data
 pandas.set_option("mode.copy_on_write", True)
@@ -34,7 +35,7 @@ logger.add(sys.stdout,
 
 
 @Timer(name="main")
-async def main(
+def main(
   localtrust_pkl: Path, 
   channel_ids: list[str],
   pg_url: str
@@ -46,12 +47,25 @@ async def main(
   logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
   utils.log_memusage(logger)
 
-  # for each channel, take a slice of localtrust and run go-eigentrust
-  for cid in channel_ids:
-    channel = channel_utils.fetch_channel(channel_id=cid)
-    fids = channel_utils.fetch_channel_followers(channel_id=cid)
+  # setup connection pool for querying warpcast api
 
+  retries = Retry(
+    total=3,
+    backoff_factor=0.1,
+    status_forcelist=[502, 503, 504],
+    allowed_methods={'GET'},
+  )
+  http_session = niquests.Session(retries=retries) 
+
+  # for each channel, fetch channel details, 
+  # take a slice of localtrust and run go-eigentrust
+  for cid in channel_ids:
+    channel = channel_utils.fetch_channel(http_session=http_session,
+                                          channel_id=cid)
     logger.info(f"Channel details: {channel}")
+    fids = channel_utils.fetch_channel_followers(http_session=http_session,
+                                                 channel_id=cid)
+
     logger.info(f"Number of channel followers: {len(fids)}")
     logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
@@ -113,6 +127,6 @@ if __name__ == "__main__":
   print(settings)
 
   logger.debug('hello main')
-  asyncio.run(main(localtrust_pkl=args.localtrust, 
-                   channel_ids=args.ids, 
-                   pg_url=settings.POSTGRES_URL.get_secret_value()))
+  main(localtrust_pkl=args.localtrust,
+       channel_ids=args.ids, 
+       pg_url=settings.POSTGRES_URL.get_secret_value())
