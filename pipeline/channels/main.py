@@ -77,6 +77,7 @@ def main(
     with Timer(name="channel_localtrust"):
       # TODO Perf - fids should be a 'set' and not a 'list'
       # TODO Perf - filter using 'query' instead of 'isin'
+      # TODO Perf - install 'numexpr' to speed up pandas
       channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
       logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
     
