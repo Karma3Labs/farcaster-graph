@@ -8,10 +8,26 @@ import globaltrust
 from config import settings
 from loguru import logger
 
-
 import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
+
+def fetch_channel_participants(pg_dsn: str, channel_url:str) -> list[int]:
+  query_sql = f"""
+    SELECT 
+      DISTINCT(fid)
+    FROM casts
+    WHERE root_parent_url = '{channel_url}'
+  """
+  if settings.IS_TEST:
+    query_sql = f"{query_sql} LIMIT 10"
+  logger.debug(f"{query_sql}")
+  with psycopg2.connect(pg_dsn) as conn:
+    with conn.cursor() as cursor:
+      cursor.execute(query_sql)
+      records = cursor.fetchall()
+      fids = [row[0] for row in records]
+      return fids
 
 
 def ijv_df_read_sql_tmpfile(pg_dsn: str, query: globaltrust.queries.SQL) -> pd.DataFrame:
