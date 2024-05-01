@@ -202,7 +202,7 @@ CREATE UNLOGGED TABLE public.k3l_channel_fids (
   strategy_name text NOT NULL
  );
 
-CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, fid);
+CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts, fid);
 
 CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(channel_id, rank);
 
