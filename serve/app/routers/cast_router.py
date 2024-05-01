@@ -11,9 +11,8 @@ from ..config import settings
 
 router = APIRouter(tags=["Casts"])
 
-# turning off this API due to SQL query latency issues.
 @router.get("/personalized/popular/{fid}")
-async def get_casts_for_fid(
+async def get_popular_casts_for_fid(
   fid: int,
   agg: Annotated[ScoreAgg | None, 
                  Query(description="Define the aggregation function"\
@@ -30,8 +29,8 @@ async def get_casts_for_fid(
   """
     Get a list of casts that have been interacted with the most
     in a user's extended network. \n
-  This API takes four optional parameters - 
-    agg, weights, k,  and limit. \n
+  This API takes optional parameters - 
+    agg, weights, k, offset, limit  and lite. \n
   Parameter 'agg' is used to define the aggregation function and 
     can take any of the following values - `rms`, `sumsquare`, `sum`. \n
   Parameter 'weights' is used to define the weights to be assigned
@@ -66,7 +65,7 @@ async def get_casts_for_fid(
 
 
 @router.get("/personalized/recent/{fid}")
-async def get_casts_for_fid(
+async def get_recent_casts_for_fid(
   fid: int,
   k: Annotated[int, Query(le=5)] = 1,
   offset: Annotated[int | None, Query()] = 0,
@@ -79,8 +78,8 @@ async def get_casts_for_fid(
   """
     Get a list of casts that have been casted by the 
       popular profiles in a user's extended network. \n
-  This API takes three optional parameters - 
-    k, offset  and limit. \n
+  This API takes optional parameters - 
+    k, offset, limit, graph_limit and lite. \n
   Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
