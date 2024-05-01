@@ -80,7 +80,9 @@ async def get_neighbors_scores(
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list[dict]:
 
+  start_time = time.perf_counter()
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
+  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(df)} edges")
 
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
@@ -104,8 +106,6 @@ async def get_neighbors_scores(
   
   logger.info(f"max_lt_id:{max_lt_id}, localtrust size:{len(localtrust)}," \
                f" max_pt_id:{max_pt_id}, pretrust size:{len(pretrust)}")
-  logger.trace(f"localtrust:{localtrust}")
-  logger.trace(f"pretrust:{pretrust}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -113,8 +113,6 @@ async def get_neighbors_scores(
                              max_lt_id=max_lt_id
                             )
   
-  logger.trace(f"i_scores:{i_scores}")
-
   # rename i and v to fid and score respectively
   # also, filter out input fids
   fid_scores = [ {'fid': int(orig_id[score['i']]), 'score': score['v']} for score in i_scores if score['i'] not in fids]
@@ -144,22 +142,26 @@ async def _get_neighbors_edges(
 
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
-  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
-  logger.trace(f"first degree edges: {neighbors_df.to_dict('records')}")
+  logger.info(f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
   max_neighbors = max_neighbors - len(neighbors_df)
   if max_neighbors > 0 and max_degree > 1:
+
     start_time = time.perf_counter()
     k_neighbors_list = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
     logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_neighbors_list)} neighbors")
-    logger.trace(f"k degree neighors: {k_neighbors_list}")
+
+    start_time  = time.perf_counter()
     if settings.USE_PANDAS_PERF:
       # if multiple CPU cores are available
       k_df = graph.df.query('i in @k_neighbors_list & j in @k_neighbors_list')
     else:
       k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
+    logger.info(f"k_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
+
+    start_time  = time.perf_counter()
     neighbors_df = pandas.concat([neighbors_df, k_df])
-  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
-  logger.trace(f"neighbors: {neighbors_df}")
+    logger.info(f"neighbors_df concat took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
+
   return neighbors_df
 
 async def _fetch_korder_neighbors(
