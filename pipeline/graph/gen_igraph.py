@@ -18,7 +18,6 @@ def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   utils.log_memusage(logger)
   with Timer(name="read_csv"):
     edges_df = pd.read_csv(incsv)
-    edges_df.set_index(['i', 'j'])
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
   utils.log_memusage(logger)
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
