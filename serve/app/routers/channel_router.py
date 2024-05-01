@@ -26,7 +26,9 @@ async def get_top_channel_profiles(
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
+  Parameter 'lite' is used to indicate if additional details like 
+    fnames and percentile should be returned or not. \n
+  By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
   """
   ranks = await db_utils.get_top_channel_profiles(
                           channel_id=channel.value,
@@ -50,6 +52,9 @@ async def get_channel_rank_for_fids(
     that are ranked based on the engagement relationships in the channel
     and scored by Eigentrust algorithm. \n
     Example: [1, 2] \n
+  Parameter 'lite' is used to indicate if additional details like 
+    fnames and percentile should be returned or not. \n
+  By default, lite is True
   """
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
