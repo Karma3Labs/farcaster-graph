@@ -140,8 +140,8 @@ async def _get_neighbors_edges(
   max_neighbors: int,
 ) -> pandas.DataFrame: 
   
-  # TODO: Convert fids from list to set for a speed boost
-  # TODO: Use Dataframe Mutltiindex for a speed boost
+  # TODO Perf: Convert fids from list to set for a speed boost
+  # TODO Perf: Use Dataframe Mutltiindex for a speed boost
 
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)

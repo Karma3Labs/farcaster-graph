@@ -17,7 +17,7 @@ async def get_casts_for_fid(
   fid: int,
   agg: Annotated[ScoreAgg | None, 
                  Query(description="Define the aggregation function"\
-                       " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM_SQ,
+                       " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
   weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
   k: Annotated[int, Query(le=5)] = 1,
   offset: Annotated[int | None, Query()] = 0,
@@ -28,8 +28,6 @@ async def get_casts_for_fid(
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   """
-  Under construction. **NOT FOR PRODUCTION USE**\n
-  \n\n
     Get a list of casts that have been interacted with the most
     in a user's extended network. \n
   This API takes four optional parameters - 
@@ -79,8 +77,6 @@ async def get_casts_for_fid(
   graph_model: Graph = Depends(graph.get_engagement_graph),
 ):
   """
-  Under construction. **NOT FOR PRODUCTION USE**\n
-  \n\n
     Get a list of casts that have been casted by the 
       popular profiles in a user's extended network. \n
   This API takes three optional parameters - 
@@ -107,30 +103,3 @@ async def get_casts_for_fid(
     casts = sorted(casts, key=lambda d: d['cast_score'], reverse=True)
   return {"result": casts}
 
-# @router.post("/channel/{channel_id}")
-# async def get_casts_by_channel_id(
-#   channel_id: str,
-#   k: int,
-#   limit: int,
-#   pool: Pool = Depends(db_pool.get_db),
-#   graph_model: Graph = Depends(graph.get_engagement_graph),
-#   agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
-#   weights: Annotated[str | None, Query()] = 'L1C10R5',
-# ):
-#   """
-
-#   """
-#   try:
-#     weights = Weights.from_str(weights)
-#   except:
-#     raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
-
-#   follower_fids = fetch_channel_followers(channel_id)
-#   # compute eigentrust on the neighbor graph using fids
-#   trust_scores = await graph.get_neighbors_scores(follower_fids, graph_model, k, limit)
-#   frames = await db_utils.get_ranked_casts_from_channel(channel_id, agg,
-#                                                weights,
-#                                                trust_scores=trust_scores,
-#                                                limit=limit,
-#                                                pool=pool)
-#   return {"result": frames}
