@@ -140,7 +140,6 @@ async def _get_neighbors_edges(
   max_neighbors: int,
 ) -> pandas.DataFrame: 
   
-  # TODO Perf: Convert fids from list to set for a speed boost
   # TODO Perf: Use Dataframe Mutltiindex for a speed boost
 
   start_time = time.perf_counter()
@@ -169,7 +168,7 @@ async def _fetch_korder_neighbors(
   max_degree: int,
   max_neighbors: int,
   min_degree: int = 1
-) -> list :
+) -> set[int] :
   
   # vids = [find_vertex_idx(graph.graph, fid) for fid in fids]
   # vids = list(filter(None, vids)) # WARNING - this filters vertex id 0 also
@@ -191,7 +190,7 @@ async def _fetch_korder_neighbors(
             break # we have reached limit of neighbors
         mindist_and_order += 1
     # end of while
-    return list(itertools.chain(*klists))
+    return set(itertools.chain(*klists))
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")
 
