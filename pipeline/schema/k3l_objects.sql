@@ -143,6 +143,7 @@ CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction 
 
 
 ------------------------------------------------------------------------------------
+---------- TO BE DROPPED ----------
 CREATE TABLE k3l_fid_cast_action (
   fid bigint NOT NULL,
   cast_hash bytea NOT NULL,
@@ -202,8 +203,10 @@ CREATE UNLOGGED TABLE public.k3l_channel_fids (
   strategy_name text NOT NULL
  );
 
+----- TO BE DROPPED -----
 CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts, fid);
 
+----- TO BE DROPPED -----
 CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(channel_id, rank);
 
 CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts);
@@ -245,3 +248,28 @@ CREATE TABLE k3l_cast_action_y2024m08 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-08-01') TO ('2024-09-01');
 CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-09-01') TO ('2024-10-01'); 
+
+------------------------------------------------------------------------------------
+
+CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
+ WITH latest_compute AS (
+   select max(compute_ts) as max_ts, channel_id 
+   from k3l_channel_fids 
+   group by channel_id
+ )
+SELECT
+ 	row_number() OVER () AS pseudo_id,
+ 	cfids.* 
+FROM k3l_channel_fids as cfids
+INNER JOIN latest_compute ON (cfids.compute_ts = latest_compute.max_ts
+                              AND cfids.channel_id = latest_compute.channel_id)
+WITH NO DATA;
+
+CREATE UNIQUE INDEX k3l_channel_rank_idx ON public.k3l_channel_rank USING btree (pseudo_id);
+
+CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (rank);
+
+CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fid);
+
+CREATE INDEX k3l_channel_rank_ch_idx ON public.k3l_channel_rank USING btree (channel_id);
+------------------------------------------------------------------------------------
