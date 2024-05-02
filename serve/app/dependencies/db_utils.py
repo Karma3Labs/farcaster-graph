@@ -174,9 +174,9 @@ async def get_all_handle_addresses_for_fids(
             user_data.value as username,
             fids.fid as fid
         FROM fids
-        INNER JOIN verifications ON (verifications.fid = fnames.fid)
+        INNER JOIN verifications ON (verifications.fid = fids.fid)
         LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
         WHERE
             fids.fid = ANY($1::integer[])
     )
@@ -197,7 +197,7 @@ async def get_unique_handle_metadata_for_fids(
         fids.fid as fid
     FROM fids
     LEFT JOIN fnames ON (fids.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+    LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
     WHERE
         fids.fid = ANY($1::integer[])
     GROUP BY fids.fid
