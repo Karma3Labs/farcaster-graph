@@ -70,7 +70,7 @@ def insert_fid_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: 
       cursor.execute(insert_sql)
 
 @Timer(name="insert_cast_action")
-def insert_fid_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int):
+def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int):
   insert_sql = f"""
     INSERT INTO k3l_cast_action
     WITH max_cast_action AS (
