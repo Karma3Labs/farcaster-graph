@@ -3,7 +3,7 @@ from enum import Enum
 class Channel(Enum):
   degen = 'degen'
   base = 'base'
-  optimisim = 'optimisim'
+  optimisim = 'optimism'
   founders = 'founders'
   farcaster = 'farcaster'
 

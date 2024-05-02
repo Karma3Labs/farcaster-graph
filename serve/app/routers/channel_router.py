@@ -128,12 +128,22 @@ async def get_popular_channel_casts(
   except:
     raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
 
-  casts = await db_utils.get_popular_channel_casts(
+  if lite:
+    casts = await db_utils.get_popular_channel_casts_lite(
+                                channel_id=channel.value,
                                 channel_url=CHANNEL_URLS[channel],
                                 agg=agg,
                                 weights=weights,
                                 offset=offset,
                                 limit=limit,
-                                lite=lite,
                                 pool=pool)
+  else:
+    casts = await db_utils.get_popular_channel_casts_heavy(
+                            channel_id=channel.value,
+                            channel_url=CHANNEL_URLS[channel],
+                            agg=agg,
+                            weights=weights,
+                            offset=offset,
+                            limit=limit,
+                            pool=pool)
   return {"result": casts}

@@ -155,8 +155,11 @@ async def _get_neighbors_edges(
       # if multiple CPU cores are available
       k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
     else:
-      k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
-
+      # filter with an '&' is slower because of the size of the dataframe
+      # split the filtering so that indexes can be used if present
+      # k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
+      k_df = graph.df[graph.df['i'].isin(k_neighbors_list)]
+      k_df = k_df[k_df['j'].isin(k_neighbors_list)]
     # .loc will throw KeyError when fids have no outgoing actions
     ### in other words, some neighbor fids may not be present in 'i'
     # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]

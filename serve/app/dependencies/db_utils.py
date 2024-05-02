@@ -687,13 +687,13 @@ async def get_recent_neighbors_casts(
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_popular_channel_casts(
+async def get_popular_channel_casts_lite(
+        channel_id:str,
         channel_url:str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
         limit:int,
-        lite: bool,
         pool: Pool
 ):
     match agg:
@@ -704,18 +704,68 @@ async def get_popular_channel_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash," \
-                    "DATE_TRUNC('hour', casts.timestamp) as cast_hour"
-    if not lite:
-        resp_fields = f"""
-            {resp_fields}, 
-            casts.text,
-            casts.embeds,
-            casts.mentions,
-            casts.fid,
-            casts.timestamp,
-            cast_score
-        """
+    sql_query = f"""
+        with fid_cast_scores as (
+            SELECT
+                hash as cast_hash,
+                SUM(
+                    (
+                        ({weights.cast} * fids.score * ci.casted) 
+                        + ({weights.reply} * fids.score * ci.replied)
+                        + ({weights.recast} * fids.score * ci.recasted)
+                        + ({weights.like} * fids.score * ci.liked)
+                    )
+                    *
+                    power(
+                        1-(1/(365*24)::numeric),
+                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+                    )
+                ) as cast_score,
+                MIN(ci.action_ts) as cast_ts
+            FROM k3l_recent_parent_casts as casts 
+            INNER JOIN k3l_cast_action as ci
+                ON (ci.cast_hash = casts.hash
+                    AND ci.action_ts BETWEEN now() - interval '5 days' 
+  										AND now() - interval '10 minutes'
+                    AND casts.root_parent_url = $2)
+            INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            GROUP BY casts.hash, ci.fid
+            LIMIT 100000
+        )
+        , scores AS (
+            SELECT
+                cast_hash,
+                {agg_sql} as cast_score,
+                MIN(cast_ts) as cast_ts
+            FROM fid_cast_scores
+            GROUP BY cast_hash
+        )
+    SELECT
+        '0x' || encode(cast_hash, 'hex') as cast_hash,
+        DATE_TRUNC('hour', cast_ts) as cast_hour
+    FROM scores
+    ORDER BY cast_hour DESC, cast_score DESC
+    OFFSET $3
+    LIMIT $4 
+    """
+    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_popular_channel_casts_heavy(
+        channel_id:str,
+        channel_url:str,
+        agg: ScoreAgg,
+        weights: Weights,
+        offset: int,
+        limit:int,
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
+        case ScoreAgg.SUMSQUARE:
+            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(fid_cast_scores.cast_score)'
 
 
     sql_query = f"""
@@ -739,9 +789,9 @@ async def get_popular_channel_casts(
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
                     AND ci.action_ts BETWEEN now() - interval '5 days' 
-  										AND now() - interval '10 minutes')
-            INNER JOIN k3l_channel_fids as fids ON (fids.fid = ci.fid )
-            WHERE casts.root_parent_url = $1
+  										AND now() - interval '10 minutes'
+                    AND casts.root_parent_url = $2)
+            INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
             LIMIT 100000
         )
@@ -753,11 +803,18 @@ async def get_popular_channel_casts(
                 GROUP BY cast_hash
             )
     SELECT
-        {resp_fields}
+        '0x' || encode(casts.hash, 'hex') as cast_hash,
+        DATE_TRUNC('hour', casts.timestamp) as cast_hour,
+        casts.text,
+        casts.embeds,
+        casts.mentions,
+        casts.fid,
+        casts.timestamp,
+        cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     ORDER BY cast_hour DESC, scores.cast_score DESC
-    OFFSET $2
-    LIMIT $3 
+    OFFSET $3
+    LIMIT $4
     """
-    return await fetch_rows(channel_url, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
