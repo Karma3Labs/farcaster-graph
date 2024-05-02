@@ -153,10 +153,14 @@ async def _get_neighbors_edges(
     start_time  = time.perf_counter()
     if settings.USE_PANDAS_PERF:
       # if multiple CPU cores are available
-      k_df = graph.df.query('i in @k_neighbors_list & j in @k_neighbors_list')
+      k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
     else:
       k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
-    logger.info(f"k_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
+
+    # .loc will throw KeyError when fids have no outgoing actions
+    ### in other words, some neighbor fids may not be present in 'i'
+    # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]
+    logger.info(f"k_df took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
 
     start_time  = time.perf_counter()
     neighbors_df = pandas.concat([neighbors_df, k_df])

@@ -621,7 +621,7 @@ async def get_popular_neighbors_casts(
                 ) as cast_score
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric) 
-            INNER JOIN k3l_fid_cast_action as ci
+            INNER JOIN k3l_cast_action as ci
                 ON (ci.fid = trust.fid
                     AND ci.action_ts BETWEEN now() - interval '5 days' 
   										AND now() - interval '10 minutes')
@@ -736,7 +736,7 @@ async def get_popular_channel_casts(
                     )
                 ) as cast_score
             FROM k3l_recent_parent_casts as casts 
-            INNER JOIN k3l_fid_cast_action as ci
+            INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
                     AND ci.action_ts BETWEEN now() - interval '5 days' 
   										AND now() - interval '10 minutes')
