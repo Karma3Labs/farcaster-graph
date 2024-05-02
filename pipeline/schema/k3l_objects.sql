@@ -209,5 +209,39 @@ CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(ch
 CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts);
 ------------------------------------------------------------------------------------
 
+CREATE TABLE k3l_cast_action (
+  fid bigint NOT NULL,
+  cast_hash bytea NOT NULL,
+  casted int NOT NULL,
+  replied int NOT NULL,
+  recasted int NOT NULL,
+  liked int NOT NULL,
+	action_ts timestamp without time zone NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+)
+PARTITION BY RANGE (action_ts);
 
+CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action 
+USING btree(fid);
 
+CREATE INDEX k3l_cast_action_cast_hash_idx ON public.k3l_cast_action 
+USING btree(cast_hash);
+
+CREATE INDEX k3l_cast_action_timestamp_idx ON public.k3l_cast_action 
+USING btree (action_ts);
+
+CREATE UNIQUE INDEX k3l_cast_action_unique_idx ON public.k3l_cast_action 
+USING btree(cast_hash, fid, action_ts);
+
+CREATE TABLE k3l_cast_action_y2024m04 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-04-01') TO ('2024-05-01');
+CREATE TABLE k3l_cast_action_y2024m05 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-05-01') TO ('2024-06-01');
+CREATE TABLE k3l_cast_action_y2024m06 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-06-01') TO ('2024-07-01');
+CREATE TABLE k3l_cast_action_y2024m07 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-07-01') TO ('2024-08-01'); 
+CREATE TABLE k3l_cast_action_y2024m08 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-08-01') TO ('2024-09-01');
+CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-09-01') TO ('2024-10-01'); 
