@@ -367,7 +367,7 @@ async def get_top_frames(
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
         time_filter_sql=""
@@ -430,7 +430,7 @@ async def get_top_frames_with_cast_details(
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
         time_filter_sql=""
@@ -515,7 +515,7 @@ async def get_neighbors_frames(
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '30 days')
+      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
         time_filter_sql=""
