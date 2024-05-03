@@ -26,6 +26,10 @@ CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
 
 CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
 
+CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id)
+
+CREATE INDEX k3l_rank_profile_id_idx ON public.k3l_rank USING btree (profile_id)
+
 ------------------------------------------------------------------------------------
 CREATE TABLE public.k3l_url_labels (
     url_id bigint NOT NULL,
@@ -141,6 +145,9 @@ USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
 
 CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
 
+CREATE INDEX k3l_frame_interaction_fid_index ON public.k3l_frame_interaction USING btree (fid)
+
+CREATE INDEX k3l_frame_interaction_url_index ON public.k3l_frame_interaction USING btree (url)
 
 ------------------------------------------------------------------------------------
 ---------- TO BE DROPPED ----------
