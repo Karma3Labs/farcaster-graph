@@ -36,10 +36,14 @@ class Settings(BaseSettings):
 
     @computed_field
     def POSTGRES_URI(self) -> SecretStr:
-        return SecretStr(f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
+        return SecretStr(f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                        f"?random_page_cost=1.1")
 
     @computed_field
     def POSTGRES_ASYNC_URI(self) -> SecretStr:
-        return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
+        return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                            f"?random_page_cost=1.1")
 
 settings = Settings()
