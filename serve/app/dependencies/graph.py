@@ -95,10 +95,15 @@ async def get_neighbors_scores(
   pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
   pseudo_df.loc[:,('v')] = df.loc[:,('v')]
 
+  if len(fids) > 1:
+    # when more than 1 fid in input list, the neighbor edges may not have some input fids.
+    pt_fids = orig_id.where(orig_id.isin(fids))
+  else:
+    pt_fids = fids
   pt_len = len(fids)
-  # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in fids]
-  pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in fids]
-  # max_pt_id = max(fids)
+  # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pt_fids]
+  pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in pt_fids if not np.isnan(fid) ]
+  # max_pt_id = max(pt_fids)
   max_pt_id = len(orig_id)
   
   localtrust = pseudo_df.to_dict(orient="records")
