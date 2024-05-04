@@ -173,7 +173,7 @@ async def get_personalized_engagement_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
-  limit: Annotated[int | None, Query(le=1000)] = 100,
+  limit: Annotated[int | None, Query(le=5000)] = 100,
   lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
@@ -209,7 +209,7 @@ async def get_personalized_following_for_fids(
   # Example: -d '[1, 2]'
   fids: list[int],
   k: Annotated[int, Query(le=5)] = 2,
-  limit: Annotated[int | None, Query(le=1000)] = 100,
+  limit: Annotated[int | None, Query(le=5000)] = 100,
   lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
