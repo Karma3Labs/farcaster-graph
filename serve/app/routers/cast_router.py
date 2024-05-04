@@ -29,13 +29,13 @@ async def get_casts_for_fid(
     in a user's extended network. \n
   This API takes four optional parameters - 
     agg, weights, k,  and limit. \n
-  Parameter 'agg' is used to define the aggregation function and 
+  Parameter `agg` is used to define the aggregation function and 
     can take any of the following values - `rms`, `sumsquare`, `sum`. \n
-  Parameter 'weights' is used to define the weights to be assigned
+  Parameter `weights` is used to define the weights to be assigned
     to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
-  Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
-  Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=sumsquare, weights='L1C10R5Y7', k=2, and limit=100
+  Parameter `k` is used to constrain the social graph to k-degrees of separation. \n
+  Parameter `limit` is used to specify the number of results to return. \n
+  By default, `agg=sumsquare`, `weights=L1C10R5Y7`, `k=2`, and `limit=100`
     i.e., returns recent 100 popular casts.
 
   """

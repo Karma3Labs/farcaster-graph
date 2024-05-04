@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import List, Annotated
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -11,8 +11,13 @@ router = APIRouter(tags=["Personalized OpenRank Scores"])
 
 @router.post("/engagement/addresses")
 async def get_personalized_engagement_for_addresses(  
-  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
-  addresses: list[str],
+  addresses: Annotated[list[str], Body(
+    title="Addresses",
+    description="A list of addresses.",
+    examples=[
+      ["0x4114e33eb831858649ea3702e1c9a2db3f626446","0x8773442740c17c9d0f0b87022c722f9a136206ed"]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
@@ -39,8 +44,13 @@ async def get_personalized_engagement_for_addresses(
 
 @router.post("/following/addresses")
 async def get_personalized_following_for_addresses(  
-  # Example: -d '["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"]'
-  addresses: list[str],
+  addresses: Annotated[list[str], Body(
+    title="Addresses",
+    description="A list of addresses.",
+    examples=[
+      ["0x4114e33eb831858649ea3702e1c9a2db3f626446","0x8773442740c17c9d0f0b87022c722f9a136206ed"]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
@@ -93,8 +103,13 @@ async def _get_personalized_scores_for_addresses(
 
 @router.post("/engagement/handles")
 async def get_personalized_engagement_for_handles(  
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  addresses: Annotated[list[str], Body(
+    title="Addresses",
+    description="A list of addresses.",
+    examples=[
+      ["0x4114e33eb831858649ea3702e1c9a2db3f626446","0x8773442740c17c9d0f0b87022c722f9a136206ed"]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
@@ -119,8 +134,18 @@ async def get_personalized_engagement_for_handles(
 
 @router.post("/following/handles")
 async def get_personalized_following_for_handles(  
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
@@ -144,8 +169,18 @@ async def get_personalized_following_for_handles(
   return {"result": res}
 
 async def _get_personalized_scores_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   k: int,
   limit: int,
   pool: Pool,
@@ -170,8 +205,13 @@ async def _get_personalized_scores_for_handles(
 
 @router.post("/engagement/fids")
 async def get_personalized_engagement_for_fids(  
-  # Example: -d '[1, 2]'
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   lite: Annotated[bool, Query()] = False,
@@ -206,8 +246,13 @@ async def get_personalized_engagement_for_fids(
 
 @router.post("/following/fids")
 async def get_personalized_following_for_fids(  
-  # Example: -d '[1, 2]'
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   lite: Annotated[bool, Query()] = False,

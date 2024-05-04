@@ -5,6 +5,8 @@ from ..models.score_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
+from fastapi import Body
+from typing import Annotated
 from loguru import logger
 
 engine = create_async_engine(
@@ -59,7 +61,13 @@ async def fetch_rows(
     return rows
 
 async def get_handle_fid_for_addresses(
-    addresses: list[str],
+    addresses: Annotated[list[str], Body(
+        title="Addresses",
+        description="A list of addresses.",
+        examples=[
+        ["0x4114e33eb831858649ea3702e1c9a2db3f626446","0x8773442740c17c9d0f0b87022c722f9a136206ed"]
+        ]
+    )],
     pool: Pool
 ):
     sql_query = """

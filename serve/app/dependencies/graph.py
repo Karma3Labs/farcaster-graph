@@ -7,7 +7,7 @@ import pandas
 import numpy as np
 import igraph
 from loguru import logger
-from fastapi import Request, Query, HTTPException
+from fastapi import Request, Body, Query, HTTPException
 
 from ..config import settings
 from ..models.graph_model import Graph, GraphType
@@ -70,7 +70,13 @@ async def go_eigentrust(
   return trustscores
 
 async def get_neighbors_scores(
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -97,7 +103,13 @@ async def get_neighbors_scores(
   return fid_scores
 
 async def get_neighbors_list(  
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -109,7 +121,13 @@ async def get_neighbors_list(
   return out_df.index.to_list()
 
 async def _get_neighbors_edges(  
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -124,7 +142,13 @@ async def _get_neighbors_edges(
   return res
 
 async def _fetch_korder_neighbors(
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -155,7 +179,13 @@ async def _fetch_korder_neighbors(
     raise HTTPException(status_code=404, detail="Neighbors not found")
 
 async def get_direct_edges_list(  
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   graph: Graph,        
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> pandas.DataFrame: 

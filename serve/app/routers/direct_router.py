@@ -1,7 +1,7 @@
 from typing import Annotated
 import json
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -12,8 +12,18 @@ router = APIRouter(tags=["Direct Links"])
 
 @router.post("/engagement/handles")
 async def get_direct_engagement_for_handles(  
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
@@ -32,8 +42,18 @@ async def get_direct_engagement_for_handles(
 
 @router.post("/following/handles")
 async def get_direct_following_for_handles(  
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
@@ -51,8 +71,18 @@ async def get_direct_following_for_handles(
   return {"result": res}
 
 async def _get_direct_list_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   limit: int,
   pool: Pool,
   graph_model: Graph,
@@ -68,8 +98,13 @@ async def _get_direct_list_for_handles(
 
 @router.post("/engagement/fids")
 async def get_direct_engagement_for_fids(  
-  # Example: -d '[1, 2]'
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_engagement_graph),
@@ -88,8 +123,13 @@ async def get_direct_engagement_for_fids(
 
 @router.post("/following/fids")
 async def get_direct_following_for_fids(  
-  # Example: -d '[1, 2]'
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
   graph_model: Graph = Depends(graph.get_following_graph),
@@ -108,7 +148,6 @@ async def get_direct_following_for_fids(
 
 
 async def _get_direct_list_for_fids(
-  # Example: -d '[1, 2]'
   fids: list[int],
   limit: int,
   pool: Pool,
