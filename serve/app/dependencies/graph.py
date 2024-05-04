@@ -2,6 +2,7 @@ from typing import Annotated
 import itertools
 import time
 import requests
+import random
 
 import pandas
 import numpy as np
@@ -116,7 +117,7 @@ async def get_neighbors_scores(
   # rename i and v to fid and score respectively
   # also, filter out input fids
   fid_scores = [ {'fid': int(orig_id[score['i']]), 'score': score['v']} for score in i_scores if score['i'] not in fids]
-  logger.debug(f"fid_scores:{fid_scores}")
+  logger.debug(f"sample fid_scores:{random.sample(fid_scores, min(10, len(fid_scores)))}")
   return fid_scores
 
 async def get_neighbors_list(  
