@@ -68,6 +68,8 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
           AND max_cast_action.max_at + interval '{interval_hours} hours'
       AND
       reactions.reaction_type IN (1,2)
+      AND 
+      reactions.target_hash IS NOT NULL
     ORDER BY created_at ASC
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
