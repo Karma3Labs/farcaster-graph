@@ -75,13 +75,7 @@ async def go_eigentrust(
   return trustscores
 
 async def get_neighbors_scores(
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -132,13 +126,7 @@ async def get_neighbors_scores(
   return fid_scores
 
 async def get_neighbors_list(  
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+  fids: list[int],
   graph: Graph,        
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
@@ -150,13 +138,7 @@ async def get_neighbors_list(
   return out_df.index.to_list()
 
 async def _get_neighbors_edges(  
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+  fids: list[int],
   graph: Graph,        
   max_degree: int,
   max_neighbors: int,
@@ -196,13 +178,7 @@ async def _get_neighbors_edges(
   return neighbors_df
 
 async def _fetch_korder_neighbors(
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+  fids: list[int],
   graph: Graph,        
   max_degree: int,
   max_neighbors: int,

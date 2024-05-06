@@ -71,18 +71,7 @@ async def get_direct_following_for_handles(
   return {"result": res}
 
 async def _get_direct_list_for_handles(
-  handles: Annotated[list[str], Body(
-    title="Handles",
-    description="A list of handles.",
-    examples=[
-      [
-        "farcaster.eth",
-        "varunsrin.eth",
-        "farcaster",
-        "v"
-      ]
-    ]
-  )],
+  handles: list[str],
   limit: int,
   pool: Pool,
   graph_model: Graph,

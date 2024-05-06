@@ -169,18 +169,7 @@ async def get_personalized_following_for_handles(
   return {"result": res}
 
 async def _get_personalized_scores_for_handles(
-  handles: Annotated[list[str], Body(
-    title="Handles",
-    description="A list of handles.",
-    examples=[
-      [
-        "farcaster.eth",
-        "varunsrin.eth",
-        "farcaster",
-        "v"
-      ]
-    ]
-  )],
+  handles: list[str],
   k: int,
   limit: int,
   pool: Pool,
