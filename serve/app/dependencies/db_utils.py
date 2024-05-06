@@ -5,8 +5,6 @@ from ..models.score_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
-from fastapi import Body
-from typing import Annotated
 from loguru import logger
 
 engine = create_async_engine(

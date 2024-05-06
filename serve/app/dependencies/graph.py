@@ -8,7 +8,7 @@ import pandas
 import numpy as np
 import igraph
 from loguru import logger
-from fastapi import Request, Body, Query, HTTPException
+from fastapi import Request,  Query, HTTPException
 
 from ..config import settings
 from ..models.graph_model import Graph, GraphType
@@ -77,8 +77,8 @@ async def go_eigentrust(
 async def get_neighbors_scores(
   fids: list[int],
   graph: Graph,        
-  max_degree: Annotated[int, Query(le=5)] = 2,
-  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+  max_degree: int,
+  max_neighbors: int,
 ) -> list[dict]:
 
   start_time = time.perf_counter()
@@ -212,7 +212,7 @@ async def _fetch_korder_neighbors(
 async def _get_direct_edges_df(  
   fids: list[int],
   graph: Graph,        
-  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+  max_neighbors: int,
 ) -> pandas.DataFrame: 
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
@@ -222,7 +222,7 @@ async def _get_direct_edges_df(
 async def get_direct_edges_list(  
   fids: list[int],
   graph: Graph,        
-  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+  max_neighbors: int,
 ) -> pandas.DataFrame: 
   start_time = time.perf_counter()
   out_df = await _get_direct_edges_df(fids, graph, max_neighbors)
