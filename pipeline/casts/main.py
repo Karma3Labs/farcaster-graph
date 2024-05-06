@@ -29,14 +29,9 @@ async def main(daemon: bool):
   while True:
     sleep_duration = settings.CASTS_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-
-    cast_db_utils.insert_fid_cast_action(logger,
+    cast_db_utils.insert_cast_action(logger,
                                           pg_dsn,
                                           settings.CASTS_BATCH_INTERVAL_HRS)
-
-    cast_db_utils.insert_casts_replica(logger,
-                                          pg_dsn,
-                                          settings.CASTS_BATCH_SIZE)
 
     if daemon:
       logger.info(f"sleeping for {sleep_duration}s")

@@ -23,6 +23,7 @@ from .routers.localtrust_router import router as lt_router
 from .routers.globaltrust_router import router as gt_router
 from .routers.frame_router import router as frame_router
 from .routers.cast_router import router as cast_router
+from .routers.channel_router import router as channel_router
 
 from loguru import logger
 
@@ -32,12 +33,12 @@ from .telemetry import PrometheusMiddleware, metrics
 logger.remove()
 level_per_module = {
    "": settings.LOG_LEVEL,
-   "app.dependencies.db_utils": settings.LOG_LEVEL,
+   "app.dependencies": settings.LOG_LEVEL_CORE,
    "silentlib": False
 }
 
 logger.add(sys.stdout, colorize=True,
-           format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>",
+           format=settings.LOGURU_FORMAT,
            filter=level_per_module,
            level=0)
 
@@ -70,6 +71,9 @@ def custom_openapi():
     openapi_schema["info"]["x-logo"] = {
         "url": "/static/favicon.png"
     }
+    openapi_schema["servers"] = [{
+        "url": settings.SWAGGER_BASE_URL
+    }]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -111,6 +115,7 @@ app.include_router(lt_router, prefix='/scores/personalized')
 app.include_router(gt_router, prefix='/scores/global')
 app.include_router(frame_router, prefix='/frames')
 app.include_router(cast_router, prefix='/casts')
+app.include_router(channel_router, prefix='/channels')
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")

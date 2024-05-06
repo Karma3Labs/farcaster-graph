@@ -19,7 +19,11 @@ class Settings(BaseSettings):
 
     WARPCAST_CHANNELS_TIMEOUT: int = 30000
 
+    USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
+    LOG_LEVEL_CORE: str = 'DEBUG'
+    LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
+    SWAGGER_BASE_URL: str
 
     FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
     ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement_fid'
@@ -32,10 +36,14 @@ class Settings(BaseSettings):
 
     @computed_field
     def POSTGRES_URI(self) -> SecretStr:
-        return SecretStr(f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
+        return SecretStr(f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                        f"?random_page_cost=1.1")
 
     @computed_field
     def POSTGRES_ASYNC_URI(self) -> SecretStr:
-        return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
+        return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                            f"?random_page_cost=1.1")
 
 settings = Settings()

@@ -2,6 +2,7 @@ from typing import Annotated
 import itertools
 import time
 import requests
+import random
 
 import pandas
 import numpy as np
@@ -31,20 +32,24 @@ def find_vertex_idx(ig: igraph.GraphBase, fid:int) -> int:
 
 async def go_eigentrust(
     pretrust: list[dict],
-    max_pt_id: np.int64,
+    # max_pt_id: np.int64,
+    max_pt_id: int,
     localtrust: list[dict],
-    max_lt_id: np.int64,
+    # max_lt_id: np.int64,
+    max_lt_id: int,
 ):
   start_time = time.perf_counter()
   req = {
   	"pretrust": {
   		"scheme": 'inline',
-  		"size": int(max_pt_id)+1, #np.int64 doesn't serialize; cast to int
+  		# "size": int(max_pt_id)+1, #np.int64 doesn't serialize; cast to int
+      "size": max_pt_id,
   		"entries": pretrust,
   	},
     "localTrust": {
   		"scheme": 'inline',
-  		"size": int(max_lt_id)+1, #np.int64 doesn't serialize; cast to int
+  		# "size": int(max_lt_id)+1, #np.int64 doesn't serialize; cast to int
+      "size": max_lt_id,
   		"entries": localtrust,
   	},
   	"alpha": settings.EIGENTRUST_ALPHA, 
@@ -81,14 +86,38 @@ async def get_neighbors_scores(
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> list[dict]:
-  df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
 
+  start_time = time.perf_counter()
+  df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
+  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(df)} edges")
+
+  if df.shape[0] < 1:
+    raise HTTPException(status_code=404, detail="No neighbors")
+
+  stacked = df.loc[:, ('i','j')].stack()
+  pseudo_id, orig_id = stacked.factorize()
+
+  # pseudo_df is a new dataframe to avoid modifying existing shared global df 
+  pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
+  pseudo_df.loc[:,('v')] = df.loc[:,('v')]
+
+  if len(fids) > 1:
+    # when more than 1 fid in input list, the neighbor edges may not have some input fids.
+    pt_fids = orig_id.where(orig_id.isin(fids))
+  else:
+    pt_fids = fids
   pt_len = len(fids)
-  pretrust = [{'i': id, 'v': 1/pt_len} for id in fids]
-  max_pt_id = max(fids)
+  # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pt_fids]
+  pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in pt_fids if not np.isnan(fid) ]
+  # max_pt_id = max(pt_fids)
+  max_pt_id = len(orig_id)
   
-  localtrust = df.to_dict(orient="records")
-  max_lt_id = max(df['i'].max(), df['j'].max())
+  localtrust = pseudo_df.to_dict(orient="records")
+  # max_lt_id = max(df['i'].max(), df['j'].max())
+  max_lt_id = len(orig_id)
+  
+  logger.info(f"max_lt_id:{max_lt_id}, localtrust size:{len(localtrust)}," \
+               f" max_pt_id:{max_pt_id}, pretrust size:{len(pretrust)}")
 
   i_scores = await go_eigentrust(pretrust=pretrust, 
                              max_pt_id=max_pt_id,
@@ -98,8 +127,8 @@ async def get_neighbors_scores(
   
   # rename i and v to fid and score respectively
   # also, filter out input fids
-  fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in i_scores if score['i'] not in fids]
-  logger.debug(fid_scores)
+  fid_scores = [ {'fid': int(orig_id[score['i']]), 'score': score['v']} for score in i_scores if score['i'] not in fids]
+  logger.debug(f"sample fid_scores:{random.sample(fid_scores, min(10, len(fid_scores)))}")
   return fid_scores
 
 async def get_neighbors_list(  
@@ -129,17 +158,42 @@ async def _get_neighbors_edges(
     ]
   )],
   graph: Graph,        
-  max_degree: Annotated[int, Query(le=5)] = 2,
-  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+  max_degree: int,
+  max_neighbors: int,
 ) -> pandas.DataFrame: 
+  
+  # TODO Perf: Use Dataframe Mutltiindex for a speed boost
+
   start_time = time.perf_counter()
-  neighbors = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors)
-  logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(neighbors)} neighbors")
-  logger.debug(neighbors)
-  start_time = time.perf_counter()
-  res = graph.df[graph.df['i'].isin(neighbors) & graph.df['j'].isin(neighbors)]
-  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(res)} edges")
-  return res
+  neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
+  logger.info(f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
+  max_neighbors = max_neighbors - len(neighbors_df)
+  if max_neighbors > 0 and max_degree > 1:
+
+    start_time = time.perf_counter()
+    k_neighbors_list = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
+    logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_neighbors_list)} neighbors")
+
+    start_time  = time.perf_counter()
+    if settings.USE_PANDAS_PERF:
+      # if multiple CPU cores are available
+      k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
+    else:
+      # filter with an '&' is slower because of the size of the dataframe
+      # split the filtering so that indexes can be used if present
+      # k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
+      k_df = graph.df[graph.df['i'].isin(k_neighbors_list)]
+      k_df = k_df[k_df['j'].isin(k_neighbors_list)]
+    # .loc will throw KeyError when fids have no outgoing actions
+    ### in other words, some neighbor fids may not be present in 'i'
+    # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]
+    logger.info(f"k_df took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
+
+    start_time  = time.perf_counter()
+    neighbors_df = pandas.concat([neighbors_df, k_df])
+    logger.info(f"neighbors_df concat took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges")
+
+  return neighbors_df
 
 async def _fetch_korder_neighbors(
   fids: Annotated[list[int], Body(
@@ -150,9 +204,10 @@ async def _fetch_korder_neighbors(
     ]
   )],
   graph: Graph,        
-  max_degree: Annotated[int, Query(le=5)] = 2,
-  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
-) -> list :
+  max_degree: int,
+  max_neighbors: int,
+  min_degree: int = 1
+) -> set[int] :
   
   # vids = [find_vertex_idx(graph.graph, fid) for fid in fids]
   # vids = list(filter(None, vids)) # WARNING - this filters vertex id 0 also
@@ -161,7 +216,7 @@ async def _fetch_korder_neighbors(
     raise HTTPException(status_code=404, detail="Invalid fids")
   try:
     klists = []
-    mindist_and_order = 1
+    mindist_and_order = min_degree
     limit = max_neighbors
     while mindist_and_order <= max_degree:
         neighbors = graph.graph.neighborhood(
@@ -174,24 +229,26 @@ async def _fetch_korder_neighbors(
             break # we have reached limit of neighbors
         mindist_and_order += 1
     # end of while
-    return list(itertools.chain(fids, *klists))
+    return set(itertools.chain(*klists))
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")
 
+async def _get_direct_edges_df(  
+  fids: list[int],
+  graph: Graph,        
+  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
+) -> pandas.DataFrame: 
+  # WARNING we are operating on a shared dataframe...
+  # ...inplace=False by default, explicitly setting here for emphasis
+  out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  return out_df
+
 async def get_direct_edges_list(  
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+  fids: list[int],
   graph: Graph,        
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> pandas.DataFrame: 
   start_time = time.perf_counter()
-  # WARNING we are operating on a shared dataframe...
-  # ...inplace=False by default, explicitly setting here for emphasis
-  out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
-  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(out_df)} edges")
+  out_df = await _get_direct_edges_df(fids, graph, max_neighbors)
+  logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(out_df)} direct edges")
   return out_df[['j','v']].to_dict('records')

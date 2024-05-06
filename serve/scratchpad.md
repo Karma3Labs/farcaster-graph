@@ -79,11 +79,11 @@ curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=sums
 ## Personalized Cast Feed
 curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/3' 
 
-curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/3?k=3&offset=0&limit=10' 
+curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/3?k=2&offset=0&limit=20&lite=false'
 
 curl -X 'GET' 'http://localhost:8000/casts/personalized/popular/3'
 
-curl -X 'GET' 'http://localhost:8000/casts/personalized/popular/3?agg=sumsquare&weights=L1C10R5Y7&k=2&limit=100'
+curl -X 'GET' 'http://localhost:8000/casts/personalized/popular/3?agg=sumsquare&weights=L1C10R5Y7&k=2&offset=25&limit=25&lite=false'
 
 
 # Useful Dune Queries

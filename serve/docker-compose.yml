@@ -4,7 +4,7 @@ services:
     container_name: farcaster-graph
     image: farcaster-graph:latest
     volumes:
-      - /tmp:/tmp
+      - /home/ubuntu/serve_files:/tmp
     environment:
       PORT: 8000
     ports:
@@ -13,9 +13,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - replicator-network
+      - farcaster-network
 
 networks:
-  replicator-network:
-    name: replicator_replicator-network
+  farcaster-network:
+    name: farcaster-network
     external: true

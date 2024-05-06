@@ -1,11 +1,11 @@
 from enum import Enum
 import logging
 
-import utils
-from . import db_utils
+import utils, db_utils
 from timer import Timer
 from .queries import IJVSql, IVSql
 from . import go_eigentrust
+from config import settings
 
 import pandas as pd
 
@@ -23,52 +23,58 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
 
   if _pretrust_toptier_df is not None:
     return _pretrust_toptier_df
-  
-  _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IVSql.PRETRUST_TOP_TIER)
+
+  _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, IVSql.PRETRUST_TOP_TIER)
   return _pretrust_toptier_df
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
+
   global _interactions_df
 
   if _interactions_df is not None:
     return _interactions_df
 
-  _interactions_df = db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.LIKES)
+  query = IJVSql.LIKES_NEYNAR if settings.USE_NEYNAR else IJVSql.LIKES
+  _interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
+  query = IJVSql.REPLIES
   with Timer(name="merge_replies"):
     _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.REPLIES), 
-                        how='outer', 
-                        left_on=['i','j'], right_on=['i','j'], 
+                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+                        how='outer',
+                        left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
+  query = IJVSql.MENTIONS_NEYNAR if settings.USE_NEYNAR else IJVSql.MENTIONS
   with Timer(name="merge_mentions"):
     _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.MENTIONS), 
-                        how='outer', 
-                        left_on=['i','j'], right_on=['i','j'], 
+                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+                        how='outer',
+                        left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
+  query = IJVSql.RECASTS_NEYNAR if settings.USE_NEYNAR else IJVSql.RECASTS
   with Timer(name="merge_recasts"):
     _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.RECASTS), 
-                        how='outer', 
-                        left_on=['i','j'], right_on=['i','j'], 
+                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+                        how='outer',
+                        left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
+  query = IJVSql.FOLLOWS_NEYNAR if settings.USE_NEYNAR else IJVSql.FOLLOWS
   with Timer(name="merge_follows"):
     _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(logger, pg_dsn, IJVSql.FOLLOWS), 
-                        how='outer', 
-                        left_on=['i','j'], right_on=['i','j'], 
+                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+                        how='outer',
+                        left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
@@ -94,13 +100,13 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  return _interactions_df  
+  return _interactions_df
 
 
 def lt_gt_for_strategy(
-    logger: logging.Logger, 
+    logger: logging.Logger,
     pg_dsn: str,
-    strategy: Strategy
+    strategy: Strategy,
 ) -> tuple[pd.DataFrame, pd.DataFrame] :
   with Timer(name=f"{strategy}"):
     intx_df = _fetch_interactions_df(logger, pg_dsn)
@@ -110,7 +116,7 @@ def lt_gt_for_strategy(
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','follows_v']].rename(columns={'follows_v':'v'})
-      case Strategy.ENGAGEMENT: 
+      case Strategy.ENGAGEMENT:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
         lt_df = \
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
@@ -124,20 +130,20 @@ def lt_gt_for_strategy(
               .rename(columns={'l1rep1rec1m1':'v'})
       case _:
         raise Exception(f"Unknown Strategy: {strategy}")
-    # end of match  
+    # end of match
 
     logger.info(f"{strategy} Pre-Trust: {utils.df_info_to_string(pt_df, with_sample=True)}")
     logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
     utils.log_memusage(logger)
 
     with Timer(name=f"prep_eigentrust_{strategy}"):
-      localtrust = lt_df.to_dict(orient="records")  
+      localtrust = lt_df.to_dict(orient="records")
       max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
       pretrust = pt_df.to_dict(orient="records")
       max_pt_id = pt_df['i'].max()
     utils.log_memusage(logger)
 
-    globaltrust = go_eigentrust.go_eigentrust(logger, 
+    globaltrust = go_eigentrust.go_eigentrust(logger,
                                               pretrust,
                                               max_pt_id,
                                               localtrust,
