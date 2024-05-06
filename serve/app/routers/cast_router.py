@@ -33,7 +33,7 @@ async def get_popular_casts_for_fid(
     agg, weights, k, offset, limit  and lite. \n
   Parameter 'agg' is used to define the aggregation function and 
     can take any of the following values - `rms`, `sumsquare`, `sum`. \n
-  Parameter 'weights' is used to define the weights to be assigned
+  Parameter `weights` is used to define the weights to be assigned
     to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
   Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
   Parameter 'lite' is used to constrain the result to just cast hashes. \n

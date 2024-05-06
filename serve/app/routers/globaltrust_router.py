@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -47,8 +47,13 @@ async def get_top_engagement_profiles(
 
 @router.post("/following/fids")
 async def get_following_rank_for_fids(
-  # Example: -d '[1, 2]'
-  fids: list[int],  
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -67,8 +72,18 @@ async def get_following_rank_for_fids(
 
 @router.post("/following/handles")
 async def get_following_rank_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -93,8 +108,13 @@ async def get_following_rank_for_handles(
 
 @router.post("/engagement/fids")
 async def get_engagement_rank_for_fids(
-  # Example: -d '[1, 2]'
-  fids: list[int],  
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -112,8 +132,18 @@ async def get_engagement_rank_for_fids(
 
 @router.post("/engagement/handles")
 async def get_engagement_rank_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   pool: Pool = Depends(db_pool.get_db)
 ):
   """

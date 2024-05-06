@@ -8,7 +8,7 @@ import pandas
 import numpy as np
 import igraph
 from loguru import logger
-from fastapi import Request, Query, HTTPException
+from fastapi import Request, Body, Query, HTTPException
 
 from ..config import settings
 from ..models.graph_model import Graph, GraphType
@@ -128,8 +128,8 @@ async def get_neighbors_scores(
 async def get_neighbors_list(  
   fids: list[int],
   graph: Graph,        
-  max_degree: int,
-  max_neighbors: int,
+  max_degree: Annotated[int, Query(le=5)] = 2,
+  max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> str:
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
   # WARNING we are operating on a shared dataframe...
