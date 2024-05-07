@@ -234,7 +234,7 @@ CREATE TABLE public.fnames (
 ALTER TABLE public.fnames OWNER TO postgres;
 
 --
--- Name: globaltrust; Type: TABLE; Schema: public; Owner: postgres
+-- Name: globaltrust; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
 CREATE UNLOGGED TABLE public.globaltrust (
@@ -245,10 +245,10 @@ CREATE UNLOGGED TABLE public.globaltrust (
 );
 
 
-ALTER TABLE public.globaltrust OWNER TO postgres;
+ALTER TABLE public.globaltrust OWNER TO k3l_user;
 
 --
--- Name: globaltrust_config; Type: TABLE; Schema: public; Owner: postgres
+-- Name: globaltrust_config; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
 CREATE TABLE public.globaltrust_config (
@@ -261,7 +261,7 @@ CREATE TABLE public.globaltrust_config (
 );
 
 
-ALTER TABLE public.globaltrust_config OWNER TO postgres;
+ALTER TABLE public.globaltrust_config OWNER TO k3l_user;
 
 --
 -- Name: hub_subscriptions; Type: TABLE; Schema: public; Owner: postgres
@@ -274,6 +274,365 @@ CREATE TABLE public.hub_subscriptions (
 
 
 ALTER TABLE public.hub_subscriptions OWNER TO postgres;
+
+--
+-- Name: k3l_cast_action; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+)
+PARTITION BY RANGE (action_ts);
+
+
+ALTER TABLE public.k3l_cast_action OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m04; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m04 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m04 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m05; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m05 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m05 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m06; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m06 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m06 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m07; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m07 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m07 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m08; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m08 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m08 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_action_y2024m09; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_action_y2024m09 (
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.k3l_cast_action_y2024m09 OWNER TO k3l_user;
+
+--
+-- Name: k3l_cast_embed_url_mapping; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_cast_embed_url_mapping (
+    url_id bigint,
+    cast_id bigint
+);
+
+
+ALTER TABLE public.k3l_cast_embed_url_mapping OWNER TO k3l_user;
+
+--
+-- Name: k3l_channel_fids; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_channel_fids (
+    channel_id text NOT NULL,
+    fid bigint NOT NULL,
+    score real NOT NULL,
+    rank bigint NOT NULL,
+    compute_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    strategy_name text NOT NULL
+);
+
+
+ALTER TABLE public.k3l_channel_fids OWNER TO k3l_user;
+
+--
+-- Name: k3l_channel_rank; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
+ WITH latest_compute AS (
+         SELECT max(k3l_channel_fids.compute_ts) AS max_ts,
+            k3l_channel_fids.channel_id
+           FROM public.k3l_channel_fids
+          GROUP BY k3l_channel_fids.channel_id
+        )
+ SELECT row_number() OVER () AS pseudo_id,
+    cfids.channel_id,
+    cfids.fid,
+    cfids.score,
+    cfids.rank,
+    cfids.compute_ts,
+    cfids.strategy_name
+   FROM (public.k3l_channel_fids cfids
+     JOIN latest_compute ON (((cfids.compute_ts = latest_compute.max_ts) AND (cfids.channel_id = latest_compute.channel_id))))
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_channel_rank OWNER TO k3l_user;
+
+--
+-- Name: k3l_url_labels; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_url_labels (
+    url_id bigint NOT NULL,
+    url text NOT NULL,
+    category character varying(32),
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    processed_ts timestamp without time zone,
+    latest_cast_dt timestamp with time zone NOT NULL,
+    earliest_cast_dt timestamp with time zone NOT NULL,
+    parsed_ts timestamp without time zone,
+    scheme text,
+    domain text,
+    subdomain text,
+    tld character varying(32),
+    path text
+);
+
+
+ALTER TABLE public.k3l_url_labels OWNER TO k3l_user;
+
+--
+-- Name: reactions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.reactions (
+    id bigint NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    deleted_at timestamp without time zone,
+    "timestamp" timestamp without time zone NOT NULL,
+    reaction_type smallint NOT NULL,
+    fid bigint NOT NULL,
+    hash bytea NOT NULL,
+    target_hash bytea,
+    target_fid bigint,
+    target_url text
+);
+
+
+ALTER TABLE public.reactions OWNER TO postgres;
+
+--
+-- Name: k3l_frame_interaction; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
+ SELECT casts.fid,
+    'cast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM ((public.casts
+     JOIN public.k3l_cast_embed_url_mapping url_map ON (((url_map.cast_id = casts.id) AND (casts.deleted_at IS NULL))))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY casts.fid, 'cast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'recast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NULL))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'recast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'like'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NULL))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'like'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_frame_interaction OWNER TO k3l_user;
+
+--
+-- Name: k3l_rank; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE MATERIALIZED VIEW public.k3l_rank AS
+ WITH latest_gt AS (
+         SELECT max(globaltrust_1.date) AS dt,
+            globaltrust_1.strategy_id
+           FROM public.globaltrust globaltrust_1
+          GROUP BY globaltrust_1.strategy_id
+        ), latest_gt_config AS (
+         SELECT DISTINCT ON (globaltrust_config.strategy_id) globaltrust_config.strategy_id,
+            globaltrust_config.strategy_name
+           FROM public.globaltrust_config
+          ORDER BY globaltrust_config.strategy_id, globaltrust_config.date DESC
+        )
+ SELECT row_number() OVER () AS pseudo_id,
+    row_number() OVER (PARTITION BY globaltrust.date, globaltrust.strategy_id ORDER BY globaltrust.v DESC) AS rank,
+    globaltrust.v AS score,
+    globaltrust.i AS profile_id,
+    globaltrust.strategy_id,
+    latest_gt_config.strategy_name,
+    globaltrust.date
+   FROM ((public.globaltrust
+     JOIN latest_gt_config ON ((globaltrust.strategy_id = latest_gt_config.strategy_id)))
+     JOIN latest_gt ON (((globaltrust.strategy_id = latest_gt.strategy_id) AND (globaltrust.date = latest_gt.dt))))
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_rank OWNER TO k3l_user;
+
+--
+-- Name: k3l_recent_parent_casts; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
+ SELECT id,
+    created_at,
+    updated_at,
+    deleted_at,
+    "timestamp",
+    fid,
+    hash,
+    parent_hash,
+    parent_fid,
+    parent_url,
+    text,
+    embeds,
+    mentions,
+    mentions_positions,
+    root_parent_hash,
+    root_parent_url
+   FROM public.casts
+  WHERE ((parent_hash IS NULL) AND (deleted_at IS NULL) AND (("timestamp" >= (now() - '5 days'::interval)) AND ("timestamp" <= now())))
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_recent_parent_casts OWNER TO k3l_user;
+
+--
+-- Name: k3l_url_labels_url_id_seq; Type: SEQUENCE; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE public.k3l_url_labels ALTER COLUMN url_id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.k3l_url_labels_url_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 --
 -- Name: kysely_migration; Type: TABLE; Schema: public; Owner: postgres
@@ -334,7 +693,7 @@ ALTER TABLE public.links ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: localtrust; Type: TABLE; Schema: public; Owner: postgres
+-- Name: localtrust; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
 CREATE UNLOGGED TABLE public.localtrust (
@@ -346,10 +705,10 @@ CREATE UNLOGGED TABLE public.localtrust (
 );
 
 
-ALTER TABLE public.localtrust OWNER TO postgres;
+ALTER TABLE public.localtrust OWNER TO k3l_user;
 
 --
--- Name: localtrust_stats; Type: TABLE; Schema: public; Owner: postgres
+-- Name: localtrust_stats; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
 CREATE TABLE public.localtrust_stats (
@@ -366,7 +725,7 @@ CREATE TABLE public.localtrust_stats (
 );
 
 
-ALTER TABLE public.localtrust_stats OWNER TO postgres;
+ALTER TABLE public.localtrust_stats OWNER TO k3l_user;
 
 --
 -- Name: messages; Type: TABLE; Schema: public; Owner: postgres
@@ -408,7 +767,7 @@ ALTER TABLE public.messages ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: pretrust; Type: TABLE; Schema: public; Owner: postgres
+-- Name: pretrust; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
 CREATE TABLE public.pretrust (
@@ -421,7 +780,7 @@ CREATE TABLE public.pretrust (
 );
 
 
-ALTER TABLE public.pretrust OWNER TO postgres;
+ALTER TABLE public.pretrust OWNER TO k3l_user;
 
 --
 -- Name: user_data; Type: TABLE; Schema: public; Owner: postgres
@@ -505,27 +864,6 @@ CREATE VIEW public.profile_with_addresses AS
 
 
 ALTER VIEW public.profile_with_addresses OWNER TO postgres;
-
---
--- Name: reactions; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.reactions (
-    id bigint NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    deleted_at timestamp without time zone,
-    "timestamp" timestamp without time zone NOT NULL,
-    reaction_type smallint NOT NULL,
-    fid bigint NOT NULL,
-    hash bytea NOT NULL,
-    target_hash bytea,
-    target_fid bigint,
-    target_url text
-);
-
-
-ALTER TABLE public.reactions OWNER TO postgres;
 
 --
 -- Name: reactions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -637,6 +975,48 @@ ALTER TABLE public.verifications ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 
 --
+-- Name: k3l_cast_action_y2024m04; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m04 FOR VALUES FROM ('2024-04-01 00:00:00') TO ('2024-05-01 00:00:00');
+
+
+--
+-- Name: k3l_cast_action_y2024m05; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m05 FOR VALUES FROM ('2024-05-01 00:00:00') TO ('2024-06-01 00:00:00');
+
+
+--
+-- Name: k3l_cast_action_y2024m06; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m06 FOR VALUES FROM ('2024-06-01 00:00:00') TO ('2024-07-01 00:00:00');
+
+
+--
+-- Name: k3l_cast_action_y2024m07; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m07 FOR VALUES FROM ('2024-07-01 00:00:00') TO ('2024-08-01 00:00:00');
+
+
+--
+-- Name: k3l_cast_action_y2024m08; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m08 FOR VALUES FROM ('2024-08-01 00:00:00') TO ('2024-09-01 00:00:00');
+
+
+--
+-- Name: k3l_cast_action_y2024m09; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_action ATTACH PARTITION public.k3l_cast_action_y2024m09 FOR VALUES FROM ('2024-09-01 00:00:00') TO ('2024-10-01 00:00:00');
+
+
+--
 -- Name: casts casts_hash_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -653,7 +1033,7 @@ ALTER TABLE ONLY public.casts
 
 
 --
--- Name: pretrust fid_insert_ts_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: pretrust fid_insert_ts_unique; Type: CONSTRAINT; Schema: public; Owner: k3l_user
 --
 
 ALTER TABLE ONLY public.pretrust
@@ -677,7 +1057,7 @@ ALTER TABLE ONLY public.fnames
 
 
 --
--- Name: globaltrust_config globaltrust_config_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: globaltrust_config globaltrust_config_pkey; Type: CONSTRAINT; Schema: public; Owner: k3l_user
 --
 
 ALTER TABLE ONLY public.globaltrust_config
@@ -685,7 +1065,7 @@ ALTER TABLE ONLY public.globaltrust_config
 
 
 --
--- Name: globaltrust globaltrust_strategy_name_date_i_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: globaltrust globaltrust_strategy_name_date_i_unique; Type: CONSTRAINT; Schema: public; Owner: k3l_user
 --
 
 ALTER TABLE ONLY public.globaltrust
@@ -698,6 +1078,22 @@ ALTER TABLE ONLY public.globaltrust
 
 ALTER TABLE ONLY public.hub_subscriptions
     ADD CONSTRAINT hub_subscriptions_pkey PRIMARY KEY (host);
+
+
+--
+-- Name: k3l_url_labels k3l_url_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_url_labels
+    ADD CONSTRAINT k3l_url_labels_pkey PRIMARY KEY (url_id);
+
+
+--
+-- Name: k3l_url_labels k3l_url_labels_url_unique; Type: CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_url_labels
+    ADD CONSTRAINT k3l_url_labels_url_unique UNIQUE (url);
 
 
 --
@@ -936,7 +1332,7 @@ CREATE INDEX fnames_updated_at_idx ON public.fnames USING btree (updated_at);
 
 
 --
--- Name: globaltrust_id_idx; Type: INDEX; Schema: public; Owner: postgres
+-- Name: globaltrust_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
 CREATE INDEX globaltrust_id_idx ON public.globaltrust USING btree (strategy_id);
@@ -989,6 +1385,349 @@ CREATE INDEX idx_reactions_target_hash_deleted_at_timestamp ON public.reactions 
 --
 
 CREATE INDEX idx_user_data_fid_type ON public.user_data USING btree (fid, type) WITH (deduplicate_items='false');
+
+
+--
+-- Name: k3l_cast_action_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_cast_hash_idx ON ONLY public.k3l_cast_action USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_fid_idx ON ONLY public.k3l_cast_action USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_timestamp_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_timestamp_idx ON ONLY public.k3l_cast_action USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_unique_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_unique_idx ON ONLY public.k3l_cast_action USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m04_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m04_action_ts_idx ON public.k3l_cast_action_y2024m04 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m04_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m04_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m04 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m04_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m04_cast_hash_idx ON public.k3l_cast_action_y2024m04 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m04_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m04_fid_idx ON public.k3l_cast_action_y2024m04 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_y2024m05_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m05_action_ts_idx ON public.k3l_cast_action_y2024m05 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m05_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m05_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m05 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m05_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m05_cast_hash_idx ON public.k3l_cast_action_y2024m05 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m05_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m05_fid_idx ON public.k3l_cast_action_y2024m05 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_y2024m06_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m06_action_ts_idx ON public.k3l_cast_action_y2024m06 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m06_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m06_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m06 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m06_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m06_cast_hash_idx ON public.k3l_cast_action_y2024m06 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m06_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m06_fid_idx ON public.k3l_cast_action_y2024m06 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_y2024m07_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m07_action_ts_idx ON public.k3l_cast_action_y2024m07 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m07_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m07_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m07 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m07_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m07_cast_hash_idx ON public.k3l_cast_action_y2024m07 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m07_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m07_fid_idx ON public.k3l_cast_action_y2024m07 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_y2024m08_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m08_action_ts_idx ON public.k3l_cast_action_y2024m08 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m08_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m08_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m08 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m08_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m08_cast_hash_idx ON public.k3l_cast_action_y2024m08 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m08_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m08_fid_idx ON public.k3l_cast_action_y2024m08 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_action_y2024m09_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m09_action_ts_idx ON public.k3l_cast_action_y2024m09 USING btree (action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m09_cast_hash_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_cast_action_y2024m09_cast_hash_fid_action_ts_idx ON public.k3l_cast_action_y2024m09 USING btree (cast_hash, fid, action_ts);
+
+
+--
+-- Name: k3l_cast_action_y2024m09_cast_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m09_cast_hash_idx ON public.k3l_cast_action_y2024m09 USING btree (cast_hash);
+
+
+--
+-- Name: k3l_cast_action_y2024m09_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_action_y2024m09_fid_idx ON public.k3l_cast_action_y2024m09 USING btree (fid);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping_cast_id_index; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_cast_id_index ON public.k3l_cast_embed_url_mapping USING btree (cast_id);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping_url_id_index; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_url_id_index ON public.k3l_cast_embed_url_mapping USING btree (url_id);
+
+
+--
+-- Name: k3l_channel_fids_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree (channel_id, compute_ts, fid);
+
+
+--
+-- Name: k3l_channel_fids_rank_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree (channel_id, rank);
+
+
+--
+-- Name: k3l_channel_fids_ts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree (channel_id, compute_ts);
+
+
+--
+-- Name: k3l_channel_rank_ch_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_rank_ch_idx ON public.k3l_channel_rank USING btree (channel_id);
+
+
+--
+-- Name: k3l_channel_rank_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fid);
+
+
+--
+-- Name: k3l_channel_rank_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_channel_rank_idx ON public.k3l_channel_rank USING btree (pseudo_id);
+
+
+--
+-- Name: k3l_channel_rank_rank_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (rank);
+
+
+--
+-- Name: k3l_frame_interaction_fid_action_type_url_idunique; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_frame_interaction_fid_action_type_url_idunique ON public.k3l_frame_interaction USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_frame_interaction_fid_index; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_frame_interaction_fid_index ON public.k3l_frame_interaction USING btree (fid);
+
+
+--
+-- Name: k3l_frame_interaction_url_id_index; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+
+
+--
+-- Name: k3l_frame_interaction_url_index; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_frame_interaction_url_index ON public.k3l_frame_interaction USING btree (url);
+
+
+--
+-- Name: k3l_rank_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
+
+
+--
+-- Name: k3l_rank_profile_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_rank_profile_id_idx ON public.k3l_rank USING btree (profile_id);
+
+
+--
+-- Name: k3l_rank_profile_id_strategy_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
+
+
+--
+-- Name: k3l_rank_strategy_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id);
+
+
+--
+-- Name: k3l_recent_parent_casts_hash_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts USING btree (hash);
+
+
+--
+-- Name: k3l_recent_parent_casts_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
+
+
+--
+-- Name: k3l_url_labels_earliest_cast_dt_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_url_labels_earliest_cast_dt_idx ON public.k3l_url_labels USING btree (earliest_cast_dt);
+
+
+--
+-- Name: k3l_url_labels_latest_cast_dt_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_url_labels_latest_cast_dt_idx ON public.k3l_url_labels USING btree (latest_cast_dt);
 
 
 --
@@ -1216,6 +1955,174 @@ CREATE INDEX verifications_updated_at_idx ON public.verifications USING btree (u
 
 
 --
+-- Name: k3l_cast_action_y2024m04_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m04_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m04_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m04_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m04_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m04_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m04_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m04_fid_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m05_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m05_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m05_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m05_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m05_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m05_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m05_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m05_fid_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m06_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m06_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m06_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m06_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m06_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m06_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m06_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m06_fid_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m07_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m07_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m07_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m07_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m07_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m07_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m07_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m07_fid_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m08_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m08_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m08_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m08_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m08_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m08_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m08_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m08_fid_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m09_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_timestamp_idx ATTACH PARTITION public.k3l_cast_action_y2024m09_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m09_cast_hash_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_unique_idx ATTACH PARTITION public.k3l_cast_action_y2024m09_cast_hash_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m09_cast_hash_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_cast_hash_idx ATTACH PARTITION public.k3l_cast_action_y2024m09_cast_hash_idx;
+
+
+--
+-- Name: k3l_cast_action_y2024m09_fid_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
+--
+
+ALTER INDEX public.k3l_cast_action_fid_idx ATTACH PARTITION public.k3l_cast_action_y2024m09_fid_idx;
+
+
+--
 -- Name: casts trigger_update_root_parent_hash; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -1228,6 +2135,22 @@ CREATE TRIGGER trigger_update_root_parent_hash BEFORE INSERT ON public.casts FOR
 
 ALTER TABLE ONLY public.casts
     ADD CONSTRAINT casts_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_cast_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
+    ADD CONSTRAINT k3l_cast_embed_url_mapping_cast_id_fkey FOREIGN KEY (cast_id) REFERENCES public.casts(id);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping k3l_cast_embed_url_mapping_url_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
+    ADD CONSTRAINT k3l_cast_embed_url_mapping_url_id_fkey FOREIGN KEY (url_id) REFERENCES public.k3l_url_labels(url_id);
 
 
 --
@@ -1252,6 +2175,111 @@ ALTER TABLE ONLY public.user_data
 
 ALTER TABLE ONLY public.verifications
     ADD CONSTRAINT verifications_hash_foreign FOREIGN KEY (hash) REFERENCES public.messages(hash);
+
+
+--
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
+--
+
+GRANT ALL ON SCHEMA public TO k3l_user;
+
+
+--
+-- Name: TABLE casts; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.casts TO k3l_user;
+
+
+--
+-- Name: TABLE fids; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.fids TO k3l_user;
+
+
+--
+-- Name: TABLE fnames; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.fnames TO k3l_user;
+
+
+--
+-- Name: TABLE hub_subscriptions; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.hub_subscriptions TO k3l_user;
+
+
+--
+-- Name: TABLE reactions; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.reactions TO k3l_user;
+
+
+--
+-- Name: TABLE kysely_migration; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.kysely_migration TO k3l_user;
+
+
+--
+-- Name: TABLE kysely_migration_lock; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.kysely_migration_lock TO k3l_user;
+
+
+--
+-- Name: TABLE links; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.links TO k3l_user;
+
+
+--
+-- Name: TABLE messages; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.messages TO k3l_user;
+
+
+--
+-- Name: TABLE user_data; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.user_data TO k3l_user;
+
+
+--
+-- Name: TABLE verifications; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.verifications TO k3l_user;
+
+
+--
+-- Name: TABLE profile_with_addresses; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.profile_with_addresses TO k3l_user;
+
+
+--
+-- Name: TABLE signers; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.signers TO k3l_user;
+
+
+--
+-- Name: TABLE storage; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.storage TO k3l_user;
 
 
 --
