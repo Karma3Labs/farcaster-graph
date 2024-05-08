@@ -216,7 +216,12 @@ async def _get_direct_edges_df(
 ) -> pandas.DataFrame: 
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
-  out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  # out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  try:
+    out_df = graph.df.loc[fids].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+    # .loc can throw KeyError if an input fid has no outbound edges in the dataframe
+  except:
+    out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
   return out_df
 
 async def get_direct_edges_list(  
