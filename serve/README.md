@@ -1,7 +1,7 @@
 # Pre-requisites
 1. Generate graph artifacts by running the [pipeline](../pipeline/Readme.md) from the `pipeline` sub-project in the parent folder. *Note: if you are in a rush, you can try the sample artifacts found in the `samples` folder of this sub-project*
 2. An instance of Postgres DB with data from Farcaster (installed locally or on a remote server)  - for example, a database instance of [Farcaster Replicator](https://github.com/farcasterxyz/hub-monorepo/tree/main/apps/replicator) 
-3. Run an instance of [go-eigentrust](https://github.com/Karma3Labs/go-eigentrust)
+3. Run an instance of [go-eigentrust](https://github.com/Karma3Labs/go-eigentrust) locally.
 4. Copy/rename `.env.sample` to `.env` and udpate the properties.
 5. Install [Python 3.12](https://www.python.org/downloads/)
 6. Install [Poetry](https://python-poetry.org) for depenedency management:
@@ -21,10 +21,10 @@
 
 # Try the API
 
-Query the engagement-based graph:
+## Using Swagger UI
+An auto-generated Swagger UI is running at http://localhost:8000/docs#/
 
-**NOTE: the server supports both GET and POST methods work but since we use a request body, most http clients prefer POST**
-
+## cURL samples
 ```
 curl -X 'POST' \
   'http://127.0.0.1:8000/graph/neighbors/engagement' \
