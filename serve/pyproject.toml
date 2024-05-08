@@ -15,7 +15,7 @@ loguru = "^0.7.2"
 igraph = "^0.11.3"
 pydantic-settings = "^2.1.0"
 psutil = "^5.9.8"
-pandas = "^2.2.0"
+pandas = {extras = ["performance"], version = "^2.2.2"}
 numpy = "^1.26.4"
 requests = "^2.31.0"
 opentelemetry-distro = "0.43b0"

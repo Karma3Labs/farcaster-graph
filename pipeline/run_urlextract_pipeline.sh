@@ -43,10 +43,6 @@ function log() {
   echo "`date` - $1"
 }
 
-# NOTE: We could have replaced localtrust and upserted into globaltrust in python but ..
-# .. separating out like this helps us run steps in isolation. 
-# For example, we can comment out the below code and ..
-# .. experiment with the python code (weights for example) without worrying about affecting prod.
 log "Inserting into k3l_url_labels"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \

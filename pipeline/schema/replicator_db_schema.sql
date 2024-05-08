@@ -133,7 +133,7 @@ ALTER TABLE public.fnames OWNER TO replicator;
 -- Name: globaltrust; Type: TABLE; Schema: public; Owner: replicator
 --
 
-CREATE TABLE public.globaltrust (
+CREATE UNLOGGED TABLE public.globaltrust (
     strategy_id integer,
     i bigint,
     v real,
@@ -142,6 +142,20 @@ CREATE TABLE public.globaltrust (
 
 
 ALTER TABLE public.globaltrust OWNER TO replicator;
+
+--
+-- Name: globaltrust_bkup_20240322; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.globaltrust_bkup_20240322 (
+    strategy_id integer,
+    i bigint,
+    v real,
+    date date
+);
+
+
+ALTER TABLE public.globaltrust_bkup_20240322 OWNER TO replicator;
 
 --
 -- Name: globaltrust_config; Type: TABLE; Schema: public; Owner: replicator
@@ -172,6 +186,212 @@ CREATE TABLE public.k3l_cast_embed_url_mapping (
 ALTER TABLE public.k3l_cast_embed_url_mapping OWNER TO replicator;
 
 --
+-- Name: k3l_casts_replica; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_casts_replica (
+    cast_id uuid NOT NULL,
+    cast_ts timestamp with time zone NOT NULL,
+    cast_hash bytea NOT NULL,
+    cast_text text NOT NULL,
+    root_parent_url text,
+    fid bigint,
+    embeds json DEFAULT '[]'::json NOT NULL,
+    mentions json DEFAULT '[]'::json NOT NULL
+);
+
+
+ALTER TABLE public.k3l_casts_replica OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_part; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_part (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+)
+PARTITION BY RANGE (action_ts);
+
+
+ALTER TABLE public.k3l_fid_cast_action_part OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m01; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m01 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m01 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m02; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m02 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m02 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m03; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m03 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m03 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m04; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m04 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m04 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m05; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m05 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m05 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m06; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m06 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m06 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m07; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m07 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m07 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m08; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m08 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m08 OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m09; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.k3l_fid_cast_action_y2024m09 (
+    fid bigint,
+    cast_id uuid,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.k3l_fid_cast_action_y2024m09 OWNER TO replicator;
+
+--
 -- Name: k3l_url_labels; Type: TABLE; Schema: public; Owner: replicator
 --
 
@@ -182,11 +402,131 @@ CREATE TABLE public.k3l_url_labels (
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     processed_ts timestamp without time zone,
     latest_cast_dt timestamp with time zone NOT NULL,
-    earliest_cast_dt timestamp with time zone NOT NULL
+    earliest_cast_dt timestamp with time zone NOT NULL,
+    parsed_ts timestamp without time zone,
+    scheme text,
+    domain text,
+    subdomain text,
+    tld character varying(32),
+    path text
 );
 
 
 ALTER TABLE public.k3l_url_labels OWNER TO replicator;
+
+--
+-- Name: reactions; Type: TABLE; Schema: public; Owner: replicator
+--
+
+CREATE TABLE public.reactions (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "timestamp" timestamp with time zone NOT NULL,
+    deleted_at timestamp with time zone,
+    fid bigint NOT NULL,
+    target_cast_fid bigint,
+    type smallint NOT NULL,
+    hash bytea NOT NULL,
+    target_cast_hash bytea,
+    target_url text
+);
+
+
+ALTER TABLE public.reactions OWNER TO replicator;
+
+--
+-- Name: k3l_frame_interaction; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+--
+
+CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
+ SELECT casts.fid,
+    'cast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM ((public.casts
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((url_map.cast_id = casts.id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY casts.fid, 'cast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'recast'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_cast_hash = casts.hash) AND (reactions.type = 2))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'recast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+UNION
+ SELECT reactions.fid,
+    'like'::text AS action_type,
+    urls.url_id,
+    ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
+   FROM (((public.casts
+     JOIN public.reactions ON (((reactions.target_cast_hash = casts.hash) AND (reactions.type = 1))))
+     JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
+     JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  GROUP BY reactions.fid, 'like'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
+        CASE
+            WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
+            ELSE ''::text
+        END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_frame_interaction OWNER TO replicator;
+
+--
+-- Name: k3l_rank; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+--
+
+CREATE MATERIALIZED VIEW public.k3l_rank AS
+ WITH latest_gt AS (
+         SELECT max(globaltrust_1.date) AS dt,
+            globaltrust_1.strategy_id
+           FROM public.globaltrust globaltrust_1
+          GROUP BY globaltrust_1.strategy_id
+        ), latest_gt_config AS (
+         SELECT DISTINCT ON (globaltrust_config.strategy_id) globaltrust_config.strategy_id,
+            globaltrust_config.strategy_name
+           FROM public.globaltrust_config
+          ORDER BY globaltrust_config.strategy_id, globaltrust_config.date DESC
+        )
+ SELECT row_number() OVER () AS pseudo_id,
+    row_number() OVER (PARTITION BY globaltrust.date, globaltrust.strategy_id ORDER BY globaltrust.v DESC) AS rank,
+    globaltrust.v AS score,
+    globaltrust.i AS profile_id,
+    globaltrust.strategy_id,
+    latest_gt_config.strategy_name,
+    globaltrust.date
+   FROM ((public.globaltrust
+     JOIN latest_gt_config ON ((globaltrust.strategy_id = latest_gt_config.strategy_id)))
+     JOIN latest_gt ON (((globaltrust.strategy_id = latest_gt.strategy_id) AND (globaltrust.date = latest_gt.dt))))
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_rank OWNER TO replicator;
 
 --
 -- Name: k3l_url_labels_url_id_seq; Type: SEQUENCE; Schema: public; Owner: replicator
@@ -250,7 +590,7 @@ ALTER TABLE public.links OWNER TO replicator;
 -- Name: localtrust; Type: TABLE; Schema: public; Owner: replicator
 --
 
-CREATE TABLE public.localtrust (
+CREATE UNLOGGED TABLE public.localtrust (
     strategy_id integer,
     i character varying(255),
     j character varying(255),
@@ -262,19 +602,24 @@ CREATE TABLE public.localtrust (
 ALTER TABLE public.localtrust OWNER TO replicator;
 
 --
--- Name: localtrust_bkup_20240124; Type: TABLE; Schema: public; Owner: replicator
+-- Name: localtrust_stats; Type: TABLE; Schema: public; Owner: replicator
 --
 
-CREATE UNLOGGED TABLE public.localtrust_bkup_20240124 (
-    strategy_id integer NOT NULL,
-    i character varying(255) NOT NULL,
-    j character varying(255) NOT NULL,
-    v double precision NOT NULL,
-    date date DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE public.localtrust_stats (
+    date date,
+    strategy_id_1_row_count bigint,
+    strategy_id_1_mean double precision,
+    strategy_id_1_stddev double precision,
+    strategy_id_1_range double precision,
+    strategy_id_3_row_count bigint,
+    strategy_id_3_mean double precision,
+    strategy_id_3_stddev double precision,
+    strategy_id_3_range double precision,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
-ALTER TABLE public.localtrust_bkup_20240124 OWNER TO replicator;
+ALTER TABLE public.localtrust_stats OWNER TO replicator;
 
 --
 -- Name: messages; Type: TABLE; Schema: public; Owner: replicator
@@ -301,6 +646,53 @@ CREATE TABLE public.messages (
 
 
 ALTER TABLE public.messages OWNER TO replicator;
+
+--
+-- Name: mv_channel_fids; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+--
+
+CREATE MATERIALIZED VIEW public.mv_channel_fids AS
+ SELECT "substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text) AS channel,
+    fid
+   FROM public.casts
+  WHERE (root_parent_url ~~ 'https://warpcast.com/~/channel/%'::text)
+  GROUP BY ("substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text)), fid
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.mv_channel_fids OWNER TO replicator;
+
+--
+-- Name: mv_channel_fids_all; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+--
+
+CREATE MATERIALIZED VIEW public.mv_channel_fids_all AS
+ SELECT "substring"(root_parent_url, 'https://.*/([^/]*)$'::text) AS channel,
+    fid
+   FROM public.casts
+  WHERE (root_parent_url ~~ 'https://%'::text)
+  GROUP BY ("substring"(root_parent_url, 'https://.*/([^/]*)$'::text)), fid
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.mv_channel_fids_all OWNER TO replicator;
+
+--
+-- Name: mv_channel_stats; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
+--
+
+CREATE MATERIALIZED VIEW public.mv_channel_stats AS
+ SELECT "substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text) AS channel,
+    count(DISTINCT fid) AS total_unique_casters,
+    count(*) AS total_casts,
+    max(created_at) AS most_recent_cast
+   FROM public.casts
+  WHERE (root_parent_url ~~ 'https://warpcast.com/~/channel/%'::text)
+  GROUP BY ("substring"(root_parent_url, 'https://warpcast.com/~/channel/(.*)'::text))
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.mv_channel_stats OWNER TO replicator;
 
 --
 -- Name: mv_follow_links; Type: MATERIALIZED VIEW; Schema: public; Owner: replicator
@@ -332,27 +724,6 @@ CREATE TABLE public.pretrust (
 
 
 ALTER TABLE public.pretrust OWNER TO replicator;
-
---
--- Name: reactions; Type: TABLE; Schema: public; Owner: replicator
---
-
-CREATE TABLE public.reactions (
-    id uuid DEFAULT public.generate_ulid() NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "timestamp" timestamp with time zone NOT NULL,
-    deleted_at timestamp with time zone,
-    fid bigint NOT NULL,
-    target_cast_fid bigint,
-    type smallint NOT NULL,
-    hash bytea NOT NULL,
-    target_cast_hash bytea,
-    target_url text
-);
-
-
-ALTER TABLE public.reactions OWNER TO replicator;
 
 --
 -- Name: signers; Type: TABLE; Schema: public; Owner: replicator
@@ -454,6 +825,69 @@ CREATE TABLE public.verifications (
 
 
 ALTER TABLE public.verifications OWNER TO replicator;
+
+--
+-- Name: k3l_fid_cast_action_y2024m01; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m01 FOR VALUES FROM ('2024-01-01 00:00:00+00') TO ('2024-02-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m02 FOR VALUES FROM ('2024-02-01 00:00:00+00') TO ('2024-03-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m03 FOR VALUES FROM ('2024-03-01 00:00:00+00') TO ('2024-04-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m04 FOR VALUES FROM ('2024-04-01 00:00:00+00') TO ('2024-05-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m05 FOR VALUES FROM ('2024-05-01 00:00:00+00') TO ('2024-06-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m06 FOR VALUES FROM ('2024-06-01 00:00:00+00') TO ('2024-07-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m07 FOR VALUES FROM ('2024-07-01 00:00:00+00') TO ('2024-08-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m08 FOR VALUES FROM ('2024-08-01 00:00:00+00') TO ('2024-09-01 00:00:00+00');
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09; Type: TABLE ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER TABLE ONLY public.k3l_fid_cast_action_part ATTACH PARTITION public.k3l_fid_cast_action_y2024m09 FOR VALUES FROM ('2024-09-01 00:00:00+00') TO ('2024-10-01 00:00:00+00');
+
 
 --
 -- Name: casts casts_hash_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
@@ -589,14 +1023,6 @@ ALTER TABLE ONLY public.links
 
 ALTER TABLE ONLY public.links
     ADD CONSTRAINT links_pkey PRIMARY KEY (id);
-
-
---
--- Name: localtrust_bkup_20240124 localtrust_strategy_id_i_j_date_unique; Type: CONSTRAINT; Schema: public; Owner: replicator
---
-
-ALTER TABLE ONLY public.localtrust_bkup_20240124
-    ADD CONSTRAINT localtrust_strategy_id_i_j_date_unique UNIQUE (strategy_id, i, j, date);
 
 
 --
@@ -812,17 +1238,395 @@ CREATE INDEX globaltrust_id_idx ON public.globaltrust USING btree (strategy_id);
 
 
 --
+-- Name: k3l_cast_embed_url_mapping_cast_id_index; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_cast_id_index ON public.k3l_cast_embed_url_mapping USING btree (cast_id);
+
+
+--
+-- Name: k3l_cast_embed_url_mapping_url_id_index; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_cast_embed_url_mapping_url_id_index ON public.k3l_cast_embed_url_mapping USING btree (url_id);
+
+
+--
+-- Name: k3l_casts_cast_id_cast_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_casts_cast_id_cast_ts_idx ON public.k3l_casts_replica USING btree (cast_id, cast_ts);
+
+
+--
+-- Name: k3l_casts_cast_id_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_casts_cast_id_idx ON public.k3l_casts_replica USING btree (cast_id);
+
+
+--
+-- Name: k3l_casts_cast_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_casts_cast_ts_idx ON public.k3l_casts_replica USING btree (cast_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ON ONLY public.k3l_fid_cast_action_part USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_fid_action_ts_idx ON ONLY public.k3l_fid_cast_action_part USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_fid_btree_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_fid_btree_idx ON ONLY public.k3l_fid_cast_action_part USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_timestamp_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_timestamp_idx ON ONLY public.k3l_fid_cast_action_part USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_unpart_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_unpart_action_ts_idx ON public.k3l_fid_cast_action USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_unpart_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_unpart_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_unpart_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_unpart_fid_action_ts_idx ON public.k3l_fid_cast_action USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_unpart_fid_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_unpart_fid_idx ON public.k3l_fid_cast_action USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_action_ts_idx ON public.k3l_fid_cast_action_y2024m01 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m01_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m01 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m01 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m01_fid_idx1 ON public.k3l_fid_cast_action_y2024m01 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_action_ts_idx ON public.k3l_fid_cast_action_y2024m02 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m02_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m02 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m02 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m02_fid_idx1 ON public.k3l_fid_cast_action_y2024m02 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_action_ts_idx ON public.k3l_fid_cast_action_y2024m03 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m03_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m03 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m03 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m03_fid_idx1 ON public.k3l_fid_cast_action_y2024m03 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_action_ts_idx ON public.k3l_fid_cast_action_y2024m04 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m04_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m04 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m04 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m04_fid_idx1 ON public.k3l_fid_cast_action_y2024m04 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_action_ts_idx ON public.k3l_fid_cast_action_y2024m05 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m05_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m05 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m05 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m05_fid_idx1 ON public.k3l_fid_cast_action_y2024m05 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_action_ts_idx ON public.k3l_fid_cast_action_y2024m06 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m06_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m06 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m06 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m06_fid_idx1 ON public.k3l_fid_cast_action_y2024m06 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_action_ts_idx ON public.k3l_fid_cast_action_y2024m07 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m07_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m07 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m07 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m07_fid_idx1 ON public.k3l_fid_cast_action_y2024m07 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_action_ts_idx ON public.k3l_fid_cast_action_y2024m08 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m08_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m08 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m08 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m08_fid_idx1 ON public.k3l_fid_cast_action_y2024m08 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_action_ts_idx ON public.k3l_fid_cast_action_y2024m09 USING btree (action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_cast_id_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_fid_cast_action_y2024m09_cast_id_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m09 USING btree (cast_id, fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_action_ts_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_fid_action_ts_idx ON public.k3l_fid_cast_action_y2024m09 USING btree (fid, action_ts);
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_idx1; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_fid_cast_action_y2024m09_fid_idx1 ON public.k3l_fid_cast_action_y2024m09 USING btree (fid) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_frame_interaction_fid_action_type_url_idunique; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_frame_interaction_fid_action_type_url_idunique ON public.k3l_frame_interaction USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
+
+
+--
+-- Name: k3l_frame_interaction_url_id_index; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+
+
+--
+-- Name: k3l_rank_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
+
+
+--
+-- Name: k3l_rank_profile_id_strategy_id_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
+
+
+--
+-- Name: k3l_url_labels_earliest_cast_dt_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_url_labels_earliest_cast_dt_idx ON public.k3l_url_labels USING btree (earliest_cast_dt);
+
+
+--
+-- Name: k3l_url_labels_latest_cast_dt_idx; Type: INDEX; Schema: public; Owner: replicator
+--
+
+CREATE INDEX k3l_url_labels_latest_cast_dt_idx ON public.k3l_url_labels USING btree (latest_cast_dt);
+
+
+--
 -- Name: links_fid_target_fid_type_unique; Type: INDEX; Schema: public; Owner: replicator
 --
 
 CREATE UNIQUE INDEX links_fid_target_fid_type_unique ON public.links USING btree (fid, target_fid, type) NULLS NOT DISTINCT;
-
-
---
--- Name: localtrust_id_date_idx; Type: INDEX; Schema: public; Owner: replicator
---
-
-CREATE INDEX localtrust_id_date_idx ON public.localtrust_bkup_20240124 USING btree (strategy_id, date);
 
 
 --
@@ -893,6 +1697,258 @@ CREATE INDEX storage_allocations_fid_expires_at_index ON public.storage_allocati
 --
 
 CREATE INDEX verifications_fid_timestamp_index ON public.verifications USING btree (fid, "timestamp");
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m01_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m01_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m02_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m02_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m03_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m03_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m04_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m04_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m05_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m05_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m06_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m06_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m07_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m07_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m08_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m08_fid_idx1;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_timestamp_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_cast_id_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_cast_id_fid_action_ts_unique_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_cast_id_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_action_ts_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_fid_action_ts_idx;
+
+
+--
+-- Name: k3l_fid_cast_action_y2024m09_fid_idx1; Type: INDEX ATTACH; Schema: public; Owner: replicator
+--
+
+ALTER INDEX public.k3l_fid_cast_action_fid_btree_idx ATTACH PARTITION public.k3l_fid_cast_action_y2024m09_fid_idx1;
 
 
 --

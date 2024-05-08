@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
@@ -13,7 +13,7 @@ router = APIRouter(tags=["Frames"])
 @router.get("/global/rankings")
 async def get_top_frames(
   # TODO consider using path parameter for better observality
-  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
+  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
   weights: Annotated[str | None, Query()] = 'L1C10R5',
   details: Annotated[bool | None, Query()] = False,
   offset: Annotated[int | None, Query()] = 0,
@@ -67,10 +67,15 @@ async def get_top_frames(
 
 @router.post("/personalized/rankings/fids")
 async def get_personalized_frames_for_fids(
-  # Example: -d '[1, 2]'
-  fids: list[int],
+  fids: Annotated[list[int], Body(
+    title="Farcaster IDs",
+    description="A list of FIDs.",
+    examples=[
+      [1,2,3]
+    ]
+  )],
   # TODO consider using path parameter for better observality
-  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
+  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
   weights: Annotated[str | None, Query()] = 'L1C10R5',
   voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
   k: Annotated[int, Query(le=5)] = 2,
@@ -115,10 +120,20 @@ async def get_personalized_frames_for_fids(
 
 @router.post("/personalized/rankings/handles")
 async def get_personalized_frames_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  handles: list[str],
+  handles: Annotated[list[str], Body(
+    title="Handles",
+    description="A list of handles.",
+    examples=[
+      [
+        "farcaster.eth",
+        "varunsrin.eth",
+        "farcaster",
+        "v"
+      ]
+    ]
+  )],
   # TODO consider using path parameter for better observality
-  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQ,
+  agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
   weights: Annotated[str | None, Query()] = 'L1C10R5',
   voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
   k: Annotated[int, Query(le=5)] = 2,

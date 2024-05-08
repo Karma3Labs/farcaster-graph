@@ -1,25 +1,30 @@
 # standard dependencies
 import sys
 import argparse
-import asyncio
 import random
 from pathlib import Path
 
 # local dependencies
 from config import settings
-from . import channel_model
-import utils
+import utils, db_utils
+from timer import Timer
+from . import channel_utils
 from . import go_eigentrust
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import niquests as requests
 import pandas
+import niquests
+from urllib3.util import Retry
+
+# perf optimization to avoid copies unless there is a write on shared data
+pandas.set_option("mode.copy_on_write", True)
 
 logger.remove()
 level_per_module = {
     "": settings.LOG_LEVEL,
+    "db_utils": "DEBUG",
     "silentlib": False
 }
 logger.add(sys.stdout,
@@ -28,60 +33,14 @@ logger.add(sys.stdout,
            filter=level_per_module,
            level=0)
 
-def fetch_all_channels() -> list[channel_model.Channel]:
-  url = 'https://api.warpcast.com/v2/all-channels'
-  response = requests.get(url,headers = {
-                              'Accept': 'application/json',
-                              'Content-Type': 'application/json'
-                              },
-                          timeout=settings.WARPCAST_CHANNELS_TIMEOUT)
-  if response.status_code != 200:
-      logger.error(f"Server error: {response.status_code}:{response.reason}")
-      raise Exception(f"Server error: {response.status_code}:{response.reason}")
-  data = response.json()['result']['channels']
-  return [channel_model.Channel(c) for c in data]
 
-def fetch_channel(channel_id: str) -> channel_model.Channel:
-  url = f'https://api.warpcast.com/v1/channel?channelId={channel_id}'
-  logger.info(url)
-  response = requests.get(url,headers = {
-                              'Accept': 'application/json',
-                              'Content-Type': 'application/json'
-                              },
-                          timeout=settings.WARPCAST_CHANNELS_TIMEOUT)
-  if response.status_code != 200:
-      logger.error(f"Server error: {response.status_code}:{response.reason}")
-      raise Exception(f"Server error: {response.status_code}:{response.reason}")
-  data = response.json()['result']['channel']
-  return channel_model.Channel(data) 
-
-
-def fetch_channel_followers(channel_id: str) -> list[int]:
-  url = f'https://api.warpcast.com/v1/channel-followers?channelId={channel_id}'
-  logger.info(url)
-  fids = []
-
-  next_url = url
-  while True:
-    response = requests.get(next_url,headers = {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json'
-                                },
-                            timeout=settings.WARPCAST_CHANNELS_TIMEOUT)
-    if response.status_code != 200:
-        logger.error(f"Server error: {response.status_code}:{response.reason}")
-        raise Exception(f"Server error: {response.status_code}:{response.reason}")
-    body = response.json()
-    fids.extend(body['result']['fids'])
-    if 'next' in body and 'cursor' in body['next'] and body['next']['cursor']:
-      cursor = body['next']['cursor']
-      next_url = f"{url}&cursor={cursor}"
-      logger.info(next_url)
-    else:
-      break
-  return fids
-
-async def main(localtrust_pkl: Path, channel_ids: list[str]):
+@Timer(name="main")
+def main(
+  localtrust_pkl: Path, 
+  channel_ids: list[str],
+  pg_dsn: str,
+  pg_url: str
+):
   # load localtrust
   utils.log_memusage(logger)
   logger.info(f"loading {localtrust_pkl}")
@@ -89,35 +48,66 @@ async def main(localtrust_pkl: Path, channel_ids: list[str]):
   logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
   utils.log_memusage(logger)
 
-  # for each channel, take a slice of localtrust and run go-eigentrust
-  for cid in channel_ids:
-    channel = fetch_channel(channel_id=cid)
-    fids = fetch_channel_followers(channel_id=cid)
+  # setup connection pool for querying warpcast api
 
+  retries = Retry(
+    total=3,
+    backoff_factor=0.1,
+    status_forcelist=[502, 503, 504],
+    allowed_methods={'GET'},
+  )
+  http_session = niquests.Session(retries=retries) 
+
+  # for each channel, fetch channel details, 
+  # take a slice of localtrust and run go-eigentrust
+  for cid in channel_ids:
+    channel = channel_utils.fetch_channel(http_session=http_session,
+                                          channel_id=cid)
     logger.info(f"Channel details: {channel}")
+    # fids = channel_utils.fetch_channel_followers(http_session=http_session,
+    #                                              channel_id=cid)
+    fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, 
+                                               channel_url=channel.project_url)
+
     logger.info(f"Number of channel followers: {len(fids)}")
     logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
-    channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
+    fids.extend(channel.host_fids) # host_fids need to be included in the eigentrust compute
 
-    pt_len = len(channel.host_fids)
-    pretrust = [{'i': id, 'v': 1/pt_len} for id in channel.host_fids]
-    max_pt_id = max(channel.host_fids)
+    with Timer(name="channel_localtrust"):
+      # TODO Perf - fids should be a 'set' and not a 'list'
+      # TODO Perf - filter using 'query' instead of 'isin'
+      # TODO Perf - install 'numexpr' to speed up pandas
+      channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
+      logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
     
-    localtrust = channel_lt_df.to_dict(orient="records")
-    max_lt_id = max(channel_lt_df['i'].max(), channel_lt_df['j'].max())
+    if len(channel_lt_df) == 0:
+      logger.error(f"No localtrust for channel {cid}")
+      continue
 
-    globaltrust = go_eigentrust.go_eigentrust(logger, 
-                                              pretrust,
-                                              max_pt_id,
-                                              localtrust,
-                                              max_lt_id
-                                              )
-    logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
+    with Timer(name="go_eigntrust"):
+      scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
+
+    logger.info(f"go_eigentrust returned {len(scores)} entries")
+    logger.debug(f"channel user scores:{scores}")
+
+    scores_df = pandas.DataFrame(data=scores)
+    scores_df['channel_id'] = cid
+    scores_df.rename(columns={'i': 'fid', 'v': 'score'}, inplace=True)
+    scores_df['rank'] = scores_df['score'].rank(
+                                          ascending=False, # highest score will get rank 1
+                                          method='first' # if there is a tie, then first entry will get rank 1
+                                          ).astype(int)
+    scores_df['strategy_name'] = 'global_engagement'
+    logger.info(utils.df_info_to_string(scores_df, with_sample=True))
     utils.log_memusage(logger)
 
-    # rename i and v to fid and score respectively
-    fid_scores = [ {'fid': score['i'], 'score': score['v']} for score in globaltrust]
+    with Timer(name="insert_db"):
+      db_utils.df_insert_copy(pg_url=pg_url, 
+                              df=scores_df, 
+                              dest_tablename=settings.DB_CHANNEL_FIDS)
+  # end of for loop 
+
 
 # How to run this program:
 # cd farcaster-graph/pipeline
@@ -141,4 +131,7 @@ if __name__ == "__main__":
   print(settings)
 
   logger.debug('hello main')
-  # asyncio.run(main(localtrust_pkl=args.localtrust, channel_ids=args.ids))
+  main(localtrust_pkl=args.localtrust,
+       channel_ids=args.ids, 
+       pg_dsn=settings.POSTGRES_DSN.get_secret_value(),
+       pg_url=settings.POSTGRES_URL.get_secret_value())

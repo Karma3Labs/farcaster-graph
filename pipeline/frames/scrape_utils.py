@@ -18,7 +18,8 @@ class URLCategory(Enum):
 async def categorize_url(
     logger: logging.Logger, 
     url_id: int, url:str, 
-    session: aiohttp.ClientSession
+    session: aiohttp.ClientSession,
+    timeout: aiohttp.ClientTimeout
 ) -> tuple[int, str]:
   logger.debug(f"Fetching {url_id} - {url}")
   if urlparse(url).scheme not in ['http','https']:
@@ -26,7 +27,7 @@ async def categorize_url(
     return (url_id, URLCategory.BAD.value)
       
   try:
-    async with session.get(url) as resp:
+    async with session.get(url, timeout=timeout) as resp:
       body = await resp.text()
       soup = BeautifulSoup(body, 'html.parser')
       frame_meta = soup.find('meta', attrs={"property":"fc:frame"})

@@ -4,7 +4,7 @@ import re
 
 class ScoreAgg(StrEnum):
   RMS = 'rms'
-  SUM_SQ = 'sumsquare'
+  SUMSQUARE = 'sumsquare'
   SUM = 'sum'
 
 class Voting(StrEnum):

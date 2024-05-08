@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     DB_LOCALTRUST:str
     DB_TEMP_GLOBALTRUST:str = 'tmp_gt'
     DB_GLOBALTRUST:str
+    DB_CHANNEL_FIDS:str
 
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
@@ -23,15 +24,19 @@ class Settings(BaseSettings):
 
     FRAMES_NAP_SECS: int = 10
     FRAMES_SLEEP_SECS: int = 300
-    FRAMES_BATCH_SIZE: int = 100
+    FRAMES_BATCH_SIZE: int = 1_000
     FRAMES_SCRAPE_CONCURRENCY: int = 10
-    FRAMES_SCRAPE_TIMEOUT_SECS: int = 10
+    FRAMES_SCRAPE_CONNECT_TIMEOUT_SECS: int = 5
+    FRAMES_SCRAPE_READ_TIMEOUT_SECS: int = 10
 
     CASTS_SLEEP_SECS: int = 10
-    CASTS_BATCH_SIZE: int = 100_000
-    CASTS_BATCH_INTERVAL_HRS: int = 2
+    CASTS_BATCH_INTERVAL_HRS: int = 1
 
-    WARPCAST_CHANNELS_TIMEOUT: int = 30000
+    WARPCAST_CHANNELS_TIMEOUT: int = 5
+    CHANNEL_SLEEP_SECS:int = 1
+
+    USE_NEYNAR: bool = False
+    IS_TEST: bool = False
 
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = '[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s'

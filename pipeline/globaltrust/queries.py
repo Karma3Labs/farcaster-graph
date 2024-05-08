@@ -10,6 +10,13 @@ class IJVSql(SQL):
     AND target_cast_fid IS NOT NULL
     GROUP BY i, j
     """
+  LIKES_NEYNAR = """
+    SELECT fid as i, target_fid as j, count(1) as likes_v 
+    FROM reactions 
+    WHERE reaction_type=1
+    AND target_fid IS NOT NULL
+    GROUP BY i, j
+    """
   REPLIES = """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
@@ -26,11 +33,28 @@ class IJVSql(SQL):
 		FROM mention
 		GROUP BY i, j
     """
+  MENTIONS_NEYNAR = """
+    WITH mention AS (
+			SELECT fid as author_fid, mention as mention_fid 
+			FROM casts, unnest(casts.mentions) as mention
+		)
+		SELECT 
+			author_fid as i, mention_fid as j, count(1) as mentions_v
+		FROM mention
+		GROUP BY i, j
+    """
   RECASTS = """
     SELECT fid as i, target_cast_fid as j, count(1) as recasts_v 
     FROM reactions 
     WHERE type=2
     AND target_cast_fid IS NOT NULL
+    GROUP BY i, j
+    """
+  RECASTS_NEYNAR = """
+    SELECT fid as i, target_fid as j, count(1) as recasts_v 
+    FROM reactions 
+    WHERE reaction_type=2
+    AND target_fid IS NOT NULL
     GROUP BY i, j
     """
   FOLLOWS = """
@@ -39,6 +63,15 @@ class IJVSql(SQL):
         following_fid as j,
         1 as follows_v
     FROM mv_follow_links 
+    ORDER BY i, j, follows_v desc
+    """
+  FOLLOWS_NEYNAR = """
+    SELECT 
+        fid as i, 
+        target_fid as j,
+        1 as follows_v
+    FROM links 
+    WHERE type = 'follow'::text
     ORDER BY i, j, follows_v desc
     """
   
@@ -51,7 +84,6 @@ class IVSql(SQL):
     SELECT fid as i, 1/ct::numeric as v
     FROM pretrust, pt_size
     WHERE insert_ts=(select max(insert_ts) from pretrust)
-    LIMIT 100
     """
   PRETRUST_POPULAR = """
     SELECT
