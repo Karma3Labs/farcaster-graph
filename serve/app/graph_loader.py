@@ -24,6 +24,8 @@ class GraphLoader:
     utils.log_memusage(logger)
     logger.info(f"loading {dfile}")
     df = pandas.read_pickle(dfile)
+    df.set_index('i', inplace=True, drop=False)
+    df.index.rename('idx', inplace=True)
     logger.info(utils.df_info_to_string(df, with_sample=True))
     utils.log_memusage(logger)
 

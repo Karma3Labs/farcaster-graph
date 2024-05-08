@@ -83,12 +83,16 @@ async def get_neighbors_scores(
 
   start_time = time.perf_counter()
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
+  # reset index because we need to stack and factorize and unstack for pseudo ids
+  df = df.reset_index()
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(df)} edges")
 
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
+  # stack up i and j in a single column
   stacked = df.loc[:, ('i','j')].stack()
+  # generate numbers from 0 to n for unique i or j fid
   pseudo_id, orig_id = stacked.factorize()
 
   # pseudo_df is a new dataframe to avoid modifying existing shared global df 
@@ -157,18 +161,25 @@ async def _get_neighbors_edges(
     logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_neighbors_list)} neighbors")
 
     start_time  = time.perf_counter()
+
+    # get only edges where i is a neighbor
+    try:
+      # use index if available
+      k_df = graph.df.loc[k_neighbors_list]
+    except:
+      if settings.USE_PANDAS_PERF:
+        # if pandas performance libraries are installed
+        k_df = graph.df.query('i in @k_neighbors_list')
+      else:
+        k_df = graph.df[graph.df['i'].isin(k_neighbors_list)]
+    
+    # get only edges where j is a neighbor
     if settings.USE_PANDAS_PERF:
-      # if multiple CPU cores are available
-      k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
-    else:
-      # filter with an '&' is slower because of the size of the dataframe
-      # split the filtering so that indexes can be used if present
-      # k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
-      k_df = graph.df[graph.df['i'].isin(k_neighbors_list)]
+      # if pandas performance libraries are installed
+      k_df = k_df.query('j in @k_neighbors_list')
+    else:      
       k_df = k_df[k_df['j'].isin(k_neighbors_list)]
-    # .loc will throw KeyError when fids have no outgoing actions
-    ### in other words, some neighbor fids may not be present in 'i'
-    # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]
+      
     logger.info(f"k_df took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
 
     start_time  = time.perf_counter()
@@ -216,7 +227,12 @@ async def _get_direct_edges_df(
 ) -> pandas.DataFrame: 
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
-  out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  # out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+  try:
+    out_df = graph.df.loc[fids].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
+    # .loc can throw KeyError if an input fid has no outbound edges in the dataframe
+  except:
+    out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
   return out_df
 
 async def get_direct_edges_list(  
