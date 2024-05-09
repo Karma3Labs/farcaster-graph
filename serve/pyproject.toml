@@ -23,6 +23,7 @@ opentelemetry-instrumentation-fastapi = "0.43b0"
 opentelemetry-instrumentation-logging = "0.43b0"
 opentelemetry-exporter-otlp = "1.22.0"
 prometheus-client = "0.19.0"
+asgi-correlation-id = "^4.3.1"
 
 [build-system]
 requires = ["poetry-core"]

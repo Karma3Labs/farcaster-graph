@@ -12,6 +12,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 import asyncio
 import asyncpg
+from asgi_correlation_id import CorrelationIdMiddleware
+from asgi_correlation_id.context import correlation_id
 
 from .dependencies import logging
 from .config import settings
@@ -34,13 +36,32 @@ logger.remove()
 level_per_module = {
    "": settings.LOG_LEVEL,
    "app.dependencies": settings.LOG_LEVEL_CORE,
-   "silentlib": False
+   "uvicorn.access": False
 }
 
-logger.add(sys.stdout, colorize=True,
+def custom_log_filter(record):
+    # Reference https://github.com/Delgan/loguru/blob/master/loguru/_filters.py
+    # https://loguru.readthedocs.io/en/stable/api/logger.html#record
+    record['correlation_id'] = correlation_id.get()
+    name = record["name"]
+    if not name:
+        return False
+    level = level_per_module.get(name, None)
+    if level is not None:
+        if record["level"].no >= level:
+            return False
+    return True
+
+logger.add(sys.stdout, 
+           colorize=True,
            format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+           filter=custom_log_filter)
+
+# logger.add(sys.stdout, 
+#            colorize=True,
+#            format=settings.LOGURU_FORMAT,
+#            filter=level_per_module,
+#            level=0)
 
 log.basicConfig(handlers=[logging.InterceptHandler()], level=0, force=True)
 log.getLogger("uvicorn").handlers = [logging.InterceptHandler()]
@@ -50,13 +71,6 @@ log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
 # from uvicorn.config import LOGGING_CONFIG
 # LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
 #     '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
-class EndpointFilter(log.Filter):
-    # Uvicorn endpoint access log filter
-    def filter(self, record: log.LogRecord) -> bool:
-        return record.getMessage().find("GET /metrics") == -1
-
-# Filter out /metrics
-log.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 def custom_openapi():
     if app.openapi_schema:
@@ -108,6 +122,9 @@ async def lifespan(app: FastAPI):
 APP_NAME = "farcaster-graph-a" #os.environ.get("APP_NAME", "farcaster-graph-a")
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
+
+app.add_middleware(CorrelationIdMiddleware)
+
 app.include_router(direct_router, prefix='/links')
 app.include_router(graph_router, prefix='/graph')
 app.include_router(metadata_router, prefix='/metadata')

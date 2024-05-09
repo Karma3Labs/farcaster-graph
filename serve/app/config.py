@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
     LOG_LEVEL_CORE: str = 'DEBUG'
-    LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
+    LOGURU_FORMAT: str = ("<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
+                            " | {name}:{function}:{line} [{correlation_id}]"
+                            " | {level} | <level>{message}</level>" )
     SWAGGER_BASE_URL: str
 
     FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
