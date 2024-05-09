@@ -1,6 +1,6 @@
 # Pre-requisites
 1. Generate graph artifacts by running the [pipeline](../pipeline/Readme.md) from the `pipeline` sub-project in the parent folder. *Note: if you are in a rush, you can try the sample artifacts found in the `samples` folder of this sub-project*
-2. An instance of Postgres DB with data from Farcaster (installed locally or on a remote server)  - for example, a database instance of [Farcaster Replicator](https://github.com/farcasterxyz/hub-monorepo/tree/main/apps/replicator) 
+2. An instance of Postgres DB with data from Farcaster (installed locally or on a remote server) 
 3. Run an instance of [go-eigentrust](https://github.com/Karma3Labs/go-eigentrust) locally.
 4. Copy/rename `.env.sample` to `.env` and udpate the properties.
 5. Install [Python 3.12](https://www.python.org/downloads/)
