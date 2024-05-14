@@ -24,15 +24,16 @@ class GraphLoader:
     dfile = f"{path_prefix}_df.pkl"
 
     utils.log_memusage(logger)
-    logger.info(f"loading {dfile}")
+    logger.info(f"unpickling {dfile}")
     df = pandas.read_pickle(dfile)
     logger.info(utils.df_info_to_string(df, with_sample=True))
     utils.log_memusage(logger)
 
     gfile = f"{path_prefix}_ig.pkl"
-    logger.info(f"loading {gfile}")
+    logger.info(f"reading {gfile}")
     with open(gfile, 'rb') as pickle_file:
       pickled_data = bytearray(pickle_file.read())
+    logger.info(f"unpickling {gfile}")
     g = pickle.loads(pickled_data)
     # g = igraph.Graph.Read_Pickle(pickled_data)
     utils.log_memusage(logger)
