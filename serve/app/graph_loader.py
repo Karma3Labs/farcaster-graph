@@ -29,16 +29,16 @@ class GraphLoader:
     logger.info(utils.df_info_to_string(df, with_sample=True))
     utils.log_memusage(logger)
 
-    logger.info(f"creating graph from dataframe ")
-    g = igraph.Graph.DataFrame(df, directed=True, use_vids=False)
-    logger.info(g.summary())
-    # gfile = f"{path_prefix}_ig.pkl"
+    # logger.info(f"creating graph from dataframe ")
+    # g = igraph.Graph.DataFrame(df, directed=True, use_vids=False)
+    # logger.info(g.summary())
+    gfile = f"{path_prefix}_ig.pkl"
     # logger.info(f"reading {gfile}")
     # with open(gfile, 'rb') as pickle_file:
     #   pickled_data = bytearray(pickle_file.read())
-    # logger.info(f"unpickling {gfile}")
+    logger.info(f"unpickling {gfile}")
     # g = pickle.loads(pickled_data)
-    # g = igraph.Graph.Read_Pickle(pickled_data)
+    g = igraph.Graph.Read_Pickle(gfile)
     utils.log_memusage(logger)
 
     return Graph(
