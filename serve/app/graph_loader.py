@@ -1,9 +1,11 @@
 import os
 import math
+import pickle
 
 from . import utils 
 from .config import settings
 from .models.graph_model import Graph, GraphType
+
 
 import igraph
 import pandas
@@ -29,7 +31,10 @@ class GraphLoader:
 
     gfile = f"{path_prefix}_ig.pkl"
     logger.info(f"loading {gfile}")
-    g = igraph.Graph.Read_Pickle(gfile)
+    with open(gfile, 'rb') as pickle_file:
+      pickled_data = bytearray(pickle_file.read())
+    g = pickle.loads(pickled_data)
+    # g = igraph.Graph.Read_Pickle(pickled_data)
     utils.log_memusage(logger)
 
     return Graph(
