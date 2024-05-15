@@ -34,5 +34,5 @@ function log() {
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m channels.main -i founders degen base optimism farcaster op-stack -l $IN_LT 
+python3 -m channels.main -i founders degen base optimism farcaster op-stack new-york -l $IN_LT
 deactivate
