@@ -22,7 +22,7 @@ async def get_top_channel_profiles(
   Get a list of fids based on the engagement relationships in the given channel
     and scored by Eigentrust algorithm. \n
   Specify one of the following as channel_id:
-    `degen`, `base`, `optimism`, `founders`, `farcaster`
+    `degen`, `base`, `optimism`, `founders`, `farcaster`, `op-rank`, `new-york`
   This API takes two optional parameters - offset and limit. \n
   Parameter 'offset' is used to specify how many results to skip 
     and can be useful for paginating through results. \n
