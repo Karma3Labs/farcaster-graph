@@ -1,8 +1,8 @@
 import os
 import math
-import pickle
+import time
 
-from . import utils 
+from . import utils, main
 from .config import settings
 from .models.graph_model import Graph, GraphType
 
@@ -75,8 +75,11 @@ class GraphLoader:
                       f" {"are not close" if is_graph_modified else "are close"}"
                     )
         if is_graph_modified:
+          main.get_pause() # stop accepting new requests
+          time.sleep(settings.PAUSE_BEFORE_RELOAD_SECS)
           logger.info("reload graphs")
           self.graphs = self.load_graphs()
+          main.get_resume() # start accepting new requests
           break
     except Exception as e:
       logger.error(e)

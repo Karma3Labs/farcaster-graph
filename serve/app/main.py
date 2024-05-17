@@ -3,7 +3,7 @@ import os
 import time
 import logging as log
 
-from fastapi import FastAPI, Depends, Request, Response
+from fastapi import FastAPI, Depends, Request, Response, status
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
@@ -94,7 +94,7 @@ def custom_openapi():
 
 app_state = {}
 
-async def check_and_reload_models(loader: GraphLoader):
+async def _check_and_reload_models(loader: GraphLoader):
     loop = asyncio.get_running_loop()
     logger.info("Starting graph loader loop")
     while True:
@@ -105,17 +105,26 @@ async def check_and_reload_models(loader: GraphLoader):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Execute when API is started"""
+    """Automatically called by FastAPI when server is started"""
     logger.warning(f"{settings}")
+
+    # Create a singleton instance of GraphLoader
+    # ... load graphs from disk immediately
+    # ... set the loader into the global state
+    # ... that every API request has access to.
     app_state['graph_loader'] = GraphLoader()
+
+    # start a background thread that can reload graphs if necessary
     app_state['graph_loader_task'] = asyncio.create_task(
-        check_and_reload_models(app_state['graph_loader'])
+        _check_and_reload_models(app_state['graph_loader'])
     )
+
+    # create a DB connection pool
     app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
                                          min_size=1,
                                          max_size=settings.POSTGRES_POOL_SIZE)
     yield
-    """Execute when API is shutdown"""
+    """Execute when server is shutdown"""
     await app_state['db_pool'].close()
     app_state['graph_loader_task'].cancel()
 
@@ -151,21 +160,39 @@ app.add_route("/metrics", metrics)
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
+    """FastAPI automatically invokes this function for every http call"""
     start_time = time.perf_counter()
     logger.info(f"{request.method} {request.url}")
     response = Response("Internal server error", status_code=500)
     request.state.graphs = app_state['graph_loader'].get_graphs()
     request.state.db_pool = app_state['db_pool']
+    # call_next is a built-in FastAPI function that calls the actual API
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
     logger.info(f"{request.url} took {elapsed_time} secs")
     return response
 
-@app.get("/_health", status_code=200)
-def get_health():
-    logger.info("health check")
+@app.get("/_health", include_in_schema=False)
+def get_health(response: Response):
+    app_status = app_state.get('app_status', 'accept')
+    logger.info(f"health: {app_status}") 
+    if app_status != 'accept':
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        response.headers["Retry-After"] = "300" #retry after 5 mins
+        return {'detail': 'Service Unavailable'}
     return {'status': 'ok'}
 
+@app.get("/_pause", status_code=200, include_in_schema=False)
+def get_pause():
+    logger.info("pausing app")
+    app_state['app_status'] = 'reject'
+    return {'status': 'ok'}
+
+@app.get("/_resume", status_code=200, include_in_schema=False)
+def get_resume():
+    logger.info("resuming app")
+    app_state['app_status'] = 'accept'
+    return {'status': 'ok'}
 
 @app.get("/docs", include_in_schema=False)
 async def swagger_ui_html():
