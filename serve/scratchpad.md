@@ -64,18 +64,6 @@ curl -X 'POST' 'http://localhost:8000/metadata/addresses/handles' -H 'accept: ap
 
 curl -X 'POST' 'http://localhost:8000/metadata/addresses/fids' -H 'accept: application/json'   -H 'Content-Type: application/json'   -d '[2,3]' 
 
-## Global Frames Rankings
-
-curl -X 'GET' 'http://localhost:8000/frames/global/rankings' -H 'accept: application/json'   -H 'Content-Type: application/json'
-
-curl -X 'GET' 'http://localhost:8000/frames/global/rankings?recent=False&details=True&agg=sumsquare&weights=L1C10R5&offset=10&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json'
-
-## Personalized Frames Rankings
-
-curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
-
-curl -X 'POST' 'http://localhost:8000/frames/personalized/rankings/fids?agg=sumsquare&weights=L1C10R5&voting=single&k=2&limit=10' -H 'accept: application/json'   -H 'Content-Type: application/json' -d '[2,3]'
-
 ## Personalized Cast Feed
 curl -X 'GET' 'http://localhost:8000/casts/personalized/recent/3' 
 
