@@ -1,0 +1,37 @@
+####
+# Every 6(even) hours, compute Eigentrust for Farcaster
+####
+0 */6 * * * date >> /var/log/farcaster-graph/gt_pipeline.log; echo 'pause' >> /var/log/farcaster-graph/gt_pipeline.log; curl -s -X 'GET' 'http://localhost:8000/_pause' >> /var/log/farcaster-graph/gt_pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv >> /var/log/farcaster-graph/gt_pipeline.log 2>&1; date >> /var/log/farcaster-graph/gt_pipeline.log; echo 'resume' >> /var/log/farcaster-graph/gt_pipeline.log; curl -s -X 'GET' 'http://localhost:8000/_resume' >> /var/log/farcaster-graph/gt_pipeline.log; 
+
+####
+# Every 6(odd) hours, 
+# refresh rank view
+# re-generate graph for farcaster-graph API server
+# re-generate channel rankings
+####
+0 1-23/6 * * * date >> /var/log/farcaster-graph/refresh_rank.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_rank;" >> /var/log/farcaster-graph/refresh_rank.log 2>&1; date >> /var/log/farcaster-graph/refresh_rank.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "VACUUM ANALYZE k3l_rank;" >> /var/log/farcaster-graph/refresh_rank.log 2>&1; date >> /var/log/farcaster-graph/refresh_rank.log;
+
+20 1-23/6 * * * date >> /var/log/farcaster-graph/pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_graph_pipeline.sh -w . -o /home/ubuntu/serve_files -v /home/ubuntu/farcaster-graph/pipeline/.venv >> /var/log/farcaster-graph/pipeline.log 2>&1; date >> /var/log/farcaster-graph/pipeline.log; date >> /var/log/farcaster-graph/scp.log; scp -v -i ~/.ssh/eigen2_eigen1_ed25519 /home/ubuntu/serve_files/fc_*.pkl ubuntu@37.27.108.188:/home/ubuntu/serve_files >> /var/log/farcaster-graph/scp.log 2>&1; date >> /var/log/farcaster-graph/scp.log; scp -v -i ~/.ssh/eigen2_eigen1_ed25519 /home/ubuntu/serve_files/fc_*_SUCCESS ubuntu@37.27.108.188:/home/ubuntu/serve_files >> /var/log/farcaster-graph/scp.log 2>&1; date >> /var/log/farcaster-graph/scp.log;
+
+20 2-23/6 * * * date >> /var/log/farcaster-graph/scp.log; scp -v -i ~/.ssh/eigen2_eigen1_ed25519 /home/ubuntu/serve_files/fc_*.pkl ubuntu@65.21.77.173:/home/ubuntu/serve_files >> /var/log/farcaster-graph/scp.log 2>&1; date >> /var/log/farcaster-graph/scp.log; scp -v -i ~/.ssh/eigen2_eigen1_ed25519 /home/ubuntu/serve_files/fc_*_SUCCESS ubuntu@65.21.77.173:/home/ubuntu/serve_files >> /var/log/farcaster-graph/scp.log 2>&1; date >> /var/log/farcaster-graph/scp.log;
+
+40 1-23/6 * * * date >> /var/log/farcaster-graph/ch_pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_channel_scraper.sh -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -i /home/ubuntu/serve_files/fc_engagement_fid_df.pkl >> /var/log/farcaster-graph/ch_pipeline.log 2>&1; date >> /var/log/farcaster-graph/ch_pipeline.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;" >> /var/log/farcaster-graph/ch_pipeline.log 2>&1; date >> /var/log/farcaster-graph/ch_pipeline.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "VACUUM ANALYZE k3l_channel_rank;" >> /var/log/farcaster-graph/ch_pipeline.log 2>&1; date >> /var/log/farcaster-graph/ch_pipeline.log;
+
+####
+# Every 20 mins, extract urls from cast embeds and refresh pg statistics
+####
+1-59/20 * * * * date >> /var/log/farcaster-graph/urlextract.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_urlextract_pipeline.sh -w . >> /var/log/farcaster-graph/urlextract.log 2>&1; date >> /var/log/farcaster-graph/urlextract.log; date >> /var/log/farcaster-graph/frame_scraper.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_frame_scraper.sh -v /home/ubuntu/farcaster-graph/pipeline/.venv/ >> /var/log/farcaster-graph/frame_scraper.log 2>&1; date >> /var/log/farcaster-graph/frame_scraper.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "ANALYZE k3l_url_labels; ANALYZE k3l_cast_embed_url_mapping;" >> /var/log/farcaster-graph/frame_scraper.log 2>&1; date >> /var/log/farcaster-graph/frame_scraper.log;
+
+6-59/20 * * * * date >> /var/log/farcaster-graph/frame_interaction.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_frame_interaction;" >> /var/log/farcaster-graph/frame_interaction.log 2>&1; date >> /var/log/farcaster-graph/frame_interaction.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "VACUUM ANALYZE k3l_frame_interaction;" >> /var/log/farcaster-graph/frame_interaction.log 2>&1; date >> /var/log/farcaster-graph/frame_interaction.log; 
+
+####
+# Every 10 mins, extract cast interactions and refresh pg statistics
+####
+*/10 * * * * date >> /var/log/farcaster-graph/cast_pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_cast_pipeline.sh -v /home/ubuntu/farcaster-graph/pipeline/.venv/ >> /var/log/farcaster-graph/cast_pipeline.log 2>&1; date >> /var/log/farcaster-graph/cast_pipeline.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "ANALYZE k3l_cast_action;" >> /var/log/farcaster-graph/cast_pipeline.log 2>&1; date >> /var/log/farcaster-graph/cast_pipeline.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_recent_parent_casts;" >> /var/log/farcaster-graph/cast_pipeline.log 2>&1; date >> /var/log/farcaster-graph/cast_pipeline.log; /usr/bin/psql -e -h 127.0.0.1 -p 9541 -U k3l_user -d farcaster -c "VACUUM ANALYZE k3l_recent_parent_casts;" >> /var/log/farcaster-graph/cast_pipeline.log 2>&1; date >> /var/log/farcaster-graph/cast_pipeline.log;
+
+####
+# Export to Dune on a daily basis and keep only the most recent 7 days worth of exports
+###
+30 20 * * * date >> /var/log/k3l-publisher/farcaster/pg-to-dune.log; cd /home/ubuntu/k3l-publisher/farcaster/pg-to-dune; ./upload-to-dune.sh >> /var/log/k3l-publisher/farcaster/pg-to-dune.log 2>&1; date >> /var/log/k3l-publisher/farcaster/pg-to-dune.log;
+40 20 * * * cd /home/ubuntu/k3l-publisher/farcaster/pg-to-dune/csv; ls -r1d * | tail -n +8 | xargs -I {} rm -fr -- {}
+
