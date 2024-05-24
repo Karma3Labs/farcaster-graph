@@ -24,35 +24,35 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
 
 
 def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel: str) -> pd.DataFrame:
-    query = IJVSql.LIKES_NEYNAR % channel
-    _channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    query = IJVSql.LIKES_NEYNAR
+    _channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel)
     logger.info(utils.df_info_to_string(_channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
 
-    query = IJVSql.REPLIES % channel
+    query = IJVSql.REPLIES
     with Timer(name="merge_replies"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
     logger.info(utils.df_info_to_string(_channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
 
-    query = IJVSql.MENTIONS_NEYNAR % channel
+    query = IJVSql.MENTIONS_NEYNAR
     with Timer(name="merge_mentions"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
     logger.info(utils.df_info_to_string(_channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
 
-    query = IJVSql.RECASTS_NEYNAR % channel
+    query = IJVSql.RECASTS_NEYNAR
     with Timer(name="merge_recasts"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
