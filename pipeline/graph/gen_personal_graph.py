@@ -59,50 +59,35 @@ def graph_fn(
 
   pl_df = pl.DataFrame()
   for idx, fid in enumerate(slice_arr):
-    logger.info(f"{process_label}| fid: {fid}")
+    logger.info(f"{process_label}| FID: {fid}")
     if(idx % 1e4 == 9999):
         pl_df = pl_df.rechunk() # make contiguous
-    start_time = time.perf_counter()
-    k1_df = graph_utils.get_direct_edges_df(fid, pd_df, maxneighbors)
-    logger.info(f"{process_label}| k-1 neighbors took {time.perf_counter() - start_time} secs for {len(k1_df)} edges")
 
-    k1_scores = go_eigentrust.get_scores(k1_df, [fid])
-    logger.info(f"{process_label}| {fid}: 1st degree neigbors: {len(k1_scores)}")
-    logger.trace(f"{process_label}| {fid}: 1st degree neigbors scores: {k1_scores}")
-
-    pl_fid = pl.DataFrame(k1_scores, schema={"i": pl.UInt32, "v":pl.Float64}) \
-                .with_columns(pl.lit(fid).alias("fid"), pl.lit(1).alias("degree"))
-    logger.debug(f"{process_label}| pl_fid: {pl_fid.describe()}")
-    pl_df = pl_df.vstack(pl_fid)
-
-    logger.debug(f"{process_label}| pl_df: {pl_df.describe()}")
-    limit = maxneighbors - len(k1_df)
-    if limit > 0:
+    k_minus_list = []
+    limit = maxneighbors
+    degree = 1
+    while limit > 0 and degree <= 5:
       start_time = time.perf_counter()
-      k2_fid_list = graph_utils.get_k_degree_neighbors(fid, graph, limit, 2, process_label)
-      logger.info(f"{process_label}| iGraph took {time.perf_counter() - start_time} secs"
-                  f" for {len(k2_fid_list)} k-2 neighbors")
-      if len(k2_fid_list) > 0:
-        start_time  = time.perf_counter()
-        k1_fid_list = k1_df['j'].to_list()
-        k2_fid_list.extend(k1_fid_list)
-        k2_fid_list.extend([fid])
-        logger.debug(f"{process_label}| k2_fid_list:{k2_fid_list}")
-        k2_df = pd_df.query('i in @k2_fid_list').query('j in @k2_fid_list')
-        logger.info(f"{process_label}| k2_df took {time.perf_counter() - start_time} secs for {len(k2_df)} edges")
-
-        if len(k2_df) > 0:
-          k2_scores = go_eigentrust.get_scores(k2_df, [fid])
-          # filter out 1st degree neighbors
-          k2_scores = [ score for score in k2_scores if score['i'] not in k1_fid_list]
-          logger.info(f"{process_label}| {fid}: 2nd degree neigbors: {len(k2_scores)}")
-          logger.trace(f"{process_label}| {fid}: 2nd degree neigbors scores: {k2_scores}")
-
-          pl_fid = pl.DataFrame(k2_scores, schema={"i": pl.UInt32, "v":pl.Float64}) \
-                    .with_columns(pl.lit(fid).alias("fid"), pl.lit(2).alias("degree"))
-          logger.debug(f"{process_label}| pl_fid: {pl_fid.describe()}")
-          pl_df = pl_df.vstack(pl_fid)
-
+      k_scores = graph_utils.get_k_degree_scores(fid, k_minus_list, pd_df, graph, limit, degree, process_label)
+      logger.trace(f"{process_label}| FID {fid}: {degree}-degree neigbors scores: {k_scores}")
+      if len(k_scores) == 0:
+        logger.info(f"{process_label}| k-{degree} took {time.perf_counter() - start_time} secs"
+              f" for {len(k_scores)} neighbors"
+              f" for FID {fid}")
+        break
+      pl_fid = pl.DataFrame(k_scores, schema={"i": pl.UInt32, "v":pl.Float64}) \
+                  .with_columns(pl.lit(fid).alias("fid"), pl.lit(1).alias("degree"))
+      logger.debug(f"{process_label}| pl_fid: {pl_fid.describe()}")
+      pl_df = pl_df.vstack(pl_fid)
+      logger.info(f"{process_label}| k-{degree} took {time.perf_counter() - start_time} secs"
+                    f" for {len(k_scores)} neighbors"
+                    f" for FID {fid}")
+      logger.debug(f"{process_label}| pl_df: {pl_df.describe()}")
+      k_minus_list = [ score['i'] for score in k_scores ]
+      limit = limit - len(k_scores)
+      degree = degree + 1
+    # end while
+  # end for loop
   pl_df = pl_df.rechunk() # make contiguous
   logger.info(f"{process_label}| pl_df: {pl_df.describe()}")
   logger.info(f"{process_label}| pl_df sample: {pl_df.sample(n=5)}")
