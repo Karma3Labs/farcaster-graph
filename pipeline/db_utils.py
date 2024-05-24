@@ -1,6 +1,7 @@
 import tempfile
 from io import StringIO
 import csv
+from enum import Enum
 
 import channels.channel_queries
 from timer import Timer
@@ -11,6 +12,8 @@ from loguru import logger
 import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
+
+class SQL(Enum): pass
 
 
 def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
@@ -30,11 +33,10 @@ def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
             fids = [row[0] for row in records]
             return fids
 
-
-def ijv_df_read_sql_tmpfile(pg_dsn: str, query: channels.channel_queries.SQL, channel: str = None) -> pd.DataFrame:
+def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, channel_url: str = None) -> pd.DataFrame:
     with Timer(name=query.name):
         with tempfile.TemporaryFile() as tmpfile:
-            sql_query = query.value % channel if channel else query.value
+            sql_query = query.value.format(channel_url=channel_url) if channel_url else query.value
             if settings.IS_TEST:
                 copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
             else:

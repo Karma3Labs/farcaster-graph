@@ -1,8 +1,4 @@
-from enum import Enum
-
-
-class SQL(Enum): pass
-
+from db_utils import SQL
 
 class IJVSql(SQL):
     LIKES_NEYNAR = """
@@ -11,14 +7,14 @@ class IJVSql(SQL):
     INNER JOIN casts c on c.hash = r.target_hash 
     WHERE r.reaction_type=1
     AND r.target_fid IS NOT null
-    AND c.root_parent_url in ('%s')
+    AND c.root_parent_url in ('{channel_url}')
     GROUP BY i, j
     """
     REPLIES = """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
     WHERE parent_hash IS NOT NULL
-    AND root_parent_url in ('%s')
+    AND root_parent_url in ('{channel_url}')
     GROUP by i, j
     """
 
@@ -26,7 +22,7 @@ class IJVSql(SQL):
     WITH mention AS (
         SELECT fid as author_fid, mention as mention_fid 
         FROM casts, unnest(casts.mentions) as mention
-        WHERE root_parent_url in ('%s')
+        WHERE root_parent_url in ('{channel_url}')
     )
     SELECT 
         author_fid as i, mention_fid as j, count(1) as mentions_v
@@ -40,7 +36,7 @@ class IJVSql(SQL):
     INNER JOIN casts c on r.target_hash = c.hash
     WHERE r.reaction_type=2
     AND r.target_fid IS NOT NULL
-    AND c.root_parent_url in ('%s')
+    AND c.root_parent_url in ('{channel_url}')
     GROUP BY i, j
     """
 

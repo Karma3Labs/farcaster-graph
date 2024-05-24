@@ -1,6 +1,4 @@
-from enum import Enum
-
-class SQL(Enum): pass
+from db_utils import SQL
 
 class IJVSql(SQL):
   LIKES = """
