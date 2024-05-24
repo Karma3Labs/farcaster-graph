@@ -194,6 +194,9 @@ PARTITION BY RANGE (action_ts);
 CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action 
 USING btree(fid);
 
+CREATE INDEX k3l_cast_action_fid_ts_idx ON public.k3l_cast_action 
+USING btree(fid, action_ts);
+
 CREATE INDEX k3l_cast_action_cast_hash_idx ON public.k3l_cast_action 
 USING btree(cast_hash);
 
