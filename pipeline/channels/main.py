@@ -59,7 +59,9 @@ def main(
         logger.info(f"Channel details: {channel}")
 
         utils.log_memusage(logger)
-        global_lt_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel=channel.project_url)
+        global_lt_df = compute_trust._fetch_interactions_df(logger, 
+                                                            pg_dsn, 
+                                                            channel_url=channel.project_url)
         global_lt_df = global_lt_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
         utils.log_memusage(logger)

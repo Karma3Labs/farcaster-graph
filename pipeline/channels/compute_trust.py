@@ -23,16 +23,16 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
     return _pretrust_toptier_df
 
 
-def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel: str) -> pd.DataFrame:
+def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel_url: str) -> pd.DataFrame:
     query = IJVSql.LIKES_NEYNAR
-    _channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel)
+    _channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel_url)
     logger.info(utils.df_info_to_string(_channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
 
     query = IJVSql.REPLIES
     with Timer(name="merge_replies"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel_url),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
@@ -42,7 +42,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel: str) ->
     query = IJVSql.MENTIONS_NEYNAR
     with Timer(name="merge_mentions"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel_url),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
@@ -52,7 +52,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel: str) ->
     query = IJVSql.RECASTS_NEYNAR
     with Timer(name="merge_recasts"):
         _channel_interactions_df = _channel_interactions_df.merge(
-            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel),
+            db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query, channel_url),
             how='outer',
             left_on=['i', 'j'], right_on=['i', 'j'],
             indicator=False)
