@@ -6,10 +6,9 @@ from pathlib import Path
 
 # local dependencies
 from config import settings
-import utils, db_utils
+import utils, db_utils, go_eigentrust
 from timer import Timer
 from . import channel_utils
-from . import go_eigentrust
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -85,8 +84,7 @@ def main(
       logger.error(f"No localtrust for channel {cid}")
       continue
 
-    with Timer(name="go_eigntrust"):
-      scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
+    scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
 
     logger.info(f"go_eigentrust returned {len(scores)} entries")
     logger.debug(f"channel user scores:{scores}")
