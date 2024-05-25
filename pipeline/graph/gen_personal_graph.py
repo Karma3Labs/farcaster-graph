@@ -78,12 +78,11 @@ def graph_fn(
         break
       row = {"fid":fid, "degree":degree, "scores": [k_scores]}
       pl_fid = pl.DataFrame(row, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
-      logger.debug(f"{process_label}| pl_fid: {pl_fid.describe()}")
+      logger.debug(f"{process_label}| pl_fid sample: {pl_df.sample(n=min(5, len(pl_df)))}")
       pl_df = pl_df.vstack(pl_fid)
       logger.info(f"{process_label}| k-{degree} took {time.perf_counter() - start_time} secs"
                     f" for {len(k_scores)} neighbors"
                     f" for FID {fid}")
-      logger.debug(f"{process_label}| pl_df: {pl_df.describe()}")
       k_minus_list = [ score['i'] for score in k_scores ]
       limit = limit - len(k_scores)
       degree = degree + 1
@@ -153,14 +152,6 @@ def main(
                   error_callback=error_callback)
   pool.close()
   pool.join()
-  # with mp.get_context('spawn').Pool(processes=procs) as pool:
-  #   # split the fids into groups and spawn processes
-  #   # WARNING: we don't use shared_memory so dataframe and graph will be copied to each process
-  #   # TODO use shared_memory or joblib with sharedmem 
-  #   pool.map_async(batch_fn, 
-  #                  split_arr(fids, chunksize), 
-  #                  callback=success_callback, 
-  #                  error_callback=error_callback)
 
   logger.info("Done!")
 
