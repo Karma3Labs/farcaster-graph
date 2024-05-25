@@ -105,6 +105,14 @@ def graph_fn(
   pl_df.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
   logger.info(f"{process_label}| writing to {outfile} took {time.perf_counter() - start_time} secs")
 
+  return slice_id
+
+def success_callback(slice_id):
+  logger.info(f"SUCCESS: {slice_id} completed successfully")
+
+def error_callback(err):
+  logger.info(err)
+
 def main(
     inpkl:Path,  
     outdir:Path, 
@@ -138,11 +146,21 @@ def main(
   # let's create a partial function with the argument 
   # ...that is the same for every batch
   batch_fn = partial(graph_fn, outdir, maxneighbors, edges_df, graph)
-  with mp.get_context('spawn').Pool(processes=procs) as pool:
-    # split the fids into groups and spawn processes
-    # WARNING: we don't use shared_memory so dataframe and graph will be copied to each process
-    # TODO use shared_memory or joblib with sharedmem 
-    pool.map(batch_fn, split_arr(fids, chunksize))
+  pool = mp.get_context('spawn').Pool(processes=procs)
+  pool.map_async(batch_fn, 
+                  split_arr(fids, chunksize), 
+                  callback=success_callback, 
+                  error_callback=error_callback)
+  pool.close()
+  pool.join()
+  # with mp.get_context('spawn').Pool(processes=procs) as pool:
+  #   # split the fids into groups and spawn processes
+  #   # WARNING: we don't use shared_memory so dataframe and graph will be copied to each process
+  #   # TODO use shared_memory or joblib with sharedmem 
+  #   pool.map_async(batch_fn, 
+  #                  split_arr(fids, chunksize), 
+  #                  callback=success_callback, 
+  #                  error_callback=error_callback)
 
   logger.info("Done!")
 
