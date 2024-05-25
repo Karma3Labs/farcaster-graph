@@ -56,7 +56,7 @@ def get_k_degree_scores(
 
     start_time  = time.perf_counter()
     k_df = df.query('i in @k_fid_list').query('j in @k_fid_list')
-    logger.debug(f"{process_label}| k{k}_df took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
+    logger.debug(f"{process_label}| k-{k} Pandas took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
 
     if len(k_df) > 0:
       k_scores = go_eigentrust.get_scores(k_df, [fid])
