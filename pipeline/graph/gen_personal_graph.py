@@ -59,10 +59,11 @@ def graph_fn(
 
   pl_df = pl.DataFrame()
   for idx, fid in enumerate(slice_arr):
-    logger.info(f"{process_label}| FID: {fid}")
+    logger.info(f"{process_label}| processing FID: {fid}")
     if(idx % 1e4 == 9999):
+        start_time = time.perf_counter()
         pl_df = pl_df.rechunk() # make contiguous
-
+        logger.info(f"{process_label}| rechunk took {time.perf_counter() - start_time} secs")
     k_minus_list = []
     limit = maxneighbors
     degree = 1
@@ -75,8 +76,8 @@ def graph_fn(
               f" for {len(k_scores)} neighbors"
               f" for FID {fid}")
         break
-      pl_fid = pl.DataFrame(k_scores, schema={"i": pl.UInt32, "v":pl.Float64}) \
-                  .with_columns(pl.lit(fid).alias("fid"), pl.lit(1).alias("degree"))
+      row = {"fid":fid, "degree":degree, "scores": [k_scores]}
+      pl_fid = pl.DataFrame(row, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
       logger.debug(f"{process_label}| pl_fid: {pl_fid.describe()}")
       pl_df = pl_df.vstack(pl_fid)
       logger.info(f"{process_label}| k-{degree} took {time.perf_counter() - start_time} secs"
@@ -86,15 +87,23 @@ def graph_fn(
       k_minus_list = [ score['i'] for score in k_scores ]
       limit = limit - len(k_scores)
       degree = degree + 1
+      utils.log_memusage(logger)
     # end while
   # end for loop
+
+  start_time = time.perf_counter()
   pl_df = pl_df.rechunk() # make contiguous
+  logger.info(f"{process_label}| rechunk took {time.perf_counter() - start_time} secs")
+  utils.log_memusage(logger)
+
   logger.info(f"{process_label}| pl_df: {pl_df.describe()}")
-  logger.info(f"{process_label}| pl_df sample: {pl_df.sample(n=5)}")
+  logger.info(f"{process_label}| pl_df sample: {pl_df.sample(n=min(5, len(pl_df)))}")
 
   outfile = os.path.join(outdir, f"{slice_id}.pqt")
   logger.info(f"{process_label}| writing output to {outfile}")
+  start_time = time.perf_counter()
   pl_df.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
+  logger.info(f"{process_label}| writing to {outfile} took {time.perf_counter() - start_time} secs")
 
 def main(
     inpkl:Path,  
@@ -104,13 +113,16 @@ def main(
     maxneighbors:int
 ):
   logger.info(f"Reading pickle {inpkl} into DataFrame")
+  utils.log_memusage(logger)
   edges_df = pd.read_pickle(inpkl)
   logger.info(utils.df_info_to_string(edges_df, True))
+  utils.log_memusage(logger)
   # graph = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
   gfile = os.path.join(inpkl.parent, os.path.basename(inpkl).replace('_df.pkl', '_ig.pkl'))
   logger.info(f"Reading pickle {gfile} into iGraph")
   graph = ig.Graph.Read_Pickle(gfile)
   logger.info(ig.summary(graph))
+  utils.log_memusage(logger)
 
   # we need to compute personalized ranking for every profile in Farcaster
   # ... let's extract all the fids that have had outgoing interactions.
