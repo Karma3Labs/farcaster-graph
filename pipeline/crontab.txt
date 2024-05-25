@@ -1,7 +1,7 @@
 ####
 # Every 6(even) hours, compute Eigentrust for Farcaster
 ####
-0 */6 * * * date >> /var/log/farcaster-graph/gt_pipeline.log; echo 'pause' >> /var/log/farcaster-graph/gt_pipeline.log; curl -s -X 'GET' 'http://localhost:8000/_pause' >> /var/log/farcaster-graph/gt_pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv >> /var/log/farcaster-graph/gt_pipeline.log 2>&1; date >> /var/log/farcaster-graph/gt_pipeline.log; echo 'resume' >> /var/log/farcaster-graph/gt_pipeline.log; curl -s -X 'GET' 'http://localhost:8000/_resume' >> /var/log/farcaster-graph/gt_pipeline.log; 
+0 */6 * * * date >> /var/log/farcaster-graph/gt_pipeline.log; cd /home/ubuntu/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv >> /var/log/farcaster-graph/gt_pipeline.log 2>&1; date >> /var/log/farcaster-graph/gt_pipeline.log; 
 
 ####
 # Every 6(odd) hours, 
