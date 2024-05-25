@@ -92,6 +92,10 @@ def graph_fn(
   logger.info(f"{process_label}| pl_df: {pl_df.describe()}")
   logger.info(f"{process_label}| pl_df sample: {pl_df.sample(n=5)}")
 
+  outfile = os.path.join(outdir, f"{slice_id}.pqt")
+  logger.info(f"{process_label}| writing output to {outfile}")
+  pl_df.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
+
 def main(
     inpkl:Path,  
     outdir:Path, 
