@@ -30,7 +30,7 @@ app_state = {}
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
-    g = igraph.Graph.Read_Pickle(settings.PERSONAL_GRAPH_INPUT)
+    g = igraph.Graph.Read_Pickle(settings.PERSONAL_IGRAPH_INPUT)
     app_state['graph'] = g
     logger.warning(f"loading graph")
     yield

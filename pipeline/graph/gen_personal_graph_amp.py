@@ -46,7 +46,7 @@ async def compute_task(
     fid: int,
     maxneighbors: int,
     pd_df: pd.DataFrame, 
-    graph: ig.Graph,
+    # graph: ig.Graph,
     process_label: str
 ) -> list:
   logger.info(f"{process_label}processing FID: {fid}")
@@ -57,7 +57,14 @@ async def compute_task(
   degree = 1
   while limit > 0 and degree <= 5:
     start_time = time.perf_counter()
-    k_scores = graph_utils.get_k_degree_scores(fid, k_minus_list, pd_df, graph, limit, degree, process_label)
+    k_scores = graph_utils.get_k_degree_scores(
+                                      fid, 
+                                      k_minus_list, 
+                                      pd_df, 
+                                      # graph, 
+                                      limit, 
+                                      degree, 
+                                      process_label)
     logger.info(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
                 f" for {len(k_scores)} neighbors"
                 f" for FID {fid}")
@@ -76,14 +83,20 @@ async def compute_task(
 async def compute_tasks_concurrently(
     maxneighbors:int,
     pd_df: pd.DataFrame, 
-    graph: ig.Graph, 
+    # graph: ig.Graph, 
     slice_arr: pl.DataFrame,
     process_label: str
 ) -> list:
 
   tasks = []
   for fid in slice_arr:
-    tasks.append(asyncio.create_task(compute_task(fid, maxneighbors, pd_df, graph, process_label)))
+    tasks.append(asyncio.create_task(
+                          compute_task(
+                            fid, 
+                            maxneighbors, 
+                            pd_df, 
+                            # graph, 
+                            process_label)))
   results = await asyncio.gather(*tasks)
   return results
 
@@ -91,7 +104,7 @@ def compute_subprocess(
   outdir:Path,
   maxneighbors:int,
   pd_df: pd.DataFrame, 
-  graph: ig.Graph, 
+  # graph: ig.Graph, 
   slice: tuple[int, pl.DataFrame]
 ):
   # because we are in a sub-process, 
@@ -105,32 +118,39 @@ def compute_subprocess(
   process_label = f"| {pid} | SLICE#{slice_id}| "
   logger.info(f"{process_label}sample FIDs: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
   logger.info(f"{process_label}{utils.df_info_to_string(pd_df, True)}")
-  logger.info(f"{process_label}{ig.summary(graph)}")
+  # logger.info(f"{process_label}{ig.summary(graph)}")
 
   results = [result for result in asyncio.run(
                                       compute_tasks_concurrently(
-                                        maxneighbors, pd_df, graph, slice_arr, process_label))]
+                                        maxneighbors, 
+                                        pd_df, 
+                                        # graph, 
+                                        slice_arr, 
+                                        process_label))]
   
   results = flatten_list_of_lists(results)
 
-  # pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
-  pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
+  pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   del results
+  # pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   
-  utils.log_memusage(logger, prefix=process_label + 'before subprocess gc ')
-  gc.collect()
-  utils.log_memusage(logger, prefix=process_label + 'after subprocess gc ')
-
   logger.info(f"{process_label}pl_slice: {pl_slice.describe()}")
-  # logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
+  logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
 
   outfile = os.path.join(outdir, f"{slice_id}.pqt")
   logger.info(f"{process_label}writing output to {outfile}")
   start_time = time.perf_counter()
-  # pl_slice.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
-  pl_slice.sink_parquet(path=outfile, compression='lz4')
-  logger.info(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
+  pl_slice.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
+  del pl_slice
+  # pl_slice.sink_parquet(path=outfile, compression='lz4')
+  # del results
 
+  utils.log_memusage(logger, prefix=process_label + 'before subprocess gc ')
+  gc.collect()
+  utils.log_memusage(logger, prefix=process_label + 'after subprocess gc ')
+
+
+  logger.info(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
   return slice_id
 
 
@@ -147,11 +167,11 @@ async def main(
   edges_df = pd.read_pickle(inpkl)
   logger.info(utils.df_info_to_string(edges_df, True))
   utils.log_memusage(logger)
-  # graph = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
-  gfile = os.path.join(inpkl.parent, os.path.basename(inpkl).replace('_df.pkl', '_ig.pkl'))
-  logger.info(f"Reading pickle {gfile} into iGraph")
-  graph = ig.Graph.Read_Pickle(gfile)
-  logger.info(ig.summary(graph))
+  # # graph = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
+  # gfile = os.path.join(inpkl.parent, os.path.basename(inpkl).replace('_df.pkl', '_ig.pkl'))
+  # logger.info(f"Reading pickle {gfile} into iGraph")
+  # graph = ig.Graph.Read_Pickle(gfile)
+  # logger.info(ig.summary(graph))
   utils.log_memusage(logger)
 
   # we need to compute personalized ranking for every profile in Farcaster
@@ -171,7 +191,7 @@ async def main(
                                     outdir,
                                     maxneighbors,
                                     edges_df, 
-                                    graph,
+                                    # graph,
                                     slice)
                 for slice in yield_slices(fids, chunksize)]
 
