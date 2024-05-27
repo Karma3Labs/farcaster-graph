@@ -2,7 +2,6 @@ services:
   igraph:
     build: 
       dockerfile: igraph.Dockerfile
-    container_name: igraph
     image: igraph:latest
     volumes:
       - /home/ubuntu/serve_files:/tmp
@@ -12,13 +11,15 @@ services:
     networks:
       - farcaster-network
   nginx:
-      image: nginx:latest
-      volumes:
-        - ./igraph.nginx.conf:/etc/nginx/nginx.conf:ro
-      depends_on:
-        - igraph
-      ports:
-        - "4000:4000"
+    image: nginx:latest
+    volumes:
+      - ./igraph.nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - igraph
+    ports:
+      - "4000:4000"
+    networks:
+      - farcaster-network
 
 networks:
   farcaster-network:
