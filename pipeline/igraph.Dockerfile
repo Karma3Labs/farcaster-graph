@@ -6,8 +6,13 @@ RUN pip install --upgrade pip
 
 WORKDIR /server
 
-COPY . /server
+# don't copy code yet otherwise docker layers will get invalidated every code push 
+COPY ./requirements.txt /server
+
 RUN python -m ensurepip --upgrade
 RUN python -m pip install --no-cache-dir --upgrade -r requirements.txt
+
+# copy rest of the code
+COPY . /server
 
 CMD ["uvicorn", "graph.serve_igraph:app", "--host", "0.0.0.0", "--port", "8000"]
