@@ -165,7 +165,7 @@ async def main(
   logger.info(f"spawning {procs} processes")
 
   loop = asyncio.get_running_loop()
-  with ProcessPoolExecutor() as executor:
+  with ProcessPoolExecutor(max_workers=procs, max_tasks_per_child=chunksize) as executor:
       tasks = [loop.run_in_executor(executor, 
                                     compute_subprocess, 
                                     outdir,
