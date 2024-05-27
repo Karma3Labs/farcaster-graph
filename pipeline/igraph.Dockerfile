@@ -10,4 +10,4 @@ COPY . /server
 RUN python -m ensurepip --upgrade
 RUN python -m pip install --no-cache-dir --upgrade -r requirements.txt
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "graph.serve_igraph:app", "--host", "0.0.0.0", "--port", "8000"]
