@@ -1,6 +1,8 @@
 import time
+import gc
 
 import go_eigentrust
+import utils
 
 import pandas as pd
 import igraph as ig
@@ -46,22 +48,31 @@ def get_k_degree_scores(
 ) -> list[int]:
   start_time = time.perf_counter()
   k_fid_list = get_k_degree_neighbors(fid, graph, limit, k, process_label)
-  logger.debug(f"{process_label}| iGraph took {time.perf_counter() - start_time} secs"
+  logger.debug(f"{process_label}iGraph took {time.perf_counter() - start_time} secs"
                   f" for {len(k_fid_list)} k-{k} neighbors")
   if len(k_fid_list) > 0:
     # include all previous degree neighbors when calculating go-eigentrust
     k_fid_list.extend(k_minus_list)
     k_fid_list.extend([fid])
-    logger.trace(f"{process_label}| k_fid_list:{k_fid_list}")
+    logger.trace(f"{process_label}k_fid_list:{k_fid_list}")
 
     start_time  = time.perf_counter()
     k_df = df.query('i in @k_fid_list').query('j in @k_fid_list')
-    logger.debug(f"{process_label}| k-{k} Pandas took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
+    del k_fid_list 
+
+    logger.debug(f"{process_label}k-{k} Pandas took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
 
     if len(k_df) > 0:
       k_scores = go_eigentrust.get_scores(k_df, [fid])
+      del k_df
+      
       # filter out previous degree neighbors
       k_scores = [ score for score in k_scores if score['i'] not in k_minus_list]
+      del k_minus_list
+
+      utils.log_memusage(logger, prefix=process_label + 'before graph_utils gc ')
+      gc.collect()
+      utils.log_memusage(logger, prefix=process_label + 'after graph_utils gc ')
       return k_scores
   return []
 
