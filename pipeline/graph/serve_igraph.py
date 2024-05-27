@@ -30,9 +30,10 @@ app_state = {}
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
+    logger.warning(f"loading graph")
     g = igraph.Graph.Read_Pickle(settings.PERSONAL_IGRAPH_INPUT)
     app_state['graph'] = g
-    logger.warning(f"loading graph")
+    logger.warning(f"graph loaded: {igraph.summary(g)}")
     yield
     """Execute when API is shutdown"""
 
