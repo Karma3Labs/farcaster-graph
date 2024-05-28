@@ -8,6 +8,7 @@ import os
 import sys
 import asyncio
 import gc
+import random
 
 # local dependencies
 import utils
@@ -15,9 +16,7 @@ from config import settings
 from . import graph_utils
 
 # 3rd party dependencies
-import pandas as pd
 import polars as pl
-import igraph as ig
 import numpy as np
 import psutil 
 from loguru import logger
@@ -131,21 +130,23 @@ def compute_subprocess(
                                         process_label))]
   
   results = flatten_list_of_lists(results)
+  logger.info(f"{process_label}{len(results)} results available")
 
-  pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
-  del results
-  # pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
+  # pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
+  # del results
+  pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   
   logger.info(f"{process_label}pl_slice: {pl_slice.describe()}")
-  logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
+  # logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
 
   outfile = os.path.join(outdir, f"{slice_id}.pqt")
   logger.info(f"{process_label}writing output to {outfile}")
   start_time = time.perf_counter()
-  pl_slice.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
-  del pl_slice
-  # pl_slice.sink_parquet(path=outfile, compression='lz4')
-  # del results
+
+  # pl_slice.write_parquet(file=outfile, compression='lz4', use_pyarrow=True)
+  # del pl_slice
+  pl_slice.sink_parquet(path=outfile, compression='lz4')
+  del results
 
   utils.log_memusage(logger, prefix=process_label + 'before subprocess gc ')
   gc.collect()
