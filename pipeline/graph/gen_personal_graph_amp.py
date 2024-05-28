@@ -46,7 +46,6 @@ async def compute_task(
     fid: int,
     maxneighbors: int,
     pd_df: pd.DataFrame, 
-    # graph: ig.Graph,
     process_label: str
 ) -> list:
   logger.info(f"{process_label}processing FID: {fid}")
@@ -61,7 +60,6 @@ async def compute_task(
                                       fid, 
                                       k_minus_list, 
                                       pd_df, 
-                                      # graph, 
                                       limit, 
                                       degree, 
                                       process_label)
@@ -83,7 +81,6 @@ async def compute_task(
 async def compute_tasks_concurrently(
     maxneighbors:int,
     pd_df: pd.DataFrame, 
-    # graph: ig.Graph, 
     slice_arr: pl.DataFrame,
     process_label: str
 ) -> list:
@@ -95,7 +92,6 @@ async def compute_tasks_concurrently(
                             fid, 
                             maxneighbors, 
                             pd_df, 
-                            # graph, 
                             process_label)))
   results = await asyncio.gather(*tasks)
   return results
@@ -104,7 +100,6 @@ def compute_subprocess(
   outdir:Path,
   maxneighbors:int,
   pd_df: pd.DataFrame, 
-  # graph: ig.Graph, 
   slice: tuple[int, pl.DataFrame]
 ):
   # because we are in a sub-process, 
@@ -118,13 +113,11 @@ def compute_subprocess(
   process_label = f"| {pid} | SLICE#{slice_id}| "
   logger.info(f"{process_label}sample FIDs: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
   logger.info(f"{process_label}{utils.df_info_to_string(pd_df, True)}")
-  # logger.info(f"{process_label}{ig.summary(graph)}")
 
   results = [result for result in asyncio.run(
                                       compute_tasks_concurrently(
                                         maxneighbors, 
                                         pd_df, 
-                                        # graph, 
                                         slice_arr, 
                                         process_label))]
   

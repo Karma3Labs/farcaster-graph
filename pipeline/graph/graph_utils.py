@@ -22,22 +22,10 @@ def get_direct_edges_df(
 
 def get_k_degree_neighbors(
   fid: int,
-  # graph: ig.Graph,      
   limit: int,
   k: int, 
   process_label: str
 ) -> list[int]:
-  # start_time  = time.perf_counter()
-  # try:
-  #   vid = graph.vs.find(name=fid).index
-  # except:
-  #   logger.error(f"{process_label}| {fid} NOT FOUND in graph. Skipping.")
-  #   return []
-  # neighbors = graph.neighborhood(vid, order=k, mode="out", mindist=k)
-  # if len(neighbors) > 0:
-  #   k_neighbors_list = graph.vs[neighbors[:limit]]["name"]
-  #   return k_neighbors_list
-  # return []
   payload = {'fid': int(fid), 'k': k, 'limit': limit}
   response = niquests.get(settings.PERSONAL_IGRAPH_URL, params=payload)
   logger.trace(f"{response.json()}")
@@ -47,7 +35,6 @@ def get_k_degree_scores(
   fid: int,
   k_minus_list: list[int],
   df: pd.DataFrame,
-  # graph: ig.Graph,      
   limit: int,
   k: int, 
   process_label: str
@@ -55,7 +42,6 @@ def get_k_degree_scores(
   start_time = time.perf_counter()
   k_fid_list = get_k_degree_neighbors(
                                 fid, 
-                                # graph, 
                                 limit, 
                                 k, 
                                 process_label)
