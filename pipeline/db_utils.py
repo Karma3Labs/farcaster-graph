@@ -3,9 +3,7 @@ from io import StringIO
 import csv
 from enum import Enum
 
-import channels.channel_queries
 from timer import Timer
-import channels
 from config import settings
 from loguru import logger
 
