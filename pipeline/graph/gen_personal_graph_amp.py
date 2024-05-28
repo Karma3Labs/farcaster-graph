@@ -28,24 +28,34 @@ def flatten_list_of_lists(list_of_lists):
         flat_list.extend(nested_list)
     return flat_list
 
-def yield_slices(
-    fids: np.ndarray, 
+def yield_pl_slices(
+    fids: pl.DataFrame, 
     chunksize:int, 
 ) :
-  num_slices = math.ceil( len(fids) / chunksize )
-  logger.info(f"Slicing fids list into {num_slices} slices")
-  slices = np.array_split(fids, num_slices )
-  logger.info(f"Number of slices: {len(slices)}")
-  for idx, arr in enumerate(slices):
+  for idx, slice in enumerate(fids.iter_slices(n_rows=chunksize)):
     # we need batch id for logging and debugging
     # yield a tuple because pool.map takes only 1 argument
     logger.info(f"Yield split# {idx}")
-    yield (idx, arr)
+    yield (idx, slice)
+
+# def yield_slices(
+#     fids: np.ndarray, 
+#     chunksize:int, 
+# ) :
+#   num_slices = math.ceil( len(fids) / chunksize )
+#   logger.info(f"Slicing fids list into {num_slices} slices")
+#   slices = np.array_split(fids, num_slices )
+#   logger.info(f"Number of slices: {len(slices)}")
+#   for idx, arr in enumerate(slices):
+#     # we need batch id for logging and debugging
+#     # yield a tuple because pool.map takes only 1 argument
+#     logger.info(f"Yield split# {idx}")
+#     yield (idx, arr)
 
 async def compute_task(
     fid: int,
     maxneighbors: int,
-    pd_df: pd.DataFrame, 
+    localtrust_df: pl.DataFrame, 
     process_label: str
 ) -> list:
   logger.info(f"{process_label}processing FID: {fid}")
@@ -59,7 +69,7 @@ async def compute_task(
     k_scores = graph_utils.get_k_degree_scores(
                                       fid, 
                                       k_minus_list, 
-                                      pd_df, 
+                                      localtrust_df, 
                                       limit, 
                                       degree, 
                                       process_label)
@@ -80,26 +90,26 @@ async def compute_task(
 
 async def compute_tasks_concurrently(
     maxneighbors:int,
-    pd_df: pd.DataFrame, 
-    slice_arr: pl.DataFrame,
+    localtrust_df: pl.DataFrame, 
+    slice: pl.DataFrame,
     process_label: str
 ) -> list:
 
   tasks = []
-  for fid in slice_arr:
+  for row_tuple in slice.iter_rows():
     tasks.append(asyncio.create_task(
                           compute_task(
-                            fid, 
-                            maxneighbors, 
-                            pd_df, 
-                            process_label)))
+                            fid=row_tuple[0], 
+                            maxneighbors=maxneighbors, 
+                            localtrust_df=localtrust_df, 
+                            process_label=process_label)))
   results = await asyncio.gather(*tasks)
   return results
 
 def compute_subprocess(
   outdir:Path,
   maxneighbors:int,
-  pd_df: pd.DataFrame, 
+  localtrust_df: pl.DataFrame, 
   slice: tuple[int, pl.DataFrame]
 ):
   # because we are in a sub-process, 
@@ -108,17 +118,19 @@ def compute_subprocess(
   logger.add(sys.stderr, level=settings.LOG_LEVEL)
 
   slice_id = slice[0]
-  slice_arr = slice[1]
+  slice_df = slice[1]
   pid = os.getpid()
   process_label = f"| {pid} | SLICE#{slice_id}| "
-  logger.info(f"{process_label}sample FIDs: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
-  logger.info(f"{process_label}{utils.df_info_to_string(pd_df, True)}")
+  logger.info(f"{process_label}sample FIDs: {slice_df.sample(n=min(5, len(slice_df)))}")
+  logger.info(f"{process_label}{slice_df.describe()}")
+  # logger.info(f"{process_label}sample FIDs: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+  # logger.info(f"{process_label}{utils.df_info_to_string(localtrust_df, True)}")
 
   results = [result for result in asyncio.run(
                                       compute_tasks_concurrently(
                                         maxneighbors, 
-                                        pd_df, 
-                                        slice_arr, 
+                                        localtrust_df, 
+                                        slice_df, 
                                         process_label))]
   
   results = flatten_list_of_lists(results)
@@ -148,30 +160,34 @@ def compute_subprocess(
 
 
 async def main(
-    inpkl:Path,  
+    incsv:Path,  
     outdir:Path, 
     procs:int, 
     chunksize:int, 
     maxneighbors:int
 ):
   start_time = time.perf_counter()
-  logger.info(f"Reading pickle {inpkl} into DataFrame")
+  logger.info(f"Reading csv {incsv} into Polars DataFrame")
   utils.log_memusage(logger)
-  edges_df = pd.read_pickle(inpkl)
-  logger.info(utils.df_info_to_string(edges_df, True))
+  edges_df = pl.read_csv(incsv)
+  logger.info(f"edges_df: {edges_df.describe()}")
+  logger.info(f"edges_df sample: {edges_df.sample(n=min(5, len(edges_df)))}")
   utils.log_memusage(logger)
-  # # graph = ig.Graph.DataFrame(edges_df, directed=True, use_vids=False)
-  # gfile = os.path.join(inpkl.parent, os.path.basename(inpkl).replace('_df.pkl', '_ig.pkl'))
-  # logger.info(f"Reading pickle {gfile} into iGraph")
-  # graph = ig.Graph.Read_Pickle(gfile)
-  # logger.info(ig.summary(graph))
-  utils.log_memusage(logger)
+
+  # logger.info(f"Reading pickle {inpkl} into DataFrame")
+  # utils.log_memusage(logger)
+  # edges_df = pd.read_pickle(inpkl)
+  # logger.info(utils.df_info_to_string(edges_df, True))
+  # utils.log_memusage(logger)
 
   # we need to compute personalized ranking for every profile in Farcaster
   # ... let's extract all the fids that have had outgoing interactions.
-  fids = pd.unique(edges_df['i'])
-  np.random.shuffle(fids)
-  logger.info(np.random.choice(fids, min(len(fids), 5)))
+  fids = edges_df.select(pl.col('i')).unique()
+  fids = fids.sample(fraction=1)
+
+  # fids = pd.unique(edges_df['i'])
+  # np.random.shuffle(fids)
+  # logger.info(np.random.choice(fids, min(len(fids), 5)))
 
   logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
   logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
@@ -184,9 +200,8 @@ async def main(
                                     outdir,
                                     maxneighbors,
                                     edges_df, 
-                                    # graph,
                                     slice)
-                for slice in yield_slices(fids, chunksize)]
+                for slice in yield_pl_slices(fids, chunksize)]
 
   # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
   results = [result for result in await asyncio.gather(*tasks)]
@@ -198,8 +213,8 @@ async def main(
 if __name__ == '__main__':
 
   parser = argparse.ArgumentParser()
-  parser.add_argument("-i", "--inpkl",
-                      help="input localtrust pickle file",
+  parser.add_argument("-i", "--incsv",
+                      help="input localtrust csv file",
                       required=True,
                       type=lambda f: Path(f).expanduser().resolve())  
   parser.add_argument("-o", "--outdir",
@@ -223,7 +238,7 @@ if __name__ == '__main__':
 
   asyncio.run(
     main(
-      inpkl=args.inpkl, 
+      incsv=args.incsv, 
       outdir=args.outdir, 
       procs=args.procs, 
       chunksize=args.chunksize, 
