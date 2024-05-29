@@ -79,15 +79,15 @@ def main(
             # TODO Perf - fids should be a 'set' and not a 'list'
             # TODO Perf - filter using 'query' instead of 'isin'
             # TODO Perf - install 'numexpr' to speed up pandas
-            # channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
-            logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
+            channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
+            logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
 
-        if len(global_lt_df) == 0:
+        if len(channel_lt_df) == 0:
             logger.error(f"No localtrust for channel {cid}")
             continue
 
         with Timer(name="go_eigentrust"):
-            scores = go_eigentrust.get_scores(lt_df=global_lt_df, pt_ids=channel.host_fids)
+            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
 
         logger.info(f"go_eigentrust returned {len(scores)} entries")
         logger.debug(f"channel user scores:{scores}")
