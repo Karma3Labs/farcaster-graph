@@ -2,6 +2,9 @@ services:
   igraph:
     build: 
       dockerfile: igraph.Dockerfile
+    deploy:
+      mode: replicated
+      replicas: 2
     image: igraph:latest
     volumes:
       - /home/ubuntu/serve_files:/tmp
