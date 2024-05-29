@@ -33,5 +33,5 @@ set -o pipefail
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m graph.gen_personal_graph_amp -i $IN_PKL -o $OUT_DIR -p 6 -c 1000 -m 1000
+python3 -m graph.gen_personal_graph_tgmp -i $IN_PKL -o $OUT_DIR -p 6 -c 1000 -m 1000
 deactivate

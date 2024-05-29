@@ -54,23 +54,22 @@ def get_k_degree_scores(
     start_time  = time.perf_counter()
     k_df = localtrust_df.filter((pl.col('i').is_in(k_fid_list)) &
                                 (pl.col('j').is_in(k_fid_list)))
-    # k_df = df.query('i in @k_fid_list').query('j in @k_fid_list')
-    del k_fid_list 
+    # del k_fid_list 
 
     logger.debug(f"{process_label}k-{k} Polars took {time.perf_counter() - start_time} secs for {len(k_df)} edges")
 
     if len(k_df) > 0:
       k_df_pd = k_df.to_pandas()
       k_scores = go_eigentrust.get_scores(k_df_pd, [fid])
-      del k_df_pd
+      # del k_df_pd
       
       # filter out previous degree neighbors
       k_scores = [ score for score in k_scores if score['i'] not in k_minus_list]
-      del k_minus_list
+      # del k_minus_list
 
-      utils.log_memusage(logger, prefix=process_label + 'before graph_utils gc ')
-      gc.collect()
-      utils.log_memusage(logger, prefix=process_label + 'after graph_utils gc ')
+      # utils.log_memusage(logger, prefix=process_label + 'before graph_utils gc ')
+      # gc.collect()
+      # utils.log_memusage(logger, prefix=process_label + 'after graph_utils gc ')
       return k_scores
   return []
 
