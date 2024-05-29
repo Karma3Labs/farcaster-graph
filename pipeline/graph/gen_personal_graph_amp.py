@@ -81,13 +81,17 @@ async def compute_task(
         break
       row = {"fid":fid, "degree":degree, "scores": k_scores}
       knn_list.append(row)
-      k_minus_list = [ score['i'] for score in k_scores ]
+      k_minus_list.extend([ score['i'] for score in k_scores ])
       limit = limit - len(k_scores)
       degree = degree + 1
     # end while
     logger.info(f"{process_label}FID {fid} task took {time.perf_counter() - task_start} secs")
     return knn_list
   except:
+    logger.error(f"{process_label}"
+                 f"fid:{fid}"
+                 f"degree:{degree}"
+                 f"limit:{limit}")
     logger.exception(f"{process_label}")
   return []
 
