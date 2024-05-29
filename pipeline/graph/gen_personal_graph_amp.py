@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 from concurrent.futures import ProcessPoolExecutor
+import multiprocessing as mp
 import time
 import math
 import os
@@ -126,16 +127,20 @@ def compute_subprocess(
   process_label = f"| {pid} | SLICE#{slice_id}| "
   logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
   logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
-
-  results = [result for result in asyncio.run(
-                                      compute_tasks_concurrently(
-                                        maxneighbors, 
-                                        localtrust_df, 
-                                        slice_arr, 
-                                        process_label))]
-  
-  results = flatten_list_of_lists(results)
-  logger.info(f"{process_label}{len(results)} results available")
+  try:
+    results = [result for result in asyncio.run(
+                                        compute_tasks_concurrently(
+                                          maxneighbors, 
+                                          localtrust_df, 
+                                          slice_arr, 
+                                          process_label))]
+    
+    results = flatten_list_of_lists(results)
+    logger.info(f"{process_label}{len(results)} results available")
+  except Exception as e:
+    logger.error(f"{process_label}{e}")
+  except:
+    logger.error(f"{process_label}Unknown Error!")
 
   # pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   # del results
@@ -196,8 +201,13 @@ async def main(
   logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
   logger.info(f"spawning {procs} processes")
 
+  # on Linux default MP method is fork which is not compatible with Polars
+  mp.set_start_method("spawn")
   loop = asyncio.get_running_loop()
-  with ProcessPoolExecutor(max_workers=procs, max_tasks_per_child=chunksize) as executor:
+
+  try:
+    # WARNING: Do NOT use max_tasks_per_child. It will kill sub-processes
+    with ProcessPoolExecutor(max_workers=procs) as executor:
       tasks = [loop.run_in_executor(executor, 
                                     compute_subprocess, 
                                     outdir,
@@ -205,11 +215,12 @@ async def main(
                                     edges_df, 
                                     slice)
                 for slice in yield_np_slices(fids, chunksize)]
-  try:
-    # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
-    results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
+      # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
+      results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
   except Exception as e:
     logger.error(e)
+  except:
+    logger.error("Unknown Error!")
   logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
   logger.info("Done!")
 
