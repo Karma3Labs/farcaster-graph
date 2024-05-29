@@ -94,7 +94,6 @@ async def compute_tasks_concurrently(
     process_label: str
 ) -> list:
 
-  logger.info(f"{process_label}size of FIDs slice: {len(slice)}")
   tasks = []
   for fid in slice:
     tasks.append(asyncio.create_task(
@@ -103,8 +102,11 @@ async def compute_tasks_concurrently(
                             maxneighbors=maxneighbors, 
                             localtrust_df=localtrust_df, 
                             process_label=process_label)))
-  logger.info(f"{process_label}{len(tasks)} created for {len(slice)} FIDs")  
-  results = await asyncio.gather(*tasks)
+  logger.info(f"{process_label}{len(tasks)} tasks created") 
+  try:
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+  except Exception as e:
+    logger.error(f"{process_label}{e}")
   return results
 
 def compute_subprocess(
@@ -122,7 +124,7 @@ def compute_subprocess(
   slice_arr = slice[1]
   pid = os.getpid()
   process_label = f"| {pid} | SLICE#{slice_id}| "
-  logger.info(f"{process_label}size of FIDs slice: {len(slice)}")
+  logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
   logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
 
   results = [result for result in asyncio.run(
@@ -203,9 +205,11 @@ async def main(
                                     edges_df, 
                                     slice)
                 for slice in yield_np_slices(fids, chunksize)]
-
-  # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
-  results = [result for result in await asyncio.gather(*tasks)]
+  try:
+    # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
+    results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
+  except Exception as e:
+    logger.error(e)
   logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
   logger.info("Done!")
 
