@@ -224,7 +224,13 @@ async def main(
   logger.info("Done!")
 
 
-# (.venv)$ python3 -m graph.gen_personal_graph -i ../serve/samples/fc_engagement_fid_df.pkl -o /tmp -p 2 -c 3
+# (.venv)$ python3 \
+# -m graph.gen_personal_graph \
+# -i ../serve/samples/lt_l1rep6rec3m12enhancedConnections_fid.csv \
+#  -o /tmp \
+# -p 2 \
+# -c 3 \
+# -m 1000
 if __name__ == '__main__':
 
   parser = argparse.ArgumentParser()

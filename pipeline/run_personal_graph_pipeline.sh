@@ -34,4 +34,5 @@ set -o pipefail
 source $VENV/bin/activate
 pip install -r requirements.txt
 python3 -m graph.gen_personal_graph_amp -i $IN_CSV -o $OUT_DIR -p 10 -c 100 -m 1000
+python3 -m graph.rechunk_graph_pqt -i $OUT_DIR -o $OUT_DIR/personal_graph.parquet
 deactivate
