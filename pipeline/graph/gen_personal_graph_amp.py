@@ -9,7 +9,6 @@ import os
 import sys
 import asyncio
 import gc
-import random
 
 # local dependencies
 import utils
@@ -88,11 +87,8 @@ async def compute_task(
     # end while
     logger.info(f"{process_label}FID {fid} task took {time.perf_counter() - task_start} secs")
     return knn_list
-  except Exception as e:
-    logger.error(f"{process_label}{e}")
-    logger.error(e)
   except:
-    logger.error(f"{process_label}Unknown error!")
+    logger.exception(f"{process_label}")
   return []
 
 async def compute_tasks_concurrently(
@@ -113,10 +109,8 @@ async def compute_tasks_concurrently(
     logger.info(f"{process_label}{len(tasks)} tasks created") 
     results = await asyncio.gather(*tasks, return_exceptions=True)
     return results
-  except Exception as e:
-    logger.error(f"{process_label}{e}")
   except:
-    logger.error(f"{process_label}Unknown error!")
+    logger.exception(f"{process_label}")
   return []
 
 def compute_subprocess(
@@ -125,31 +119,26 @@ def compute_subprocess(
   localtrust_df: pl.DataFrame, 
   slice: tuple[int, np.ndarray]
 ):
-  try:
-    # because we are in a sub-process, 
-    # ...we need to set log level again if we don't want defaults
-    logger.remove()
-    logger.add(sys.stderr, level=settings.LOG_LEVEL)
+  # because we are in a sub-process, 
+  # ...we need to set log level again if we don't want defaults
+  logger.remove()
+  logger.add(sys.stderr, level=settings.LOG_LEVEL)
 
-    slice_id = slice[0]
-    slice_arr = slice[1]
-    pid = os.getpid()
-    process_label = f"| {pid} | SLICE#{slice_id}| "
-    logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-    logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
-    results = [result for result in asyncio.run(
-                                        compute_tasks_concurrently(
-                                          maxneighbors, 
-                                          localtrust_df, 
-                                          slice_arr, 
-                                          process_label))]
-    
-    results = flatten_list_of_lists(results)
-    logger.info(f"{process_label}{len(results)} results available")
-  except Exception as e:
-    logger.error(f"{process_label}{e}")
-  except:
-    logger.error(f"{process_label}Unknown Error!")
+  slice_id = slice[0]
+  slice_arr = slice[1]
+  pid = os.getpid()
+  process_label = f"| {pid} | SLICE#{slice_id}| "
+  logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
+  logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+  results = [result for result in asyncio.run(
+                                      compute_tasks_concurrently(
+                                        maxneighbors, 
+                                        localtrust_df, 
+                                        slice_arr, 
+                                        process_label))]
+  
+  results = flatten_list_of_lists(results)
+  logger.info(f"{process_label}{len(results)} results available")
 
   # pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   # del results
@@ -214,22 +203,18 @@ async def main(
   mp.set_start_method("spawn")
   loop = asyncio.get_running_loop()
 
-  try:
-    # WARNING: Do NOT use max_tasks_per_child. It will kill sub-processes
-    with ProcessPoolExecutor(max_workers=procs) as executor:
-      tasks = [loop.run_in_executor(executor, 
-                                    compute_subprocess, 
-                                    outdir,
-                                    maxneighbors,
-                                    edges_df, 
-                                    slice)
-                for slice in yield_np_slices(fids, chunksize)]
-      # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
-      results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
-  except Exception as e:
-    logger.error(e)
-  except:
-    logger.error("Unknown Error!")
+  # WARNING: Do NOT use max_tasks_per_child. It will kill sub-processes
+  with ProcessPoolExecutor(max_workers=procs) as executor:
+    tasks = [loop.run_in_executor(executor, 
+                                  compute_subprocess, 
+                                  outdir,
+                                  maxneighbors,
+                                  edges_df, 
+                                  slice)
+              for slice in yield_np_slices(fids, chunksize)]
+    # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
+    results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
+
   logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
   logger.info("Done!")
 
