@@ -128,6 +128,7 @@ def compute_subprocess(
   logger.remove()
   logger.add(sys.stderr, level=settings.LOG_LEVEL)
 
+  subprocess_start = time.perf_counter()
   slice_id = slice[0]
   slice_arr = slice[1]
   pid = os.getpid()
@@ -164,8 +165,8 @@ def compute_subprocess(
   gc.collect()
   utils.log_memusage(logger, prefix=process_label + 'after subprocess gc ')
 
-
   logger.info(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
+  logger.info(f"{process_label} subprocess took {time.perf_counter() - subprocess_start} secs")
   return slice_id
 
 
