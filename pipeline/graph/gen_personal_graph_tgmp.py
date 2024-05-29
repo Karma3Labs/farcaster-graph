@@ -3,12 +3,10 @@ from pathlib import Path
 import argparse
 from concurrent.futures import ProcessPoolExecutor
 import time
-import math
 import os
 import sys
 import asyncio
-import gc
-import random
+
 
 # local dependencies
 import utils
@@ -36,20 +34,6 @@ def yield_pl_slices(
     # yield a tuple because pool.map takes only 1 argument
     logger.info(f"Yield split# {idx}")
     yield (idx, slice)
-
-def yield_np_slices(
-    fids: np.ndarray, 
-    chunksize:int, 
-) :
-  num_slices = math.ceil( len(fids) / chunksize )
-  logger.info(f"Slicing fids list into {num_slices} slices")
-  slices = np.array_split(fids, num_slices )
-  logger.info(f"Number of slices: {len(slices)}")
-  for idx, arr in enumerate(slices):
-    # we need batch id for logging and debugging
-    # yield a tuple because pool.map takes only 1 argument
-    logger.info(f"Yield split# {idx}")
-    yield (idx, arr)
 
 async def compute_task(
     fid: int,
@@ -90,16 +74,16 @@ async def compute_task(
 async def compute_tasks_concurrently(
     maxneighbors:int,
     localtrust_df: pl.DataFrame, 
-    slice: np.ndarray,
+    slice_df: pl.DataFrame,
     process_label: str
 ) -> list:
 
   tasks = []
   async with asyncio.TaskGroup() as tg:
-    for fid in slice:
+    for row in slice_df.iter_rows():
       tasks.append(tg.create_task(
                           compute_task(
-                            fid=fid, 
+                            fid=row[0], 
                             maxneighbors=maxneighbors, 
                             localtrust_df=localtrust_df, 
                             process_label=process_label)))
@@ -112,7 +96,7 @@ def compute_subprocess(
   outdir:Path,
   maxneighbors:int,
   localtrust_df: pl.DataFrame, 
-  slice: tuple[int, np.ndarray]
+  slice: tuple[int, pl.DataFrame]
 ):
   # because we are in a sub-process, 
   # ...we need to set log level again if we don't want defaults
@@ -120,18 +104,18 @@ def compute_subprocess(
   logger.add(sys.stderr, level=settings.LOG_LEVEL)
 
   slice_id = slice[0]
-  slice_arr = slice[1]
+  slice_df = slice[1]
   pid = os.getpid()
   process_label = f"| {pid} | SLICE#{slice_id}| "
-  logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-  logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+  logger.info(f"{process_label}size of FIDs slice: {len(slice_df)}")
+  logger.info(f"{process_label}sample of FIDs slice: {slice_df.sample(n=min(5, len(slice_df)))}")
 
   results = [result for result in asyncio.run(
                                       compute_tasks_concurrently(
-                                        maxneighbors, 
-                                        localtrust_df, 
-                                        slice_arr, 
-                                        process_label))]
+                                        maxneighbors=maxneighbors, 
+                                        localtrust_df=localtrust_df, 
+                                        slice_df=slice_df, 
+                                        process_label=process_label))]
   
   results = flatten_list_of_lists(results)
   logger.info(f"{process_label}{len(results)} results available")
@@ -176,20 +160,12 @@ async def main(
   logger.info(f"edges_df sample: {edges_df.sample(n=min(5, len(edges_df)))}")
   utils.log_memusage(logger)
 
-  # logger.info(f"Reading pickle {inpkl} into DataFrame")
-  # utils.log_memusage(logger)
-  # edges_df = pd.read_pickle(inpkl)
-  # logger.info(utils.df_info_to_string(edges_df, True))
-  # utils.log_memusage(logger)
-
   # we need to compute personalized ranking for every profile in Farcaster
   # ... let's extract all the fids that have had outgoing interactions.
-  fids = edges_df.select(pl.col('i')).unique().to_numpy().flat
-  # fids = pd.unique(edges_df['i'])
-  fids = np.random.choice(fids, size=len(fids), replace=False)
-  # np.random.shuffle(fids) # does not work with Polars because read-only
+  fids_df = edges_df.select(pl.col('i')).unique()
   
-  logger.info(np.random.choice(fids, min(len(fids), 5)))
+  logger.info(f"fids_df: {fids_df.describe()}")
+  logger.info(f"fids_df sample: {fids_df.sample(n=min(5, len(fids_df)))}")
 
   logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
   logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
@@ -203,7 +179,7 @@ async def main(
                                     maxneighbors,
                                     edges_df, 
                                     slice)
-                for slice in yield_np_slices(fids, chunksize)]
+                for slice in yield_pl_slices(fids_df, chunksize)]
   try:
     # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
     results = [result for result in await asyncio.gather(*tasks, return_exceptions=True)]
