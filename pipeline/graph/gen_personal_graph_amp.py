@@ -23,10 +23,10 @@ import psutil
 from loguru import logger
 
 def flatten_list_of_lists(list_of_lists):
-    flat_list = []
-    for nested_list in list_of_lists:
-        flat_list.extend(nested_list)
-    return flat_list
+  flat_list = []
+  for nested_list in list_of_lists:
+      flat_list.extend(nested_list)
+  return flat_list
 
 def yield_pl_slices(
     fids: pl.DataFrame, 
@@ -58,35 +58,42 @@ async def compute_task(
     localtrust_df: pl.DataFrame, 
     process_label: str
 ) -> list:
-  logger.info(f"{process_label}processing FID: {fid}")
-  task_start = time.perf_counter()
-  knn_list = []
-  k_minus_list = []
-  limit = maxneighbors
-  degree = 1
-  while limit > 0 and degree <= 5:
-    start_time = time.perf_counter()
-    k_scores = graph_utils.get_k_degree_scores(
-                                      fid, 
-                                      k_minus_list, 
-                                      localtrust_df, 
-                                      limit, 
-                                      degree, 
-                                      process_label)
-    logger.info(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
-                f" for {len(k_scores)} neighbors"
-                f" for FID {fid}")
-    logger.trace(f"{process_label}FID {fid}: {degree}-degree neigbors scores: {k_scores}")
-    if len(k_scores) == 0:
-      break
-    row = {"fid":fid, "degree":degree, "scores": k_scores}
-    knn_list.append(row)
-    k_minus_list = [ score['i'] for score in k_scores ]
-    limit = limit - len(k_scores)
-    degree = degree + 1
-  # end while
-  logger.info(f"{process_label}FID {fid} task took {time.perf_counter() - task_start} secs")
-  return knn_list
+  try:
+    logger.info(f"{process_label}processing FID: {fid}")
+    task_start = time.perf_counter()
+    knn_list = []
+    k_minus_list = []
+    limit = maxneighbors
+    degree = 1
+    while limit > 0 and degree <= 5:
+      start_time = time.perf_counter()
+      k_scores = graph_utils.get_k_degree_scores(
+                                        fid, 
+                                        k_minus_list, 
+                                        localtrust_df, 
+                                        limit, 
+                                        degree, 
+                                        process_label)
+      logger.info(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
+                  f" for {len(k_scores)} neighbors"
+                  f" for FID {fid}")
+      logger.trace(f"{process_label}FID {fid}: {degree}-degree neigbors scores: {k_scores}")
+      if len(k_scores) == 0:
+        break
+      row = {"fid":fid, "degree":degree, "scores": k_scores}
+      knn_list.append(row)
+      k_minus_list = [ score['i'] for score in k_scores ]
+      limit = limit - len(k_scores)
+      degree = degree + 1
+    # end while
+    logger.info(f"{process_label}FID {fid} task took {time.perf_counter() - task_start} secs")
+    return knn_list
+  except Exception as e:
+    logger.error(f"{process_label}{e}")
+    logger.error(e)
+  except:
+    logger.error(f"{process_label}Unknown error!")
+  return []
 
 async def compute_tasks_concurrently(
     maxneighbors:int,
@@ -94,21 +101,23 @@ async def compute_tasks_concurrently(
     slice: np.ndarray,
     process_label: str
 ) -> list:
-
-  tasks = []
-  for fid in slice:
-    tasks.append(asyncio.create_task(
-                          compute_task(
-                            fid=fid, 
-                            maxneighbors=maxneighbors, 
-                            localtrust_df=localtrust_df, 
-                            process_label=process_label)))
-  logger.info(f"{process_label}{len(tasks)} tasks created") 
   try:
+    tasks = []
+    for fid in slice:
+      tasks.append(asyncio.create_task(
+                            compute_task(
+                              fid=fid, 
+                              maxneighbors=maxneighbors, 
+                              localtrust_df=localtrust_df, 
+                              process_label=process_label)))
+    logger.info(f"{process_label}{len(tasks)} tasks created") 
     results = await asyncio.gather(*tasks, return_exceptions=True)
+    return results
   except Exception as e:
     logger.error(f"{process_label}{e}")
-  return results
+  except:
+    logger.error(f"{process_label}Unknown error!")
+  return []
 
 def compute_subprocess(
   outdir:Path,
@@ -116,18 +125,18 @@ def compute_subprocess(
   localtrust_df: pl.DataFrame, 
   slice: tuple[int, np.ndarray]
 ):
-  # because we are in a sub-process, 
-  # ...we need to set log level again if we don't want defaults
-  logger.remove()
-  logger.add(sys.stderr, level=settings.LOG_LEVEL)
-
-  slice_id = slice[0]
-  slice_arr = slice[1]
-  pid = os.getpid()
-  process_label = f"| {pid} | SLICE#{slice_id}| "
-  logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-  logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
   try:
+    # because we are in a sub-process, 
+    # ...we need to set log level again if we don't want defaults
+    logger.remove()
+    logger.add(sys.stderr, level=settings.LOG_LEVEL)
+
+    slice_id = slice[0]
+    slice_arr = slice[1]
+    pid = os.getpid()
+    process_label = f"| {pid} | SLICE#{slice_id}| "
+    logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
+    logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
     results = [result for result in asyncio.run(
                                         compute_tasks_concurrently(
                                           maxneighbors, 
