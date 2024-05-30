@@ -12,11 +12,15 @@ from loguru import logger
 import polars as pl
 
 def main(indir:Path, outfile:Path):
+
+  logger.info(f"reading parquet files {indir}/*.pqt")
   pq_df = pl.read_parquet(f"{indir}/*.pqt", rechunk=True, low_memory=False)
+
   logger.info(f"df estimated_size: {pq_df.estimated_size('mb')}")
   logger.info(f"df describe: {pq_df.describe()}")
   logger.info(f"df sample: {pq_df.sample(n=min(5, len(pq_df)))}")
-  
+
+  logger.info(f"writing to parquet file {outfile}")
   pq_df.write_parquet(outfile, 
                       use_pyarrow=True, 
                       statistics=True,

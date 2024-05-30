@@ -181,6 +181,7 @@ async def main(
   logger.info(f"Reading csv {incsv} into Polars DataFrame")
   utils.log_memusage(logger)
   edges_df = pl.read_csv(incsv)
+  # TODO  Perf -  edges_df =  edges_df.sort(['i', 'j'])
   logger.info(f"edges_df: {edges_df.describe()}")
   logger.info(f"edges_df sample: {edges_df.sample(n=min(5, len(edges_df)))}")
   utils.log_memusage(logger)
