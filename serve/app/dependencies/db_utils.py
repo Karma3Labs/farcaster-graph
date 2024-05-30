@@ -1,5 +1,7 @@
 import time
 import json
+from typing import List
+
 from ..config import settings
 from ..models.score_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -22,6 +24,7 @@ SessionLocal = sessionmaker(
     class_=AsyncSession,
 )
 
+
 # async def get_db_session():
 #     async with SessionLocal() as session:
 #         try:
@@ -33,9 +36,9 @@ SessionLocal = sessionmaker(
 #             await session.close()
 
 async def fetch_rows(
-    *args,
-    sql_query: str,
-    pool: Pool
+        *args,
+        sql_query: str,
+        pool: Pool
 ):
     start_time = time.perf_counter()
     logger.debug(f"Execute query: {sql_query}")
@@ -47,10 +50,10 @@ async def fetch_rows(
                 # Run the query passing the request argument.
                 try:
                     rows = await connection.fetch(
-                                            sql_query,
-                                            *args,
-                                            timeout=settings.POSTGRES_TIMEOUT_SECS
-                                            )
+                        sql_query,
+                        *args,
+                        timeout=settings.POSTGRES_TIMEOUT_SECS
+                    )
                 except Exception as e:
                     logger.error(f"Failed to execute query: {sql_query}")
                     logger.error(f"{e}")
@@ -58,9 +61,10 @@ async def fetch_rows(
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
 
+
 async def get_handle_fid_for_addresses(
-    addresses: list[str],
-    pool: Pool
+        addresses: list[str],
+        pool: Pool
 ):
     sql_query = """
     (
@@ -93,8 +97,8 @@ async def get_handle_fid_for_addresses(
 
 
 async def get_all_fid_addresses_for_handles(
-  handles: list[str],
-  pool: Pool,
+        handles: list[str],
+        pool: Pool,
 ):
     sql_query = """
     (
@@ -129,9 +133,10 @@ async def get_all_fid_addresses_for_handles(
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
+
 async def get_unique_fid_metadata_for_handles(
-  handles: list[str],
-  pool: Pool,
+        handles: list[str],
+        pool: Pool,
 ):
     sql_query = """
     SELECT
@@ -151,9 +156,10 @@ async def get_unique_fid_metadata_for_handles(
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
+
 async def get_all_handle_addresses_for_fids(
-  fids: list[str],
-  pool: Pool,
+        fids: list[str],
+        pool: Pool,
 ):
     sql_query = """
     (
@@ -185,9 +191,10 @@ async def get_all_handle_addresses_for_fids(
     """
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
+
 async def get_unique_handle_metadata_for_fids(
-  fids: list[str],
-  pool: Pool,
+        fids: list[str],
+        pool: Pool,
 ):
     sql_query = """
     SELECT
@@ -205,7 +212,8 @@ async def get_unique_handle_metadata_for_fids(
     """
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
-async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
+
+async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool):
     sql_query = """
     WITH total AS (
         SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
@@ -228,11 +236,12 @@ async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
     """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_top_channel_profiles(
-        channel_id:str, 
-        offset:int, 
-        limit:int, 
-        lite:bool, 
+        channel_id: str,
+        offset: int,
+        limit: int,
+        lite: bool,
         pool: Pool
 ):
     if lite:
@@ -277,7 +286,8 @@ async def get_top_channel_profiles(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
+
+async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool):
     sql_query = """
     WITH total AS (
         SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
@@ -300,10 +310,11 @@ async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
+
 async def get_channel_profile_ranks(
-        channel_id:str, 
-        fids:list[int], 
-        lite: bool, 
+        channel_id: str,
+        fids: list[int],
+        lite: bool,
         pool: Pool
 ):
     if lite:
@@ -348,13 +359,14 @@ async def get_channel_profile_ranks(
         """
     return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
 
+
 async def get_top_frames(
         agg: ScoreAgg,
         weights: Weights,
-        offset:int,
-        limit:int,
-        recent:bool,
-        decay:bool,
+        offset: int,
+        limit: int,
+        recent: bool,
+        decay: bool,
         pool: Pool
 ):
     match agg:
@@ -370,7 +382,7 @@ async def get_top_frames(
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
-        time_filter_sql=""
+        time_filter_sql = ""
 
     if decay:
         # WARNING: This is still under development and can lead to high latency
@@ -411,13 +423,14 @@ async def get_top_frames(
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_top_frames_with_cast_details(
         agg: ScoreAgg,
         weights: Weights,
-        offset:int,
-        limit:int,
-        recent:bool,
-        decay:bool,
+        offset: int,
+        limit: int,
+        recent: bool,
+        decay: bool,
         pool: Pool
 ):
     match agg:
@@ -433,7 +446,7 @@ async def get_top_frames_with_cast_details(
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
-        time_filter_sql=""
+        time_filter_sql = ""
 
     if decay:
         # WARNING: This is still under development and can lead to high latency
@@ -495,13 +508,14 @@ async def get_top_frames_with_cast_details(
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_neighbors_frames(
         agg: ScoreAgg,
         weights: Weights,
         voting: Voting,
         trust_scores: list[dict],
-        limit:int,
-        recent:bool,
+        limit: int,
+        recent: bool,
         pool: Pool
 ):
     match agg:
@@ -518,7 +532,7 @@ async def get_neighbors_frames(
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
-        time_filter_sql=""
+        time_filter_sql = ""
 
     match voting:
         case Voting.SINGLE:
@@ -571,12 +585,13 @@ async def get_neighbors_frames(
     """
     return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
 
+
 async def get_popular_neighbors_casts(
         agg: ScoreAgg,
         weights: Weights,
         trust_scores: list[dict],
         offset: int,
-        limit:int,
+        limit: int,
         lite: bool,
         pool: Pool
 ):
@@ -589,7 +604,7 @@ async def get_popular_neighbors_casts(
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
     resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash," \
-                    "DATE_TRUNC('hour', casts.timestamp) as cast_hour"
+                  "DATE_TRUNC('hour', casts.timestamp) as cast_hour"
     if not lite:
         resp_fields = f"""
             {resp_fields}, 
@@ -600,7 +615,6 @@ async def get_popular_neighbors_casts(
             casts.timestamp,
             cast_score
         """
-
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -648,11 +662,12 @@ async def get_popular_neighbors_casts(
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_recent_neighbors_casts(
         trust_scores: list[dict],
-        offset:int,
-        limit:int,
-        lite:bool,
+        offset: int,
+        limit: int,
+        lite: bool,
         pool: Pool
 ):
     resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
@@ -687,13 +702,49 @@ async def get_recent_neighbors_casts(
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
+
+async def get_recent_neighbors_casts_fids(
+        fids: List[int],
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
+
+    resp_fields = f"""
+        {resp_fields}, 
+        'https://warpcast.com/'||
+        fnames.fname||
+        '/0x' ||
+        substring(encode(casts.hash, 'hex'), 1, 8) as url,
+        casts.text,
+        casts.embeds,
+        casts.mentions,  
+        casts.fid,
+        casts.timestamp
+    """
+    sql_query = f"""
+        SELECT
+            {resp_fields}
+        FROM k3l_recent_parent_casts as casts 
+        JOIN fnames ON (fnames.fid = casts.fid)
+        WHERE
+            casts.fid = ANY($1::integer[])
+        ORDER BY casts.timestamp DESC
+        OFFSET $2
+        LIMIT $3
+        """
+
+    return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
+
+
 async def get_popular_channel_casts_lite(
-        channel_id:str,
-        channel_url:str,
+        channel_id: str,
+        channel_url: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
-        limit:int,
+        limit: int,
         pool: Pool
 ):
     match agg:
@@ -750,13 +801,14 @@ async def get_popular_channel_casts_lite(
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_popular_channel_casts_heavy(
-        channel_id:str,
-        channel_url:str,
+        channel_id: str,
+        channel_url: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
-        limit:int,
+        limit: int,
         pool: Pool
 ):
     match agg:
@@ -766,7 +818,6 @@ async def get_popular_channel_casts_heavy(
             agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
-
 
     sql_query = f"""
         with fid_cast_scores as (
