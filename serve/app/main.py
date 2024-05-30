@@ -4,9 +4,6 @@ import time
 import logging as log
 
 from fastapi import FastAPI, Depends, Request, Response
-from fastapi.openapi.utils import get_openapi
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.staticfiles import StaticFiles
 
 from contextlib import asynccontextmanager
 import uvicorn
@@ -18,11 +15,9 @@ from asgi_correlation_id.context import correlation_id
 from .dependencies import logging
 from .config import settings
 from .graph_loader import GraphLoader
-from .routers.direct_router import router as direct_router
-from .routers.graph_router import router as graph_router
-from .routers.metadata_router import router as metadata_router
 from .routers.localtrust_router import router as lt_router
 from .routers.globaltrust_router import router as gt_router
+from .routers.channel_router import router as channel_router
 from .routers.cast_router import router as cast_router
 
 from loguru import logger
@@ -55,39 +50,9 @@ logger.add(sys.stdout,
            format=settings.LOGURU_FORMAT,
            filter=custom_log_filter)
 
-# logger.add(sys.stdout, 
-#            colorize=True,
-#            format=settings.LOGURU_FORMAT,
-#            filter=level_per_module,
-#            level=0)
-
 log.basicConfig(handlers=[logging.InterceptHandler()], level=0, force=True)
 log.getLogger("uvicorn").handlers = [logging.InterceptHandler()]
 log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
-# Since we launch uvicorn from command-line and not in code uvicorn.run,
-# changing LOGGING_CONFIG has no effect.
-# from uvicorn.config import LOGGING_CONFIG
-# LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
-#     '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title="Farcaster Graph by Karma3Labs",
-        version="1.0.0",
-        summary="OpenAPI schema",
-        description="This API provides reputation graphs based on social interactions on the Farcaster Protocol",
-        routes=app.routes,
-    )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "/static/favicon.png"
-    }
-    openapi_schema["servers"] = [{
-        "url": settings.SWAGGER_BASE_URL
-    }]
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
 
 app_state = {}
 
@@ -116,22 +81,18 @@ async def lifespan(app: FastAPI):
     await app_state['db_pool'].close()
     app_state['graph_loader_task'].cancel()
 
-# TODO: change this to os env var once blue-green deployment is set up
-APP_NAME = "farcaster-graph-a" #os.environ.get("APP_NAME", "farcaster-graph-a")
+APP_NAME = "farcaster-openrank-neynar"
 
-app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs')
 
 app.add_middleware(CorrelationIdMiddleware)
 
-app.include_router(direct_router, prefix='/links')
-app.include_router(graph_router, prefix='/graph')
-app.include_router(metadata_router, prefix='/metadata')
-app.include_router(lt_router, prefix='/scores/personalized')
-app.include_router(gt_router, prefix='/scores/global')
+# Everything other than For You feed is out of scope
+# app.include_router(lt_router, prefix='/scores/global')
+# app.include_router(lt_router, prefix='/scores/personalized')
+# app.include_router(channel_router, prefix='/channels')
 app.include_router(cast_router, prefix='/casts')
 
-app.openapi = custom_openapi
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Setting metrics middleware
 app.add_middleware(PrometheusMiddleware, app_name=APP_NAME)
@@ -153,15 +114,6 @@ async def session_middleware(request: Request, call_next):
 def get_health():
     logger.info("health check")
     return {'status': 'ok'}
-
-
-@app.get("/docs", include_in_schema=False)
-async def swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url="/openapi.json",
-        title="Farcaster Graph by Karma3Labs",
-        swagger_favicon_url="/static/favicon.png"
-    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
