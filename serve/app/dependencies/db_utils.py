@@ -1,6 +1,5 @@
 import time
 import json
-from typing import List
 
 from ..config import settings
 from ..models.score_model import ScoreAgg, Weights, Voting
@@ -703,20 +702,16 @@ async def get_recent_neighbors_casts(
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_recent_neighbors_casts_fids(
-        fids: List[int],
+async def get_recent_casts_by_fids(
+        fids: list[int],
         offset: int,
         limit: int,
         pool: Pool
 ):
-    resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
 
-    resp_fields = f"""
-        {resp_fields}
-    """
-    sql_query = f"""
+    sql_query = """
         SELECT
-            {resp_fields}
+            '0x' || encode( casts.hash, 'hex') as cast_hash
         FROM k3l_recent_parent_casts as casts 
         WHERE
             casts.fid = ANY($1::integer[])

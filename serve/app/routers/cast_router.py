@@ -123,7 +123,7 @@ async def post_recent_casts_for_fid(
     i.e., returns recent 25 frame urls cast by extended network.
   """
 
-    casts = await db_utils.get_recent_neighbors_casts_fids(
+    casts = await db_utils.get_recent_casts_by_fids(
         fids=fids,
         offset=offset,
         limit=limit,
