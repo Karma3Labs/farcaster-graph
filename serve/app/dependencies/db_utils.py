@@ -712,22 +712,12 @@ async def get_recent_neighbors_casts_fids(
     resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
 
     resp_fields = f"""
-        {resp_fields}, 
-        'https://warpcast.com/'||
-        fnames.fname||
-        '/0x' ||
-        substring(encode(casts.hash, 'hex'), 1, 8) as url,
-        casts.text,
-        casts.embeds,
-        casts.mentions,  
-        casts.fid,
-        casts.timestamp
+        {resp_fields}
     """
     sql_query = f"""
         SELECT
             {resp_fields}
         FROM k3l_recent_parent_casts as casts 
-        JOIN fnames ON (fnames.fid = casts.fid)
         WHERE
             casts.fid = ANY($1::integer[])
         ORDER BY casts.timestamp DESC
