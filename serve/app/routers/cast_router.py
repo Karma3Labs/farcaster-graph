@@ -52,7 +52,9 @@ async def get_popular_casts_for_fid(
 
   # compute eigentrust on the neighbor graph using fids
   trust_scores = await pl_graph_utils.get_neighbors_scores(fid, graph_model, k, graph_limit)
-  # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
+
+  logger.trace(f"trust scores:{trust_scores}")
+
 
   casts = await db_utils.get_popular_neighbors_casts(agg,
                                                weights,
@@ -92,7 +94,7 @@ async def get_recent_casts_for_fid(
   # compute eigentrust on the neighbor graph using fids
   trust_scores = await pl_graph_utils.get_neighbors_scores(fid, graph_model, k, graph_limit)
 
-  logger.info(f"trust scores:{trust_scores}")
+  logger.trace(f"trust scores:{trust_scores}")
 
   casts = await db_utils.get_recent_neighbors_casts(
                                                trust_scores=trust_scores,
