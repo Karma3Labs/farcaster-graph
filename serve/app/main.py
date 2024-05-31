@@ -69,10 +69,12 @@ async def check_and_reload_models(loader: GraphLoader):
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
+    logger.info("Loading graph")
     app_state['graph_loader'] = GraphLoader()
     app_state['graph_loader_task'] = asyncio.create_task(
         check_and_reload_models(app_state['graph_loader'])
     )
+    logger.info("Connecting to DB")
     app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
                                          min_size=1,
                                          max_size=settings.POSTGRES_POOL_SIZE)
@@ -103,7 +105,7 @@ async def session_middleware(request: Request, call_next):
     start_time = time.perf_counter()
     logger.info(f"{request.method} {request.url}")
     response = Response("Internal server error", status_code=500)
-    request.state.graphs = app_state['graph_loader'].get_graphs()
+    request.state.graph = app_state['graph_loader'].get_graph()
     request.state.db_pool = app_state['db_pool']
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time

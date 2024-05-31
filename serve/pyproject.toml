@@ -12,7 +12,6 @@ uvicorn = "^0.27.0"
 asyncpg = "^0.29.0"
 sqlalchemy = "^2.0.25"
 loguru = "^0.7.2"
-igraph = "^0.11.3"
 pydantic-settings = "^2.1.0"
 psutil = "^5.9.8"
 pandas = {extras = ["performance"], version = "^2.2.2"}
@@ -24,6 +23,8 @@ opentelemetry-instrumentation-logging = "0.43b0"
 opentelemetry-exporter-otlp = "1.22.0"
 prometheus-client = "0.19.0"
 asgi-correlation-id = "^4.3.1"
+polars = "^0.20.30"
+pyarrow = "^16.1.0"
 
 [build-system]
 requires = ["poetry-core"]

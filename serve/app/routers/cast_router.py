@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..models.graph_model import Graph
+from ..models.graph_model import PlGraph
 from ..models.score_model import ScoreAgg, Weights
-from ..dependencies import graph, db_pool, db_utils
+from ..dependencies import db_pool, db_utils, pl_graph_utils
 from ..config import settings
 
 router = APIRouter(tags=["Casts"])
@@ -24,7 +24,7 @@ async def get_popular_casts_for_fid(
   graph_limit: Annotated[int | None, Query(le=1000)] = 100,
   lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  graph_model: PlGraph = Depends(pl_graph_utils.get_engagement_graph),
 ):
   """
     Get a list of casts that have been interacted with the most
@@ -51,7 +51,7 @@ async def get_popular_casts_for_fid(
     raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
 
   # compute eigentrust on the neighbor graph using fids
-  trust_scores = await graph.get_neighbors_scores([fid], graph_model, k, graph_limit)
+  trust_scores = await pl_graph_utils.get_neighbors_scores(fid, graph_model, k, graph_limit)
   # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
 
   casts = await db_utils.get_popular_neighbors_casts(agg,
@@ -73,7 +73,7 @@ async def get_recent_casts_for_fid(
   graph_limit: Annotated[int | None, Query(le=1000)] = 100,
   lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  graph_model: PlGraph = Depends(pl_graph_utils.get_engagement_graph),
 ):
   """
     Get a list of casts that have been casted by the 
@@ -90,7 +90,7 @@ async def get_recent_casts_for_fid(
     i.e., returns recent 25 frame urls casted by extended network.
   """
   # compute eigentrust on the neighbor graph using fids
-  trust_scores = await graph.get_neighbors_scores([fid], graph_model, k, graph_limit)
+  trust_scores = await pl_graph_utils.get_neighbors_scores(fid, graph_model, k, graph_limit)
 
   casts = await db_utils.get_recent_neighbors_casts(
                                                trust_scores=trust_scores,

@@ -1,83 +1,55 @@
 import os
 import math
-import pickle
 
 from . import utils 
 from .config import settings
-from .models.graph_model import Graph, GraphType
+from .models.graph_model import PlGraph
 
-
-import igraph
-import pandas
+import polars as pl
 from loguru import logger
 
 class GraphLoader:
 
   def __init__(self) -> None:
-    self.graphs = self.load_graphs()
+    self.graph = self.load_graph(settings.PLGRAPH_PATHPREFIX)
 
-  def get_graphs(self):
-    return self.graphs
+  def get_graph(self):
+    return self.graph
 
-  def load_graph(self, path_prefix, graph_type: GraphType):
+  def load_graph(self, path_prefix):
     sfile = f"{path_prefix}_SUCCESS"
-    dfile = f"{path_prefix}_df.pkl"
+    plfile = f"{path_prefix}.parquet"
 
     utils.log_memusage(logger)
-    logger.info(f"unpickling {dfile}")
-    df = pandas.read_pickle(dfile)
-    logger.info(utils.df_info_to_string(df, with_sample=True))
+    logger.info(f"loading graph from {plfile}")
+    pl_df = pl.read_parquet(plfile)    
     utils.log_memusage(logger)
 
-    # logger.info(f"creating graph from dataframe ")
-    # g = igraph.Graph.DataFrame(df, directed=True, use_vids=False)
-    # logger.info(g.summary())
-    gfile = f"{path_prefix}_ig.pkl"
-    # logger.info(f"reading {gfile}")
-    # with open(gfile, 'rb') as pickle_file:
-    #   pickled_data = bytearray(pickle_file.read())
-    logger.info(f"unpickling {gfile}")
-    # g = pickle.loads(pickled_data)
-    g = igraph.Graph.Read_Pickle(gfile)
-    utils.log_memusage(logger)
-
-    return Graph(
+    logger.info(f"sorting graph: {pl_df.flags}")
+    pl_df = pl_df.sort('fid')
+    logger.info(f"graph: {pl_df}")
+    pl_graph = PlGraph(
       success_file=sfile,
-      df=df,
-      graph=g,
-      type=graph_type,
+      df=pl_df,
       mtime=os.path.getmtime(sfile),
     )
-
-  def load_graphs(self) -> dict:
-    # TODO use TypedDict or a pydantic model
-    graphs = {}
-
-    # TODO fix hardcoding of name -> file, type of model
-    graphs[GraphType.following] = self.load_graph(settings.FOLLOW_GRAPH_PATHPREFIX, GraphType.following)
-    logger.info(f"loaded {graphs[GraphType.following]}")
-    logger.info(graphs[GraphType.following].graph.summary())
-
-    graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATHPREFIX, GraphType.engagement)
-    logger.info(f"loaded {graphs[GraphType.engagement]}")
-
-    return graphs
-
+    logger.info(f"loaded and sorted graph: {pl_graph}")
+    utils.log_memusage(logger)
+    return pl_graph
 
   def reload_if_required(self):
     logger.info("checking graphs mtime")
     try:
-      for _, model in self.graphs.items():
-        is_graph_modified = not math.isclose(model.mtime, os.path.getmtime(model.success_file), rel_tol=1e-9)
-        logger.debug(
-                      f"In-memory mtime {model.mtime},"
-                      f" OS mtime {os.path.getmtime(model.success_file)}"
-                      f" {"are not close" if is_graph_modified else "are close"}"
-                    )
-        if is_graph_modified:
-          logger.info("reload graphs")
-          self.graphs = self.load_graphs()
-          break
+      model = self.graph
+      is_graph_modified = not math.isclose(model.mtime, os.path.getmtime(model.success_file), rel_tol=1e-9)
+      logger.debug(
+                    f"In-memory mtime {model.mtime},"
+                    f" OS mtime {os.path.getmtime(model.success_file)}"
+                    f" {"are not close" if is_graph_modified else "are close"}"
+                  )
+      if is_graph_modified:
+        logger.info("reload graph")
+        self.graph = self.load_graph(settings.PLGRAPH_PATHPREFIX)
     except Exception as e:
       logger.error(e)
     except:

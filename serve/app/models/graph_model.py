@@ -1,27 +1,23 @@
 from typing import NamedTuple
 from enum import Enum
-import io
+from datetime import datetime, timezone
 
-import igraph
-import pandas
+import polars
 
 class GraphType(Enum):
   following = 1
   engagement = 3
 
-class Graph(NamedTuple):
+class PlGraph(NamedTuple):
   success_file: str
-  df: pandas.DataFrame
-  graph: igraph.Graph
-  type: GraphType
+  df: polars.DataFrame
   mtime: float
 
   def __str__(self):
-    df_info=io.StringIO()
-    self.df.info(buf=df_info)
     return f"""
-      type: {self.type}
-      dataframe: {df_info.getvalue()}
-      igraph: {self.graph.summary()}
-      mtime: {self.mtime}
+      shape: {self.df.shape}
+      sample: {self.df.sample(n=min(5, len(self.df)))}
+      size_mb: {self.df.estimated_size('mb')}
+      flags: {self.df.flags}
+      mtime: {datetime.fromtimestamp(self.mtime, tz=timezone.utc).isoformat()}
       """

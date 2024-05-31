@@ -1,8 +1,8 @@
 services:
-  farcaster-graph:
+  openrank-graph:
     build: .
-    container_name: farcaster-graph
-    image: farcaster-graph:latest
+    container_name: openrank-graph
+    image: openrank-graph:latest
     volumes:
       - /home/ubuntu/serve_files:/tmp
     environment:
@@ -13,9 +13,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - farcaster-network
+      - openrank-network
 
 networks:
-  farcaster-network:
-    name: farcaster-network
+  openrank-network:
+    name: openrank-network
     external: true

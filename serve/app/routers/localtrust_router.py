@@ -4,25 +4,17 @@ from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..models.graph_model import Graph
-from ..dependencies import graph, db_pool, db_utils
+from ..models.graph_model import PlGraph
+from ..dependencies import pl_graph_utils
 
 router = APIRouter(tags=["Personalized OpenRank Scores"])
 
-@router.post("/engagement/fids")
-async def get_personalized_engagement_for_fids(  
-  fids: Annotated[list[int], Body(
-    title="Farcaster IDs",
-    description="A list of FIDs.",
-    examples=[
-      [1,2,3]
-    ]
-  )],
+@router.post("/engagement/fid")
+async def get_personalized_engagement_for_fid(  
+  fid: int,
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=5000)] = 100,
-  lite: Annotated[bool, Query()] = False,
-  pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  graph_model: PlGraph = Depends(pl_graph_utils.get_engagement_graph),
 ):
   """
   Given a list of input fids, return a list of fids
@@ -36,69 +28,24 @@ async def get_personalized_engagement_for_fids(
   Example: [1, 2] \n
   **IMPORTANT**: Please use HTTP POST method and not GET method.
   """
-  if not (1 <= len(fids) <= 100):
+  if not (1 <= len(fid) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  logger.debug(fids)
-  res = await _get_personalized_scores_for_fids(
-                    fetch_all_addrs=False, 
-                    fids=fids, 
+  logger.debug(fid)
+  res = await _get_personalized_scores_for_fid(
+                    fids=fid, 
                     k=k, 
                     limit=limit, 
-                    lite=lite,
-                    pool=pool, 
                     graph_model=graph_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
-async def _get_personalized_scores_for_fids(
-  # Example: -d '[1, 2]'
-  fetch_all_addrs: bool,
-  fids: list[int],
+async def _get_personalized_scores_for_fid(
+  fid: int,
   k: int,
   limit: int,
-  lite: bool,
-  pool: Pool,
-  graph_model: Graph,
+  graph_model: PlGraph,
 ) -> list[dict]: 
   # compute eigentrust on the neighbor graph using fids
-  trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
+  trust_scores = await pl_graph_utils.get_neighbors_scores(fid, graph_model, k, limit)
 
-  if lite:
-    return sorted(trust_scores, key=lambda d: d['score'], reverse=True)
-
-  # convert list of fid scores into a lookup with fid as key
-  # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
-  trusted_fid_score_map = {ts['fid']:ts['score'] for ts in trust_scores }
-
-  # extract fids from the trusted neighbor fid-score pairs
-  trusted_fids = list(trusted_fid_score_map.keys())
-
-  # fetch handle info for trusted neighbor fids
-  trusted_fid_addr_handles = \
-    await db_utils.get_all_handle_addresses_for_fids(trusted_fids, pool) \
-    if fetch_all_addrs else \
-    await db_utils.get_unique_handle_metadata_for_fids(trusted_fids, pool)
-
-
-  # for every handle-fid pair, get score from corresponding fid
-  # {address,fname,username,fid} into {address,fname,username,fid,score}
-  def fn_include_score(trusted_fid_addr_handle: dict) -> dict:
-    score = trusted_fid_score_map[trusted_fid_addr_handle['fid']]
-    # trusted_fid_addr_handle is an 'asyncpg.Record'
-    # 'asyncpg.Record' object does not support item assignment
-    # need to create a new object with score
-    return {'address': trusted_fid_addr_handle['address'], 
-            'fname': trusted_fid_addr_handle['fname'],
-            'username': trusted_fid_addr_handle['username'],
-            'fid': trusted_fid_addr_handle['fid'],
-            'score': score
-            }
-  # end of def fn_trust_score_with_handle_fid
-
-
-  results = list(map(fn_include_score, trusted_fid_addr_handles))
-  # sort by score
-  results = sorted(results, key=lambda d: d['score'], reverse=True)
-
-  return results  
-
+  return sorted(trust_scores, key=lambda d: d['score'], reverse=True)

@@ -10,12 +10,8 @@ class Settings(BaseSettings):
     POSTGRES_POOL_SIZE: int = 5
     POSTGRES_ECHO: bool = False
     POSTGRES_TIMEOUT_SECS: int = 60
-    GO_EIGENTRUST_URL:str = 'http://localhost:8080'
-    GO_EIGENTRUST_TIMEOUT_MS:int = 3000
-    EIGENTRUST_ALPHA:float = 0.5
-    EIGENTRUST_EPSILON:float = 1.0
-    EIGENTRUST_MAX_ITER:int = 50
-    EIGENTRUST_FLAT_TAIL:int = 2
+
+    PLGRAPH_PATHPREFIX: str = '/tmp/personal_graph'
 
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
@@ -25,8 +21,6 @@ class Settings(BaseSettings):
                             " | {level} | <level>{message}</level>" )
     SWAGGER_BASE_URL: str
 
-    FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
-    ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement_fid'
     RELOAD_FREQ_SECS: int = 3600
 
     model_config = SettingsConfigDict(
