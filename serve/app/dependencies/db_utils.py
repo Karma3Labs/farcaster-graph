@@ -178,10 +178,10 @@ async def get_popular_neighbors_casts(
                 ci.cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * trust.score * ci.casted) 
-                        + ({weights.reply} * trust.score * ci.replied)
-                        + ({weights.recast} * trust.score * ci.recasted)
-                        + ({weights.like} * trust.score * ci.liked)
+                        ({weights.cast} * trust.v * ci.casted) 
+                        + ({weights.reply} * trust.v * ci.replied)
+                        + ({weights.recast} * trust.v * ci.recasted)
+                        + ({weights.like} * trust.v * ci.liked)
                     )
                     *
                     power(
@@ -190,9 +190,9 @@ async def get_popular_neighbors_casts(
                     )
                 ) as cast_score
             FROM json_to_recordset($1::json)
-                AS trust(fid int, score numeric) 
+                AS trust(i int, v numeric) 
             INNER JOIN k3l_cast_action as ci
-                ON (ci.fid = trust.fid
+                ON (ci.fid = trust.i
                     AND ci.action_ts BETWEEN now() - interval '5 days' 
   										AND now() - interval '10 minutes')
             GROUP BY ci.cast_hash, ci.fid
@@ -241,15 +241,15 @@ async def get_recent_neighbors_casts(
             power(
                 1-(1/(365*24)::numeric),
                 (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60))::numeric
-            )* trust.score as cast_score
+            )* trust.v as cast_score
         """
     sql_query = f"""
         SELECT
             {resp_fields}
         FROM k3l_recent_parent_casts as casts 
         INNER JOIN  json_to_recordset($1::json)
-            AS trust(fid int, score numeric) 
-                ON casts.fid = trust.fid
+            AS trust(i int, v numeric) 
+                ON casts.fid = trust.i
         {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
         ORDER BY casts.timestamp DESC
         OFFSET $2

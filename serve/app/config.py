@@ -13,7 +13,6 @@ class Settings(BaseSettings):
 
     PLGRAPH_PATHPREFIX: str = '/tmp/personal_graph'
 
-    USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
     LOG_LEVEL_CORE: str = 'DEBUG'
     LOGURU_FORMAT: str = ("<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
