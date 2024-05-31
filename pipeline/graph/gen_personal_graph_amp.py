@@ -61,6 +61,8 @@ async def compute_task(
     logger.info(f"{process_label}processing FID: {fid}")
     task_start = time.perf_counter()
     knn_list = []
+    # NOTE: k_minus_list is empty because we want 1st degree neighbors to include input fid. 
+    # This is useful when creating watchlists of whale fids.
     k_minus_list = []
     limit = maxneighbors
     degree = 1
@@ -181,7 +183,6 @@ async def main(
   logger.info(f"Reading csv {incsv} into Polars DataFrame")
   utils.log_memusage(logger)
   edges_df = pl.read_csv(incsv)
-  # TODO  Perf -  edges_df =  edges_df.sort(['i', 'j'])
   logger.info(f"edges_df: {edges_df.describe()}")
   logger.info(f"edges_df sample: {edges_df.sample(n=min(5, len(edges_df)))}")
   utils.log_memusage(logger)
@@ -200,6 +201,9 @@ async def main(
   # np.random.shuffle(fids) # does not work with Polars because read-only
   
   logger.info(np.random.choice(fids, min(len(fids), 5)))
+
+  logger.info("sort edges_df")
+  edges_df =  edges_df.sort(['i', 'j'])
 
   logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
   logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
