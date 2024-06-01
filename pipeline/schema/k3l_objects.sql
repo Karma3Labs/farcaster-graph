@@ -161,6 +161,8 @@ FROM casts
     		AND now()
 WITH NO DATA;
 
+CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts USING btree (hash);
+
 CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
 ------------------------------------------------------------------------------------
 CREATE TABLE public.k3l_channel_fids (
