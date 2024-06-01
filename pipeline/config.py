@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     WARPCAST_CHANNELS_TIMEOUT: int = 5
     CHANNEL_SLEEP_SECS:int = 1
 
+    PERSONAL_IGRAPH_INPUT: str
+    PERSONAL_IGRAPH_URL: str
+
     USE_NEYNAR: bool = False
     IS_TEST: bool = False
 

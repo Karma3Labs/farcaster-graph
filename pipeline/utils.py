@@ -18,12 +18,12 @@ def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
     df.sample(min(10, len(df)-1)).to_csv(buf, index=False)
   return buf.getvalue()
 
-def log_memusage(logger:logging.Logger):
+def log_memusage(logger:logging.Logger, prefix: str = ''):
   mem_usage = psutil.virtual_memory()
-  logger.info(f"Total: {mem_usage.total/(1024**2):.2f}M")
-  logger.info(f"PctUsed: {mem_usage.percent}%")
-  logger.info(f"Available: {mem_usage.available/(1024**2):.2f}M")
-  logger.info(f"Free: {mem_usage.free/(1024**2):.2f}M" )
+  logger.info(f"{prefix}Total: {mem_usage.total/(1024**2):.2f}M")
+  logger.info(f"{prefix}PctUsed: {mem_usage.percent}%")
+  logger.info(f"{prefix}Available: {mem_usage.available/(1024**2):.2f}M")
+  logger.info(f"{prefix}Free: {mem_usage.free/(1024**2):.2f}M" )
 
 def setup_consolelogger(logger):
   # create a console handler

@@ -144,8 +144,6 @@ async def _get_neighbors_edges(
   max_neighbors: int,
 ) -> pandas.DataFrame: 
   
-  # TODO Perf: Use Dataframe Mutltiindex for a speed boost
-
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")

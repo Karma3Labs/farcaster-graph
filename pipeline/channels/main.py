@@ -2,14 +2,14 @@
 import sys
 import argparse
 import random
-from pathlib import Path
 
 # local dependencies
 from config import settings
-import utils, db_utils
+import utils
+import db_utils 
+import go_eigentrust
 from timer import Timer
 from . import channel_utils
-from . import go_eigentrust
 from . import compute_trust
 
 # 3rd party dependencies

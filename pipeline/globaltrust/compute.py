@@ -1,10 +1,11 @@
 from enum import Enum
 import logging
 
-import utils, db_utils
+import utils
+import db_utils
+import go_eigentrust
 from timer import Timer
 from .queries import IJVSql, IVSql
-from . import go_eigentrust
 from config import settings
 
 import pandas as pd
@@ -143,8 +144,7 @@ def lt_gt_for_strategy(
       max_pt_id = pt_df['i'].max()
     utils.log_memusage(logger)
 
-    globaltrust = go_eigentrust.go_eigentrust(logger,
-                                              pretrust,
+    globaltrust = go_eigentrust.go_eigentrust(pretrust,
                                               max_pt_id,
                                               localtrust,
                                               max_lt_id

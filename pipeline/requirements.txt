@@ -7,8 +7,10 @@ pydantic-settings==2.2.1
 sqlalchemy==2.0.28
 requests==2.31.0
 loguru==0.7.2
-timeloop-ng==1.0.0
 beautifulsoup4==4.12.3
 aiohttp==3.9.3
 tldextract==5.1.1
 niquests==3.5.5
+polars==0.20.27
+pyarrow==16.1.0
+fastapi==0.111.0
