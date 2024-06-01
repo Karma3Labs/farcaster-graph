@@ -47,5 +47,5 @@ mv ${OUT_DIR}/temp-${JOBTIME} ${OUT_DIR}/temp
 # consolidate approx 4000 small pqt files into 1 big parquet file
 python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet
 
-# TODO copy personal_graph.parquet to S3
+# TODO test size of parquet and push to S3
 deactivate
