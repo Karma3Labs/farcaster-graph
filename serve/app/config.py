@@ -17,8 +17,6 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
-    WARPCAST_CHANNELS_TIMEOUT: int = 30000
-
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
     LOG_LEVEL_CORE: str = 'DEBUG'
