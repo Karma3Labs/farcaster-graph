@@ -1,61 +1,22 @@
-CREATE MATERIALIZED VIEW public.k3l_rank AS
- WITH latest_gt AS (
-         SELECT max(globaltrust_1.date) AS dt,
-            globaltrust_1.strategy_id
-           FROM public.globaltrust globaltrust_1
-          GROUP BY globaltrust_1.strategy_id
-        ), latest_gt_config AS (
-         SELECT DISTINCT ON (globaltrust_config.strategy_id) globaltrust_config.strategy_id,
-            globaltrust_config.strategy_name
-           FROM public.globaltrust_config
-          ORDER BY globaltrust_config.strategy_id, globaltrust_config.date DESC
-        )
- SELECT row_number() OVER () AS pseudo_id,
-    row_number() OVER (PARTITION BY globaltrust.date, globaltrust.strategy_id ORDER BY globaltrust.v DESC) AS rank,
-    globaltrust.v AS score,
-    globaltrust.i AS profile_id,
-    globaltrust.strategy_id,
-    latest_gt_config.strategy_name,
-    globaltrust.date
-   FROM ((public.globaltrust
-     JOIN latest_gt_config ON ((globaltrust.strategy_id = latest_gt_config.strategy_id)))
-     JOIN latest_gt ON (((globaltrust.strategy_id = latest_gt.strategy_id) AND (globaltrust.date = latest_gt.dt))))
-  WITH NO DATA;
 
-CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
-
-CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
-
-CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id)
-
-CREATE INDEX k3l_rank_profile_id_idx ON public.k3l_rank USING btree (profile_id)
-
-------------------------------------------------------------------------------------
-CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
-SELECT 
-	id,
-    created_at,
-    updated_at,
-    deleted_at,
-    "timestamp",
-    fid,
-    hash,
-    parent_hash,
-    parent_fid,
-    parent_url,
-    text,
-    embeds,
-    mentions,
-    mentions_positions,
-    root_parent_hash,
-    root_parent_url
-FROM casts
-  WHERE casts.parent_hash IS NULL
-  AND casts.deleted_at IS NULL
-  AND casts.timestamp 
-  	BETWEEN now() - interval '5 days'
-    		AND now()
-WITH NO DATA;
+CREATE TABLE k3l_recent_parent_casts (
+    id bigint NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    deleted_at timestamp without time zone,
+    "timestamp" timestamp without time zone NOT NULL,
+    fid bigint NOT NULL,
+    hash bytea NOT NULL,
+    parent_hash bytea,
+    parent_fid bigint,
+    parent_url text,
+    text text NOT NULL,
+    embeds jsonb DEFAULT '{}'::jsonb NOT NULL,
+    mentions bigint[] DEFAULT '{}'::bigint[] NOT NULL,
+    mentions_positions smallint[] DEFAULT '{}'::smallint[] NOT NULL,
+    root_parent_hash bytea,
+    root_parent_url text
+);
 
 CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts USING btree (hash);
 
@@ -76,6 +37,9 @@ PARTITION BY RANGE (action_ts);
 
 CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action 
 USING btree(fid);
+
+CREATE INDEX k3l_cast_action_fid_ts_idx ON public.k3l_cast_action 
+USING btree(fid, action_ts);
 
 CREATE INDEX k3l_cast_action_cast_hash_idx ON public.k3l_cast_action 
 USING btree(cast_hash);
