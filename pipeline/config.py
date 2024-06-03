@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
@@ -50,6 +52,11 @@ class Settings(BaseSettings):
         # `.env.prod` takes priority over `.env`
         env_file=('.env', '.env.prod')
     )
+
+    @computed_field
+    @cached_property
+    def PERSONAL_IGRAPH_URLPATH(self) -> str:
+       return f"{self.PERSONAL_IGRAPH_URL}/graph"
 
     @computed_field
     def POSTGRES_DSN(self) -> SecretStr:

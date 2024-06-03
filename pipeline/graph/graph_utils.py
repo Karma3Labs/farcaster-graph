@@ -26,7 +26,7 @@ def get_k_degree_neighbors(
   k: int, 
 ) -> list[int]:
   payload = {'fid': int(fid), 'k': k, 'limit': limit}
-  response = niquests.get(settings.PERSONAL_IGRAPH_URL, params=payload)
+  response = niquests.get(settings.PERSONAL_IGRAPH_URLPATH, params=payload)
   logger.trace(f"{response.json()}")
   return response.json()
 

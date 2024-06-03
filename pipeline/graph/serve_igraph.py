@@ -1,6 +1,5 @@
 import sys
 import time
-import logging as log
 
 from fastapi import FastAPI, Depends, Request, Response
 from contextlib import asynccontextmanager
@@ -30,7 +29,7 @@ app_state = {}
 async def lifespan(app: FastAPI):
     """Execute when API is started"""
     logger.warning(f"{settings}")
-    logger.warning(f"loading graph")
+    logger.warning(f"loading graph {settings.PERSONAL_IGRAPH_INPUT}")
     g = igraph.Graph.Read_Pickle(settings.PERSONAL_IGRAPH_INPUT)
     app_state['graph'] = g
     logger.warning(f"graph loaded: {igraph.summary(g)}")
@@ -73,7 +72,12 @@ def get_graph(
   k_neighbors_list = graph.vs[neighbors[:limit]]["name"]
   return k_neighbors_list
 
-
+@app.get("/_reload", status_code=200)
+def reload_graph():
+  logger.warning(f"reloading graph from {settings.PERSONAL_IGRAPH_INPUT}")
+  g = igraph.Graph.Read_Pickle(settings.PERSONAL_IGRAPH_INPUT)
+  app_state['graph'] = g
+  return {'status': 'ok'}
 
 @app.get("/_health", status_code=200)
 def get_health():
