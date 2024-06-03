@@ -1,5 +1,18 @@
 #!/bin/bash
 
+dayOfYear=`date '+%j'`
+hourOfDay=`date '+%H'`
+hourOfYear="$((dayOfYear * 24 + hourOfDay))"
+echo $dayOfYear $hourOfDay $hourOfYear
+
+if [ `expr $hourOfYear % 36` -eq 0 ]; then
+   echo "This is hour 36. Continuing with script."
+else
+   echo "This not hour 36. Exiting now."
+   exit 0
+fi
+
+
 while getopts i:o:s:w:v: flag
 do
     case "${flag}" in
