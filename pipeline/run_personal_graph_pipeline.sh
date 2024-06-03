@@ -5,6 +5,8 @@ hourOfDay=`date '+%H'`
 hourOfYear="$((dayOfYear * 24 + hourOfDay))"
 echo $dayOfYear $hourOfDay $hourOfYear
 
+# TODO use the mtime of the existing parquet file and 
+# ..if current time - mtime > 1 hour, start compute
 if [ `expr $hourOfYear % 36` -eq 0 ]; then
    echo "This is hour 36. Continuing with script."
 else
