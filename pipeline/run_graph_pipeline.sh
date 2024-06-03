@@ -24,8 +24,7 @@ set -x
 set -e
 set -o pipefail
 
-# aws s3 cp s3://${S3_BKT}/personal_graph.parquet $OUT_DIR/personal_graph.parquet.new
-cp ../serve/samples/personal_graph.parquet $OUT_DIR/personal_graph.parquet.new
+aws s3 cp s3://${S3_BKT}/personal_graph.parquet $OUT_DIR/personal_graph.parquet.new
 
 if [ -n "$OUT_DIR/personal_graph.parquet" ]; then
   new_size=`du -m $OUT_DIR/personal_graph.parquet.new | cut -f1`
