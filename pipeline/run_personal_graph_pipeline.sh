@@ -54,14 +54,17 @@ set -o pipefail
 
 mkdir -p ${OUT_DIR}/temp-${JOBTIME}
 
+# TODO - Fix this ugly code
+# Reload twice because we have 2 instances of igraph server round robin load 
+# Fail if any response other than 200
+# Reload graph takes a while so set timeout to 5 mins
+curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
+echo "One graph instance reloaded"
+curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
+echo "Another graph instance reloaded"
+
 source $VENV/bin/activate
 pip install -r requirements.txt
-
-# Reload twice because we have 2 instances of igraph server round robin load balanced
-# TODO - Fix this ugly code
-curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail
-curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail
-echo "Graphs reloaded"
 
 # generate graph with 10 processes, 100 child threads and 1000 neighbors
 python3 -m graph.gen_personal_graph_amp -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
