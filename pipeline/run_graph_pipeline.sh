@@ -28,8 +28,8 @@ set -o pipefail
 cp ../serve/samples/personal_graph.parquet $OUT_DIR/personal_graph.parquet.new
 
 if [ -n "$OUT_DIR/personal_graph.parquet" ]; then
-  new_size=`du -k $OUT_DIR/personal_graph.parquet.new | cut -f1`
-  prev_size=`du -k $OUT_DIR/personal_graph.parquet | cut -f1`
+  new_size=`du -m $OUT_DIR/personal_graph.parquet.new | cut -f1`
+  prev_size=`du -m $OUT_DIR/personal_graph.parquet | cut -f1`
   size_diff="$((new_size-prev_size))"
   if [[ $size_diff -lt -100 ]]; then
     echo 'New graph smaller than previously generated graph. Abort script.'
