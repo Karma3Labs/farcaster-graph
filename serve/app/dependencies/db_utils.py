@@ -712,7 +712,7 @@ async def get_recent_casts_by_fids(
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash
-        FROM k3l_recent_parent_casts as casts 
+        FROM casts 
         WHERE
             casts.fid = ANY($1::integer[])
         ORDER BY casts.timestamp DESC

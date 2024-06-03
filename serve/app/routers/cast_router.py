@@ -113,15 +113,19 @@ async def post_recent_casts_for_fid(
 ):
     """
     Get a list of casts that have been casted by the
-      popular profiles in a user's extended network. \n
+      an list of FIDs. \n
   This API takes optional parameters -
     offset, limit \n
   Parameter 'offset' is used to specify how many results to skip
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
+  Limit Parameter is set to 25 as default and a max of 50
   By default, offset=0, limit=25
     i.e., returns recent 25 frame urls cast by extended network.
   """
+    if not (1 <= len(fids) <= 150):
+        raise HTTPException(status_code=400, detail="Input should have between 1 and 150 entries")
+    logger.debug(fids)
 
     casts = await db_utils.get_recent_casts_by_fids(
         fids=fids,
