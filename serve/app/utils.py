@@ -1,5 +1,6 @@
 import io
 
+import niquests
 from loguru import logger
 import psutil
 import pandas as pd
@@ -18,3 +19,18 @@ def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
     buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
     df.sample(5).to_csv(buf, index=False)
   return buf.getvalue()
+
+
+def fetch_channel(http_session: niquests.Session, channel_id: str) -> str:
+    url = f'https://api.warpcast.com/v1/channel?channelId={channel_id}'
+    logger.info(url)
+    response = http_session.get(url, headers={
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    },
+                                timeout=5)
+    if response.status_code != 200:
+        logger.error(f"Server error: {response.status_code}:{response.reason}")
+        raise Exception(f"Server error: {response.status_code}:{response.reason}")
+    data = response.json()['result']['channel']
+    return data.get('url')
