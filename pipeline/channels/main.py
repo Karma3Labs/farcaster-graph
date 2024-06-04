@@ -113,10 +113,10 @@ def main(
         logger.info(utils.df_info_to_string(scores_df, with_sample=True))
         utils.log_memusage(logger)
 
-        # with Timer(name="insert_db"):
-        #     db_utils.df_insert_copy(pg_url=pg_url,
-        #                             df=scores_df,
-        #                             dest_tablename=settings.DB_CHANNEL_FIDS)
+        with Timer(name="insert_db"):
+            db_utils.df_insert_copy(pg_url=pg_url,
+                                    df=scores_df,
+                                    dest_tablename=settings.DB_CHANNEL_FIDS)
     # end of for loop
 
 
