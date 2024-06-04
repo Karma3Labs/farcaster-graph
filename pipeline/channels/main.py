@@ -117,7 +117,6 @@ def main(
         #     db_utils.df_insert_copy(pg_url=pg_url,
         #                             df=scores_df,
         #                             dest_tablename=settings.DB_CHANNEL_FIDS)
-        break
     # end of for loop
 
 
