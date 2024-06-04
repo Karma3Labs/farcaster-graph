@@ -15,7 +15,7 @@ else
 fi
 
 
-while getopts i:o:s:w:v: flag
+while getopts i:o:s:w:v:l: flag
 do
     case "${flag}" in
         i) IN_CSV=${OPTARG};;
@@ -23,10 +23,11 @@ do
         s) S3_BKT=${OPTARG};;
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
+        l) LOG_DIR=${OPTARG};;
     esac
 done
 
-if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]|| [ -z "$S3_BKT" ]; then
+if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ] || [ -z "$S3_BKT" ] || [ -z "$LOG_DIR" ]; then
   echo "Usage:   $0 -i [in_csv] -w [work_dir] -v [venv] -o [out_dir] -s [s3_bkt] "
   echo ""
   echo "Example: $0 \ "
@@ -34,20 +35,25 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
   echo "  -w . \ "
   echo "  -v .venv \ "
   echo "  -o /tmp/personal-graph/ \ "
-  echo "  -s k3l-openrank-farcaster"
+  echo "  -s k3l-openrank-farcaster \ "
+  echo "  -l /var/log/farcaster-graph/"
   echo ""
   echo "Params:"
   echo "  [in_csv]  The source file to read dataframe from."
   echo "  [out_dir] The output directory to write the graph file."
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
+  echo "  [s3_bkt] The S3 bucket to upload the graph file to."
+  echo "  [log_dir] The directory to write log files to."
   echo ""
   exit
 fi
 
 
 JOBTIME=$(date +%Y%m%d%H%M%S)
+LOGFILE=${LOG_DIR}/personal_graph-${JOBTIME}.log
 
+(
 source $WORK_DIR/.env
 
 set -x
@@ -104,3 +110,5 @@ mv $OUT_DIR/personal_graph.parquet.new $OUT_DIR/personal_graph.parquet
 deactivate
 
 aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
+
+) 2>&1 | tee -a $LOGFILE
