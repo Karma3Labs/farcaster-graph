@@ -130,7 +130,7 @@ async def get_popular_channel_casts(
   if lite:
     casts = await db_utils.get_popular_channel_casts_lite(
                                 channel_id=channel,
-                                channel_url=fetch_channel(channel),
+                                channel_url=fetch_channel(channel_id=channel),
                                 agg=agg,
                                 weights=weights,
                                 offset=offset,
@@ -139,7 +139,7 @@ async def get_popular_channel_casts(
   else:
     casts = await db_utils.get_popular_channel_casts_heavy(
                             channel_id=channel,
-                            channel_url=fetch_channel(channel),
+                            channel_url=fetch_channel(channel_id=channel),
                             agg=agg,
                             weights=weights,
                             offset=offset,

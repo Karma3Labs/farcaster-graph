@@ -1,6 +1,7 @@
 import io
 
 import niquests
+from urllib3.util import Retry
 from loguru import logger
 import psutil
 import pandas as pd
@@ -21,7 +22,14 @@ def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
   return buf.getvalue()
 
 
-def fetch_channel(http_session: niquests.Session, channel_id: str) -> str:
+def fetch_channel(channel_id: str) -> str:
+    retries = Retry(
+        total=3,
+        backoff_factor=0.1,
+        status_forcelist=[502, 503, 504],
+        allowed_methods={'GET'},
+    )
+    http_session = niquests.Session(retries=retries)
     url = f'https://api.warpcast.com/v1/channel?channelId={channel_id}'
     logger.info(url)
     response = http_session.get(url, headers={
