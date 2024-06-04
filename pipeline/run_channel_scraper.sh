@@ -32,5 +32,5 @@ function log() {
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m channels.main -i founders degen base optimism farcaster op-stack new-york 
+python3 -m channels.main -c "channels/Top_Channels.csv"
 deactivate

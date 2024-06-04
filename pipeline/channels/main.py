@@ -3,10 +3,11 @@ import sys
 import argparse
 import random
 
+import pandas as pd
 # local dependencies
 from config import settings
 import utils
-import db_utils 
+import db_utils
 import go_eigentrust
 from timer import Timer
 from . import channel_utils
@@ -37,7 +38,7 @@ logger.add(sys.stdout,
 
 @Timer(name="main")
 def main(
-        channel_ids: list[str],
+        csv_path: str,
         pg_dsn: str,
         pg_url: str
 ):
@@ -51,16 +52,24 @@ def main(
     )
     http_session = niquests.Session(retries=retries)
 
+    # Read the channel master csv for channel_ids
+    channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
+
     # for each channel, fetch channel details,
     # take a slice of localtrust and run go-eigentrust
-    for cid in channel_ids:
+    # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
+    for cid in list(channel_data["channel id"].values)[:30]:
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
+
+        host_fids = list(set(channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))
+        host_fids = [int(fid) for fid in host_fids]
+
         logger.info(f"Channel details: {channel}")
 
         utils.log_memusage(logger)
-        global_lt_df = compute_trust._fetch_interactions_df(logger, 
-                                                            pg_dsn, 
+        global_lt_df = compute_trust._fetch_interactions_df(logger,
+                                                            pg_dsn,
                                                             channel_url=channel.project_url)
         global_lt_df = global_lt_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
@@ -73,7 +82,7 @@ def main(
         logger.info(f"Number of channel followers: {len(fids)}")
         logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
-        fids.extend(channel.host_fids)  # host_fids need to be included in the eigentrust compute
+        fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
 
         with Timer(name="channel_localtrust"):
             # TODO Perf - fids should be a 'set' and not a 'list'
@@ -87,7 +96,7 @@ def main(
             continue
 
         with Timer(name="go_eigentrust"):
-            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=channel.host_fids)
+            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=host_fids)
 
         logger.info(f"go_eigentrust returned {len(scores)} entries")
         logger.debug(f"channel user scores:{scores}")
@@ -116,9 +125,10 @@ def main(
 # python3 -m channels.main -i degen farcaster base -l ../serve/samples/fc_engagement_fid_df.pkl
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--ids",
-                        nargs='+',
-                        help="list of channel ids. For example, -i farcaster base degen",
+    # Add the --csv argument
+    parser.add_argument("-c", "--csv",
+                        type=str,
+                        help="path to the CSV file. For example, -c /path/to/file.csv",
                         required=True)
 
     args = parser.parse_args()
@@ -129,6 +139,6 @@ if __name__ == "__main__":
 
     logger.debug('hello main')
     main(
-        channel_ids=args.ids,
+        csv_path=args.csv,
         pg_dsn=settings.POSTGRES_DSN.get_secret_value(),
         pg_url=settings.POSTGRES_URL.get_secret_value())

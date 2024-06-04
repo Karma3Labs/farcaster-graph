@@ -4,8 +4,6 @@ import logging
 import utils, db_utils
 from timer import Timer
 from .channel_queries import IJVSql, IVSql
-from . import go_eigentrust
-from config import settings
 
 import pandas as pd
 

@@ -3,16 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, HTTPException, Path
 from loguru import logger
 from asyncpg.pool import Pool
-
-from ..models.channel_model import Channel, CHANNEL_URLS
 from ..models.score_model import ScoreAgg, Weights
 from ..dependencies import  db_pool, db_utils
+from ..utils import fetch_channel
 
 router = APIRouter(tags=["Channel OpenRank Scores"])
 
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
-  channel: Annotated[Channel, Path()],
+  channel: str,
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   lite: bool = True,
@@ -32,7 +31,7 @@ async def get_top_channel_profiles(
   By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
   """
   ranks = await db_utils.get_top_channel_profiles(
-                          channel_id=channel.value,
+                          channel_id=channel,
                           offset=offset, 
                           limit=limit,
                           lite=lite,
@@ -43,7 +42,7 @@ async def get_top_channel_profiles(
 @router.post("/rankings/{channel}/fids")
 async def get_channel_rank_for_fids(
   # Example: -d '[1, 2]'
-  channel: Annotated[Channel, Path()],
+  channel: str,
   fids: list[int],  
   lite: bool = True,
   pool: Pool = Depends(db_pool.get_db)
@@ -60,7 +59,7 @@ async def get_channel_rank_for_fids(
   if not (1 <= len(fids) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   ranks = await db_utils.get_channel_profile_ranks(
-                          channel_id=channel.value,
+                          channel_id=channel,
                           fids=fids, 
                           lite=lite,
                           pool=pool)
@@ -69,7 +68,7 @@ async def get_channel_rank_for_fids(
 @router.post("/rankings/{channel}/handles")
 async def get_channel_rank_for_handles(
   # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  channel: Annotated[Channel, Path()],
+  channel: str,
   handles: list[str],
   pool: Pool = Depends(db_pool.get_db)
 ):
@@ -88,7 +87,7 @@ async def get_channel_rank_for_handles(
   fids = [hf["fid"] for hf in handle_fids]
 
   ranks = await db_utils.get_channel_profile_ranks(
-                          channel_id=channel.value,
+                          channel_id=channel,
                           fids=fids, 
                           lite=False,
                           pool=pool)
@@ -96,7 +95,7 @@ async def get_channel_rank_for_handles(
 
 @router.get("/casts/popular/{channel}")
 async def get_popular_channel_casts(
-  channel: Annotated[Channel, Path()],
+  channel: str,
   agg: Annotated[ScoreAgg | None, 
                  Query(description="Define the aggregation function"\
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
@@ -130,8 +129,8 @@ async def get_popular_channel_casts(
 
   if lite:
     casts = await db_utils.get_popular_channel_casts_lite(
-                                channel_id=channel.value,
-                                channel_url=CHANNEL_URLS[channel],
+                                channel_id=channel,
+                                channel_url=fetch_channel(channel),
                                 agg=agg,
                                 weights=weights,
                                 offset=offset,
@@ -139,8 +138,8 @@ async def get_popular_channel_casts(
                                 pool=pool)
   else:
     casts = await db_utils.get_popular_channel_casts_heavy(
-                            channel_id=channel.value,
-                            channel_url=CHANNEL_URLS[channel],
+                            channel_id=channel,
+                            channel_url=fetch_channel(channel),
                             agg=agg,
                             weights=weights,
                             offset=offset,
