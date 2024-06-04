@@ -83,7 +83,6 @@ def main(
         logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
         fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
-        global_lt_df.to_csv("gloabl_data.csv")
 
         with Timer(name="channel_localtrust"):
             # TODO Perf - fids should be a 'set' and not a 'list'
