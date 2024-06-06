@@ -62,8 +62,8 @@ def main(
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
 
-        host_fids = list(set(channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))
-        host_fids = [int(fid) for fid in host_fids]
+        host_fids = channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]
+        host_fids = list(set([int(fid) for fid in host_fids]))
 
         logger.info(f"Channel details: {channel}")
 
