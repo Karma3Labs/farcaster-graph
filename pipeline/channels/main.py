@@ -58,7 +58,7 @@ def main(
     # for each channel, fetch channel details,
     # take a slice of localtrust and run go-eigentrust
     # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
-    for cid in list(channel_data["channel id"].values)[:60]:
+    for cid in list(channel_data["channel id"].values):
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
 
