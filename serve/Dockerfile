@@ -2,6 +2,14 @@
 # not taking the alpine route because packages like psutil don't install without gcc
 FROM python:3.12-slim
 
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --upgrade pip
 
 RUN pip install poetry
