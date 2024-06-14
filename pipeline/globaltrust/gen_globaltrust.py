@@ -11,6 +11,7 @@ from timer import Timer
 from dotenv import load_dotenv
 import pandas as pd
 from loguru import logger
+import gc
 
 logger.remove()
 level_per_module = {
@@ -39,6 +40,12 @@ def run_strategy(pg_dsn: str, pg_url: str, strategy: compute.Strategy):
                                       temp_tbl=settings.DB_TEMP_LOCALTRUST,
                                       strategy_id=strategy.value[1])
 
+    # manually call garbage collector to free up localtrust sql immediately
+    utils.log_memusage(logger)
+    logger.info(f"calling garbage collector to free up localtrust sql immediately")
+    gc.collect()
+    utils.log_memusage(logger)
+
     with Timer(name=f"insert_globaltrust_{strategy}"):
       db_utils.df_insert_copy(pg_url=pg_url,
                               df=gt_df,
@@ -47,6 +54,12 @@ def run_strategy(pg_dsn: str, pg_url: str, strategy: compute.Strategy):
       db_utils.update_date_strategyid(pg_dsn=pg_dsn,
                                       temp_tbl=settings.DB_TEMP_GLOBALTRUST,
                                       strategy_id=strategy.value[1])
+    # manually call garbage collector to free up globaltrust sql immediately
+    utils.log_memusage(logger)
+    logger.info(f"calling garbage collector to free up globaltrust sql immediately")
+    gc.collect()
+    utils.log_memusage(logger)
+
 
 
 @Timer(name="main")
