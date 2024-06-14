@@ -49,13 +49,16 @@ function log() {
   echo "`date` - $1"
 }
 
+curl -X POST -H "Content-Type: text/plain" --data "etl_jobs{name=\"run_globaltrust_pipeline.sh\", status=\"processing\"} 1.0
+" http://localhost:9091/metrics/job/etl_jobs/instance/eigen2
+
 source $VENV/bin/activate
 pip install -r requirements.txt
 python3 -m globaltrust.gen_globaltrust
 deactivate
 
 # NOTE: We could have replaced localtrust and upserted into globaltrust in python but ..
-# .. separating out like this helps us run steps in isolation. 
+# .. separating out like this helps us run steps in isolation.
 # For example, we can comment out the below code and ..
 # .. experiment with the python code (weights for example) without worrying about affecting prod.
 log "Replacing $DB_LOCALTRUST"
@@ -80,6 +83,9 @@ $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -f globaltrust/export_localtrust_daily_stats.sql
 
 wait $!
+
+curl -X POST -H "Content-Type: text/plain" --data "etl_jobs{name=\"run_globaltrust_pipeline.sh\", status=\"processing\"} 0.0
+" http://localhost:9091/metrics/job/etl_jobs/instance/eigen2
 
 this_name=`basename "$0"`
 log "$this_name done!"
