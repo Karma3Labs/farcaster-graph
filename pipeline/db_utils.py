@@ -50,7 +50,7 @@ def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, channel_url: str = None) ->
 
 
 def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
-    create_sql = f"CREATE UNLOGGED TABLE {temp_tbl} AS SELECT * FROM {orig_tbl} LIMIT 0;"
+    create_sql = f"DROP TABLE IF EXISTS {temp_tbl}; CREATE UNLOGGED TABLE {temp_tbl} AS SELECT * FROM {orig_tbl} LIMIT 0;"
     with psycopg2.connect(pg_dsn) as conn:
         with conn.cursor() as cursor:
             logger.info(f"Executing: {create_sql}")
