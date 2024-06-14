@@ -59,7 +59,7 @@ def main(
     # take a slice of localtrust and run go-eigentrust
     # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
     missing_seed_fids = []
-    for cid in list(channel_data["channel id"].values)[134:140]:
+    for cid in list(channel_data["channel id"].values):
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
 
@@ -118,10 +118,10 @@ def main(
         logger.info(utils.df_info_to_string(scores_df, with_sample=True))
         utils.log_memusage(logger)
 
-        with Timer(name="insert_db"):
-            db_utils.df_insert_copy(pg_url=pg_url,
-                                    df=scores_df,
-                                    dest_tablename=settings.DB_CHANNEL_FIDS)
+        # with Timer(name="insert_db"):
+        #     db_utils.df_insert_copy(pg_url=pg_url,
+        #                             df=scores_df,
+        #                             dest_tablename=settings.DB_CHANNEL_FIDS)
 
     logger.info(missing_seed_fids)
     # end of for loop
