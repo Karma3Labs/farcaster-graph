@@ -16,7 +16,7 @@ class SQL(Enum): pass
 
 def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
     query_sql = f"""
-    SELECT 
+    SELECT
       DISTINCT(fid)
     FROM casts
     WHERE root_parent_url = '{channel_url}'
@@ -59,8 +59,8 @@ def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
 
 def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int):
     update_sql = f"""
-    UPDATE {temp_tbl} 
-    SET date=now(), strategy_id={strategy_id} 
+    UPDATE {temp_tbl}
+    SET date=now(), strategy_id={strategy_id}
     WHERE date is null and strategy_id is null
   """
     with psycopg2.connect(pg_dsn) as conn:

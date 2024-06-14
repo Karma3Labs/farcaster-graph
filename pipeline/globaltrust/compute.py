@@ -9,6 +9,7 @@ from .queries import IJVSql, IVSql
 from config import settings
 
 import pandas as pd
+import gc
 
 # global variable to cache fetching from db
 _pretrust_toptier_df: pd.DataFrame = None
@@ -149,12 +150,21 @@ def lt_gt_for_strategy(
                                               localtrust,
                                               max_lt_id
                                               )
+    # manually call garbage collector to free up localtrust immediately
+    utils.log_memusage(logger)
+    logger.info(f"calling garbage collector to free up localtrust immediately")
+    gc.collect()
     logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
     utils.log_memusage(logger)
 
     with Timer(name=f"post_eigentrust_{strategy}"):
       gt_df = pd.DataFrame.from_records(globaltrust)
     logger.info(utils.df_info_to_string(gt_df, with_sample=True))
+
+    # manually call garbage collector to free up globaltrust immediately
+    utils.log_memusage(logger)
+    logger.info(f"calling garbage collector to free up globaltrust immediately")
+    gc.collect()
     utils.log_memusage(logger)
   # end Timer
   return (lt_df, gt_df)
