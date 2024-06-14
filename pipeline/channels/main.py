@@ -58,6 +58,7 @@ def main(
     # for each channel, fetch channel details,
     # take a slice of localtrust and run go-eigentrust
     # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
+    missing_seed_fids = []
     for cid in list(channel_data["channel id"].values):
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
@@ -91,12 +92,17 @@ def main(
             channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
             logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
 
+        present_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
+        absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
+        logger.info(f"Absent Fids for the channel: {absent_fids}")
+        missing_seed_fids.append({cid: absent_fids})
+
         if len(channel_lt_df) == 0:
             logger.error(f"No localtrust for channel {cid}")
             continue
 
         with Timer(name="go_eigentrust"):
-            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=host_fids)
+            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
 
         logger.info(f"go_eigentrust returned {len(scores)} entries")
         logger.debug(f"channel user scores:{scores}")
@@ -112,10 +118,12 @@ def main(
         logger.info(utils.df_info_to_string(scores_df, with_sample=True))
         utils.log_memusage(logger)
 
-        with Timer(name="insert_db"):
-            db_utils.df_insert_copy(pg_url=pg_url,
-                                    df=scores_df,
-                                    dest_tablename=settings.DB_CHANNEL_FIDS)
+        # with Timer(name="insert_db"):
+        #     db_utils.df_insert_copy(pg_url=pg_url,
+        #                             df=scores_df,
+        #                             dest_tablename=settings.DB_CHANNEL_FIDS)
+
+    logger.info(missing_seed_fids)
     # end of for loop
 
 
