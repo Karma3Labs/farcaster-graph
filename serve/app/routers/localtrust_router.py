@@ -102,14 +102,19 @@ async def _get_personalized_scores_for_addresses(
   return res  
 
 @router.post("/engagement/handles")
-async def get_personalized_engagement_for_handles(  
-  addresses: Annotated[list[str], Body(
-    title="Addresses",
-    description="A list of addresses.",
-    examples=[
-      ["0x4114e33eb831858649ea3702e1c9a2db3f626446","0x8773442740c17c9d0f0b87022c722f9a136206ed"]
-    ]
-  )],
+async def get_personalized_engagement_for_handles(
+  handles: Annotated[list[str], Body(
+        title="Handles",
+        description="A list of handles.",
+        examples=[
+            [
+                "farcaster.eth",
+                "varunsrin.eth",
+                "farcaster",
+                "v"
+            ]
+        ]
+    )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
@@ -180,7 +185,6 @@ async def _get_personalized_scores_for_handles(
 
   # extract fids from the handle-fid pairs 
   fids = [hf["fid"] for hf in handle_fids]
-
   res = await _get_personalized_scores_for_fids(
                     fetch_all_addrs=False, 
                     fids=fids, 
