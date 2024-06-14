@@ -58,7 +58,7 @@ python3 -m globaltrust.gen_globaltrust
 deactivate
 
 # NOTE: We could have replaced localtrust and upserted into globaltrust in python but ..
-# .. separating out like this helps us run steps in isolation. 
+# .. separating out like this helps us run steps in isolation.
 # For example, we can comment out the below code and ..
 # .. experiment with the python code (weights for example) without worrying about affecting prod.
 log "Replacing $DB_LOCALTRUST"
