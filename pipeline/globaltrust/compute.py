@@ -143,6 +143,10 @@ def lt_gt_for_strategy(
       max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
       pretrust = pt_df.to_dict(orient="records")
       max_pt_id = pt_df['i'].max()
+    # manually call garbage collector to free up pt and lt dataframe immediately
+    utils.log_memusage(logger)
+    logger.info(f"calling garbage collector to free up pt and lt dataframe immediately")
+    gc.collect()
     utils.log_memusage(logger)
 
     globaltrust = go_eigentrust.go_eigentrust(pretrust,
