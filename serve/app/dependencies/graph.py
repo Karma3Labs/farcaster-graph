@@ -39,6 +39,13 @@ async def go_eigentrust(
     max_lt_id: int,
 ):
   start_time = time.perf_counter()
+
+  lt_len_before = len(localtrust)
+  localtrust[:] = (x for x in localtrust if x['i'] != x['j'])
+  lt_len_after = len(localtrust)
+  if lt_len_before != lt_len_after:
+    logger.info(f"dropped {lt_len_before-lt_len_after} records with i == j")
+
   req = {
   	"pretrust": {
   		"scheme": 'inline',
@@ -52,10 +59,10 @@ async def go_eigentrust(
       "size": max_lt_id,
   		"entries": localtrust,
   	},
-  	"alpha": settings.EIGENTRUST_ALPHA, 
-  	"epsilon": settings.EIGENTRUST_EPSILON,
-    "max_iterations": settings.EIGENTRUST_MAX_ITER,
-  	"flatTail": settings.EIGENTRUST_FLAT_TAIL
+    "alpha": settings.EIGENTRUST_ALPHA,
+    # "epsilon": settings.EIGENTRUST_EPSILON,
+    # "max_iterations": settings.EIGENTRUST_MAX_ITER,
+    # "flatTail": settings.EIGENTRUST_FLAT_TAIL
   }
 
   logger.trace(req)
@@ -76,7 +83,7 @@ async def go_eigentrust(
 
 async def get_neighbors_scores(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_degree: int,
   max_neighbors: int,
 ) -> list[dict]:
@@ -91,7 +98,7 @@ async def get_neighbors_scores(
   stacked = df.loc[:, ('i','j')].stack()
   pseudo_id, orig_id = stacked.factorize()
 
-  # pseudo_df is a new dataframe to avoid modifying existing shared global df 
+  # pseudo_df is a new dataframe to avoid modifying existing shared global df
   pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
   pseudo_df.loc[:,('v')] = df.loc[:,('v')]
 
@@ -105,29 +112,29 @@ async def get_neighbors_scores(
   pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in pt_fids if not np.isnan(fid) ]
   # max_pt_id = max(pt_fids)
   max_pt_id = len(orig_id)
-  
+
   localtrust = pseudo_df.to_dict(orient="records")
   # max_lt_id = max(df['i'].max(), df['j'].max())
   max_lt_id = len(orig_id)
-  
+
   logger.info(f"max_lt_id:{max_lt_id}, localtrust size:{len(localtrust)}," \
                f" max_pt_id:{max_pt_id}, pretrust size:{len(pretrust)}")
 
-  i_scores = await go_eigentrust(pretrust=pretrust, 
+  i_scores = await go_eigentrust(pretrust=pretrust,
                              max_pt_id=max_pt_id,
                              localtrust=localtrust,
                              max_lt_id=max_lt_id
                             )
-  
+
   # rename i and v to fid and score respectively
   # also, filter out input fids
   fid_scores = [ {'fid': int(orig_id[score['i']]), 'score': score['v']} for score in i_scores if score['i'] not in fids]
   logger.debug(f"sample fid_scores:{random.sample(fid_scores, min(10, len(fid_scores)))}")
   return fid_scores
 
-async def get_neighbors_list(  
+async def get_neighbors_list(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_degree: Annotated[int, Query(le=5)] = 2,
   max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
 ) -> str:
@@ -137,13 +144,13 @@ async def get_neighbors_list(
   out_df = df.groupby(by='j')[['v']].sum().sort_values(by=['v'], ascending=False, inplace=False)
   return out_df.index.to_list()
 
-async def _get_neighbors_edges(  
+async def _get_neighbors_edges(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_degree: int,
   max_neighbors: int,
-) -> pandas.DataFrame: 
-  
+) -> pandas.DataFrame:
+
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
@@ -177,12 +184,12 @@ async def _get_neighbors_edges(
 
 async def _fetch_korder_neighbors(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_degree: int,
   max_neighbors: int,
   min_degree: int = 1
 ) -> set[int] :
-  
+
   # vids = [find_vertex_idx(graph.graph, fid) for fid in fids]
   # vids = list(filter(None, vids)) # WARNING - this filters vertex id 0 also
   vids = [vid for fid in fids for vid in [find_vertex_idx(graph.graph, fid)] if vid is not None ]
@@ -207,21 +214,21 @@ async def _fetch_korder_neighbors(
   except ValueError:
     raise HTTPException(status_code=404, detail="Neighbors not found")
 
-async def _get_direct_edges_df(  
+async def _get_direct_edges_df(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_neighbors: int,
-) -> pandas.DataFrame: 
+) -> pandas.DataFrame:
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
   out_df = graph.df[graph.df['i'].isin(fids)].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
   return out_df
 
-async def get_direct_edges_list(  
+async def get_direct_edges_list(
   fids: list[int],
-  graph: Graph,        
+  graph: Graph,
   max_neighbors: int,
-) -> pandas.DataFrame: 
+) -> pandas.DataFrame:
   start_time = time.perf_counter()
   out_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(out_df)} direct edges")
