@@ -14,3 +14,4 @@ niquests==3.5.5
 polars==0.20.27
 pyarrow==16.1.0
 fastapi==0.111.0
+apache-airflow==2.9.2
