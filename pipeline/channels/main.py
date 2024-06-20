@@ -59,7 +59,7 @@ def main(
     # take a slice of localtrust and run go-eigentrust
     # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
     missing_seed_fids = []
-    for cid in list(channel_data["channel id"].values)[:5]:
+    for cid in list(channel_data["channel id"].values)[:4]:
         channel = channel_utils.fetch_channel(http_session=http_session,
                                               channel_id=cid)
 
