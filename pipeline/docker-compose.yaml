@@ -48,9 +48,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 10
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./plugins:/opt/airflow/plugins
+    - ./dags:/opt/airflow/dags:z
+    - ./logs:/opt/airflow/logs:z
+    - ./plugins:/opt/airflow/plugins:z
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:
     postgres:
@@ -73,18 +73,36 @@ services:
       retries: 5
     restart: always
 
+  # ~/.ssh/config
+  # host postgres-tunnel # You can use any name
+  #   HostName change_to_host_ip # Tunnel
+  #   IdentityFile ~/.ssh/your_private_key # Private key location
+  #   User ubuntu # Username to connect to SSH service
+  #   ForwardAgent yes
+  #   TCPKeepAlive yes
+  postgres-tunnel:
+    image: cagataygurturk/docker-ssh-tunnel
+    volumes:
+      - $HOME/.ssh:/root/ssh:ro
+    environment:
+      SSH_DEBUG: "-v"
+      TUNNEL_HOST: postgres-tunnel
+      REMOTE_HOST: ${REMOTE_DB_HOST:-localhost}
+      LOCAL_PORT: ${DB_PORT:-9541}
+      REMOTE_PORT: ${DB_PORT:-9541}
+
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
-      - 8089:8089
+      - 8080:8080
     healthcheck:
       test:
         [
           "CMD",
           "curl",
           "--fail",
-          "http://localhost:8089/health"
+          "http://localhost:8080/health"
         ]
       interval: 10s
       timeout: 10s

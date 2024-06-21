@@ -20,7 +20,7 @@ with DAG(
 ) as dag:
     task1 = BashOperator(
         task_id='run_globaltrust_pipeline.sh',
-        bash_command="./run_globaltrust_pipeline.sh -w . -v ./.venv"
+        bash_command="cd /pipeline && ./run_globaltrust_pipeline.sh -w . -v ./.venv"
     )
 
     task1
