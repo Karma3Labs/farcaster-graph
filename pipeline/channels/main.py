@@ -2,6 +2,7 @@
 import sys
 import argparse
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 # local dependencies
@@ -20,9 +21,13 @@ import pandas
 import niquests
 from urllib3.util import Retry
 
+# Load environment variables
+load_dotenv()
+
 # perf optimization to avoid copies unless there is a write on shared data
 pandas.set_option("mode.copy_on_write", True)
 
+# Initialize logger
 logger.remove()
 level_per_module = {
     "": settings.LOG_LEVEL,
@@ -35,33 +40,9 @@ logger.add(sys.stdout,
            filter=level_per_module,
            level=0)
 
-
-@Timer(name="main")
-def main(
-        csv_path: str,
-        pg_dsn: str,
-        pg_url: str
-):
-    # setup connection pool for querying warpcast api
-
-    retries = Retry(
-        total=3,
-        backoff_factor=0.1,
-        status_forcelist=[502, 503, 504],
-        allowed_methods={'GET'},
-    )
-    http_session = niquests.Session(retries=retries)
-
-    # Read the channel master csv for channel_ids
-    channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
-
-    # for each channel, fetch channel details,
-    # take a slice of localtrust and run go-eigentrust
-    # maxed channel ids to 30 as we are releasing only 30 channels in first tranche
-    missing_seed_fids = []
-    for cid in list(channel_data["channel id"].values):
-        channel = channel_utils.fetch_channel(http_session=http_session,
-                                              channel_id=cid)
+def process_channel(cid, channel_data, http_session, pg_dsn):
+    try:
+        channel = channel_utils.fetch_channel(http_session=http_session, channel_id=cid)
 
         host_fids = channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]
         host_fids = list(set([int(fid) for fid in host_fids]))
@@ -69,40 +50,38 @@ def main(
         logger.info(f"Channel details: {channel}")
 
         utils.log_memusage(logger)
-        global_lt_df = compute_trust._fetch_interactions_df(logger,
-                                                            pg_dsn,
-                                                            channel_url=channel.project_url)
+        global_lt_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel.project_url)
         global_lt_df = global_lt_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
         utils.log_memusage(logger)
-        # fids = channel_utils.fetch_channel_followers(http_session=http_session,
-        #                                              channel_id=cid)
-        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn,
-                                                   channel_url=channel.project_url)
+
+        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel.project_url)
 
         logger.info(f"Number of channel followers: {len(fids)}")
         logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
 
         fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
 
-        with Timer(name="channel_localtrust"):
-            # TODO Perf - fids should be a 'set' and not a 'list'
-            # TODO Perf - filter using 'query' instead of 'isin'
-            # TODO Perf - install 'numexpr' to speed up pandas
-            channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
-            logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
+        def _get_scores(global_lt_df, fids):
+            with Timer(name="channel_localtrust"):
+                channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
+                logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
 
-        present_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
-        absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
-        logger.info(f"Absent Fids for the channel: {absent_fids}")
-        missing_seed_fids.append({cid: absent_fids})
+            present_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
+            absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
+            logger.info(f"Absent Fids for the channel: {absent_fids}")
 
-        if len(channel_lt_df) == 0:
-            logger.error(f"No localtrust for channel {cid}")
-            continue
+            if len(channel_lt_df) == 0:
+                logger.error(f"No localtrust for channel {cid}")
+                return None, absent_fids
 
-        with Timer(name="go_eigentrust"):
-            scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
+            with Timer(name="go_eigentrust"):
+                scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
+            return scores, absent_fids
+
+        scores, absent_fids = _get_scores(global_lt_df, fids)
+        if scores is None:
+            return None, absent_fids
 
         logger.info(f"go_eigentrust returned {len(scores)} entries")
         logger.debug(f"channel user scores:{scores}")
@@ -123,17 +102,56 @@ def main(
         #                             df=scores_df,
         #                             dest_tablename=settings.DB_CHANNEL_FIDS)
 
-    logger.info(missing_seed_fids)
-    # end of for loop
+        return scores_df, absent_fids
+    except Exception as e:
+        logger.error(f"Error processing channel {cid}: {e}")
+        return None, []
 
+@Timer(name="main")
+def main(
+        csv_path: str,
+        pg_dsn: str,
+        pg_url: str
+):
+    try:
+        # setup connection pool for querying warpcast api
+        retries = Retry(
+            total=3,
+            backoff_factor=0.1,
+            status_forcelist=[502, 503, 504],
+            allowed_methods={'GET'},
+        )
+        http_session = niquests.Session(retries=retries)
 
-# How to run this program:
-# cd farcaster-graph/pipeline
-# source .venv/bin/activate
-# python3 -m channels.main -i degen farcaster base -l ../serve/samples/fc_engagement_fid_df.pkl
+        # Read the channel master csv for channel_ids
+        channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
+
+        # Get all channel IDs
+        channel_ids = list(channel_data["channel id"].values)
+
+        missing_seed_fids = []
+
+        # Parallel processing with ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(process_channel, cid, channel_data, http_session, pg_dsn): cid for cid in channel_ids}
+            for future in as_completed(futures):
+                cid = futures[future]
+                try:
+                    scores_df, absent_fids = future.result()
+                    if scores_df is not None:
+                        # Here you can handle the resulting DataFrame (e.g., save to DB)
+                        pass
+                    if absent_fids:
+                        missing_seed_fids.append({cid: absent_fids})
+                except Exception as e:
+                    logger.error(f"Error processing channel {cid}: {e}")
+
+        logger.info(missing_seed_fids)
+    except Exception as e:
+        logger.error(f"Error in main function: {e}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # Add the --csv argument
     parser.add_argument("-c", "--csv",
                         type=str,
                         help="path to the CSV file. For example, -c /path/to/file.csv",
@@ -141,9 +159,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print(args)
-
-    load_dotenv()
-    print(settings)
 
     logger.debug('hello main')
     main(

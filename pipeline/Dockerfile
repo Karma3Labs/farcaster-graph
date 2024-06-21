@@ -1,13 +1,19 @@
 FROM apache/airflow:latest
 
-COPY . /pipeline
+# Set working directory
 WORKDIR /pipeline
 
-RUN source /pipeline/.env
+# Copy only the necessary files for initial setup
+COPY requirements.txt /pipeline/requirements.txt
+COPY .env /pipeline/.env
+
+# Source environment variables
+RUN /bin/bash -c "source /pipeline/.env"
+
 # RUN python3 -m venv .venv
 RUN pip install --upgrade pip
 
-RUN pip install -r requirements.txt
+RUN pip install -r /pipeline/requirements.txt
 
 # RUN source /pipeline/bin/activate
 

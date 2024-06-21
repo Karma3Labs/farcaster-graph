@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     AIRFLOW_UID: int
     AIRFLOW_GID: int
     REMOTE_DB_HOST: str
+    AIRFLOW__CORE__FERNET_KEY: str
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`

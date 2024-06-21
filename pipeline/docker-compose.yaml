@@ -51,6 +51,7 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags:z
     - ./logs:/opt/airflow/logs:z
     - ./plugins:/opt/airflow/plugins:z
+    - .:/pipeline:z
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:
     postgres:
