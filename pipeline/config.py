@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
     LOG_PATH: str = '/tmp/'
 
+    AIRFLOW_UID: int
+    AIRFLOW_GID: int
+    REMOTE_DB_HOST: str
+
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
         env_file=('.env', '.env.prod')
