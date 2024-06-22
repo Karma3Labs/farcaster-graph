@@ -47,6 +47,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 10
+    AIRFLOW__CORE__PARALLELISM: 64
+    AIRFLOW__CORE__DAG_CONCURRENCY: 32
   volumes:
     - ./dags:/opt/airflow/dags:z
     - ./logs:/opt/airflow/logs:z

@@ -14,7 +14,7 @@ PIPELINE_DIR = './'
 VENV_DIR = './.venv'
 SHELL_SCRIPT = f'{PIPELINE_DIR}/run_channel_scraper_v2.sh'
 CSV_PATH = f'{PIPELINE_DIR}/channels/Top_Channels.csv'
-N_CHUNKS = 10  # Define the number of chunks
+N_CHUNKS = 32  # Define the number of chunks
 
 def extract_channel_ids(**kwargs):
     ti = kwargs['ti']
@@ -33,7 +33,7 @@ with DAG(
     default_args=default_args,
     description='This runs the channel ranking pipeline',
     start_date=datetime(2024, 6, 21, 2),
-    schedule_interval='0 */6 * * *'
+    schedule_interval='0 0 * * *'
 ) as dag:
 
     fetch_data_task = BashOperator(
