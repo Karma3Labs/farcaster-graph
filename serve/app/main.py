@@ -90,7 +90,7 @@ app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], tit
 app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(lt_router, prefix='/scores/global')
-app.include_router(lt_router, prefix='/scores/personalized')
+# app.include_router(lt_router, prefix='/scores/personalized')
 app.include_router(channel_router, prefix='/channels')
 app.include_router(cast_router, prefix='/casts')
 
