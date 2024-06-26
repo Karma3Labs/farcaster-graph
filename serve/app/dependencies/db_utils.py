@@ -78,6 +78,55 @@ async def get_top_profiles(strategy_id:int, offset:int, limit:int, pool: Pool):
     """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_top_channel_profiles(
+        channel_id:str, 
+        offset:int, 
+        limit:int, 
+        lite:bool, 
+        pool: Pool
+):
+    if lite:
+        sql_query = """
+        SELECT
+            ch.fid,
+            rank
+        FROM k3l_channel_fids as ch
+        WHERE 
+            channel_id = $1 
+            AND 
+            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+        ORDER BY rank ASC
+        OFFSET $2
+        LIMIT $3
+        """
+    else:
+        sql_query = """
+        WITH total AS (
+            SELECT count(*) as total from k3l_channel_fids 
+            WHERE channel_id = $1
+            AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+        )
+        SELECT
+            ch.fid,
+            fnames.fname as fname,
+            user_data.value as username,
+            rank,
+            score,
+            ((total.total - (rank - 1))*100 / total.total) as percentile
+        FROM k3l_channel_fids as ch
+        CROSS JOIN total
+        LEFT JOIN fnames on (fnames.fid = ch.fid)
+        LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
+        WHERE 
+            channel_id = $1 
+            AND 
+            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+        ORDER BY rank ASC
+        OFFSET $2
+        LIMIT $3
+        """
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
 async def get_profile_ranks(strategy_id:int, fids:list[int], pool: Pool):
     sql_query = """
     WITH total AS (
