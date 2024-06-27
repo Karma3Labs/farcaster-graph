@@ -5,6 +5,26 @@ from timer import Timer
 import psycopg2
 import psycopg2.extras
 
+@Timer(name="remove_deleted_cast_action")
+def remove_deleted_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int):
+  delete_sql = f"""
+    WITH max_cast_action AS (
+      SELECT 
+        coalesce(max(created_at), now() - interval '5 days') as max_at
+      FROM k3l_cast_action
+    )
+    DELETE FROM k3l_cast_action 
+    WHERE cast_hash IN (
+      SELECT c.hash 
+      FROM casts c, max_cast_action mca
+      WHERE c.deleted_at >= mca.max_at
+    )
+  """
+  with psycopg2.connect(pg_dsn) as conn:
+    with conn.cursor() as cursor:
+      logger.info(f"Executing: {delete_sql}")
+      cursor.execute(delete_sql)
+
 @Timer(name="insert_cast_action")
 def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int):
   insert_sql = f"""
@@ -30,6 +50,8 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       casts.created_at 
         BETWEEN max_cast_action.max_at 
         AND max_cast_action.max_at + interval '{interval_hours} hours'
+      AND
+      casts.deleted_at IS NULL
     UNION ALL
     SELECT
       casts.fid as fid,
@@ -49,6 +71,8 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       casts.created_at 
         BETWEEN max_cast_action.max_at 
           AND max_cast_action.max_at + interval '{interval_hours} hours'
+      AND
+      casts.deleted_at IS NULL
     UNION ALL
     SELECT 
       reactions.fid as fid,
@@ -70,6 +94,8 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       reactions.reaction_type IN (1,2)
       AND 
       reactions.target_hash IS NOT NULL
+      AND
+      casts.deleted_at IS NULL
     ORDER BY created_at ASC
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
