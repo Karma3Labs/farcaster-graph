@@ -7,7 +7,7 @@ import math
 
 default_args = {
     'owner': 'coder2j',
-    'retries': 3,
+    'retries': 5,
     'retry_delay': timedelta(minutes=2)
 }
 
