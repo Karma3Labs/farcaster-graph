@@ -14,13 +14,14 @@ PIPELINE_DIR = './'
 VENV_DIR = './.venv'
 SHELL_SCRIPT = f'{PIPELINE_DIR}/run_channel_scraper_v2.sh'
 CSV_PATH = f'{PIPELINE_DIR}/channels/Top_Channels.csv'
-N_CHUNKS = 32  # Define the number of chunks
+N_CHUNKS = 500  # Define the number of chunks
 
 def extract_channel_ids(**kwargs):
     ti = kwargs['ti']
     channel_ids = ti.xcom_pull(task_ids='fetch_channel_data')
     channel_ids_list = channel_ids.split(',')
     print(f"Extracted channel IDs: {channel_ids_list}")
+    print(f"number of channels to process: {len(channel_ids_list)}")
     chunk_size = math.ceil(len(channel_ids_list) / N_CHUNKS)
     channel_chunks = [channel_ids_list[i:i + chunk_size] for i in range(0, len(channel_ids_list), chunk_size)]
     print(f"Channel chunks: {channel_chunks}")
