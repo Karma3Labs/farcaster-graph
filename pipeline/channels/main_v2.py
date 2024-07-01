@@ -52,7 +52,8 @@ def process_channel(cid, channel_data, http_session, pg_dsn, pg_url):
         host_fids = list(set(int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))
     except Exception as e:
         logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
-        return {cid: []}
+        raise e
+        # return {cid: []}
 
     logger.info(f"Channel details: {channel}")
 
@@ -64,13 +65,15 @@ def process_channel(cid, channel_data, http_session, pg_dsn, pg_url):
         utils.log_memusage(logger)
     except Exception as e:
         logger.error(f"Failed to fetch global interactions DataFrame: {e}")
-        return {cid: []}
+        raise e
+        # return {cid: []}
 
     try:
         fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel.project_url)
     except Exception as e:
         logger.error(f"Failed to fetch channel participants for channel {cid}: {e}")
-        return {cid: []}
+        raise e
+        # return {cid: []}
 
     logger.info(f"Number of channel followers: {len(fids)}")
     if len(fids) > 5:
@@ -85,7 +88,8 @@ def process_channel(cid, channel_data, http_session, pg_dsn, pg_url):
         logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
     except Exception as e:
         logger.error(f"Failed to compute local trust for channel {cid}: {e}")
-        return {cid: []}
+        # return {cid: []}
+        raise e
 
     present_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
     absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
@@ -93,13 +97,16 @@ def process_channel(cid, channel_data, http_session, pg_dsn, pg_url):
 
     if len(channel_lt_df) == 0:
         logger.error(f"No local trust for channel {cid}")
-        return {cid: absent_fids}
+        # return {cid: absent_fids}
+
+        raise e
 
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
     except Exception as e:
         logger.error(f"Failed to compute EigenTrust scores for channel {cid}: {e}")
-        return {cid: absent_fids}
+        # return {cid: absent_fids}
+        raise e
 
     logger.info(f"go_eigentrust returned {len(scores)} entries")
     logger.debug(f"Channel user scores: {scores}")
@@ -120,6 +127,7 @@ def process_channel(cid, channel_data, http_session, pg_dsn, pg_url):
         db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
+        raise e
 
     return {cid: absent_fids}
 
@@ -141,8 +149,12 @@ def process_channels(csv_path: str, channel_ids_str: str):
     missing_seed_fids = []
 
     for cid in channel_ids:
-        result = process_channel(cid, channel_data, http_session, pg_dsn, pg_url)
-        missing_seed_fids.append(result)
+        try:
+            result = process_channel(cid, channel_data, http_session, pg_dsn, pg_url)
+            missing_seed_fids.append(result)
+        except Exception as e:
+            logger.error(f"failed to process a channel: {cid}: {e}")
+            raise e
 
     logger.info(missing_seed_fids)
 
