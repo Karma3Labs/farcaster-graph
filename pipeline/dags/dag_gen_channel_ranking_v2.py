@@ -20,11 +20,10 @@ def extract_channel_ids(**kwargs):
     ti = kwargs['ti']
     channel_ids = ti.xcom_pull(task_ids='fetch_channel_data')
     channel_ids_list = channel_ids.split(',')
-    print(f"Extracted channel IDs: {channel_ids_list}")
-    print(f"number of channels to process: {len(channel_ids_list)}")
+    print(f"Extracted channel IDs (len={len(channel_ids_list)}): {channel_ids_list}")
     chunk_size = math.ceil(len(channel_ids_list) / N_CHUNKS)
     channel_chunks = [channel_ids_list[i:i + chunk_size] for i in range(0, len(channel_ids_list), chunk_size)]
-    print(f"Channel chunks: {channel_chunks}")
+    print(f"Channel chunks (len={len(channel_chunks)} chunk_len={len(channel_chunks[0])}): {channel_chunks}")
     for idx, chunk in enumerate(channel_chunks):
         chunk_str = ','.join(chunk)
         ti.xcom_push(key=f'channel_chunk_{idx}', value=chunk_str)
