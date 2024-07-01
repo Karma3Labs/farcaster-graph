@@ -260,6 +260,7 @@ async def get_popular_neighbors_casts(
         {resp_fields}
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
+    WHERE deleted_at IS NULL
     --    ORDER BY casts.timestamp DESC
     ORDER BY cast_hour DESC, scores.cast_score DESC
     OFFSET $2
@@ -300,6 +301,7 @@ async def get_recent_neighbors_casts(
             AS trust(i int, v numeric) 
                 ON casts.fid = trust.i
         {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
+        WHERE deleted_at IS NULL
         ORDER BY casts.timestamp DESC
         OFFSET $2
         LIMIT $3
@@ -348,6 +350,7 @@ async def get_popular_channel_casts_lite(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            WHERE deleted_at IS NULL
             GROUP BY casts.hash, ci.fid
             LIMIT 100000
         )
@@ -411,6 +414,7 @@ async def get_popular_channel_casts_heavy(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            WHERE deleted_at IS NULL
             GROUP BY casts.hash, ci.fid
             LIMIT 100000
         )
@@ -432,6 +436,7 @@ async def get_popular_channel_casts_heavy(
         cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
+    WHERE deleted_at IS NULL
     ORDER BY cast_hour DESC, scores.cast_score DESC
     OFFSET $3
     LIMIT $4
