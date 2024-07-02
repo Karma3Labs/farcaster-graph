@@ -41,6 +41,7 @@ def fetch_channel_data(csv_path):
     try:
         channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
         channel_ids = channel_data["channel id"].values.tolist()
+        channel_ids = [e.lower() for e in channel_ids]
         return channel_ids
     except Exception as e:
         logger.error(f"Failed to read channel data from CSV: {e}")

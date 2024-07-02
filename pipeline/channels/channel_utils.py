@@ -87,4 +87,5 @@ def get_seed_fids_from_csv(csv_path):
     seeds_df.rename(columns={"Unnamed: 1": "seed_peers"}, inplace=True)
     seeds_df = seeds_df.iloc[1:len(seeds_df) - 1][["channel id", "seed_peers"]]
     seeds_df["seed_fids_list"] = seeds_df.apply(lambda row: row["seed_peers"].split(","), axis=1)
+    seeds_df['channel id'] = seeds_df['channel id'].str.lower()
     return seeds_df
