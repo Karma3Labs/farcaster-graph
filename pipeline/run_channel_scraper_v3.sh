@@ -61,11 +61,11 @@ pip install -r requirements.txt
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch" ]; then
-  python3 -m channels.main_v2 -c "$CSV_PATH" -t fetch
+  python3 -m channels.main -c "$CSV_PATH" -t fetch
   deactivate
 elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_v2 -c "$CSV_PATH" -t process --channel_ids "$CHANNEL_IDS"
+  python3 -m channels.main -c "$CSV_PATH" -t process --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "cleanup" ]; then
   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
