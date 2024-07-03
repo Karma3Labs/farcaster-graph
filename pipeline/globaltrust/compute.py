@@ -26,7 +26,8 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) 
   if _pretrust_toptier_df is not None:
     return _pretrust_toptier_df
 
-  query = db_utils.construct_query(IVSql.PRETRUST_TOP_TIER, where_clause=f"insert_ts <= '{target_date}'::date + interval '1 day'")
+  where_clause = "" if target_date is None else f"insert_ts <= '{target_date}'::date + interval '1 day'"
+  query = db_utils.construct_query(IVSql.PRETRUST_TOP_TIER, where_clause=where_clause)
   _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   return _pretrust_toptier_df
 

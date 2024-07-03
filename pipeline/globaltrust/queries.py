@@ -120,5 +120,4 @@ class IVSql:
 					  'lesgreys.eth','linda','ace',
 					  'vm','cdixon.eth')
 			AND type=6
-      {condition}
     """)
