@@ -76,10 +76,11 @@ def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
             logger.info(f"Executing: {create_sql}")
             cursor.execute(create_sql)
 
-def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int):
+def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None):
+    date_setting = "date=now()" if date_str is None else f"date='{date_str}'::date"
     update_sql = f"""
     UPDATE {temp_tbl}
-    SET date=now(), strategy_id={strategy_id}
+    SET {date_setting}, strategy_id={strategy_id}
     WHERE date is null and strategy_id is null
   """
     with psycopg2.connect(pg_dsn) as conn:

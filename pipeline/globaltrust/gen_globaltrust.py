@@ -1,3 +1,8 @@
+import debugpy
+debugpy.listen(("localhost", 5678))
+print("Waiting for debugger to attach...")
+debugpy.wait_for_client()
+
 # standard dependencies
 import sys
 import argparse
@@ -43,39 +48,38 @@ def run_strategy(pg_dsn: str, pg_url: str, strategy: compute.Strategy, target_da
     if target_date:
       logger.info(f"Target computation to calculate global/localtrust for {logDate}")
       (tmp_lt_name, tmp_gt_name) = get_temp_tbl_names(target_date)
-      with Timer(name=f"insert_localtrust_{strategy}"):
-        db_utils.df_insert_copy(pg_url=pg_url,
-                                df=lt_df,
-                                dest_tablename=tmp_lt_name)
+
+      ####
+      # We don't need to backfill the localtrust table since we only keep the latest day's copy
+      # Code is available here in case we want to turn this on
+      ####
+      # with Timer(name=f"insert_localtrust_{strategy}"):
+      #   db_utils.df_insert_copy(pg_url=pg_url,
+      #                           df=lt_df,
+      #                           dest_tablename=tmp_lt_name)
+      # with Timer(name=f"update_localtrust_{strategy}"):
+      #   db_utils.update_date_strategyid(pg_dsn=pg_dsn,
+      #                                   temp_tbl=tmp_lt_name,
+      #                                   strategy_id=strategy.value[1],
+      #                                   date_str = target_date)
+
       with Timer(name=f"insert_globaltrust_{strategy}"):
         db_utils.df_insert_copy(pg_url=pg_url,
                                 df=gt_df,
                                 dest_tablename=tmp_gt_name)
+      with Timer(name=f"update_globaltrust_{strategy}"):
+        db_utils.update_date_strategyid(pg_dsn=pg_dsn,
+                                        temp_tbl=tmp_gt_name,
+                                        strategy_id=strategy.value[1],
+                                        date_str=target_date)
+      # manually call garbage collector to free up globaltrust sql immediately
+      utils.log_memusage(logger)
+      logger.info(f"calling garbage collector to free up globaltrust sql immediately")
+      gc.collect()
+      utils.log_memusage(logger)
 
-      # # Delete existing records for the date in localtrust
-      # delete_localtrust_query = f"DELETE FROM {settings.DB_LOCALTRUST} WHERE date = '{target_date}'"
-      # db_utils.execute_query(pg_dsn, delete_localtrust_query)
-
-      # # Insert into localtrust
-      # insert_localtrust_query = f"""
-      #   INSERT INTO {settings.DB_LOCALTRUST} (strategy_id, i, j, v, date)
-      #   SELECT strategy_id, i, j, v, '{target_date}' FROM {temp_localtrust}
-      # """
-      # db_utils.execute_query(pg_dsn, insert_localtrust_query)
-
-      # # Delete existing records for the date in localtrust
-      # delete_globaltrust_query = f"DELETE FROM {settings.DB_GLOBALTRUST} WHERE date = '{target_date}'"
-      # db_utils.execute_query(pg_dsn, delete_globaltrust_query)
-
-      # # Insert into globaltrust, update on duplicate
-      # insert_globaltrust_query = f"""
-      #   INSERT INTO {settings.DB_GLOBALTRUST} (strategy_id, i, v, date)
-      #   SELECT strategy_id, i, v, '{target_date}' FROM {temp_globaltrust}
-      #   ON CONFLICT (strategy_id, date, i)
-      #   DO UPDATE SET v = EXCLUDED.v
-      # """
-      # db_utils.execute_query(pg_dsn, insert_globaltrust_query)
     else:
+
       logger.info(f"Target computation to calculate global/localtrust for today")
       with Timer(name=f"insert_localtrust_{strategy}"):
         db_utils.df_insert_copy(pg_url=pg_url,
