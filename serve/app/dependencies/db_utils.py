@@ -265,6 +265,7 @@ async def get_top_channel_profiles(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         )
         SELECT
+            '0x' || encode(fids.custody_address, 'hex') as address,
             ch.fid,
             fnames.fname as fname,
             user_data.value as username,
@@ -274,6 +275,7 @@ async def get_top_channel_profiles(
         FROM k3l_channel_fids as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
+        LEFT JOIN fids on (fids.fid=ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE 
             channel_id = $1 
