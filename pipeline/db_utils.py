@@ -19,10 +19,13 @@ class SQL:
         return self.value
 
 def construct_query(query: SQL, where_clause: str) -> SQL:
-    if 'WHERE' in query.value.upper():
-        condition = f"AND {where_clause}"
+    if not where_clause:
+        condition = ""
     else:
-        condition = f"WHERE {where_clause}"
+        if 'WHERE' in query.value.upper():
+            condition = f"AND {where_clause}"
+        else:
+            condition = f"WHERE {where_clause}"
     query.value = query.value.format(condition=condition)
     return query
 
