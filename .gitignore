@@ -10,3 +10,5 @@ build/
 **/.DS_Store
 **/lib/
 notebooks/data/
+**/pg_to_dune/csv
+pipeline/logs

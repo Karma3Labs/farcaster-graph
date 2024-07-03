@@ -61,13 +61,13 @@ pip install -r requirements.txt
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch" ]; then
-  python3 -m channels.main_v2 -c "$CSV_PATH" -t fetch
+  python3 -m channels.main -c "$CSV_PATH" -t fetch
   deactivate
 elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_v2 -c "$CSV_PATH" -t process --channel_ids "$CHANNEL_IDS"
+  python3 -m channels.main -c "$CSV_PATH" -t process --channel_ids "$CHANNEL_IDS"
   deactivate
-
+elif [ "$TASK" = "cleanup" ]; then
   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
   PGPASSWORD=$DB_PASSWORD \
   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
@@ -78,6 +78,6 @@ elif [ "$TASK" = "process" ]; then
   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
     -c "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE;"
 else
-  echo "Invalid task specified. Use 'fetch' or 'process'."
+  echo "Invalid task specified. Use 'fetch' or 'process' or 'cleanup'."
   exit 1
 fi

@@ -1,0 +1,237 @@
+#!/bin/bash
+
+source ./.env
+S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-cast-to-dune/constant"}
+S3_BUCKET_NAME_DAILY=${S3_BUCKET_NAME_DAILY:-"k3l-cast-to-dune"}
+TIMESTAMP=$(date +"%Y-%m-%d" -d yesterday)
+CURR_DIR=$PWD
+WORK_DIR=$PWD/csv/$TIMESTAMP
+GCP_ACTIVE_ACCT=$(gcloud auth list 2>&1 | grep '*' | awk {'print $2'})
+GCP_TASK_ACCT=${GCP_TASK_ACCT:-"$(gcloud config get account --quiet)"}
+GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-"k3l-crypto/openrank"}
+DUNE_API_KEY=${DUNE_API_KEY:-CHANGEME}
+
+set -e
+set -o pipefail
+
+# Create the .aws directory if it doesn't exist
+mkdir -p ~/.aws
+
+# Write the content to ~/.aws/credentials
+echo "[default]
+aws_access_key_id=$AWS_ACCESS_KEY_ID
+aws_secret_access_key=$AWS_SECRET_ACCESS_KEY
+region=$AWS_REGION" > ~/.aws/credentials
+
+# Relative path is not allowed in Postgres COPY TO command
+mkdir -p $WORK_DIR
+
+function log() {
+    echo "`date` - $1"
+}
+
+# Switch to a task-related GCP account if it is different with the active account
+switch_gcp_account() {
+    if [ $GCP_TASK_ACCT != $GCP_ACTIVE_ACCT ]; then
+        gcloud config set account "$GCP_TASK_ACCT"
+    fi
+}
+
+# Switch back to the active GCP account after task completion
+switch_back_gcp_account() {
+    if [ $GCP_TASK_ACCT != $GCP_ACTIVE_ACCT ]; then
+        gcloud config set account "$GCP_ACTIVE_ACCT"
+    fi
+}
+
+
+# Function to export data to CSV and upload to S3
+export_to_csv() {
+  local table="$1"
+  local csv_file="$2"
+  local query="$3"
+
+  log "Exporting $table to CSV..."
+  PGPASSWORD=$DB_PASSWORD  psql -e -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -p $DB_PORT -c "$query"
+  log "Exported $table to $csv_file"
+}
+
+export_to_s3() {
+  local csv_file="$1"
+  local s3_bucket="$2"
+
+  log "GZipping $csv_file"
+  /usr/bin/gzip -f $csv_file
+
+  log "Uploading to S3 folder: $s3_bucket"
+  aws s3 cp "${csv_file}.gz" "$s3_bucket"
+  log "Uploaded ${csv_file}.gz to $s3_bucket"
+}
+
+export_historical_to_s3_and_cleanup() {
+  local csv_file="$1"
+  local filename="$2"
+
+  local s3_bucket="s3://$S3_BUCKET_NAME_DAILY/historical/$TIMESTAMP/"
+
+  TS_SECONDS=$(date +%s)
+  local csv_gz_file="${WORK_DIR}/${filename}_${TS_SECONDS}.csv.gz"
+  mv "$csv_file.gz" "$csv_gz_file"
+  export_gzip_to_s3 "$csv_gz_file" "$s3_bucket"
+  rm $csv_gz_file
+}
+
+export_gzip_to_s3() {
+  local csv_file="$1"
+  local s3_bucket="$2"
+
+  log "Uploading to S3 folder: $s3_bucket"
+  aws s3 cp "${csv_file}" "$s3_bucket"
+  log "Uploaded ${csv_file} to $s3_bucket"
+}
+
+export_csv_to_bq() {
+  if [ -z "$GCS_BUCKET_NAME" ]; then
+    log 'No GCS_BUCKET_NAME defined, skipping upload to Google Cloud Storage'
+    return
+  fi
+  local csv_file="$1"
+  log "Uploading ${csv_file}.gz to $GCS_BUCKET_NAME/$TIMESTAMP"
+  gsutil -h "Content-Type: application/gzip" cp "${csv_file}".gz "gs://$GCS_BUCKET_NAME/$TIMESTAMP/"
+}
+
+split_and_post_csv() {
+  local original_file="$1"
+  local num_parts="$2"
+  local table_name="$3"
+
+  # Check if all arguments are provided
+  if [[ -z "$original_file" || -z "$num_parts" || -z "$table_name" ]]; then
+    echo "Usage: split_and_post_csv <original_file> <num_parts> <table_name>"
+    return 1
+  fi
+
+  # Extract the header
+  head -n 1 "$original_file" > header.csv
+
+  # Calculate the number of lines per part, excluding the header
+  total_lines=$(wc -l < "$original_file")
+  lines_per_part=$(( (total_lines - 1) / num_parts + 1 ))
+
+  # Split the file without the header into parts
+  tail -n +2 "$original_file" | split -l "$lines_per_part" - split_
+
+  # Add the header to each split file and make an HTTP POST request
+  for file in split_*
+  do
+    cat header.csv "$file" > "${file}.csv"
+
+    log "Inserting ${file}.csv to ${table_name}"
+
+    # Make the HTTP POST request
+    response=$(curl -s -w "\nHTTP_CODE: %{http_code}\n" -X POST \
+        -H "X-DUNE-API-KEY: ${DUNE_API_KEY}" \
+        -H "Content-Type: text/csv" \
+        --upload-file "${file}.csv" \
+        "https://api.dune.com/api/v1/table/openrank/${table_name}/insert")
+    # Extract the HTTP code from the response
+    http_code=$(echo "$response" | tail -n 1 | cut -d ' ' -f 2)
+    response_body=$(echo "$response" | sed '$d')
+
+    # Log the response and check for successful upload
+    log "HTTP code: $http_code,  Body:$response_body"
+
+    if [[ "$http_code" -eq 200 ]]; then
+      log "Successfully uploaded ${file}.csv"
+    else
+      log "Failed to upload ${file}.csv. HTTP response code: $http_code"
+    fi
+
+    # Clean up the temporary split file
+    rm "$file" "${file}.csv"
+  done
+
+  # Clean up the header file
+  rm header.csv
+}
+
+# Function to export and process globaltrust table
+process_globaltrust() {
+  filename="k3l_cast_globaltrust"
+  csv_file="${WORK_DIR}/$filename.csv"
+  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  # split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
+  export_to_s3 "$csv_file" "$s3_bucket"
+  # export_csv_to_bq "$csv_file"
+  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+# Function to export and process globaltrust_config table
+process_globaltrust_config() {
+  filename="k3l_cast_globaltrust_config"
+  csv_file="${WORK_DIR}/$filename.csv"
+  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+  export_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  # split_and_post_csv "$csv_file" 1 "dataset_k3l_cast_globaltrust_config_v2"
+  export_to_s3 "$csv_file" "$s3_bucket"
+  #export_csv_to_bq "$csv_file"
+  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+# Function to export and process localtrust table
+process_localtrust() {
+  filename="k3l_cast_localtrust"
+  csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
+  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+  export_to_csv "localtrust" "$csv_file" "\COPY (SELECT i,j,v,date,strategy_id FROM localtrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
+  export_to_s3 "$csv_file" "$s3_bucket"
+  #export_csv_to_bq "$csv_file"
+  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+# Function to export and process k3l_channel_rank table
+process_channel_rank() {
+  filename="k3l_channel_rankings"
+  csv_file="${WORK_DIR}/$filename.csv"
+  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  # split_and_post_csv "$csv_file" 20 "dataset_k3l_cast_channel_ranking"
+  export_to_s3 "$csv_file" "$s3_bucket"
+  #export_csv_to_bq "$csv_file"
+  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+# Main script execution
+if [[ $# -eq 0 ]]; then
+    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank}"
+    exit 1
+fi
+
+# Switch to task-related GCP account
+switch_gcp_account
+
+case "$1" in
+    globaltrust)
+        process_globaltrust
+        ;;
+    globaltrust_config)
+        process_globaltrust_config
+        ;;
+    localtrust)
+        process_localtrust
+        ;;
+    channel_rank)
+        process_channel_rank
+        ;;
+    *)
+        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank}"
+        exit 1
+        ;;
+esac
+
+# Switch back to the original GCP account
+switch_back_gcp_account
+
+log "All jobs completed!"
