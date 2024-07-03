@@ -302,7 +302,7 @@ async def get_top_channel_profiles(
         username,
         rank,
         score,
-        ARRAY_AGG(DISTINCT address)
+        ARRAY_AGG(DISTINCT address) as addresses
         FROM mapped_records
         GROUP BY fid,fname,username,rank,score
         ORDER by rank
