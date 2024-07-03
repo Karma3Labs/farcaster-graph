@@ -43,14 +43,6 @@ def run_strategy(pg_dsn: str, pg_url: str, strategy: compute.Strategy, target_da
     if target_date:
       logger.info(f"Target computation to calculate global/localtrust for {logDate}")
       (tmp_lt_name, tmp_gt_name) = get_temp_tbl_names(target_date)
-
-      db_utils.create_temp_table(pg_dsn=pg_dsn,
-                                 temp_tbl=tmp_lt_name,
-                                 orig_tbl=settings.DB_LOCALTRUST)
-      db_utils.create_temp_table(pg_dsn=pg_dsn,
-                                 temp_tbl=tmp_gt_name,
-                                 orig_tbl=settings.DB_GLOBALTRUST)
-
       with Timer(name=f"insert_localtrust_{strategy}"):
         db_utils.df_insert_copy(pg_url=pg_url,
                                 df=lt_df,
