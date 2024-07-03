@@ -11,15 +11,20 @@ import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
 
-class SQL(Enum): pass
+class SQL:
+    def __init__(self, name: str, value: str):
+        self.name = name
+        self.value = value
+    def __str__(self):
+        return self.value
 
-@classmethod
-def construct_query(cls, query_template: str, where_clause: str):
-    if 'WHERE' in query_template.upper():
+def construct_query(query: SQL, where_clause: str) -> SQL:
+    if 'WHERE' in query.value.upper():
         condition = f"AND {where_clause}"
     else:
         condition = f"WHERE {where_clause}"
-    return query_template.format(condition=condition)
+    query.value = query.value.format(condition=condition)
+    return query
 
 def execute_query(pg_dsn: str, query: str):
     with psycopg2.connect(pg_dsn) as conn:

@@ -1,30 +1,30 @@
 from db_utils import SQL
 
-class IJVSql(SQL):
-  LIKES = """
+class IJVSql:
+  LIKES = SQL("LIKES", """
     SELECT fid as i, target_cast_fid as j, count(1) as likes_v 
     FROM reactions 
     WHERE type=1
     AND target_cast_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """
-  LIKES_NEYNAR = """
+    """)
+  LIKES_NEYNAR = SQL("LIKES_NEYNAR", """
     SELECT fid as i, target_fid as j, count(1) as likes_v 
     FROM reactions 
     WHERE reaction_type=1
     AND target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """
-  REPLIES = """
+    """)
+  REPLIES = SQL("REPLIES", """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
     WHERE parent_hash IS NOT NULL
     {condition}
     GROUP by i, j
-    """
-  MENTIONS = """
+    """)
+  MENTIONS = SQL("MENTIONS", """
     WITH mention AS (
 			SELECT fid as author_fid, mention.value as mention_fid, timestamp 
 			FROM casts, json_array_elements_text(casts.mentions) as mention
@@ -34,8 +34,8 @@ class IJVSql(SQL):
 		FROM mention
     {condition}
 		GROUP BY i, j
-    """
-  MENTIONS_NEYNAR = """
+    """)
+  MENTIONS_NEYNAR = SQL("MENTIONS_NEYNAR", """
     WITH mention AS (
 			SELECT fid as author_fid, mention as mention_fid, timestamp
 			FROM casts, unnest(casts.mentions) as mention
@@ -45,24 +45,24 @@ class IJVSql(SQL):
 		FROM mention
     {condition}
 		GROUP BY i, j
-    """
-  RECASTS = """
+    """)
+  RECASTS = SQL("RECASTS", """
     SELECT fid as i, target_cast_fid as j, count(1) as recasts_v 
     FROM reactions 
     WHERE type=2
     AND target_cast_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """
-  RECASTS_NEYNAR = """
+    """)
+  RECASTS_NEYNAR = SQL("RECASTS_NEYNAR", """
     SELECT fid as i, target_fid as j, count(1) as recasts_v 
     FROM reactions 
     WHERE reaction_type=2
     AND target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """
-  FOLLOWS = """
+    """)
+  FOLLOWS = SQL("FOLLOWS", """
     SELECT 
         follower_fid as i, 
         following_fid as j,
@@ -70,8 +70,8 @@ class IJVSql(SQL):
     FROM mv_follow_links 
     {condition}
     ORDER BY i, j, follows_v desc
-    """
-  FOLLOWS_NEYNAR = """
+    """)
+  FOLLOWS_NEYNAR = SQL("FOLLOWS_NEYNAR", """
     SELECT 
         fid as i, 
         target_fid as j,
@@ -80,10 +80,10 @@ class IJVSql(SQL):
     WHERE type = 'follow'::text
     {condition}
     ORDER BY i, j, follows_v desc
-    """
+    """)
   
-class IVSql(SQL):
-  PRETRUST_TOP_TIER = """
+class IVSql:
+  PRETRUST_TOP_TIER = SQL("PRETRUST_TOP_TIER", """
     WITH pt_size AS (
       select count(*) as ct from pretrust 
       where insert_ts=(select max(insert_ts) from pretrust)
@@ -92,8 +92,8 @@ class IVSql(SQL):
     FROM pretrust, pt_size
     WHERE insert_ts=(select max(insert_ts) from pretrust)
     {condition}
-    """
-  PRETRUST_POPULAR = """
+    """)
+  PRETRUST_POPULAR = SQL("PRETRUST_POPULAR", """
     SELECT
 			c.fid AS i, 
       1/20::numeric as v
@@ -108,8 +108,8 @@ class IVSql(SQL):
 		ORDER BY
 			COUNT(*) DESC
 		LIMIT 20
-    """
-  PRETRUST_OG = """
+    """)
+  PRETRUST_OG = SQL("PRETRUST_OG", """
     SELECT 
 			distinct fid as i,
       1/11::numeric as v
@@ -121,4 +121,4 @@ class IVSql(SQL):
 					  'vm','cdixon.eth')
 			AND type=6
       {condition}
-    """
+    """)
