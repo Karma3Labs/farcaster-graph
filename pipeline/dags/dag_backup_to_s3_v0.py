@@ -35,9 +35,14 @@ with DAG(
     )
 
     task4 = BashOperator(
-        task_id='backup_channel_rank',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh channel_rank"
+        task_id='insert_globaltrust_to_dune',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune"
     )
 
-    [task1, task2, task3, task4]
+    task5 = BashOperator(
+        task_id='insert_channel_rank_to_dune',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune"
+    )
+
+    [task1, task2, task3, task4, task5]
 

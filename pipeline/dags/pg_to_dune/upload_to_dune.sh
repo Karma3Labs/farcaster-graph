@@ -111,20 +111,23 @@ split_and_post_csv() {
     return 1
   fi
 
+  rm -f split_${table_name}*
+
   # Extract the header
-  head -n 1 "$original_file" > header.csv
+  header_file=header_$table_name.csv
+  head -n 1 "$original_file" > $header_file
 
   # Calculate the number of lines per part, excluding the header
   total_lines=$(wc -l < "$original_file")
   lines_per_part=$(( (total_lines - 1) / num_parts + 1 ))
 
   # Split the file without the header into parts
-  tail -n +2 "$original_file" | split -l "$lines_per_part" - split_
+  tail -n +2 "$original_file" | split -l "$lines_per_part" - split_$table_name
 
   # Add the header to each split file and make an HTTP POST request
-  for file in split_*
+  for file in split_$table_name*
   do
-    cat header.csv "$file" > "${file}.csv"
+    cat $header_file "$file" > "${file}.csv"
 
     log "Inserting ${file}.csv to ${table_name}"
 
@@ -145,6 +148,7 @@ split_and_post_csv() {
       log "Successfully uploaded ${file}.csv"
     else
       log "Failed to upload ${file}.csv. HTTP response code: $http_code"
+      exit 1
     fi
 
     # Clean up the temporary split file
@@ -152,7 +156,7 @@ split_and_post_csv() {
   done
 
   # Clean up the header file
-  rm header.csv
+  rm $header_file
 }
 
 # Function to export and process globaltrust table
@@ -203,9 +207,30 @@ process_channel_rank() {
   export_historical_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
+## For new dune insert table
+insert_globaltrust_to_dune() {
+  filename="k3l_cast_globaltrust"
+  csv_file="${WORK_DIR}/${filename}_${TIMESTAMP}.csv"
+  rm -f "${WORK_DIR}/${filename}*"
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '1' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
+  rm $csv_file
+}
+
+insert_channel_rank_to_dune() {
+  filename="k3l_channel_rankings"
+  csv_file="${WORK_DIR}/$filename_${TIMESTAMP}.csv"
+  rm -f "${WORK_DIR}/${filename}*"
+  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank WHERE compute_ts >= now()-interval '1' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_channel_ranking"
+  rm $csv_file
+}
+
+
+
 # Main script execution
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank}"
+    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank|insert_globaltrust_to_dune|insert_channel_rank_to_dune}"
     exit 1
 fi
 
@@ -225,8 +250,14 @@ case "$1" in
     channel_rank)
         process_channel_rank
         ;;
+    insert_globaltrust_to_dune)
+        insert_globaltrust_to_dune
+        ;;
+    insert_channel_rank_to_dune)
+        insert_channel_rank_to_dune
+        ;;
     *)
-        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank}"
+        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank|insert_globaltrust_to_dune|insert_channel_rank_to_dune}"
         exit 1
         ;;
 esac
