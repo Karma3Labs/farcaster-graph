@@ -6,6 +6,7 @@ class IJVSql(SQL):
     FROM reactions 
     WHERE type=1
     AND target_cast_fid IS NOT NULL
+    {condition}
     GROUP BY i, j
     """
   LIKES_NEYNAR = """
@@ -13,32 +14,36 @@ class IJVSql(SQL):
     FROM reactions 
     WHERE reaction_type=1
     AND target_fid IS NOT NULL
+    {condition}
     GROUP BY i, j
     """
   REPLIES = """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
     WHERE parent_hash IS NOT NULL
+    {condition}
     GROUP by i, j
     """
   MENTIONS = """
     WITH mention AS (
-			SELECT fid as author_fid, mention.value as mention_fid 
+			SELECT fid as author_fid, mention.value as mention_fid, timestamp 
 			FROM casts, json_array_elements_text(casts.mentions) as mention
 		)
 		SELECT 
 			author_fid as i, mention_fid as j, count(1) as mentions_v
 		FROM mention
+    {condition}
 		GROUP BY i, j
     """
   MENTIONS_NEYNAR = """
     WITH mention AS (
-			SELECT fid as author_fid, mention as mention_fid 
+			SELECT fid as author_fid, mention as mention_fid, timestamp
 			FROM casts, unnest(casts.mentions) as mention
 		)
 		SELECT 
 			author_fid as i, mention_fid as j, count(1) as mentions_v
 		FROM mention
+    {condition}
 		GROUP BY i, j
     """
   RECASTS = """
@@ -46,6 +51,7 @@ class IJVSql(SQL):
     FROM reactions 
     WHERE type=2
     AND target_cast_fid IS NOT NULL
+    {condition}
     GROUP BY i, j
     """
   RECASTS_NEYNAR = """
@@ -53,6 +59,7 @@ class IJVSql(SQL):
     FROM reactions 
     WHERE reaction_type=2
     AND target_fid IS NOT NULL
+    {condition}
     GROUP BY i, j
     """
   FOLLOWS = """
@@ -61,6 +68,7 @@ class IJVSql(SQL):
         following_fid as j,
         1 as follows_v
     FROM mv_follow_links 
+    {condition}
     ORDER BY i, j, follows_v desc
     """
   FOLLOWS_NEYNAR = """
@@ -70,6 +78,7 @@ class IJVSql(SQL):
         1 as follows_v
     FROM links 
     WHERE type = 'follow'::text
+    {condition}
     ORDER BY i, j, follows_v desc
     """
   
@@ -82,6 +91,7 @@ class IVSql(SQL):
     SELECT fid as i, 1/ct::numeric as v
     FROM pretrust, pt_size
     WHERE insert_ts=(select max(insert_ts) from pretrust)
+    {condition}
     """
   PRETRUST_POPULAR = """
     SELECT
@@ -110,4 +120,5 @@ class IVSql(SQL):
 					  'lesgreys.eth','linda','ace',
 					  'vm','cdixon.eth')
 			AND type=6
+      {condition}
     """
