@@ -111,11 +111,13 @@ split_and_post_csv() {
     return 1
   fi
 
-  mkdir -p "tmp_${table_name}"
-  rm -f "tmp_${table_name}/*"
+  tmp_folder=tmp_${table_name}
+  mkdir -p "$tmp_folder"
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
 
   # Extract the header
-  header_file="tmp_${table_name}/header_$table_name.csv"
+  header_file="$tmp_folder/header_$table_name.csv"
   head -n 1 "$original_file" > $header_file
 
   # Calculate the number of lines per part, excluding the header
@@ -123,10 +125,10 @@ split_and_post_csv() {
   lines_per_part=$(( (total_lines - 1) / num_parts + 1 ))
 
   # Split the file without the header into parts
-  tail -n +2 "$original_file" | split -l "$lines_per_part" - tmp_${table_name}/split_
+  tail -n +2 "$original_file" | split -l "$lines_per_part" - $tmp_folder/split_
 
   # Add the header to each split file and make an HTTP POST request
-  for file in tmp_${table_name}/split_*
+  for file in $tmp_folder/split_*
   do
     cat $header_file "$file" > "${file}.csv"
 
@@ -210,18 +212,45 @@ process_channel_rank() {
 
 ## For new dune insert table
 insert_globaltrust_to_dune() {
-  filename="k3l_cast_globaltrust"
-  csv_file="${WORK_DIR}/${filename}_${TIMESTAMP}.csv"
-  rm -f "${WORK_DIR}/${filename}*"
+  filename="k3l_cast_globaltrust_incremental"
+  tmp_folder="tmp_insert_globaltrust_to_dune"
+  csv_file="$tmp_folder/${filename}.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '1' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
   rm $csv_file
 }
 
+insert_globaltrust_to_dune_v2() {
+  filename="k3l_cast_globaltrust_incremental"
+  tmp_folder="tmp_insert_globaltrust_to_dune_v2"
+  csv_file="$tmp_folder/${filename}.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
+  source ./.venv/bin/activate
+  pip install dune_client
+  python -m app.check_last_timestamp > globaltrust_v2_last_date
+  last_date=$(cat globaltrust_v2_last_date)
+  rm globaltrust_v2_last_date
+
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date > '${last_date}' ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
+  rm $csv_file
+}
+
 insert_channel_rank_to_dune() {
-  filename="k3l_channel_rankings"
-  csv_file="${WORK_DIR}/$filename_${TIMESTAMP}.csv"
-  rm -f "${WORK_DIR}/${filename}*"
+  filename="k3l_channel_rankings_incremental"
+  tmp_folder="tmp_insert_channelrank_to_dune_v2"
+  csv_file="$tmp_folder/$filename.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
   export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank WHERE compute_ts >= now()-interval '1' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_channel_ranking"
   rm $csv_file
@@ -284,7 +313,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 # Switch to task-related GCP account
-switch_gcp_account
+# switch_gcp_account
 
 case "$1" in
     globaltrust)
@@ -302,6 +331,9 @@ case "$1" in
     insert_globaltrust_to_dune)
         insert_globaltrust_to_dune
         ;;
+    insert_globaltrust_to_dune_v2)
+        insert_globaltrust_to_dune_v2
+        ;;
     insert_channel_rank_to_dune)
         insert_channel_rank_to_dune
         ;;
@@ -315,6 +347,6 @@ case "$1" in
 esac
 
 # Switch back to the original GCP account
-switch_back_gcp_account
+# switch_back_gcp_account
 
 log "All jobs completed!"
