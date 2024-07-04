@@ -23,12 +23,12 @@ with DAG(
         bash_command="cd /pipeline && ./run_globaltrust_pipeline.sh -w . -v ./.venv"
     )
 
-    task4 = BashOperator(
-        task_id='insert_globaltrust_to_dune',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune_v2"
+    task2 = BashOperator(
+        task_id='insert_globaltrust_to_dune_v3',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune_v3 "
     )
 
-    task1 >> task4
+    task1 >> task2
 
     # task2 = BashOperator(
     #     task_id='second_task',

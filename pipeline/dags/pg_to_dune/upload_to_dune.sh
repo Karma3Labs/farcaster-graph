@@ -227,6 +227,42 @@ insert_globaltrust_to_dune_v2() {
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date > '${last_date}' ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
   rm $csv_file
+  rm -rf $tmp_folder
+}
+
+insert_globaltrust_to_dune_v3() {
+  filename="k3l_cast_globaltrust_full"
+  tmp_folder="tmp_insert_globaltrust_to_dune_v3"
+  csv_file="$tmp_folder/${filename}.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
+  dune_table_name="dataset_k3l_cast_globaltrust"
+  _clear_dune_table "openrank" $dune_table_name
+
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  split_and_post_csv "$csv_file" 25 $dune_table_name
+  rm $csv_file
+  rm -rf $tmp_folder
+}
+
+insert_channel_rank_to_dune_v3() {
+  filename="k3l_channel_rankings_full"
+  tmp_folder="tmp_insert_channelrank_to_dune_v3"
+  csv_file="$tmp_folder/$filename.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
+  rm -f $csv_file
+  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
+  dune_table_name="dataset_k3l_cast_channel_ranking"
+  _clear_dune_table "openrank" $dune_table_name
+  split_and_post_csv "$csv_file" 10 $dune_table_name
+  rm $csv_file
+  rm -rf $tmp_folder
 }
 
 insert_channel_rank_to_dune_v2() {
@@ -237,57 +273,45 @@ insert_channel_rank_to_dune_v2() {
   shopt -s nullglob
   rm -f "$tmp_folder"/*
 
-  source ./.venv/bin/activate
-  pip install dune_client
-  DUNE_API_KEY=$DUNE_API_KEY QUERY_ID=3896722 FILTER_COLUMN="compute_ts" python -m app.check_last_timestamp > channelrank_v2_last_date
-  last_date=$(cat channelrank_v2_last_date)
-  rm channelrank_v2_last_date
+  rm -f $csv_file
+  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
 
-  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank WHERE compute_ts > '${last_date}') TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
-  split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_channel_ranking"
+  dune_table_name="dataset_k3l_cast_channel_ranking"
+  _clear_dune_table "openrank" $dune_table_name
+  split_and_post_csv "$csv_file" 10 $dune_table_name
   rm $csv_file
+  rm -rf $tmp_folder
 }
 
 create_dune_globaltrust_table() {
   local dune_table_name="$1"
 
-#   curl --request POST \
-#   --url https://api.dune.com/api/v1/table/create \
-#   --header "X-DUNE-API-KEY:  ${DUNE_API_KEY}" \
-#   --header 'Content-Type: application/json' \
-#   --data '{
-#   "namespace":"openrank",
-#   "table_name":"dataset_k3l_cast_globaltrust_test",
-#   "description": "OpenRank global ranking of Farcaster users",
-#   "is_private": false,
-#   "schema": [{"name": "i", "type": "long"}, {"name": "v", "type": "double"}, {"name": "date", "type": "string"}, {"name": "strategy_id", "type": "long"}]
-# }'
-
   # Make the HTTP POST request
-#   response=$(curl --request POST \
-#   --url https://api.dune.com/api/v1/table/create \
-#   --header "X-DUNE-API-KEY: ${DUNE_API_KEY}" \
-#   --header 'Content-Type: application/json' \
-#   --data '{
-#   "namespace":"openrank",
-#   "table_name":"'"${dune_table_name}"'",
-#   "description": "OpenRank global ranking of Farcaster users",
-#   "is_private": false,
-#   "schema": [{"name": "i", "type": "bigint"}, {"name": "v", "type": "double"}, {"name": "date", "type": "date"}, {"name": "strategy_id", "type": "integer"}]
-# }')
-#   # Extract the HTTP code from the response
-#   http_code=$(echo "$response" | tail -n 1 | cut -d ' ' -f 2)
-#   response_body=$(echo "$response" | sed '$d')
+  response=$(curl --request POST \
+    --url https://api.dune.com/api/v1/table/create \
+    --header "X-DUNE-API-KEY: ${DUNE_API_KEY}" \
+    --header 'Content-Type: application/json' \
+    --data '{
+    "namespace":"openrank",
+    "table_name":"'"${dune_table_name}"'",
+    "description": "OpenRank global ranking of Farcaster users",
+    "is_private": false,
+    "schema": [{"name": "i", "type": "bigint"}, {"name": "v", "type": "double"}, {"name": "date", "type": "varchar"}, {"name": "strategy_id", "type": "integer"}]
+  }' -w "%{http_code}")
 
-#   # Log the response and check for successful upload
-#   log "HTTP code: $http_code,  Body:$response"
+  # Extract the HTTP code from the response
+  http_code="${response: -3}"
+  response_body="${response::-3}"
 
-#   if [[ "$http_code" -eq 200 ]]; then
-#     log "Successfully created ${dune_table_name}.csv"
-#   else
-#     log "Failed to create ${dune_table_name}.csv. HTTP response code: $http_code"
-#     exit 1
-#   fi
+  # Log the response and check for successful upload
+  log "HTTP code: $http_code, Body: $response_body"
+
+  if [[ "$http_code" -eq 200 || "$http_code" -eq 201 ]]; then
+    log "Successfully created ${dune_table_name}.csv"
+  else
+    log "Failed to create ${dune_table_name}.csv. HTTP response code: $http_code"
+    exit 1
+  fi
 
   filename="k3l_cast_globaltrust_full"
   csv_file="${WORK_DIR}/${filename}.csv"
@@ -296,6 +320,32 @@ create_dune_globaltrust_table() {
   split_and_post_csv "$csv_file" 10 "$dune_table_name"
   rm $csv_file
 
+}
+
+_clear_dune_table() {
+  local namespace="$1"
+  local dune_table_name="$2"
+
+  # Make the HTTP POST request
+  response=$(curl --request POST \
+    --url https://api.dune.com/api/v1/table/${namespace}/${dune_table_name}/clear \
+    --header "X-DUNE-API-KEY: ${DUNE_API_KEY}" \
+    --header 'Content-Type: application/json' \
+    -w "%{http_code}")
+
+  # Extract the HTTP code from the response
+  http_code="${response: -3}"
+  response_body="${response::-3}"
+
+  # Log the response and check for successful upload
+  log "HTTP code: $http_code, Body: $response_body"
+
+  if [[ "$http_code" -eq 200 || "$http_code" -eq 201 ]]; then
+    log "Successfully cleared ${namespace}.${dune_table_name}"
+  else
+    log "Failed to clear ${namespace}.${dune_table_name}. HTTP response code: $http_code"
+    exit 1
+  fi
 }
 
 # Main script execution
@@ -326,8 +376,14 @@ case "$1" in
     insert_channel_rank_to_dune_v2)
         insert_channel_rank_to_dune_v2
         ;;
+    insert_globaltrust_to_dune_v3)
+        insert_globaltrust_to_dune_v3
+        ;;
+    insert_channel_rank_to_dune_v3)
+        insert_channel_rank_to_dune_v3
+        ;;
     create_dune_globaltrust_table)
-        create_dune_globaltrust_table dataset_k3l_cast_globaltrust_test
+        create_dune_globaltrust_table $2
         ;;
     *)
         echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank|insert_globaltrust_to_dune|insert_channel_rank_to_dune}"

@@ -20,13 +20,13 @@ with DAG(
     catchup=False,
 ) as dag:
     task4 = BashOperator(
-        task_id='insert_globaltrust_to_dune_v2',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune_v2"
+        task_id='insert_globaltrust_to_dune',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune_v3"
     )
 
     task5 = BashOperator(
-        task_id='insert_channel_rank_to_dune_v2',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune_v2"
+        task_id='insert_channel_rank_to_dune',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune_v3"
     )
 
     [task4, task5]
