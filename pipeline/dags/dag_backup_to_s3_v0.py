@@ -44,5 +44,5 @@ with DAG(
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune"
     )
 
-    [task1, task2, task3, task4, task5]
+    [task1, task2, task3] >> task4 >> task5
 
