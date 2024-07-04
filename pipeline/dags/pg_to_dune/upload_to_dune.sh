@@ -238,10 +238,11 @@ insert_globaltrust_to_dune_v3() {
   shopt -s nullglob
   rm -f "$tmp_folder"/*
 
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
   dune_table_name="dataset_k3l_cast_globaltrust"
   _clear_dune_table "openrank" $dune_table_name
 
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 25 $dune_table_name
   rm $csv_file
   rm -rf $tmp_folder
