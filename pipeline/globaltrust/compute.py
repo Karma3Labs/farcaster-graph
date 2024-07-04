@@ -20,28 +20,32 @@ class Strategy(Enum):
   ENGAGEMENT = ('engagement', 3)
   ACTIVITY = ('activity', 5)
 
-def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
+def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) -> pd.DataFrame:
   global _pretrust_toptier_df
 
   if _pretrust_toptier_df is not None:
     return _pretrust_toptier_df
 
-  _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, IVSql.PRETRUST_TOP_TIER)
+  where_clause = "" if target_date is None else f"insert_ts <= '{target_date}'::date + interval '1 day'"
+  query = db_utils.construct_query(IVSql.PRETRUST_TOP_TIER, where_clause=where_clause)
+  _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   return _pretrust_toptier_df
 
-def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
-
+def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str = None) -> pd.DataFrame:
   global _interactions_df
 
   if _interactions_df is not None:
     return _interactions_df
 
-  query = IJVSql.LIKES_NEYNAR if settings.USE_NEYNAR else IJVSql.LIKES
+  # All the tables referred to in this function def have the same timestamp field
+  where_clause = "" if target_date is None else f"timestamp <= '{target_date}'::date + interval '1 day'"
+
+  query = db_utils.construct_query(IJVSql.LIKES_NEYNAR if settings.USE_NEYNAR else IJVSql.LIKES, where_clause=where_clause)
   _interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.REPLIES
+  query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
   with Timer(name="merge_replies"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -51,7 +55,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.MENTIONS_NEYNAR if settings.USE_NEYNAR else IJVSql.MENTIONS
+  query = db_utils.construct_query(IJVSql.MENTIONS_NEYNAR if settings.USE_NEYNAR else IJVSql.MENTIONS, where_clause=where_clause)
   with Timer(name="merge_mentions"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -61,7 +65,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.RECASTS_NEYNAR if settings.USE_NEYNAR else IJVSql.RECASTS
+  query = db_utils.construct_query(IJVSql.RECASTS_NEYNAR if settings.USE_NEYNAR else IJVSql.RECASTS, where_clause=where_clause)
   with Timer(name="merge_recasts"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -71,7 +75,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str) -> pd.DataFrame:
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = IJVSql.FOLLOWS_NEYNAR if settings.USE_NEYNAR else IJVSql.FOLLOWS
+  query = db_utils.construct_query(IJVSql.FOLLOWS_NEYNAR if settings.USE_NEYNAR else IJVSql.FOLLOWS, where_clause=where_clause)
   with Timer(name="merge_follows"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -109,23 +113,24 @@ def lt_gt_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
     strategy: Strategy,
-) -> tuple[pd.DataFrame, pd.DataFrame] :
+    target_date: str = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
   with Timer(name=f"{strategy}"):
-    intx_df = _fetch_interactions_df(logger, pg_dsn)
+    intx_df = _fetch_interactions_df(logger, pg_dsn, target_date)
     match strategy:
       case Strategy.FOLLOWS:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','follows_v']].rename(columns={'follows_v':'v'})
       case Strategy.ENGAGEMENT:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
       case Strategy.ACTIVITY:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','l1rep1rec1m1']] \
