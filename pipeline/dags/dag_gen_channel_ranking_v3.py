@@ -67,6 +67,11 @@ def create_dag():
         trigger_rule='all_done'
     )
 
-    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task
+    push_to_dune_task = BashOperator(
+        task_id='insert_channel_rank_to_dune_v2',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune_v2"
+    )
+
+    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task
 
 dag = create_dag()

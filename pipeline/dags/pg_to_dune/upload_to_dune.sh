@@ -210,20 +210,6 @@ process_channel_rank() {
   export_historical_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
-## For new dune insert table
-insert_globaltrust_to_dune() {
-  filename="k3l_cast_globaltrust_incremental"
-  tmp_folder="tmp_insert_globaltrust_to_dune"
-  csv_file="$tmp_folder/${filename}.csv"
-  mkdir -p $tmp_folder
-  shopt -s nullglob
-  rm -f "$tmp_folder"/*
-
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '1' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
-  split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
-  rm $csv_file
-}
-
 insert_globaltrust_to_dune_v2() {
   filename="k3l_cast_globaltrust_incremental"
   tmp_folder="tmp_insert_globaltrust_to_dune_v2"
@@ -234,7 +220,7 @@ insert_globaltrust_to_dune_v2() {
 
   source ./.venv/bin/activate
   pip install dune_client
-  python -m app.check_last_timestamp > globaltrust_v2_last_date
+  DUNE_API_KEY=$DUNE_API_KEY QUERY_ID=3896616 FILTER_COLUMN="date" python -m app.check_last_timestamp > globaltrust_v2_last_date
   last_date=$(cat globaltrust_v2_last_date)
   rm globaltrust_v2_last_date
 
@@ -243,15 +229,21 @@ insert_globaltrust_to_dune_v2() {
   rm $csv_file
 }
 
-insert_channel_rank_to_dune() {
-  filename="k3l_channel_rankings_incremental"
+insert_channel_rank_to_dune_v2() {
+  filename="k3l_channel_rankings_incremental_v2"
   tmp_folder="tmp_insert_channelrank_to_dune_v2"
   csv_file="$tmp_folder/$filename.csv"
   mkdir -p $tmp_folder
   shopt -s nullglob
   rm -f "$tmp_folder"/*
 
-  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank WHERE compute_ts >= now()-interval '1' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  source ./.venv/bin/activate
+  pip install dune_client
+  DUNE_API_KEY=$DUNE_API_KEY QUERY_ID=3896722 FILTER_COLUMN="compute_ts" python -m app.check_last_timestamp > channelrank_v2_last_date
+  last_date=$(cat channelrank_v2_last_date)
+  rm channelrank_v2_last_date
+
+  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank WHERE compute_ts > '${last_date}') TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_channel_ranking"
   rm $csv_file
 }
@@ -328,14 +320,11 @@ case "$1" in
     channel_rank)
         process_channel_rank
         ;;
-    insert_globaltrust_to_dune)
-        insert_globaltrust_to_dune
-        ;;
     insert_globaltrust_to_dune_v2)
         insert_globaltrust_to_dune_v2
         ;;
-    insert_channel_rank_to_dune)
-        insert_channel_rank_to_dune
+    insert_channel_rank_to_dune_v2)
+        insert_channel_rank_to_dune_v2
         ;;
     create_dune_globaltrust_table)
         create_dune_globaltrust_table dataset_k3l_cast_globaltrust_test
