@@ -196,17 +196,25 @@ async def get_unique_handle_metadata_for_fids(
         pool: Pool,
 ):
     sql_query = """
-    SELECT
-        '0x' || encode(any_value(fids.custody_address), 'hex') as address,
-        any_value(fnames.fname) as fname,
-        any_value(user_data.value) as username,
-        fids.fid as fid
-    FROM fids
-    LEFT JOIN fnames ON (fids.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
-    WHERE
-        fids.fid = ANY($1::integer[])
-    GROUP BY fids.fid
+    WITH addresses AS (
+    SELECT fid,'0x' || encode(fids.custody_address, 'hex') as address
+    FROM fids where fid=ANY($1::integer[])
+    UNION ALL
+    SELECT fid, v.claim->>'address' as address 
+    FROM verifications v where fid=ANY($1::integer[])
+    ),
+    agg_addresses as (
+    SELECT fid,
+    ARRAY_AGG(address) as address
+    FROM addresses 
+    GROUP BY fid
+    )
+    SELECT agg_addresses.*, 
+        ANY_VALUE(fnames.fname) as fname,
+        ANY_VALUE(user_data.value) as username from agg_addresses
+    LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
+    LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid and user_data.type=6)
+    GROUP BY agg_addresses.fid,agg_addresses.address
     LIMIT 1000 -- safety valve
     """
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
@@ -265,10 +273,6 @@ async def get_top_channel_profiles(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
-        SELECT
-         '0x' || encode(fids.custody_address, 'hex') as address,fid 
-         FROM fids
-         UNION ALL
          SELECT v.claim->>'address' as address, fid
          FROM verifications v 
         ),
@@ -360,9 +364,13 @@ async def get_channel_profile_ranks(
             SELECT count(*) as total from k3l_channel_fids 
             WHERE channel_id = $1
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
-        )
+        ),
+        addresses as (
+         SELECT v.claim->>'address' as address, fid
+         FROM verifications v 
+        ),
+        top_records as (
         SELECT
-            '0x' || encode(fids.custody_address, 'hex') as address,
             ch.fid,
             fnames.fname as fname,
             user_data.value as username,
@@ -372,7 +380,6 @@ async def get_channel_profile_ranks(
         FROM k3l_channel_fids as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN fids on (fids.fid=ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE
             channel_id = $1 
@@ -381,6 +388,24 @@ async def get_channel_profile_ranks(
             AND 
             ch.fid = ANY($2::integer[])
         ORDER BY rank
+        ),
+        mapped_records as (
+        SELECT top_records.*,addresses.address 
+        FROM top_records 
+        LEFT JOIN addresses using (fid)
+        )
+        SELECT
+        fid,
+        fname,
+        username,
+        rank,
+        score,
+        percentile,
+        ARRAY_AGG(DISTINCT address) as addresses
+        FROM mapped_records
+        GROUP BY fid,fname,username,rank,score,percentile
+        ORDER by rank
+        
         """
     return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
 
@@ -734,6 +759,7 @@ async def get_recent_casts_by_fids(
         limit: int,
         pool: Pool
 ):
+
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash

@@ -302,6 +302,7 @@ async def _get_personalized_scores_for_fids(
   trusted_fids = list(trusted_fid_score_map.keys())
 
   # fetch handle info for trusted neighbor fids
+
   trusted_fid_addr_handles = \
     await db_utils.get_all_handle_addresses_for_fids(trusted_fids, pool) \
     if fetch_all_addrs else \
