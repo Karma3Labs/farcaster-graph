@@ -263,9 +263,17 @@ async def get_top_channel_profiles(
             SELECT count(*) as total from k3l_channel_fids 
             WHERE channel_id = $1
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
-        )
+        ),
+        addresses as (
         SELECT
-            '0x' || encode(fids.custody_address, 'hex') as address,
+         '0x' || encode(fids.custody_address, 'hex') as address,fid 
+         FROM fids
+         UNION ALL
+         SELECT v.claim->>'address' as address, fid
+         FROM verifications v 
+        ),
+        top_records as (
+        SELECT
             ch.fid,
             fnames.fname as fname,
             user_data.value as username,
@@ -275,7 +283,6 @@ async def get_top_channel_profiles(
         FROM k3l_channel_fids as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN fids on (fids.fid=ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE 
             channel_id = $1 
@@ -284,6 +291,21 @@ async def get_top_channel_profiles(
         ORDER BY rank ASC
         OFFSET $2
         LIMIT $3
+        ),
+        mapped_records as (
+        SELECT top_records.*,addresses.address 
+        FROM top_records 
+        LEFT JOIN addresses using (fid)
+        )
+        select fid,
+        fname,
+        username,
+        rank,
+        score,
+        ARRAY_AGG(DISTINCT address) as addresses
+        FROM mapped_records
+        GROUP BY fid,fname,username,rank,score
+        ORDER by rank
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
@@ -712,7 +734,6 @@ async def get_recent_casts_by_fids(
         limit: int,
         pool: Pool
 ):
-
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash
