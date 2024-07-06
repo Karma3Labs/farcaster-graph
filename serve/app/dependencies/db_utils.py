@@ -60,79 +60,6 @@ async def fetch_rows(
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
 
-
-async def get_handle_fid_for_addresses(
-        addresses: list[str],
-        pool: Pool
-):
-    sql_query = """
-    (
-        SELECT
-            verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            verifications.fid as fid
-        FROM verifications
-        LEFT JOIN fnames ON (verifications.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = verifications.fid and user_data.type=6)
-        WHERE
-            verifications.claim->>'address' = ANY($1::text[])
-    UNION
-        SELECT
-            '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fids.fid as fid
-        FROM fids
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
-            WHERE
-                '0x' || encode(fids.custody_address, 'hex') = ANY($1::text[])
-    )
-    ORDER BY username
-    LIMIT 1000 -- safety valve
-    """
-    return await fetch_rows(addresses, sql_query=sql_query, pool=pool)
-
-
-async def get_all_fid_addresses_for_handles(
-        handles: list[str],
-        pool: Pool,
-):
-    sql_query = """
-    (
-        SELECT
-            '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN fids ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
-        WHERE
-            (fnames.fname = ANY($1::text[]))
-            OR
-            (user_data.value = ANY($1::text[]))
-    UNION
-        SELECT
-            verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN verifications ON (verifications.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
-        WHERE
-            (fnames.fname = ANY($1::text[]))
-            OR
-            (user_data.value = ANY($1::text[]))
-    )
-    ORDER BY username
-    LIMIT 1000 -- safety valve
-    """
-    return await fetch_rows(handles, sql_query=sql_query, pool=pool)
-
-
 async def get_unique_fid_metadata_for_handles(
         handles: list[str],
         pool: Pool,
@@ -154,71 +81,6 @@ async def get_unique_fid_metadata_for_handles(
     LIMIT 1000 -- safety valve
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
-
-
-async def get_all_handle_addresses_for_fids(
-        fids: list[str],
-        pool: Pool,
-):
-    sql_query = """
-    (
-        SELECT
-            '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fids.fid as fid
-        FROM fids
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
-        WHERE
-            fids.fid = ANY($1::integer[])
-    UNION
-        SELECT
-            verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fids.fid as fid
-        FROM fids
-        INNER JOIN verifications ON (verifications.fid = fids.fid)
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
-        WHERE
-            fids.fid = ANY($1::integer[])
-    )
-    ORDER BY username
-    LIMIT 1000 -- safety valve
-    """
-    return await fetch_rows(fids, sql_query=sql_query, pool=pool)
-
-
-async def get_unique_handle_metadata_for_fids(
-        fids: list[str],
-        pool: Pool,
-):
-    sql_query = """
-    WITH addresses AS (
-    SELECT fid,'0x' || encode(fids.custody_address, 'hex') as address
-    FROM fids where fid=ANY($1::integer[])
-    UNION ALL
-    SELECT fid, v.claim->>'address' as address 
-    FROM verifications v where fid=ANY($1::integer[])
-    ),
-    agg_addresses as (
-    SELECT fid,
-    ARRAY_AGG(address) as address
-    FROM addresses 
-    GROUP BY fid
-    )
-    SELECT agg_addresses.*, 
-        ANY_VALUE(fnames.fname) as fname,
-        ANY_VALUE(user_data.value) as username from agg_addresses
-    LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid and user_data.type=6)
-    GROUP BY agg_addresses.fid,agg_addresses.address
-    LIMIT 1000 -- safety valve
-    """
-    return await fetch_rows(fids, sql_query=sql_query, pool=pool)
-
 
 async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool):
     sql_query = """
@@ -242,7 +104,6 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
     LIMIT $3
     """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
-
 
 async def get_top_channel_profiles(
         channel_id: str,
@@ -313,7 +174,6 @@ async def get_top_channel_profiles(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
-
 async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool):
     sql_query = """
     WITH total AS (
@@ -336,7 +196,6 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool):
     ORDER BY rank
     """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
-
 
 async def get_channel_profile_ranks(
         channel_id: str,
@@ -408,233 +267,6 @@ async def get_channel_profile_ranks(
 
         """
     return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
-
-
-async def get_top_frames(
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        recent: bool,
-        decay: bool,
-        pool: Pool
-):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
-    if recent:
-        time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
-        """
-    else:
-        time_filter_sql = ""
-
-    if decay:
-        # WARNING: This is still under development and can lead to high latency
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
-
-    sql_query = f"""
-    WITH weights AS
-    (
-        SELECT
-            interactions.url,
-            k3l_rank.score,
-            case interactions.action_type
-                when 'cast' then {weights.cast}
-                when 'recast' then {weights.recast}
-                else {weights.like}
-                end as weight,
-            {decay_sql} as decay_factor
-        FROM k3l_frame_interaction as interactions
-        {time_filter_sql}
-        INNER JOIN
-            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
-    )
-    SELECT
-        weights.url as url,
-        {agg_sql} as score
-    FROM weights
-    GROUP BY weights.url
-    ORDER by score DESC
-    OFFSET $1
-    LIMIT $2
-    """
-    return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
-
-
-async def get_top_frames_with_cast_details(
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        recent: bool,
-        decay: bool,
-        pool: Pool
-):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
-    if recent:
-        time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
-        """
-    else:
-        time_filter_sql = ""
-
-    if decay:
-        # WARNING: This is still under development and can lead to high latency
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
-
-    sql_query = f"""
-    WITH weights AS
-    (
-        SELECT
-            interactions.url,
-            interactions.url_id,
-            k3l_rank.score,
-            case interactions.action_type
-                when 'cast' then {weights.cast}
-                when 'recast' then {weights.recast}
-                else {weights.like}
-                end as weight,
-            {decay_sql} as decay_factor
-        FROM k3l_frame_interaction as interactions
-        {time_filter_sql}
-        INNER JOIN
-            k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
-    ),
-    top_frames AS (
-        SELECT
-            weights.url as url,
-            weights.url_id,
-            {agg_sql} as score
-        FROM weights
-        GROUP BY weights.url, weights.url_id
-        ORDER by score DESC
-        OFFSET $1
-        LIMIT $2
-    )
-    SELECT
-	    top_frames.url,
-        max(top_frames.score) as score,
-        (array_agg(distinct('0x' || encode(casts.hash, 'hex'))))[1:100] as cast_hashes,
-        (array_agg(
-            'https://warpcast.com/'||
-            fnames.fname||
-            '/0x' ||
-            substring(encode(casts.hash, 'hex'), 1, 8)
-        order by casts.created_at
-        ))[1:$2] as warpcast_urls
-    FROM top_frames
-	INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.url_id = top_frames.url_id)
-    INNER JOIN casts on (casts.id = url_map.cast_id)
-    INNER JOIN fnames on (fnames.fid = casts.fid)
-    GROUP BY top_frames.url
-    ORDER BY score DESC
-    """
-    return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
-
-
-async def get_neighbors_frames(
-        agg: ScoreAgg,
-        weights: Weights,
-        voting: Voting,
-        trust_scores: list[dict],
-        limit: int,
-        recent: bool,
-        pool: Pool
-):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
-
-    if recent:
-        time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
-      		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
-        """
-    else:
-        time_filter_sql = ""
-
-    match voting:
-        case Voting.SINGLE:
-            wt_score_sql = 'max(score)'
-            wt_weight_sql = f"""
-                            max(case interactions.action_type
-                                when 'cast' then {weights.cast}
-                                when 'recast' then {weights.recast}
-                                else {weights.like}
-                                end)
-                            """
-            wt_group_by_sql = 'GROUP BY interactions.url, interactions.fid'
-        case _:
-            wt_score_sql = 'k3l_rank.score'
-            wt_weight_sql = f"""
-                            case interactions.action_type
-                                when 'cast' then {weights.cast}
-                                when 'recast' then {weights.recast}
-                                else {weights.like}
-                                end
-                            """
-            wt_group_by_sql = ''
-
-    sql_query = f"""
-    WITH weights AS
-    (
-        SELECT
-            interactions.url,
-            interactions.fid,
-            {wt_score_sql} as score,
-            {wt_weight_sql} as weight
-        FROM k3l_frame_interaction as interactions
-        {time_filter_sql}
-        INNER JOIN json_to_recordset($1::json)
-            AS trust(fid int, score numeric) ON (trust.fid = interactions.fid)
-        {wt_group_by_sql}
-    )
-    SELECT
-        weights.url as url,
-        {agg_sql} as score,
-        array_agg(distinct(weights.fid::integer)) as interacted_by_fids,
-        array_agg(distinct(fnames.fname)) as interacted_by_fnames,
-        array_agg(distinct(user_data.value)) as interacted_by_usernames
-    FROM weights
-    LEFT JOIN fnames on (fnames.fid = weights.fid)
-    LEFT JOIN user_data on (user_data.fid = weights.fid and user_data.type=6)
-    GROUP BY weights.url
-    ORDER by score DESC
-    LIMIT $2
-    """
-    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
-
 
 async def get_popular_neighbors_casts(
         agg: ScoreAgg,
@@ -712,7 +344,6 @@ async def get_popular_neighbors_casts(
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
-
 async def get_recent_neighbors_casts(
         trust_scores: list[dict],
         offset: int,
@@ -751,27 +382,6 @@ async def get_recent_neighbors_casts(
         LIMIT $3
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
-
-
-async def get_recent_casts_by_fids(
-        fids: list[int],
-        offset: int,
-        limit: int,
-        pool: Pool
-):
-    sql_query = """
-        SELECT
-            '0x' || encode( casts.hash, 'hex') as cast_hash
-        FROM casts 
-        WHERE
-            casts.fid = ANY($1::integer[])
-        ORDER BY casts.timestamp DESC
-        OFFSET $2
-        LIMIT $3
-        """
-
-    return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
-
 
 async def get_popular_channel_casts_lite(
         channel_id: str,
@@ -835,7 +445,6 @@ async def get_popular_channel_casts_lite(
     LIMIT $4 
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
-
 
 async def get_popular_channel_casts_heavy(
         channel_id: str,
