@@ -273,6 +273,9 @@ async def get_top_channel_profiles(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
+        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+        FROM fids
+        UNION ALL 
          SELECT v.claim->>'address' as address, fid
          FROM verifications v 
         ),
@@ -302,13 +305,13 @@ async def get_top_channel_profiles(
         LEFT JOIN addresses using (fid)
         )
         select fid,
-        fname,
-        username,
-        rank,
-        score,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(rank) as rank,
+        any_value(score) as score,
         ARRAY_AGG(DISTINCT address) as addresses
         FROM mapped_records
-        GROUP BY fid,fname,username,rank,score
+        GROUP BY fid
         ORDER by rank
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
@@ -366,6 +369,9 @@ async def get_channel_profile_ranks(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
+        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+        FROM fids
+        union all
          SELECT v.claim->>'address' as address, fid
          FROM verifications v 
         ),
@@ -396,14 +402,14 @@ async def get_channel_profile_ranks(
         )
         SELECT
         fid,
-        fname,
-        username,
-        rank,
-        score,
-        percentile,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(rank) as rank,
+        any_value(score) as score,
+        any_value(percentile) as percentile,
         ARRAY_AGG(DISTINCT address) as addresses
         FROM mapped_records
-        GROUP BY fid,fname,username,rank,score,percentile
+        GROUP BY fid
         ORDER by rank
         
         """
