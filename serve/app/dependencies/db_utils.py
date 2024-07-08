@@ -134,6 +134,9 @@ async def get_top_channel_profiles(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
+        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+        FROM fids
+        UNION ALL 
          SELECT v.claim->>'address' as address, fid
          FROM verifications v 
         ),
@@ -163,13 +166,13 @@ async def get_top_channel_profiles(
         LEFT JOIN addresses using (fid)
         )
         select fid,
-        fname,
-        username,
-        rank,
-        score,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(rank) as rank,
+        any_value(score) as score,
         ARRAY_AGG(DISTINCT address) as addresses
         FROM mapped_records
-        GROUP BY fid,fname,username,rank,score
+        GROUP BY fid
         ORDER by rank
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
@@ -225,6 +228,9 @@ async def get_channel_profile_ranks(
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
+        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+        FROM fids
+        union all
          SELECT v.claim->>'address' as address, fid
          FROM verifications v 
         ),
@@ -255,14 +261,14 @@ async def get_channel_profile_ranks(
         )
         SELECT
         fid,
-        fname,
-        username,
-        rank,
-        score,
-        percentile,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(rank) as rank,
+        any_value(score) as score,
+        any_value(percentile) as percentile,
         ARRAY_AGG(DISTINCT address) as addresses
         FROM mapped_records
-        GROUP BY fid,fname,username,rank,score,percentile
+        GROUP BY fid
         ORDER by rank
 
         """
@@ -337,6 +343,7 @@ async def get_popular_neighbors_casts(
         {resp_fields}
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
+    WHERE deleted_at IS NULL
     --    ORDER BY casts.timestamp DESC
     ORDER BY cast_hour DESC, scores.cast_score DESC
     OFFSET $2
@@ -377,6 +384,7 @@ async def get_recent_neighbors_casts(
             AS trust(fid int, score numeric) 
                 ON casts.fid = trust.fid
         {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
+        WHERE deleted_at IS NULL
         ORDER BY casts.timestamp DESC
         OFFSET $2
         LIMIT $3
@@ -425,6 +433,7 @@ async def get_popular_channel_casts_lite(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            WHERE deleted_at IS NULL
             GROUP BY casts.hash, ci.fid
             LIMIT 100000
         )
@@ -508,6 +517,7 @@ async def get_popular_channel_casts_heavy(
         cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
+    WHERE deleted_at IS NULL
     ORDER BY cast_hour DESC, scores.cast_score DESC
     OFFSET $3
     LIMIT $4
