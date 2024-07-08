@@ -205,7 +205,7 @@ async def get_unique_handle_metadata_for_fids(
     ),
     agg_addresses as (
     SELECT fid,
-    ARRAY_AGG(address) as address
+    ARRAY_AGG(DISTINCT address) as address
     FROM addresses 
     GROUP BY fid
     )
