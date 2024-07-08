@@ -89,15 +89,11 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
     )
     SELECT
         profile_id as fid,
-        fnames.fname as fname,
-        user_data.value as username,
         rank,
         score,
         ((total.total - (rank - 1))*100 / total.total) as percentile
     FROM k3l_rank
     CROSS JOIN total
-    LEFT JOIN fnames on (fnames.fid = profile_id)
-    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE strategy_id = $1
     ORDER BY rank
     OFFSET $2
@@ -143,15 +139,11 @@ async def get_top_channel_profiles(
         top_records as (
         SELECT
             ch.fid,
-            fnames.fname as fname,
-            user_data.value as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_channel_fids as ch
         CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE 
             channel_id = $1 
             AND 
@@ -166,8 +158,6 @@ async def get_top_channel_profiles(
         LEFT JOIN addresses using (fid)
         )
         select fid,
-        any_value(fname) as fname,
-        any_value(username) as username,
         any_value(rank) as rank,
         any_value(score) as score,
         ARRAY_AGG(DISTINCT address) as addresses
@@ -184,15 +174,11 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool):
     )
     SELECT
         profile_id as fid,
-        fnames.fname as fname,
-        user_data.value as username,
         rank,
         score,
         ((total.total - (rank - 1))*100 / total.total) as percentile
     FROM k3l_rank
     CROSS JOIN total
-    LEFT JOIN fnames on (fnames.fid = profile_id)
-    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
     WHERE
         strategy_id = $1
         AND profile_id = ANY($2::integer[])
@@ -237,15 +223,11 @@ async def get_channel_profile_ranks(
         top_records as (
         SELECT
             ch.fid,
-            fnames.fname as fname,
-            user_data.value as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_channel_fids as ch
         CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE
             channel_id = $1 
             AND 
@@ -261,8 +243,6 @@ async def get_channel_profile_ranks(
         )
         SELECT
         fid,
-        any_value(fname) as fname,
-        any_value(username) as username,
         any_value(rank) as rank,
         any_value(score) as score,
         any_value(percentile) as percentile,

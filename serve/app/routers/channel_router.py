@@ -65,34 +65,6 @@ async def get_channel_rank_for_fids(
                           pool=pool)
   return {"result": ranks}
 
-@router.post("/rankings/{channel}/handles")
-async def get_channel_rank_for_handles(
-  # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
-  channel: str,
-  handles: list[str],
-  pool: Pool = Depends(db_pool.get_db)
-):
-  """
-  Given a list of input handles, return a list of handles
-    that are ranked based on the engagement relationships in the channel
-    and scored by Eigentrust algorithm. \n
-    Example: ["dwr.eth", "varunsrin.eth"] \n
-  """
-  if not (1 <= len(handles) <= 100):
-    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  # fetch handle-fid pairs for given handles
-  handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
-
-  # extract fids from the handle-fid pairs
-  fids = [hf["fid"] for hf in handle_fids]
-
-  ranks = await db_utils.get_channel_profile_ranks(
-                          channel_id=channel,
-                          fids=fids,
-                          lite=False,
-                          pool=pool)
-  return {"result": ranks}
-
 @router.get("/casts/popular/{channel}")
 async def get_popular_channel_casts(
   channel: str,
