@@ -4,7 +4,7 @@ from airflow.operators.bash import BashOperator
 from airflow.decorators import task, dag
 from airflow.operators.python import PythonOperator
 import math
-from hooks.discord_webhook import send_alert_discord
+from hooks.discord import send_alert_discord
 
 default_args = {
     'owner': 'coder2j',

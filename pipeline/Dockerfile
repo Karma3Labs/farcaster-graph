@@ -26,6 +26,7 @@ RUN /bin/bash -c "source /pipeline/.env"
 RUN pip install --upgrade pip
 
 RUN pip install -r /pipeline/requirements.txt
+RUN pip install apache-airflow-providers-pagerduty==3.7.2 discord-webhook==1.3.1
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 RUN unzip awscliv2.zip

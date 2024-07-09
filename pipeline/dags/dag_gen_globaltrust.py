@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from hooks.discord_webhook import send_alert_discord
+from hooks.discord import send_alert_discord
 
 
 default_args = {

@@ -5,20 +5,9 @@ from datetime import datetime
 
 from airflow.models import Variable, TaskInstance
 from discord_webhook import DiscordWebhook, DiscordEmbed
-from urllib.parse import urlparse, urlunparse
+from hooks.common import convert_hostname
 
 TI = TaskInstance
-
-def convert_hostname(url: str):
-  # Parse the original URL
-	parsed_url = urlparse(url)
-
-	# Replace the scheme and netloc with the new hostname
-	new_netloc = Variable.get("airflow_hostname")
-	new_scheme = "https"
-
-	# Construct the new URL
-	return urlunparse((new_scheme, new_netloc) + parsed_url[2:])
 
 def send_alert_discord(context):
 	# Get Task Instances variables
@@ -38,6 +27,8 @@ def send_alert_discord(context):
 		error_message = "{'reason': " + error_message + ',}'
 	except:
 		error_message = "Some error that cannot be extracted has occurred. Visit the logs!"
+
+	print('Sending discord alert')
 
 	# Send Alert
 	webhook = DiscordWebhook(url=Variable.get("discord_webhook")) # Update variable name with your change
