@@ -2,12 +2,14 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from hooks.discord import send_alert_discord
 
 
 default_args = {
     'owner': 'coder2j',
     'retries': 5,
-    'retry_delay': timedelta(minutes=2)
+    'retry_delay': timedelta(minutes=2),
+    'on_failure_callback': send_alert_discord,
 }
 
 

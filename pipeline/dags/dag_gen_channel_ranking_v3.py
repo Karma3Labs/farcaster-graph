@@ -4,11 +4,13 @@ from airflow.operators.bash import BashOperator
 from airflow.decorators import task, dag
 from airflow.operators.python import PythonOperator
 import math
+from hooks.discord import send_alert_discord
 
 default_args = {
     'owner': 'coder2j',
     'retries': 5,
-    'retry_delay': timedelta(minutes=2)
+    'retry_delay': timedelta(minutes=2),
+    'on_failure_callback': send_alert_discord,
 }
 
 PIPELINE_DIR = './'
