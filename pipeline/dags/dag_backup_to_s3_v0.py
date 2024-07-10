@@ -4,12 +4,13 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 
 from hooks.discord import send_alert_discord
+from hooks.pagerduty import send_alert_pagerduty
 
 default_args = {
     'owner': 'coder2j',
     'retries': 5,
     'retry_delay': timedelta(minutes=2),
-    'on_failure_callback': send_alert_discord,
+    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
 

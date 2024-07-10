@@ -18,15 +18,15 @@ def send_alert_discord(context):
 	execution_date = datetime.fromisoformat(str(context.get('execution_date')))
 
 	# Extract reason for the exception
-	try:
-		error_message = str(context["exception"])
-		error_message = error_message[:1000] + (error_message[1000:] and '...')
-		str_start = re.escape("{'reason': ")
-		str_end = re.escape('"}.')
-		error_message = re.search('%s(.*)%s' % (str_start, str_end), error_message).group(1)
-		error_message = "{'reason': " + error_message + ',}'
-	except:
-		error_message = "Some error that cannot be extracted has occurred. Visit the logs!"
+	# try:
+	# 	error_message = str(context["exception"])
+	# 	error_message = error_message[:1000] + (error_message[1000:] and '...')
+	# 	str_start = re.escape("{'reason': ")
+	# 	str_end = re.escape('"}.')
+	# 	error_message = re.search('%s(.*)%s' % (str_start, str_end), error_message).group(1)
+	# 	error_message = "{'reason': " + error_message + ',}'
+	# except:
+	# 	error_message = "Some error that cannot be extracted has occurred. Visit the logs!"
 
 	print('Sending discord alert')
 
