@@ -75,7 +75,7 @@ async def main(daemon: bool):
                 asyncio.create_task(
                   scrape_utils.categorize_url(logger=logger,
                                               url_id=record[0],
-                                              url=record[1],
+                                              url=url,
                                               session=http_conn_pool,
                                               timeout=http_timeout)))
           # end task append loop
