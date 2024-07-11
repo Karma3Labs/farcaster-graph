@@ -68,6 +68,9 @@ async def main(daemon: bool):
       with Timer(name="categorize_url"):
         async with http_conn_pool:
           for record in url_records:
+              url = record[1]
+              if url.endswith(":"):
+                url = record[1][:-1]
               tasks.append(
                 asyncio.create_task(
                   scrape_utils.categorize_url(logger=logger,
