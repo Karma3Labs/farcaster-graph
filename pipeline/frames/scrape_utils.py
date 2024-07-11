@@ -16,8 +16,8 @@ class URLCategory(Enum):
   ERROR = 'error'
 
 async def categorize_url(
-    logger: logging.Logger, 
-    url_id: int, url:str, 
+    logger: logging.Logger,
+    url_id: int, url:str,
     session: aiohttp.ClientSession,
     timeout: aiohttp.ClientTimeout
 ) -> tuple[int, str]:
@@ -25,7 +25,7 @@ async def categorize_url(
   if urlparse(url).scheme not in ['http','https']:
     logger.error(f"bad url {url_id} - {url}")
     return (url_id, URLCategory.BAD.value)
-      
+
   try:
     async with session.get(url, timeout=timeout) as resp:
       body = await resp.text()
@@ -45,7 +45,7 @@ async def categorize_url(
   except Exception as e:
     logger.error(f"error {url_id} - {url}: {e}")
     return (url_id, URLCategory.ERROR.value)
-  
+
 class URL_parts(NamedTuple):
   url_id: int
   scheme: str
@@ -55,17 +55,20 @@ class URL_parts(NamedTuple):
   path: str
 
 def parse_url(
-    logger: logging.Logger, 
-    url_id: int, 
+    logger: logging.Logger,
+    url_id: int,
     url:str
 ) -> tuple[int, str, str, str, str, str]:
   logger.debug(f"parsing {url_id} - {url}")
   parse_result = urlparse(url)
   extract = tldextract.extract(url)
-  return tuple(URL_parts(url_id, 
+  path = parse_result.path
+  if path.endswith(':'):
+    path = path[:-1]
+  return tuple(URL_parts(url_id,
                    parse_result.scheme,
-                   extract.domain, 
+                   extract.domain,
                    extract.subdomain,
                    extract.suffix,
-                   parse_result.path))
+                   path))
 
