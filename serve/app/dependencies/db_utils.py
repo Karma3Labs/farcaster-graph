@@ -290,10 +290,10 @@ async def get_popular_neighbors_casts(
                 ci.cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * trust.score * ci.casted) 
-                        + ({weights.reply} * trust.score * ci.replied)
-                        + ({weights.recast} * trust.score * ci.recasted)
-                        + ({weights.like} * trust.score * ci.liked)
+                        ({weights.cast} * trust.v * ci.casted) 
+                        + ({weights.reply} * trust.v * ci.replied)
+                        + ({weights.recast} * trust.v * ci.recasted)
+                        + ({weights.like} * trust.v * ci.liked)
                     )
                     *
                     power(
@@ -302,9 +302,9 @@ async def get_popular_neighbors_casts(
                     )
                 ) as cast_score
             FROM json_to_recordset($1::json)
-                AS trust(fid int, score numeric) 
+                AS trust(i int, v numeric) 
             INNER JOIN k3l_cast_action as ci
-                ON (ci.fid = trust.fid
+                ON (ci.fid = trust.i
                     AND ci.action_ts BETWEEN now() - interval '5 days' 
   										AND now() - interval '10 minutes')
             GROUP BY ci.cast_hash, ci.fid
