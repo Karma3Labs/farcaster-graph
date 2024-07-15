@@ -908,7 +908,7 @@ async def get_popular_channel_casts_heavy(
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     WHERE cast_score*100000000000>100
-    ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC
+    ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
     OFFSET $3
     LIMIT $4
     """
