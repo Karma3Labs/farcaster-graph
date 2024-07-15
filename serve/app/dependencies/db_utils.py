@@ -818,7 +818,7 @@ async def get_popular_channel_casts_lite(
             FROM k3l_recent_parent_casts as casts 
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '5 days' 
+                    AND ci.action_ts BETWEEN now() - interval '30 days' 
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
@@ -837,7 +837,8 @@ async def get_popular_channel_casts_lite(
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour
     FROM scores
-    ORDER BY cast_hour DESC, cast_score DESC
+    WHERE cast_score*100000000000>100
+    ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC
     OFFSET $3
     LIMIT $4 
     """
@@ -881,7 +882,7 @@ async def get_popular_channel_casts_heavy(
             FROM k3l_recent_parent_casts as casts 
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '5 days' 
+                    AND ci.action_ts BETWEEN now() - interval '30 days' 
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
@@ -906,7 +907,8 @@ async def get_popular_channel_casts_heavy(
         cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
-    ORDER BY cast_hour DESC, scores.cast_score DESC
+    WHERE cast_score*100000000000>100
+    ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC
     OFFSET $3
     LIMIT $4
     """
