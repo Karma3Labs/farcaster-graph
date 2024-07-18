@@ -161,7 +161,7 @@ async def get_trending_casts(
   Parameter 'limit' is used to specify the number of results to return. \n
   By default, agg=sumsquare, weights='L1C10R5Y1', offset=0,
     limit=25, and lite=true
-    i.e., returns recent 25 popular casts.
+    i.e., returns recent 100 popular casts.
   """
     # compute eigentrust on the neighbor graph using fids
     try:
