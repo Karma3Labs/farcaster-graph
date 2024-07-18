@@ -134,3 +134,53 @@ async def post_recent_casts_for_fid(
         pool=pool)
 
     return {"result": casts}
+
+@router.get("/global/trending")
+async def get_trending_casts(
+        agg: Annotated[ScoreAgg | None,
+                 Query(description="Define the aggregation function"\
+                       " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
+        weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=5000)] = 100,
+        lite: Annotated[bool, Query()] = True,
+        pool: Pool = Depends(db_pool.get_db)
+):
+    """
+    Get a list of casts that have been cast by the
+      popular profiles in a user's extended network. \n
+  This API takes optional parameters -
+    agg, weights, offset, limit and lite. \n
+  Parameter 'agg' is used to define the aggregation function and
+    can take any of the following values - `rms`, `sumsquare`, `sum`. \n
+  Parameter 'weights' is used to define the weights to be assigned
+    to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+  Parameter 'lite' is used to constrain the result to just cast hashes. \n
+  Parameter 'offset' is used to specify how many results to skip
+    and can be useful for paginating through results. \n
+  Parameter 'limit' is used to specify the number of results to return. \n
+  By default, agg=sumsquare, weights='L1C10R5Y1', offset=0,
+    limit=25, and lite=true
+    i.e., returns recent 25 popular casts.
+  """
+    # compute eigentrust on the neighbor graph using fids
+    try:
+        weights = Weights.from_str(weights)
+    except:
+        raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
+
+    if lite:
+        casts = await db_utils.get_trending_casts_lite(
+            agg=agg,
+            weights=weights,
+            offset=offset,
+            limit=limit,
+            pool=pool)
+    else:
+        casts = await db_utils.get_trending_casts_heavy(
+            agg=agg,
+            weights=weights,
+            offset=offset,
+            limit=limit,
+            pool=pool)
+    return {"result": casts}
