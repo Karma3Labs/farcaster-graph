@@ -1029,7 +1029,8 @@ async def get_trending_casts_heavy(
                         1-(1/(365*24)::numeric),
                         (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
                     )
-                ) as cast_score
+                ) as cast_score,
+                MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts 
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
@@ -1059,7 +1060,7 @@ async def get_trending_casts_heavy(
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     WHERE cast_score*10000000>1
-    ORDER BY cast_hour DESC, cast_score DESC
+    ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, cast_score DESC
     OFFSET $1
     LIMIT $2
     """
