@@ -14,11 +14,11 @@ import gc
 import utils
 from config import settings
 from . import graph_utils
-
+from .fetch_nodes_edges import fetch_fids_edges_from_csv
 # 3rd party dependencies
 import polars as pl
 import numpy as np
-import psutil 
+import psutil
 from loguru import logger
 
 def flatten_list_of_lists(list_of_lists):
@@ -28,8 +28,8 @@ def flatten_list_of_lists(list_of_lists):
   return flat_list
 
 def yield_pl_slices(
-    fids: pl.DataFrame, 
-    chunksize:int, 
+    fids: pl.DataFrame,
+    chunksize:int,
 ) :
   for idx, slice in enumerate(fids.iter_slices(n_rows=chunksize)):
     # we need batch id for logging and debugging
@@ -38,8 +38,8 @@ def yield_pl_slices(
     yield (idx, slice)
 
 def yield_np_slices(
-    fids: np.ndarray, 
-    chunksize:int, 
+    fids: np.ndarray,
+    chunksize:int,
 ) :
   num_slices = math.ceil( len(fids) / chunksize )
   logger.info(f"Slicing fids list into {num_slices} slices")
@@ -54,14 +54,14 @@ def yield_np_slices(
 async def compute_task(
     fid: int,
     maxneighbors: int,
-    localtrust_df: pl.DataFrame, 
+    localtrust_df: pl.DataFrame,
     process_label: str
 ) -> list:
   try:
     logger.info(f"{process_label}processing FID: {fid}")
     task_start = time.perf_counter()
     knn_list = []
-    # NOTE: k_minus_list is empty because we want 1st degree neighbors to include input fid. 
+    # NOTE: k_minus_list is empty because we want 1st degree neighbors to include input fid.
     # This is useful when creating watchlists of whale fids.
     k_minus_list = []
     limit = maxneighbors
@@ -69,11 +69,11 @@ async def compute_task(
     while limit > 0 and degree <= 5:
       start_time = time.perf_counter()
       k_scores = graph_utils.get_k_degree_scores(
-                                        fid, 
-                                        k_minus_list, 
-                                        localtrust_df, 
-                                        limit, 
-                                        degree, 
+                                        fid,
+                                        k_minus_list,
+                                        localtrust_df,
+                                        limit,
+                                        degree,
                                         process_label)
       logger.info(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
                   f" for {len(k_scores)} neighbors"
@@ -99,7 +99,7 @@ async def compute_task(
 
 async def compute_tasks_concurrently(
     maxneighbors:int,
-    localtrust_df: pl.DataFrame, 
+    localtrust_df: pl.DataFrame,
     slice: np.ndarray,
     process_label: str
 ) -> list:
@@ -108,11 +108,11 @@ async def compute_tasks_concurrently(
     for fid in slice:
       tasks.append(asyncio.create_task(
                             compute_task(
-                              fid=fid, 
-                              maxneighbors=maxneighbors, 
-                              localtrust_df=localtrust_df, 
+                              fid=fid,
+                              maxneighbors=maxneighbors,
+                              localtrust_df=localtrust_df,
                               process_label=process_label)))
-    logger.info(f"{process_label}{len(tasks)} tasks created") 
+    logger.info(f"{process_label}{len(tasks)} tasks created")
     results = await asyncio.gather(*tasks, return_exceptions=True)
     return results
   except:
@@ -122,10 +122,10 @@ async def compute_tasks_concurrently(
 def compute_subprocess(
   outdir:Path,
   maxneighbors:int,
-  localtrust_df: pl.DataFrame, 
+  localtrust_df: pl.DataFrame,
   slice: tuple[int, np.ndarray]
 ):
-  # because we are in a sub-process, 
+  # because we are in a sub-process,
   # ...we need to set log level again if we don't want defaults
   logger.remove()
   logger.add(sys.stderr, level=settings.LOG_LEVEL)
@@ -139,18 +139,18 @@ def compute_subprocess(
   logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
   results = [result for result in asyncio.run(
                                       compute_tasks_concurrently(
-                                        maxneighbors, 
-                                        localtrust_df, 
-                                        slice_arr, 
+                                        maxneighbors,
+                                        localtrust_df,
+                                        slice_arr,
                                         process_label))]
-  
+
   results = flatten_list_of_lists(results)
   logger.info(f"{process_label}{len(results)} results available")
 
   # pl_slice = pl.DataFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
   # del results
   pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
-  
+
   logger.info(f"{process_label}pl_slice: {pl_slice.describe()}")
   # logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
 
@@ -173,37 +173,17 @@ def compute_subprocess(
 
 
 async def main(
-    incsv:Path,  
-    outdir:Path, 
-    procs:int, 
-    chunksize:int, 
+    incsv:Path,
+    outdir:Path,
+    procs:int,
+    chunksize:int,
     maxneighbors:int
 ):
   start_time = time.perf_counter()
   logger.info(f"Reading csv {incsv} into Polars DataFrame")
   utils.log_memusage(logger)
-  edges_df = pl.read_csv(incsv)
-  logger.info(f"edges_df: {edges_df.describe()}")
-  logger.info(f"edges_df sample: {edges_df.sample(n=min(5, len(edges_df)))}")
-  utils.log_memusage(logger)
 
-  # logger.info(f"Reading pickle {inpkl} into DataFrame")
-  # utils.log_memusage(logger)
-  # edges_df = pd.read_pickle(inpkl)
-  # logger.info(utils.df_info_to_string(edges_df, True))
-  # utils.log_memusage(logger)
-
-  # we need to compute personalized ranking for every profile in Farcaster
-  # ... let's extract all the fids that have had outgoing interactions.
-  fids = edges_df.select(pl.col('i')).unique().to_numpy().flat
-  # fids = pd.unique(edges_df['i'])
-  fids = np.random.choice(fids, size=len(fids), replace=False)
-  # np.random.shuffle(fids) # does not work with Polars because read-only
-  
-  logger.info(np.random.choice(fids, min(len(fids), 5)))
-
-  logger.info("sort edges_df")
-  edges_df =  edges_df.sort(['i', 'j'])
+  fids, edges_df = fetch_fids_edges_from_csv(incsv)
 
   logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
   logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
@@ -215,11 +195,11 @@ async def main(
 
   # WARNING: Do NOT use max_tasks_per_child. It will kill sub-processes
   with ProcessPoolExecutor(max_workers=procs) as executor:
-    tasks = [loop.run_in_executor(executor, 
-                                  compute_subprocess, 
+    tasks = [loop.run_in_executor(executor,
+                                  compute_subprocess,
                                   outdir,
                                   maxneighbors,
-                                  edges_df, 
+                                  edges_df,
                                   slice)
               for slice in yield_np_slices(fids, chunksize)]
     # results = [result for sub_list in await asyncio.gather(*tasks) for result in sub_list]
@@ -242,7 +222,7 @@ if __name__ == '__main__':
   parser.add_argument("-i", "--incsv",
                       help="input localtrust csv file",
                       required=True,
-                      type=lambda f: Path(f).expanduser().resolve())  
+                      type=lambda f: Path(f).expanduser().resolve())
   parser.add_argument("-o", "--outdir",
                     help="output directory",
                     required=True,
@@ -264,8 +244,8 @@ if __name__ == '__main__':
 
   asyncio.run(
     main(
-      incsv=args.incsv, 
-      outdir=args.outdir, 
-      procs=args.procs, 
-      chunksize=args.chunksize, 
+      incsv=args.incsv,
+      outdir=args.outdir,
+      procs=args.procs,
+      chunksize=args.chunksize,
       maxneighbors=args.maxneighbors))
