@@ -4,13 +4,14 @@ dayOfYear=`date '+%j'`
 hourOfDay=`date '+%H'`
 hourOfYear="$((dayOfYear * 24 + hourOfDay))"
 echo $dayOfYear $hourOfDay $hourOfYear
+hour_interval=48
 
 # TODO use the mtime of the existing parquet file and 
 # ..if current time - mtime > 1 hour, start compute
-if [ `expr $hourOfYear % 36` -eq 0 ]; then
-   echo "This is hour 36. Continuing with script."
+if [ `expr $hourOfYear % $hour_interval` -eq 0 ]; then
+   echo "This is hour $hour_interval. Continuing with script."
 else
-   echo "This not hour 36. Exiting now."
+   echo "This not hour $hour_interval. Exiting now."
    exit 0
 fi
 
