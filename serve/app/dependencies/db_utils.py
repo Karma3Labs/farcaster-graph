@@ -992,7 +992,7 @@ async def get_trending_casts_lite(
     ORDER BY cast_hour DESC, cast_score DESC
     OFFSET $1
     LIMIT $2)
-    select cast_hash,cast_hour from cast_details
+    select cast_hash,cast_hour from cast_details order by rn
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
