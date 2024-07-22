@@ -32,7 +32,7 @@ def yield_np_slices(fids: np.ndarray, chunksize: int):
     logger.info(f"Number of slices: {len(slices)}")
     for idx, arr in enumerate(slices):
         # we need batch id for logging and debugging
-        logger.info(f"Yield split# {idx}")
+        # logger.info(f"Yield split# {idx}")
         yield (idx, arr)
 
 async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame, process_label: str) -> list:
@@ -55,7 +55,7 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
                 degree,
                 process_label
             )
-            logger.info(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
+            logger.debug(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
                         f" for {len(k_scores)} neighbors"
                         f" for FID {fid}")
             logger.trace(f"{process_label}FID {fid}: {degree}-degree neighbors scores: {k_scores}")
@@ -101,8 +101,8 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
         slice_id = slice[0]
         slice_arr = slice[1]
         process_label = f"| SLICE#{slice_id}| "
-        logger.info(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-        logger.info(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+        logger.debug(f"{process_label}size of FIDs slice: {len(slice_arr)}")
+        logger.debug(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
         results = [result for result in await compute_tasks_concurrently(
             maxneighbors,
             localtrust_df,
@@ -110,11 +110,11 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
             process_label)]
 
         results = flatten_list_of_lists(results)
-        logger.info(f"{process_label}{len(results)} results available")
+        logger.debug(f"{process_label}{len(results)} results available")
 
         pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
 
-        logger.info(f"{process_label}pl_slice: {pl_slice.describe()}")
+        logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
 
         now = int(time.time())
         outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
@@ -124,12 +124,10 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
         pl_slice.sink_parquet(path=outfile, compression='lz4')
         del results
 
-        utils.log_memusage(logger, prefix=process_label + 'before gc ')
-        gc.collect()
-        utils.log_memusage(logger, prefix=process_label + 'after gc ')
+        utils.log_memusage(logger, prefix=process_label)
 
-        logger.info(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
-        logger.info(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
+        logger.debug(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
+        logger.debug(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
         return slice_id
 
 async def main(inpkl: Path, outdir: Path, procs: int, chunksize: int, maxneighbors: int, fids_str: str):
