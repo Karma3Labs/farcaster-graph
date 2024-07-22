@@ -40,7 +40,7 @@ def yield_np_slices(fids: np.ndarray, num_chunks: int) -> Generator[Tuple[int, n
 
 async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame, process_label: str) -> list:
     try:
-        logger.info(f"{process_label}processing FID: {fid}")
+        logger.debug(f"{process_label}processing FID: {fid}")
         task_start = time.perf_counter()
         knn_list = []
         # NOTE: k_minus_list is empty because we want 1st degree neighbors to include input fid.
@@ -104,18 +104,16 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
 
     now = int(time.time())
     outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
-    logger.info(f"{process_label}writing output to {outfile}")
+    logger.info(f"{process_label}| writing output to {outfile}")
     start_time = time.perf_counter()
 
     pl_slice.sink_parquet(path=outfile, compression='lz4')
     del results
 
-    utils.log_memusage(logger, prefix=process_label + 'before gc ')
-    gc.collect()
-    utils.log_memusage(logger, prefix=process_label + 'after gc ')
+    utils.log_memusage(logger, prefix=process_label)
 
-    logger.debug(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
-    logger.debug(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
+    logger.debug(f"{process_label}| writing to {outfile} took {time.perf_counter() - start_time} secs")
+    logger.info(f"{process_label}|  slice computation took {time.perf_counter() - subprocess_start} secs")
     return slice_id
 
 async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str):
