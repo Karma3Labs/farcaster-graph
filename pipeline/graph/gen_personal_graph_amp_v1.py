@@ -80,12 +80,12 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
         logger.exception(f"{process_label}")
     return []
 
-async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: tuple[int, np.ndarray]):
+async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: tuple[int, np.ndarray], subtask_id: int):
     subprocess_start = time.perf_counter()
     slice_id = slice[0]
     slice_arr = slice[1]
     ttl_slice_len = slice[2]
-    process_label = f"| SLICE#{slice_id}_{ttl_slice_len}"
+    process_label = f"| SLICE#{subtask_id}-{slice_id}_{ttl_slice_len}"
     logger.debug(f"{process_label}| size of FIDs slice: {len(slice_arr)}")
     logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice_arr)), replace=False)}")
 
@@ -115,7 +115,7 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     logger.info(f"{process_label}|  slice computation took {time.perf_counter() - subprocess_start} secs")
     return slice_id
 
-async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str):
+async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str, subtask_id: str):
     logger.remove()
     logger.add(sys.stderr, level='INFO')
 
@@ -133,7 +133,7 @@ async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fi
 
     # Create tasks for each slice and run them concurrently
     tasks = [
-        asyncio.create_task(compute_slice(outdir, maxneighbors, edges_df, slice))
+        asyncio.create_task(compute_slice(outdir, maxneighbors, edges_df, slice, subtask_id))
         for slice in yield_np_slices(fids, num_chunks)
     ]
     await asyncio.gather(*tasks, return_exceptions=True)
@@ -163,10 +163,6 @@ if __name__ == '__main__':
                         help="comma separated fids to process. eg) 1,2,3,420,69",
                         required=True,
                         type=str)
-    parser.add_argument("-t", "--task-id",
-                        help="task id like 'manual__2024-07-22T06:46:15.813325+00:00'",
-                        required=False,
-                        type=str)
     parser.add_argument("-s", "--subtask-id",
                         help="mapped index subtask id from Airflow. eg) '1' ",
                         required=False,
@@ -184,4 +180,5 @@ if __name__ == '__main__':
             num_chunks=args.num_chunks,
             maxneighbors=args.maxneighbors,
             fids_str=args.fids,
+            subtask_id=args.subtask_id,
         ))

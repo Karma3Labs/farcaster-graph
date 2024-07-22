@@ -66,8 +66,7 @@ set -x
 set -e
 set -o pipefail
 
-mkdir -p ${OUT_DIR}/temp_inprogress
-
+mkdir -p ${OUT_DIR}/${RUN_ID}
 
 TMP_GRAPH_OUT=${OUT_DIR}/temp_graph/
 mkdir -p $TMP_GRAPH_OUT
@@ -95,9 +94,8 @@ elif [ "$TASK" = "generate" ]; then
   # ls $TMP_GRAPH_OUT
   # echo "received FIDS: $FIDS"
 
-
   # generate graph with 10 parallel worker chunks and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 10 -m 1000 -f $FIDS -t $RUN_ID -s $MAP_INDEX
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/${RUN_ID} -c 10 -m 1000 -f $FIDS -s $MAP_INDEX
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
@@ -105,7 +103,7 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # if previous graph compute exists, confirm that the new output is larger in size
   if [ -d "$OUT_DIR/temp" ]; then
-    new_size=`du -m ${OUT_DIR}/temp_inprogress | cut -f1`
+    new_size=`du -m ${OUT_DIR}/${RUN_ID} | cut -f1`
     prev_size=`du -m ${OUT_DIR}/temp | cut -f1`
     size_diff="$((new_size-prev_size))"
     if [[ $size_diff -lt -100 ]]; then
@@ -116,7 +114,7 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # if graph creation succeeded, replace previous job output with current job output
   rm -rf ${OUT_DIR}/temp
-  mv ${OUT_DIR}/temp_inprogress ${OUT_DIR}/temp
+  mv ${OUT_DIR}/${RUN_ID} ${OUT_DIR}/temp
 
   # consolidate approx 4000 small pqt files into 1 big parquet file
   python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet.new
