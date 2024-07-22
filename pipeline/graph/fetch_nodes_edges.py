@@ -54,7 +54,7 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
   for idx, arr in enumerate(slices):
     # we need batch id for logging and debugging
     # yield a tuple because pool.map takes only 1 argument
-    logger.info(f"Yield split# {idx}: {arr}")
+    # logger.info(f"Yield split# {idx}: {arr}")
     res.append(arr.tolist())
     # yield (idx, arr)
 
