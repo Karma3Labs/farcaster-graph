@@ -59,7 +59,7 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
     # yield (idx, arr)
 
   out_edges_df_path = f"{outdir}/edges_df.pkl"
-  edges_df.to_pickle(out_edges_df_path)
+  edges_df.to_pandas().to_pickle(out_edges_df_path)
   logger.info(f'wrote to {out_edges_df_path}')
 
   return arr
