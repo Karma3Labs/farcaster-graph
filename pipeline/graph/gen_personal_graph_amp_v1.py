@@ -114,6 +114,10 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     return slice_id
 
 async def main(inpkl: Path, outdir: Path, chunksize: int, maxneighbors: int, fids_str: str):
+
+    logger.remove()
+    logger.add(sys.stderr, level='INFO')
+
     start_time = time.perf_counter()
 
     fids = np.array(list(map(int, fids_str.split(','))))
