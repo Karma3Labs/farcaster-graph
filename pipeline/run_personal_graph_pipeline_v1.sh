@@ -86,13 +86,12 @@ elif [ "$TASK" = "graph_reload" ]; then
 elif [ "$TASK" = "generate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
-  ls $TMP_GRAPH_OUT
-  FIDS=(cat $TMP_GRAPH_OUT/chunks_of_fids.json)
+  # ls $TMP_GRAPH_OUT
   echo "received FIDS: $FIDS"
 
 
   # # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  # python3 -m graph.gen_personal_graph_amp -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
+  # python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
 
   # # if previous graph compute exists, confirm that the new output is larger in size
   # if [ -d "$OUT_DIR/temp" ]; then
