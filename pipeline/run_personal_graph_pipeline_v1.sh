@@ -68,7 +68,7 @@ set -o pipefail
 
 mkdir -p ${OUT_DIR}/${RUN_ID}
 
-TMP_GRAPH_OUT=${OUT_DIR}/temp_graph/
+TMP_GRAPH_OUT=${OUT_DIR}/${RUN_ID}/temp_graph/
 mkdir -p $TMP_GRAPH_OUT
 TMP_GRAPH_PKL="${TMP_GRAPH_OUT}/edges_df.pkl"
 # rm ${OUT_DIR}/temp-graph/*
