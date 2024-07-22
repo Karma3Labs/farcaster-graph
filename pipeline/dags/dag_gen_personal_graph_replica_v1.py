@@ -34,7 +34,9 @@ def extract_fids(raw_log: str) -> list[list[int]]:
     # print('chunks_of_fids_json', chunks_of_fids)
     print(f'len={len(chunks_of_fids)} each_len={len(chunks_of_fids[0])} fids[0]={chunks_of_fids[0]} fids[{len(chunks_of_fids[0]) -1}]={chunks_of_fids[:-1]} ')
 
-    return chunks_of_fids
+    chunks_of_str_fids = [",".join(map(str, chunk)) for chunk in chunks_of_fids]
+
+    return chunks_of_str_fids
 
 with DAG(
     dag_id='gen_personal_graph_replica_v1',
@@ -63,11 +65,12 @@ with DAG(
 
     @task(max_active_tis_per_dagrun=18)
     def process_channel_chunk(chunk: list):
-        chunk_str = ','.join(chunk)
+        print('chunk')
+        print(chunk)
 
         process_task = SSHOperator(
-            task_id=f'eigen7_gen_personal_chunk_v1_{hash(chunk_str)}',
-            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk_str}",
+            task_id=f'eigen7_gen_personal_chunk_v1_{hash(chunk)}',
+            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk}",
             env={'PYTHONUNBUFFERED': '1'},  # Ensures real-time logging
             ssh_hook=ssh_hook,
             dag=dag,
