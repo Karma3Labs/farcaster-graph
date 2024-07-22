@@ -65,13 +65,9 @@ with DAG(
 
     @task(max_active_tis_per_dagrun=18)
     def process_channel_chunk(chunk: list):
-        print('chunk')
-        print(chunk)
-
         process_task = SSHOperator(
             task_id=f'eigen7_gen_personal_chunk_v1_{hash(chunk)}',
             command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk}",
-            env={'PYTHONUNBUFFERED': '1'},  # Ensures real-time logging
             ssh_hook=ssh_hook,
             dag=dag,
         )
