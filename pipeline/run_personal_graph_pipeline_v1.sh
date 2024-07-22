@@ -16,7 +16,7 @@ hour_interval=48
 # fi
 
 
-while getopts i:o:s:w:v:l:t:f:r flag
+while getopts i:o:s:w:v:l:t:f:r:m flag
 do
     case "${flag}" in
         i) IN_CSV=${OPTARG};;
@@ -27,11 +27,12 @@ do
         t) TASK=${OPTARG};;
         f) FIDS=${OPTARG};;
         r) RUN_ID=${OPTARG};;
+        m) MAP_INDEX=${OPTARG};;
     esac
 done
 
 if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ] || [ -z "$S3_BKT" ] || [ -z "$TASK" ]; then
-  echo "Usage:   $0 -i [in_csv] -w [work_dir] -v [venv] -o [out_dir] -s [s3_bkt] "
+  echo "Usage:   $0 -i [in_csv] -w [work_dir] -v [venv] -o [out_dir] -s [s3_bkt] -t [task] -f [fids] -r [run_id] -m [map_index]"
   echo ""
   echo "Example: $0 \ "
   echo "  -i /home/ubuntu/serve_files/lt_engagement_fid.csv \ "
@@ -49,11 +50,13 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
   echo "  [task] task to run. choose one: graph_reload, generate, fetch_fids, consolidate"
   echo "  [fids] comma separated fids to run '1,2,3,420,69'"
   echo "  [run_id] airflow run id. eg) 'manual__2024-07-22T06:46:15.813325+00:00' "
+  echo "  [map_index] airflow map index"
   echo ""
   exit
 fi
 
 echo "RUN_ID=${RUN_ID}"
+echo "MAP_INDEX=${MAP_INDEX}"
 
 JOBTIME=$(date +%Y%m%d%H%M%S)
 
@@ -94,8 +97,8 @@ elif [ "$TASK" = "generate" ]; then
   # echo "received FIDS: $FIDS"
 
 
-  # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 20 -m 1000 -f $FIDS
+  # generate graph with 10 parallel worker chunks and 1000 neighbors
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 10 -m 1000 -f $FIDS
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate

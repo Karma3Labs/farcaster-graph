@@ -1,5 +1,6 @@
 # standard dependencies
 from pathlib import Path
+from typing import Generator, Tuple
 import argparse
 import time
 import math
@@ -25,14 +26,16 @@ def flatten_list_of_lists(list_of_lists):
         flat_list.extend(nested_list)
     return flat_list
 
-def yield_np_slices(fids: np.ndarray, chunksize: int):
-    num_slices = math.ceil(len(fids) / chunksize)
-    logger.info(f"Slicing fids list into {num_slices} slices")
-    slices = np.array_split(fids, num_slices)
+def yield_np_slices(fids: np.ndarray, num_chunks: int) -> Generator[Tuple[int, np.ndarray, int], None, None]:
+    if num_chunks <= 0:
+        raise ValueError("Number of chunks must be a positive integer")
+
+    # Split the array into N chunks
+    slices = np.array_split(fids, num_chunks)
     logger.info(f"Number of slices: {len(slices)}")
+    logger.info(f"Number of items in a slice: {len(slices[0])}")
     for idx, arr in enumerate(slices):
-        # we need batch id for logging and debugging
-        # logger.info(f"Yield split# {idx}")
+        # Yield the index, array, and total number of slices
         yield (idx, arr, len(slices))
 
 async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame, process_label: str) -> list:
@@ -86,12 +89,12 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     logger.debug(f"{process_label}| size of FIDs slice: {len(slice_arr)}")
     logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
 
-    results = []
+    tasks = []
     for i, fid in enumerate(slice_arr):
         this_process_label = f"{process_label}-{i}_{len(slice_arr)}| "
-        result = await compute_task(fid, maxneighbors, localtrust_df, this_process_label)
-        results.append(result)
+        tasks.append(compute_task(fid, maxneighbors, localtrust_df, this_process_label))
 
+    results = await asyncio.gather(*tasks)
     results = flatten_list_of_lists(results)
     logger.debug(f"{process_label}{len(results)} results available")
 
@@ -115,7 +118,7 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     logger.debug(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
     return slice_id
 
-async def main(inpkl: Path, outdir: Path, chunksize: int, maxneighbors: int, fids_str: str):
+async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str):
 
     logger.remove()
     logger.add(sys.stderr, level='INFO')
@@ -134,7 +137,7 @@ async def main(inpkl: Path, outdir: Path, chunksize: int, maxneighbors: int, fid
     logger.info("Processing slices sequentially")
 
     # Process slices sequentially
-    for slice in yield_np_slices(fids, chunksize):
+    for slice in yield_np_slices(fids, num_chunks):
         await compute_slice(outdir, maxneighbors, edges_df, slice)
 
     logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
@@ -150,8 +153,8 @@ if __name__ == '__main__':
                         help="output directory",
                         required=True,
                         type=lambda f: Path(f).expanduser().resolve())
-    parser.add_argument("-c", "--chunksize",
-                        help="number of fids in each chunk",
+    parser.add_argument("-c", "--num_chunks",
+                        help="number of chunks to execute in parallel",
                         required=True,
                         type=int)
     parser.add_argument("-m", "--maxneighbors",
@@ -172,7 +175,7 @@ if __name__ == '__main__':
         main(
             inpkl=args.inpkl,
             outdir=args.outdir,
-            chunksize=args.chunksize,
+            num_chunks=args.num_chunks,
             maxneighbors=args.maxneighbors,
             fids_str=args.fids,
         ))

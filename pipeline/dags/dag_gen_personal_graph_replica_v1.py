@@ -3,7 +3,6 @@ import base64
 import json
 
 from airflow import DAG
-from airflow.models import Variable
 from airflow.decorators import task
 from airflow.contrib.operators.ssh_operator import SSHOperator
 from airflow.contrib.hooks.ssh_hook import SSHHook
@@ -59,14 +58,17 @@ with DAG(
 
     @task(max_active_tis_per_dagrun=30)
     def process_channel_chunk(chunk: str):
-        print('context', get_current_context())
+        context = get_current_context()
+        map_index = context['ti'].map_index
+        run_id = context['run_id']
+
         process_task = SSHOperator(
-            task_id=f'eigen7_gen_personal_chunk_v1',  # Use a part of the chunk for a unique task_id
-            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk} -r {{ run_id }}",
+            task_id=f'eigen7_gen_personal_chunk_v1_{map_index}',  # Use the map index for a unique task_id
+            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk} -r {run_id} -m {map_index}",
             ssh_hook=ssh_hook,
             dag=dag,
         )
-        process_task.execute({})
+        process_task.execute(context)
 
     extract_fids_task = extract_fids(eigen7_fetch_fids.output)
 
