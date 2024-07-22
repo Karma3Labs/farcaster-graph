@@ -163,6 +163,14 @@ if __name__ == '__main__':
                         help="comma separated fids to process. eg) 1,2,3,420,69",
                         required=True,
                         type=str)
+    parser.add_argument("-t", "--task-id",
+                        help="task id like 'manual__2024-07-22T06:46:15.813325+00:00'",
+                        required=False,
+                        type=str)
+    parser.add_argument("-s", "--subtask-id",
+                        help="mapped index subtask id from Airflow. eg) '1' ",
+                        required=False,
+                        type=str)
     args = parser.parse_args()
     print(args)
 

@@ -16,7 +16,7 @@ hour_interval=48
 # fi
 
 
-while getopts i:o:s:w:v:l:t:f:r:m flag
+while getopts i:o:s:w:v:l:t:f:r:m: flag
 do
     case "${flag}" in
         i) IN_CSV=${OPTARG};;
@@ -56,7 +56,7 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
 fi
 
 echo "RUN_ID=${RUN_ID}"
-echo "MAP_INDEX=${MAP_INDEX}"
+echo "MAP_INDEX=${MAP_INDEX}" $MAP_INDEX
 
 JOBTIME=$(date +%Y%m%d%H%M%S)
 
@@ -89,7 +89,6 @@ elif [ "$TASK" = "graph_reload" ]; then
   echo "One graph instance reloaded"
   curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 600
   echo "Another graph instance reloaded"
-  echo "skipping graph reload"
 elif [ "$TASK" = "generate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
@@ -98,7 +97,7 @@ elif [ "$TASK" = "generate" ]; then
 
 
   # generate graph with 10 parallel worker chunks and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 10 -m 1000 -f $FIDS
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 10 -m 1000 -f $FIDS -t $RUN_ID -s $MAP_INDEX
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
