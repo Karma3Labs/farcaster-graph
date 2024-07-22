@@ -4,6 +4,7 @@ import math
 import json
 
 import polars as pl
+import pandas as pd
 import numpy as np
 from loguru import logger
 
@@ -34,6 +35,16 @@ def fetch_fids_edges_from_csv(incsv: Path) -> tuple[list[str], pl.DataFrame]:
   edges_df =  edges_df.sort(['i', 'j'])
 
   return fids, edges_df
+
+def fetch_edges_df_from_pkl(inpkl: Path) -> pl.DataFrame:
+  # Load the pickle file into a Pandas DataFrame
+  pandas_df = pd.read_pickle(inpkl)
+
+  # Convert the Pandas DataFrame to a Polars DataFrame
+  polars_df = pl.from_pandas(pandas_df)
+
+  return polars_df
+
 
 # def fetch_fids_from_csv(incsv: Path) -> tuple[np.ndarray, pl.DataFrame]:
 #   fids, _ = fetch_fids_edges_from_csv(incsv)

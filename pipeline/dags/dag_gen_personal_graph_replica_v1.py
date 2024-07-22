@@ -63,10 +63,10 @@ with DAG(
         do_xcom_push=True,
     )
 
-    @task(max_active_tis_per_dagrun=18)
+    @task(max_active_tis_per_dagrun=26)
     def process_channel_chunk(chunk: list):
         process_task = SSHOperator(
-            task_id=f'eigen7_gen_personal_chunk_v1_{hash(chunk)}',
+            task_id=f'eigen7_gen_personal_chunk_v1',
             command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk}",
             ssh_hook=ssh_hook,
             dag=dag,
@@ -78,4 +78,11 @@ with DAG(
     # Create dynamic tasks
     process_tasks = process_channel_chunk.expand(chunk=extract_fids_task)
 
-    eigen7_graph_reload >> eigen7_fetch_fids >> extract_fids_task >> process_tasks
+    eigen7_consolidate = SSHOperator(
+        task_id="eigen7_consolidate_v1",
+        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate",
+        ssh_hook=ssh_hook,
+        dag=dag,
+    )
+
+    eigen7_graph_reload >> eigen7_fetch_fids >> extract_fids_task >> process_tasks >> eigen7_consolidate

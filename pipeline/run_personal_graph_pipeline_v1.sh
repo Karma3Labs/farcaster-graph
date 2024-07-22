@@ -45,7 +45,7 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
   echo "  [s3_bkt] The S3 bucket to upload the graph file to."
-  echo "  [task] task to run. choose one: graph_reload, generate, fetch_fids"
+  echo "  [task] task to run. choose one: graph_reload, generate, fetch_fids, consolidate"
   echo "  [fids] comma separated fids to run '1,2,3,420,69'"
   echo ""
   exit
@@ -87,49 +87,51 @@ elif [ "$TASK" = "generate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
   # ls $TMP_GRAPH_OUT
-  echo "received FIDS: $FIDS"
+  # echo "received FIDS: $FIDS"
 
 
-  # # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  # python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
+  # generate graph with 10 processes, 100 child threads and 1000 neighbors
+  python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
 
-  # # if previous graph compute exists, confirm that the new output is larger in size
-  # if [ -d "$OUT_DIR/temp" ]; then
-  #   new_size=`du -m ${OUT_DIR}/temp-${JOBTIME} | cut -f1`
-  #   prev_size=`du -m ${OUT_DIR}/temp | cut -f1`
-  #   size_diff="$((new_size-prev_size))"
-  #   if [[ $size_diff -lt -100 ]]; then
-  #     echo 'New graph parts much smaller than previously generated graph parts. Abort script.'
-  #     exit 1
-  #   fi
-  # fi
+elif [ "$TASK" = "consolidate" ]; then
+  source $VENV/bin/activate
+  pip install -r requirements.txt
 
-  # # if graph creation succeeded, replace previous job output with current job output
-  # rm -rf ${OUT_DIR}/temp
-  # mv ${OUT_DIR}/temp-${JOBTIME} ${OUT_DIR}/temp
+  # if previous graph compute exists, confirm that the new output is larger in size
+  if [ -d "$OUT_DIR/temp" ]; then
+    new_size=`du -m ${OUT_DIR}/temp-${JOBTIME} | cut -f1`
+    prev_size=`du -m ${OUT_DIR}/temp | cut -f1`
+    size_diff="$((new_size-prev_size))"
+    if [[ $size_diff -lt -100 ]]; then
+      echo 'New graph parts much smaller than previously generated graph parts. Abort script.'
+      exit 1
+    fi
+  fi
 
-  # # consolidate approx 4000 small pqt files into 1 big parquet file
-  # python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet.new
+  # if graph creation succeeded, replace previous job output with current job output
+  rm -rf ${OUT_DIR}/temp
+  mv ${OUT_DIR}/temp-${JOBTIME} ${OUT_DIR}/temp
 
-  # # if previous graph file exists, confirm that the new file is larger in size
-  # if [ -n "$OUT_DIR/personal_graph.parquet" ]; then
-  #   new_size=`du -m $OUT_DIR/personal_graph.parquet.new | cut -f1`
-  #   prev_size=`du -m $OUT_DIR/personal_graph.parquet | cut -f1`
-  #   size_diff="$((new_size-prev_size))"
-  #   if [[ $size_diff -lt -100 ]]; then
-  #     echo 'New graph file much smaller than previously generated graph file. Abort script.'
-  #     exit 1
-  #   fi
-  # fi
-  # mv $OUT_DIR/personal_graph.parquet.new $OUT_DIR/personal_graph.parquet
+  # consolidate approx 4000 small pqt files into 1 big parquet file
+  python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet.new
 
-  # deactivate
+  # if previous graph file exists, confirm that the new file is larger in size
+  if [ -n "$OUT_DIR/personal_graph.parquet" ]; then
+    new_size=`du -m $OUT_DIR/personal_graph.parquet.new | cut -f1`
+    prev_size=`du -m $OUT_DIR/personal_graph.parquet | cut -f1`
+    size_diff="$((new_size-prev_size))"
+    if [[ $size_diff -lt -100 ]]; then
+      echo 'New graph file much smaller than previously generated graph file. Abort script.'
+      exit 1
+    fi
+  fi
+  mv $OUT_DIR/personal_graph.parquet.new $OUT_DIR/personal_graph.parquet
 
-  # aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
+  deactivate
 
-
+  aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
 else
-  echo "Invalid task specified. Use 'fetch_fids' or 'generate'."
+  echo "Invalid task specified."
   exit 1
 fi
 
