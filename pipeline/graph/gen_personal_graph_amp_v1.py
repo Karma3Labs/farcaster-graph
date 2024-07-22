@@ -246,7 +246,7 @@ if __name__ == '__main__':
   parser.add_argument("-f", "--fids",
                     help="comma separated fids to process. eg) 1,2,3,420,69",
                     required=True,
-                    type=int)
+                    type=str)
   args = parser.parse_args()
   print(args)
 
