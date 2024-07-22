@@ -87,15 +87,14 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     ttl_slice_len = slice[2]
     process_label = f"| SLICE#{slice_id}_{ttl_slice_len}"
     logger.debug(f"{process_label}| size of FIDs slice: {len(slice_arr)}")
-    logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+    logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice_arr)), replace=False)}")
 
-    tasks = []
+    results = []
     for i, fid in enumerate(slice_arr):
         this_process_label = f"{process_label}-{i}_{len(slice_arr)}| "
-        tasks.append(compute_task(fid, maxneighbors, localtrust_df, this_process_label))
+        knn_list = await compute_task(fid, maxneighbors, localtrust_df, this_process_label)
+        results.extend(knn_list)
 
-    results = await asyncio.gather(*tasks)
-    results = flatten_list_of_lists(results)
     logger.debug(f"{process_label}{len(results)} results available")
 
     pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
@@ -117,7 +116,6 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     return slice_id
 
 async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str):
-
     logger.remove()
     logger.add(sys.stderr, level='INFO')
 
@@ -133,10 +131,12 @@ async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fi
     logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
     logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
 
-    # Process slices sequentially
-    for slice in yield_np_slices(fids, num_chunks):
-        logger.info(f"Processing {slice[0]}/{slice[2]} slice with {len(slice[1])} thread workers")
-        await compute_slice(outdir, maxneighbors, edges_df, slice)
+    # Create tasks for each slice and run them concurrently
+    tasks = [
+        compute_slice(outdir, maxneighbors, edges_df, slice)
+        for slice in yield_np_slices(fids, num_chunks)
+    ]
+    await asyncio.gather(*tasks)
 
     logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
     logger.info("Done!")
