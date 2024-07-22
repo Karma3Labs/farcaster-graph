@@ -26,13 +26,13 @@ def extract_fids(raw_log: str) -> list[list[int]]:
     # print('lines_str', lines_str)
     lines = lines_str.split('\n')
     chunks_of_fids_str = lines[-2]
-    print(chunks_of_fids_str)
+    # print(chunks_of_fids_str)
 
     # returns JSON object as
     # a dictionary
     chunks_of_fids = json.loads(chunks_of_fids_str)
     # print('chunks_of_fids_json', chunks_of_fids)
-    print(f'len={len(chunks_of_fids)} each_len={len(chunks_of_fids[0])} fids[0]={chunks_of_fids[0]} fids[{len(chunks_of_fids[0]) -1}]={chunks_of_fids[:-1]} ')
+    print(f'len={len(chunks_of_fids)} each_len={len(chunks_of_fids[0])} ')
 
     chunks_of_str_fids = [",".join(map(str, chunk)) for chunk in chunks_of_fids]
 
