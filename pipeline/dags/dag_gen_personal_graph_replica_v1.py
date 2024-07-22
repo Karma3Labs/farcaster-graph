@@ -26,6 +26,7 @@ def extract_fids(raw_log: str) -> list[list[int]]:
     # print('lines_str', lines_str)
     lines = lines_str.split('\n')
     chunks_of_fids_str = lines[-2]
+    print(chunks_of_fids_str)
 
     # returns JSON object as
     # a dictionary

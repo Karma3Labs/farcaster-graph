@@ -33,8 +33,6 @@ def fetch_fids_edges_from_csv(incsv: Path) -> tuple[list[str], pl.DataFrame]:
   logger.info("sort edges_df")
   edges_df =  edges_df.sort(['i', 'j'])
 
-  # KEEP this print line so that Airflow dag can load the fids from the log file from airflow
-  print(fids)
   return fids, edges_df
 
 # def fetch_fids_from_csv(incsv: Path) -> tuple[np.ndarray, pl.DataFrame]:
@@ -63,6 +61,9 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
   out_edges_df_path = f"{outdir}/edges_df.pkl"
   edges_df.to_pandas().to_pickle(out_edges_df_path)
   logger.info(f'wrote to {out_edges_df_path}')
+
+  # KEEP this print line at the last so that Airflow dag can load the fids from the log file from airflow.
+  print(fids)
 
   return arr
 
