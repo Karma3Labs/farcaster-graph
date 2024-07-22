@@ -133,10 +133,10 @@ async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fi
 
     # Create tasks for each slice and run them concurrently
     tasks = [
-        compute_slice(outdir, maxneighbors, edges_df, slice)
+        asyncio.create_task(compute_slice(outdir, maxneighbors, edges_df, slice))
         for slice in yield_np_slices(fids, num_chunks)
     ]
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
     logger.info("Done!")
