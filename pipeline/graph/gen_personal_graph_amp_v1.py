@@ -124,7 +124,7 @@ async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fi
     start_time = time.perf_counter()
 
     fids = np.array(list(map(int, fids_str.split(','))))
-    logger.info(f"Loaded {fids}")
+    logger.debug(f"Loaded {fids}")
 
     logger.info(f"Loading pkl {inpkl} into Polars DataFrame")
     edges_df = fetch_edges_df_from_pkl(inpkl)
@@ -132,10 +132,10 @@ async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fi
 
     logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
     logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
-    logger.info("Processing slices sequentially")
 
     # Process slices sequentially
     for slice in yield_np_slices(fids, num_chunks):
+        logger.info(f"Processing {slice[0]}/{slice[2]} slice with {len(slice[1])} thread workers")
         await compute_slice(outdir, maxneighbors, edges_df, slice)
 
     logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
