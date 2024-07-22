@@ -21,7 +21,13 @@ default_args = {
 @task
 def extract_fids(chunks_of_fids_str: str) -> list[list[int]]:
     import json
-    chunks_of_fids = json.loads(chunks_of_fids_str)
+    # Opening JSON file
+    f = open('~/wip_files/temp_graph/chunks_of_fids.json')
+
+    # returns JSON object as
+    # a dictionary
+    chunks_of_fids = json.load(f)
+    print('chunks_of_fids_json', chunks_of_fids)
     print(f'len={chunks_of_fids} each_len={len(chunks_of_fids[0])} fids[0]={chunks_of_fids[0]} fids[{len(chunks_of_fids[0]) -1}]={chunks_of_fids[:-1]} ')
 
     return chunks_of_fids
@@ -31,7 +37,7 @@ with DAG(
     default_args=default_args,
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='0 * * * *',
+    schedule_interval=None,
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60, cmd_timeout=None)

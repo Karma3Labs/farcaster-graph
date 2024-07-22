@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 import math
+import json
 
 import polars as pl
 import numpy as np
@@ -42,8 +43,8 @@ def fetch_fids_edges_from_csv(incsv: Path) -> tuple[list[str], pl.DataFrame]:
 #   print(','.join(map(str, fids)))
 #   return fids
 
-def fetch_and_slice_fids(incsv: Path, chunksize: int) -> list[list[int]]:
-  fids, _ = fetch_fids_edges_from_csv(incsv)
+def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list[int]]:
+  fids, edges_df = fetch_fids_edges_from_csv(incsv)
 
   num_slices = math.ceil( len(fids) / chunksize )
   logger.info(f"Slicing fids list into {num_slices} slices")
@@ -53,13 +54,20 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int) -> list[list[int]]:
   for idx, arr in enumerate(slices):
     # we need batch id for logging and debugging
     # yield a tuple because pool.map takes only 1 argument
-    logger.info(f"Yield split# {idx}")
+    logger.info(f"Yield split# {idx}: {arr}")
     res.append(arr.tolist())
     # yield (idx, arr)
 
-  # print fids to pass in as a XCom push variable for Airflow job so that the
-  # next task can take in fids as a parameter.
-  print(res)
+  out_fids_path = f"{outdir}/chunks_of_fids.json"
+  with open(out_fids_path, "w+") as f:
+      json.dump(res, f)
+
+      logger.info(f'wrote to {out_fids_path}')
+
+  out_edges_df_path = f"{outdir}/edges_df.pkl"
+  edges_df.to_pickle(out_edges_df_path)
+  logger.info(f'wrote to {out_edges_df_path}')
+
   return arr
 
 if __name__ == '__main__':
@@ -73,8 +81,13 @@ if __name__ == '__main__':
                     help="number of fids in each chunk",
                     required=True,
                     type=int)
+  parser.add_argument("-o", "--out",
+                    help="output to save chunks and pkl file",
+                    required=True,
+                    type=lambda f: Path(f).expanduser().resolve())
+
 
   args = parser.parse_args()
   print(args)
 
-  fetch_and_slice_fids(incsv=args.incsv, chunksize=args.chunksize)
+  fetch_and_slice_fids(incsv=args.incsv, chunksize=args.chunksize, outdir=args.out)

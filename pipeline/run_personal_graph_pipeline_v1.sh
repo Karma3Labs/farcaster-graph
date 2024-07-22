@@ -62,12 +62,17 @@ set -o pipefail
 
 mkdir -p ${OUT_DIR}/temp-${JOBTIME}
 
+
+TMP_GRAPH_OUT=${OUT_DIR}/temp_graph
+mkdir -p $TMP_GRAPH_OUT
+# rm ${OUT_DIR}/temp-graph/*
+
 echo "Executing task: $TASK"
 if [ "$TASK" = "fetch_fids" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
-  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 100
+  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 100 -o $TMP_GRAPH_OUT
 elif [ "$TASK" = "graph_reload" ]; then
   # TODO - Fix this ugly code
   # Reload twice because we have 2 instances of igraph server round robin load
@@ -80,7 +85,8 @@ elif [ "$TASK" = "graph_reload" ]; then
 elif [ "$TASK" = "generate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
-
+  ls $TMP_GRAPH_OUT
+  FIDS=(cat $TMP_GRAPH_OUT/chunks_of_fids.json)
   echo "received FIDS: $FIDS"
 
 
