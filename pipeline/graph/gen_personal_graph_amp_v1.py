@@ -33,7 +33,7 @@ def yield_np_slices(fids: np.ndarray, chunksize: int):
     for idx, arr in enumerate(slices):
         # we need batch id for logging and debugging
         # logger.info(f"Yield split# {idx}")
-        yield (idx, arr)
+        yield (idx, arr, len(slices))
 
 async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame, process_label: str) -> list:
     try:
@@ -81,13 +81,15 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     subprocess_start = time.perf_counter()
     slice_id = slice[0]
     slice_arr = slice[1]
-    process_label = f"| SLICE#{slice_id}| "
-    logger.debug(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-    logger.debug(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
+    ttl_slice_len = slice[2]
+    process_label = f"| SLICE#{slice_id}_{ttl_slice_len}"
+    logger.debug(f"{process_label}| size of FIDs slice: {len(slice_arr)}")
+    logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
 
     results = []
-    for fid in slice_arr:
-        result = await compute_task(fid, maxneighbors, localtrust_df, process_label)
+    for i, fid in enumerate(slice_arr):
+        this_process_label = f"{process_label}-{i}_{len(slice_arr)}| "
+        result = await compute_task(fid, maxneighbors, localtrust_df, this_process_label)
         results.append(result)
 
     results = flatten_list_of_lists(results)
