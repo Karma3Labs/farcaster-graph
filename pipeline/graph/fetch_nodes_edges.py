@@ -63,7 +63,7 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
   logger.info(f'wrote to {out_edges_df_path}')
 
   # KEEP this print line at the last so that Airflow dag can load the fids from the log file from airflow.
-  print(fids)
+  print(res)
 
   return arr
 
