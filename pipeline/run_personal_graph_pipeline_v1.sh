@@ -63,7 +63,7 @@ set -o pipefail
 
 mkdir -p ${OUT_DIR}/${RUN_ID}
 
-TMP_GRAPH_OUT=${OUT_DIR}/${RUN_ID}/temp_graph/
+TMP_GRAPH_OUT=${OUT_DIR}/${RUN_ID}_temp_graph/
 mkdir -p $TMP_GRAPH_OUT
 TMP_GRAPH_PKL="${TMP_GRAPH_OUT}/edges_df.pkl"
 # rm ${OUT_DIR}/temp-graph/*
@@ -125,6 +125,9 @@ elif [ "$TASK" = "consolidate" ]; then
     fi
   fi
   mv $OUT_DIR/personal_graph.parquet.new $OUT_DIR/personal_graph.parquet
+
+  # remove parsed pkl file from the job
+  rm -rf $TMP_GRAPH_OUT
 
   deactivate
 
