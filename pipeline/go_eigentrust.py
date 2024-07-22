@@ -32,7 +32,7 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     localtrust = pseudo_df.to_dict(orient="records")
     max_lt_id = len(orig_id)
 
-    logger.info(f"max_lt_id: {max_lt_id}, localtrust size: {len(localtrust)},"
+    logger.debug(f"max_lt_id: {max_lt_id}, localtrust size: {len(localtrust)},"
                 f" max_pt_id: {max_pt_id}, pretrust size: {len(pretrust)}")
     logger.trace(f"localtrust: {localtrust}")
     logger.trace(f"pretrust: {pretrust}")
