@@ -30,7 +30,7 @@ do
     esac
 done
 
-if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ] || [ -z "$S3_BKT" ] || [ -z "$TASK" ] || [ -z "$RUN_ID" ]; then
+if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ] || [ -z "$S3_BKT" ] || [ -z "$TASK" ]; then
   echo "Usage:   $0 -i [in_csv] -w [work_dir] -v [venv] -o [out_dir] -s [s3_bkt] "
   echo ""
   echo "Example: $0 \ "
@@ -53,6 +53,7 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
   exit
 fi
 
+echo "RUN_ID=${RUN_ID}"
 
 JOBTIME=$(date +%Y%m%d%H%M%S)
 
@@ -62,7 +63,7 @@ set -x
 set -e
 set -o pipefail
 
-mkdir -p ${OUT_DIR}/${RUN_ID}
+mkdir -p ${OUT_DIR}/temp_inprogress
 
 
 TMP_GRAPH_OUT=${OUT_DIR}/temp_graph/
@@ -94,7 +95,7 @@ elif [ "$TASK" = "generate" ]; then
 
 
   # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/${RUN_ID} -c 20 -m 1000 -f $FIDS
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp_inprogress -c 20 -m 1000 -f $FIDS
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
@@ -102,7 +103,7 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # if previous graph compute exists, confirm that the new output is larger in size
   if [ -d "$OUT_DIR/temp" ]; then
-    new_size=`du -m ${OUT_DIR}/${RUN_ID} | cut -f1`
+    new_size=`du -m ${OUT_DIR}/temp_inprogress | cut -f1`
     prev_size=`du -m ${OUT_DIR}/temp | cut -f1`
     size_diff="$((new_size-prev_size))"
     if [[ $size_diff -lt -100 ]]; then
@@ -113,7 +114,7 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # if graph creation succeeded, replace previous job output with current job output
   rm -rf ${OUT_DIR}/temp
-  mv ${OUT_DIR}/${RUN_ID} ${OUT_DIR}/temp
+  mv ${OUT_DIR}/temp_inprogress ${OUT_DIR}/temp
 
   # consolidate approx 4000 small pqt files into 1 big parquet file
   python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet.new
