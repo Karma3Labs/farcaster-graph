@@ -58,12 +58,6 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
     res.append(arr.tolist())
     # yield (idx, arr)
 
-  out_fids_path = f"{outdir}/chunks_of_fids.json"
-  with open(out_fids_path, "w+") as f:
-      json.dump(res, f)
-
-      logger.info(f'wrote to {out_fids_path}')
-
   out_edges_df_path = f"{outdir}/edges_df.pkl"
   edges_df.to_pickle(out_edges_df_path)
   logger.info(f'wrote to {out_edges_df_path}')

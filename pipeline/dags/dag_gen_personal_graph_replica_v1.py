@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import base64
+import json
 
 from airflow import DAG
 from airflow.models import Variable
@@ -15,20 +17,21 @@ default_args = {
     'owner': 'coder2j',
     'retries': 5,
     'retry_delay': timedelta(minutes=2),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    # 'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
 @task
-def extract_fids(chunks_of_fids_str: str) -> list[list[int]]:
-    import json
-    # Opening JSON file
-    f = open('~/wip_files/temp_graph/chunks_of_fids.json')
+def extract_fids(raw_log: str) -> list[list[int]]:
+    lines_str = base64.b64decode(raw_log).decode("utf-8")
+    # print('lines_str', lines_str)
+    lines = lines_str.split('\n')
+    chunks_of_fids_str = lines[-2]
 
     # returns JSON object as
     # a dictionary
-    chunks_of_fids = json.load(f)
-    print('chunks_of_fids_json', chunks_of_fids)
-    print(f'len={chunks_of_fids} each_len={len(chunks_of_fids[0])} fids[0]={chunks_of_fids[0]} fids[{len(chunks_of_fids[0]) -1}]={chunks_of_fids[:-1]} ')
+    chunks_of_fids = json.loads(chunks_of_fids_str)
+    # print('chunks_of_fids_json', chunks_of_fids)
+    print(f'len={len(chunks_of_fids)} each_len={len(chunks_of_fids[0])} fids[0]={chunks_of_fids[0]} fids[{len(chunks_of_fids[0]) -1}]={chunks_of_fids[:-1]} ')
 
     return chunks_of_fids
 

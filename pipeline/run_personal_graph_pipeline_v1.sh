@@ -72,7 +72,7 @@ if [ "$TASK" = "fetch_fids" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
-  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 100 -o $TMP_GRAPH_OUT
+  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 1000 -o $TMP_GRAPH_OUT
 elif [ "$TASK" = "graph_reload" ]; then
   # TODO - Fix this ugly code
   # Reload twice because we have 2 instances of igraph server round robin load

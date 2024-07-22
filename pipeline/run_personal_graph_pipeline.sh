@@ -6,7 +6,7 @@ hourOfYear="$((dayOfYear * 24 + hourOfDay))"
 echo $dayOfYear $hourOfDay $hourOfYear
 hour_interval=48
 
-# TODO use the mtime of the existing parquet file and 
+# TODO use the mtime of the existing parquet file and
 # ..if current time - mtime > 1 hour, start compute
 if [ `expr $hourOfYear % $hour_interval` -eq 0 ]; then
    echo "This is hour $hour_interval. Continuing with script."
@@ -64,7 +64,7 @@ set -o pipefail
 mkdir -p ${OUT_DIR}/temp-${JOBTIME}
 
 # TODO - Fix this ugly code
-# Reload twice because we have 2 instances of igraph server round robin load 
+# Reload twice because we have 2 instances of igraph server round robin load
 # Fail if any response other than 200
 # Reload graph takes a while so set timeout to 5 mins
 curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
@@ -89,7 +89,7 @@ if [ -d "$OUT_DIR/temp" ]; then
   fi
 fi
 
-# if graph creation succeeded, replace previous job output with current job output 
+# if graph creation succeeded, replace previous job output with current job output
 rm -rf ${OUT_DIR}/temp
 mv ${OUT_DIR}/temp-${JOBTIME} ${OUT_DIR}/temp
 
