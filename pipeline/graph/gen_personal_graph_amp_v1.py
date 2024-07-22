@@ -77,60 +77,43 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
         logger.exception(f"{process_label}")
     return []
 
-async def compute_tasks_concurrently(maxneighbors: int, localtrust_df: pl.DataFrame, slice: np.ndarray, process_label: str) -> list:
-    try:
-        tasks = []
-        for i, fid in enumerate(slice):
-            tasks.append(asyncio.create_task(
-                compute_task(
-                    fid=fid,
-                    maxneighbors=maxneighbors,
-                    localtrust_df=localtrust_df,
-                    process_label=f'{process_label}-{i}_{len(slice)}'
-                )))
-        logger.info(f"{process_label}{len(tasks)} tasks created")
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return results
-    except:
-        logger.exception(f"{process_label}")
-    return []
+async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: tuple[int, np.ndarray]):
+    subprocess_start = time.perf_counter()
+    slice_id = slice[0]
+    slice_arr = slice[1]
+    process_label = f"| SLICE#{slice_id}| "
+    logger.debug(f"{process_label}size of FIDs slice: {len(slice_arr)}")
+    logger.debug(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
 
-async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: tuple[int, np.ndarray], semaphore: asyncio.Semaphore):
-    async with semaphore:
-        subprocess_start = time.perf_counter()
-        slice_id = slice[0]
-        slice_arr = slice[1]
-        process_label = f"| SLICE#{slice_id}| "
-        logger.debug(f"{process_label}size of FIDs slice: {len(slice_arr)}")
-        logger.debug(f"{process_label}sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice)), replace=False)}")
-        results = [result for result in await compute_tasks_concurrently(
-            maxneighbors,
-            localtrust_df,
-            slice_arr,
-            process_label)]
+    results = []
+    for fid in slice_arr:
+        result = await compute_task(fid, maxneighbors, localtrust_df, process_label)
+        results.append(result)
 
-        results = flatten_list_of_lists(results)
-        logger.debug(f"{process_label}{len(results)} results available")
+    results = flatten_list_of_lists(results)
+    logger.debug(f"{process_label}{len(results)} results available")
 
-        pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
+    pl_slice = pl.LazyFrame(results, schema={'fid': pl.UInt32, 'degree': pl.UInt8, 'scores': pl.List})
 
-        logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
+    logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
 
-        now = int(time.time())
-        outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
-        logger.info(f"{process_label}writing output to {outfile}")
-        start_time = time.perf_counter()
+    now = int(time.time())
+    outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
+    logger.info(f"{process_label}writing output to {outfile}")
+    start_time = time.perf_counter()
 
-        pl_slice.sink_parquet(path=outfile, compression='lz4')
-        del results
+    pl_slice.sink_parquet(path=outfile, compression='lz4')
+    del results
 
-        utils.log_memusage(logger, prefix=process_label)
+    utils.log_memusage(logger, prefix=process_label + 'before gc ')
+    gc.collect()
+    utils.log_memusage(logger, prefix=process_label + 'after gc ')
 
-        logger.debug(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
-        logger.debug(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
-        return slice_id
+    logger.debug(f"{process_label}writing to {outfile} took {time.perf_counter() - start_time} secs")
+    logger.debug(f"{process_label} slice computation took {time.perf_counter() - subprocess_start} secs")
+    return slice_id
 
-async def main(inpkl: Path, outdir: Path, procs: int, chunksize: int, maxneighbors: int, fids_str: str):
+async def main(inpkl: Path, outdir: Path, chunksize: int, maxneighbors: int, fids_str: str):
     start_time = time.perf_counter()
 
     fids = np.array(list(map(int, fids_str.split(','))))
@@ -142,16 +125,11 @@ async def main(inpkl: Path, outdir: Path, procs: int, chunksize: int, maxneighbo
 
     logger.info(f"Physical Cores={psutil.cpu_count(logical=False)}")
     logger.info(f"Logical Cores={psutil.cpu_count(logical=True)}")
-    logger.info(f"Running {procs} slices concurrently")
+    logger.info("Processing slices sequentially")
 
-    semaphore = asyncio.Semaphore(procs)
-
-    # Run slices concurrently with the specified limit
-    tasks = []
+    # Process slices sequentially
     for slice in yield_np_slices(fids, chunksize):
-        tasks.append(compute_slice(outdir, maxneighbors, edges_df, slice, semaphore))
-
-    await asyncio.gather(*tasks)
+        await compute_slice(outdir, maxneighbors, edges_df, slice)
 
     logger.info(f"Total run time: {time.perf_counter() - start_time:.2f} second(s)")
     logger.info("Done!")
@@ -166,10 +144,6 @@ if __name__ == '__main__':
                         help="output directory",
                         required=True,
                         type=lambda f: Path(f).expanduser().resolve())
-    parser.add_argument("-p", "--procs",
-                        help="number of processes to kick off",
-                        required=True,
-                        type=int)
     parser.add_argument("-c", "--chunksize",
                         help="number of fids in each chunk",
                         required=True,
@@ -192,7 +166,6 @@ if __name__ == '__main__':
         main(
             inpkl=args.inpkl,
             outdir=args.outdir,
-            procs=args.procs,
             chunksize=args.chunksize,
             maxneighbors=args.maxneighbors,
             fids_str=args.fids,

@@ -63,7 +63,7 @@ with DAG(
         do_xcom_push=True,
     )
 
-    @task(max_active_tis_per_dagrun=26)
+    @task(max_active_tis_per_dagrun=28)
     def process_channel_chunk(chunk: list):
         process_task = SSHOperator(
             task_id=f'eigen7_gen_personal_chunk_v1',
