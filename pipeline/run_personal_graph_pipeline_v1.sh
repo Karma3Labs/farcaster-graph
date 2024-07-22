@@ -55,11 +55,6 @@ if [ -z "$IN_CSV" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$OUT_DIR" ]
   exit
 fi
 
-echo "RUN_ID=${RUN_ID}"
-echo "MAP_INDEX=${MAP_INDEX}" $MAP_INDEX
-
-JOBTIME=$(date +%Y%m%d%H%M%S)
-
 source $WORK_DIR/.env
 
 set -x
