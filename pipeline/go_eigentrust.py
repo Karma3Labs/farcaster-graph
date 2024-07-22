@@ -84,7 +84,7 @@ def go_eigentrust(
         # "flatTail": settings.EIGENTRUST_FLAT_TAIL
     }
 
-    logger.info(f"calling go_eigentrust")
+    logger.debug(f"calling go_eigentrust")
     response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                              json=req,
                              headers={
@@ -97,5 +97,5 @@ def go_eigentrust(
         logger.error(f"Server error: {response.status_code}:{response.reason}")
         raise Exception(f"Server error: {response.status_code}:{response.reason}")
     trustscores = response.json()['entries']
-    logger.info(f"go_eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
+    logger.debug(f"go_eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
     return trustscores
