@@ -74,14 +74,15 @@ if [ "$TASK" = "fetch_fids" ]; then
 
   python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 1000 -o $TMP_GRAPH_OUT
 elif [ "$TASK" = "graph_reload" ]; then
-  # TODO - Fix this ugly code
-  # Reload twice because we have 2 instances of igraph server round robin load
-  # Fail if any response other than 200
-  # Reload graph takes a while so set timeout to 5 mins
-  curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
-  echo "One graph instance reloaded"
-  curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
-  echo "Another graph instance reloaded"
+  # # TODO - Fix this ugly code
+  # # Reload twice because we have 2 instances of igraph server round robin load
+  # # Fail if any response other than 200
+  # # Reload graph takes a while so set timeout to 5 mins
+  # curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
+  # echo "One graph instance reloaded"
+  # curl -X 'GET' $PERSONAL_IGRAPH_URL/_reload --fail --max-time 300
+  # echo "Another graph instance reloaded"
+  echo "skipping graph reload"
 elif [ "$TASK" = "generate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
