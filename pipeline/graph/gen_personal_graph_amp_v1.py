@@ -9,6 +9,7 @@ import os
 import sys
 import asyncio
 import gc
+import time
 
 # local dependencies
 import utils
@@ -135,7 +136,8 @@ def compute_subprocess(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFr
     logger.info(f"{process_label}pl_slice: {pl_slice.describe()}")
     # logger.info(f"{process_label}pl_slice sample: {pl_slice.sample(n=min(5, len(pl_slice)))}")
 
-    outfile = os.path.join(outdir, f"{slice_id}.pqt")
+    now = int(time.time())
+    outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
     logger.info(f"{process_label}writing output to {outfile}")
     start_time = time.perf_counter()
 
