@@ -63,8 +63,9 @@ set -o pipefail
 mkdir -p ${OUT_DIR}/temp-${JOBTIME}
 
 
-TMP_GRAPH_OUT=${OUT_DIR}/temp_graph
+TMP_GRAPH_OUT=${OUT_DIR}/temp_graph/
 mkdir -p $TMP_GRAPH_OUT
+TMP_GRAPH_PKL="${TMP_GRAPH_OUT}/edges_df.pkl"
 # rm ${OUT_DIR}/temp-graph/*
 
 echo "Executing task: $TASK"
@@ -72,7 +73,7 @@ if [ "$TASK" = "fetch_fids" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
-  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 600 -o $TMP_GRAPH_OUT
+  python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 600 -o $TMP_GRAPH_PKL
 elif [ "$TASK" = "graph_reload" ]; then
   # # TODO - Fix this ugly code
   # # Reload twice because we have 2 instances of igraph server round robin load
@@ -91,7 +92,7 @@ elif [ "$TASK" = "generate" ]; then
 
 
   # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 10 -m 1000 -f $FIDS
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 10 -m 1000 -f $FIDS
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate

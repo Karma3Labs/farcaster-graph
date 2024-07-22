@@ -54,7 +54,7 @@ def fetch_edges_df_from_pkl(inpkl: Path) -> pl.DataFrame:
 #   print(','.join(map(str, fids)))
 #   return fids
 
-def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list[int]]:
+def fetch_and_slice_fids(incsv: Path, chunksize: int, outpath: Path) -> list[list[int]]:
   fids, edges_df = fetch_fids_edges_from_csv(incsv)
 
   num_slices = math.ceil( len(fids) / chunksize )
@@ -69,9 +69,8 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outdir: Path) -> list[list
     res.append(arr.tolist())
     # yield (idx, arr)
 
-  out_edges_df_path = f"{outdir}/edges_df.pkl"
-  edges_df.to_pandas().to_pickle(out_edges_df_path)
-  logger.info(f'wrote to {out_edges_df_path}')
+  edges_df.to_pandas().to_pickle(outpath)
+  logger.info(f'wrote to {outpath}')
 
   # KEEP this print line at the last so that Airflow dag can load the fids from the log file from airflow.
   print(res)
@@ -90,7 +89,7 @@ if __name__ == '__main__':
                     required=True,
                     type=int)
   parser.add_argument("-o", "--out",
-                    help="output to save chunks and pkl file",
+                    help="output path to save chunks and pkl file",
                     required=True,
                     type=lambda f: Path(f).expanduser().resolve())
 
@@ -98,4 +97,4 @@ if __name__ == '__main__':
   args = parser.parse_args()
   print(args)
 
-  fetch_and_slice_fids(incsv=args.incsv, chunksize=args.chunksize, outdir=args.out)
+  fetch_and_slice_fids(incsv=args.incsv, chunksize=args.chunksize, outpath=args.out)
