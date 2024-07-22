@@ -91,7 +91,7 @@ elif [ "$TASK" = "generate" ]; then
 
 
   # generate graph with 10 processes, 100 child threads and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 100 -m 1000
+  python3 -m graph.gen_personal_graph_amp_v1 -i $IN_CSV -o ${OUT_DIR}/temp-${JOBTIME} -p 28 -c 10 -m 1000 -f $FIDS
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
