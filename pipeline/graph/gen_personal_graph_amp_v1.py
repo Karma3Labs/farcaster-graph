@@ -80,13 +80,13 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
 async def compute_tasks_concurrently(maxneighbors: int, localtrust_df: pl.DataFrame, slice: np.ndarray, process_label: str) -> list:
     try:
         tasks = []
-        for fid in slice:
+        for i, fid in enumerate(slice):
             tasks.append(asyncio.create_task(
                 compute_task(
                     fid=fid,
                     maxneighbors=maxneighbors,
                     localtrust_df=localtrust_df,
-                    process_label=process_label
+                    process_label=f'{process_label}-{i}_{len(slice)}'
                 )))
         logger.info(f"{process_label}{len(tasks)} tasks created")
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -184,6 +184,9 @@ if __name__ == '__main__':
                         type=str)
     args = parser.parse_args()
     print(args)
+
+    logger.remove()
+    logger.add(sys.stderr, level=settings.LOG_LEVEL)
 
     asyncio.run(
         main(

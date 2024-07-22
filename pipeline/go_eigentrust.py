@@ -46,11 +46,11 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     logger.trace(f"scores: {scores}")
 
     # Debug log to check the range of indices in scores
-    max_index_in_scores = max(score['i'] for score in scores)
-    logger.info(f"Max index in scores: {max_index_in_scores}, Size of orig_id: {len(orig_id)}")
+    # max_index_in_scores = max(score['i'] for score in scores)
+    # logger.info(f"Max index in scores: {max_index_in_scores}, Size of orig_id: {len(orig_id)}")
 
     i_scores = [{'i': int(orig_id[score['i']]), 'v': score['v']} for score in scores if score['i'] < len(orig_id)]
-    logger.info(f"get_scores took {time.perf_counter() - start_time} secs for {len(i_scores)} scores")
+    logger.debug(f"get_scores took {time.perf_counter() - start_time} secs for {len(i_scores)} scores")
     return i_scores
 
 def go_eigentrust(
