@@ -50,14 +50,14 @@ with DAG(
 
     eigen7_graph_reload = SSHOperator(
         task_id="eigen7_graph_reload_v1",
-        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t graph_reload",
+        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t graph_reload " + " -r {{run_id}}",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen7_fetch_fids = SSHOperator(
         task_id="eigen7_fetch_fids_v1",
-        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t fetch_fids",
+        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t fetch_fids " + " -r {{run_id}}",
         ssh_hook=ssh_hook,
         dag=dag,
         do_xcom_push=True,
@@ -67,7 +67,7 @@ with DAG(
     def process_channel_chunk(chunk: list):
         process_task = SSHOperator(
             task_id=f'eigen7_gen_personal_chunk_v1',
-            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk}",
+            command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk} " + " -r {{run_id}}",
             ssh_hook=ssh_hook,
             dag=dag,
         )
@@ -80,7 +80,7 @@ with DAG(
 
     eigen7_consolidate = SSHOperator(
         task_id="eigen7_consolidate_v1",
-        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate",
+        command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate " + " -r {{run_id}}",
         ssh_hook=ssh_hook,
         dag=dag,
     )
