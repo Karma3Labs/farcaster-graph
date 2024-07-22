@@ -160,7 +160,7 @@ if __name__ == '__main__':
     print(args)
 
     logger.remove()
-    logger.add(sys.stderr, level=settings.LOG_LEVEL)
+    logger.add(sys.stderr, level='INFO')
 
     asyncio.run(
         main(
