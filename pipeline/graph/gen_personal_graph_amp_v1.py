@@ -59,8 +59,8 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
                 process_label
             )
             logger.debug(f"{process_label}k-{degree} took {time.perf_counter() - start_time} secs"
-                        f" for {len(k_scores)} neighbors"
-                        f" for FID {fid}")
+                         f" for {len(k_scores)} neighbors"
+                         f" for FID {fid}")
             logger.trace(f"{process_label}FID {fid}: {degree}-degree neighbors scores: {k_scores}")
             if len(k_scores) == 0:
                 break
@@ -80,7 +80,7 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
         logger.exception(f"{process_label}")
     return []
 
-async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: tuple[int, np.ndarray], subtask_id: int):
+async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: Tuple[int, np.ndarray], subtask_id: int):
     subprocess_start = time.perf_counter()
     slice_id = slice[0]
     slice_arr = slice[1]
@@ -89,11 +89,13 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     logger.debug(f"{process_label}| size of FIDs slice: {len(slice_arr)}")
     logger.debug(f"{process_label}| sample of FIDs slice: {np.random.choice(slice_arr, size=min(5, len(slice_arr)), replace=False)}")
 
-    results = []
+    tasks = []
     for i, fid in enumerate(slice_arr):
         this_process_label = f"{process_label}-{i}_{len(slice_arr)}| "
-        knn_list = await compute_task(fid, maxneighbors, localtrust_df, this_process_label)
-        results.extend(knn_list)
+        tasks.append(asyncio.create_task(compute_task(fid, maxneighbors, localtrust_df, this_process_label)))
+
+    all_knn_lists = await asyncio.gather(*tasks)
+    results = flatten_list_of_lists(all_knn_lists)
 
     logger.debug(f"{process_label}{len(results)} results available")
 
@@ -101,8 +103,7 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
 
     logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
 
-    now = int(time.time())
-    outfile = os.path.join(outdir, f"{slice_id}_{now}.pqt")
+    outfile = os.path.join(outdir, f"{subtask_id}-{slice_id}.pqt")
     logger.info(f"{process_label}| writing output to {outfile}")
     start_time = time.perf_counter()
 
@@ -112,7 +113,7 @@ async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataF
     utils.log_memusage(logger, prefix=process_label)
 
     logger.debug(f"{process_label}| writing to {outfile} took {time.perf_counter() - start_time} secs")
-    logger.info(f"{process_label}|  slice computation took {time.perf_counter() - subprocess_start} secs")
+    logger.info(f"{process_label}| slice computation took {time.perf_counter() - subprocess_start} secs")
     return slice_id
 
 async def main(inpkl: Path, outdir: Path, num_chunks: int, maxneighbors: int, fids_str: str, subtask_id: str):
