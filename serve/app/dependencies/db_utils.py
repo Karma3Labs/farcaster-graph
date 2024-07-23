@@ -315,8 +315,6 @@ async def get_top_channel_profiles(
             AND 
             compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ORDER BY rank ASC
-        OFFSET $2
-        LIMIT $3
         ),
         mapped_records as (
         SELECT top_records.*,addresses.address 
@@ -332,6 +330,8 @@ async def get_top_channel_profiles(
         FROM mapped_records
         GROUP BY fid
         ORDER by rank
+        OFFSET $2
+        LIMIT $3
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
