@@ -1,13 +1,13 @@
 services:
   igraph:
-    build: 
+    build:
       dockerfile: igraph.Dockerfile
     deploy:
       mode: replicated
       replicas: 2
     image: igraph:latest
     volumes:
-      - /home/ubuntu/serve_files:/tmp
+      - /home/ubuntu/serve_files:/home/ubuntu/serve_files:z
     expose:
       - '8000'
     restart: "on-failure"

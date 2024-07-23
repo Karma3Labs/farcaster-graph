@@ -36,10 +36,11 @@
 #
 # Feel free to modify this file to suit your needs.
 ---
-version: '3'
+# version: '3'
 x-airflow-common: &airflow-common
   build: .
   image: ${AIRFLOW_IMAGE_NAME:-extending_airflow:latest}
+  container_name: airflow-common
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -48,7 +49,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 10
     AIRFLOW__CORE__PARALLELISM: 64
-    AIRFLOW__CORE__DAG_CONCURRENCY: 24
+    AIRFLOW__CORE__DAG_CONCURRENCY: 30
   volumes:
     - ./dags:/opt/airflow/dags:z
     - ./logs:/opt/airflow/logs:z
@@ -62,6 +63,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
+    container_name: airflow-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -85,6 +87,7 @@ services:
   #   TCPKeepAlive yes
   postgres-tunnel:
     image: cagataygurturk/docker-ssh-tunnel
+    container_name: airflow-tunnel
     volumes:
       - $HOME/.ssh:/root/ssh:ro
     environment:
@@ -97,6 +100,7 @@ services:
   airflow-webserver:
     <<: *airflow-common
     command: webserver
+    container_name: airflow-webserver
     ports:
       - 8080:8080
     healthcheck:
@@ -115,11 +119,13 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    container_name: airflow-scheduler
     restart: always
 
   airflow-init:
     <<: *airflow-common
     command: version
+    container_name: airflow-init
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_UPGRADE: 'true'
