@@ -78,6 +78,7 @@ async def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame,
                      f"degree:{degree}"
                      f"limit:{limit}")
         logger.exception(f"{process_label}")
+        raise
     return []
 
 async def compute_slice(outdir: Path, maxneighbors: int, localtrust_df: pl.DataFrame, slice: Tuple[int, np.ndarray], subtask_id: int):
