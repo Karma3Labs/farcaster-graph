@@ -75,6 +75,11 @@ def create_dag():
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_channel_rank_to_dune_v3"
     )
 
-    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task
+    push_to_s3_task = BashOperator(
+        task_id='backup_channel_rank_s3',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh channel_rank"
+    )
+
+    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
 
 dag = create_dag()
