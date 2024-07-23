@@ -13,6 +13,7 @@ router = APIRouter(tags=["Global OpenRank Scores"])
 async def get_top_following_profiles(
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -24,13 +25,15 @@ async def get_top_following_profiles(
   ranks = await db_utils.get_top_profiles(strategy_id=GraphType.following.value, 
                                           offset=offset, 
                                           limit=limit, 
-                                          pool=pool)
+                                          pool=pool,
+                                          lite=lite)
   return {"result": ranks}
 
 @router.get("/engagement/rankings")
 async def get_top_engagement_profiles(
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -42,7 +45,8 @@ async def get_top_engagement_profiles(
   ranks = await db_utils.get_top_profiles(strategy_id=GraphType.engagement.value, 
                                           offset=offset, 
                                           limit=limit, 
-                                          pool=pool)
+                                          pool=pool,
+                                          lite=lite)
   return {"result": ranks}
 
 @router.post("/following/fids")
@@ -54,6 +58,7 @@ async def get_following_rank_for_fids(
       [1,2,3]
     ]
   )],
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -66,7 +71,8 @@ async def get_following_rank_for_fids(
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.following.value, 
                                            fids=fids, 
-                                           pool=pool)
+                                           pool=pool,
+                                           lite=lite)
   return {"result": ranks}
 
 
@@ -84,6 +90,7 @@ async def get_following_rank_for_handles(
       ]
     ]
   )],
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -102,7 +109,8 @@ async def get_following_rank_for_handles(
 
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.following.value, 
                                            fids=fids, 
-                                           pool=pool)
+                                           pool=pool,
+                                           lite=lite)
   return {"result": ranks}
 
 
@@ -115,6 +123,7 @@ async def get_engagement_rank_for_fids(
       [1,2,3]
     ]
   )],
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -127,7 +136,8 @@ async def get_engagement_rank_for_fids(
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.engagement.value, 
                                            fids=fids, 
-                                           pool=pool)
+                                           pool=pool,
+                                           lite=lite)
   return {"result": ranks}
 
 @router.post("/engagement/handles")
@@ -144,6 +154,7 @@ async def get_engagement_rank_for_handles(
       ]
     ]
   )],
+  lite: Annotated[bool, Query()] = True,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -159,8 +170,9 @@ async def get_engagement_rank_for_handles(
 
   # extract fids from the handle-fid pairs 
   fids = [hf["fid"] for hf in handle_fids]
-
+  print(fids)
   ranks = await db_utils.get_profile_ranks(strategy_id=GraphType.engagement.value, 
                                            fids=fids, 
-                                           pool=pool)
+                                           pool=pool,
+                                           lite=lite)
   return {"result": ranks}
