@@ -8,13 +8,21 @@ from config import settings
 import pandas as pd
 import polars as pl
 from loguru import logger
-import niquests
+from niquests import Session
+from niquests.adapters import HTTPAdapter
+from niquests.exceptions import RequestException
 
-def get_direct_edges_df(  
+# Create a session with a connection pool
+session = Session()
+adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
+
+def get_direct_edges_df(
   fid: int,
-  df: pd.DataFrame,        
+  df: pd.DataFrame,
   max_neighbors: int,
-) -> pd.DataFrame: 
+) -> pd.DataFrame:
   # WARNING we are operating on a shared dataframe...
   # ...inplace=False by default, explicitly setting here for emphasis
   out_df = df[df['i'] == fid].sort_values(by=['v'], ascending=False, inplace=False)[:max_neighbors]
@@ -23,25 +31,30 @@ def get_direct_edges_df(
 def get_k_degree_neighbors(
   fid: int,
   limit: int,
-  k: int, 
+  k: int,
 ) -> list[int]:
   payload = {'fid': int(fid), 'k': k, 'limit': limit}
-  response = niquests.get(settings.PERSONAL_IGRAPH_URLPATH, params=payload)
-  logger.trace(f"{response.json()}")
-  return response.json()
+  try:
+    response = session.get(settings.PERSONAL_IGRAPH_URLPATH, params=payload, timeout=600)
+    response.raise_for_status()
+    logger.trace(f"{response.json()}")
+    return response.json()
+  except RequestException as e:
+    logger.error(f"Error fetching k-degree neighbors for FID {fid}: {str(e)}")
+    return []
 
 def get_k_degree_scores(
   fid: int,
   k_minus_list: list[int],
   localtrust_df: pl.DataFrame,
   limit: int,
-  k: int, 
+  k: int,
   process_label: str
 ) -> list[int]:
   start_time = time.perf_counter()
   k_fid_list = get_k_degree_neighbors(
-                                fid, 
-                                limit, 
+                                fid,
+                                limit,
                                 k)
   logger.debug(f"{process_label}iGraph took {time.perf_counter() - start_time} secs"
                   f" for {len(k_fid_list)} k-{k} neighbors")
@@ -61,12 +74,20 @@ def get_k_degree_scores(
       k_df_pd = k_df.to_pandas()
       k_scores = go_eigentrust.get_scores(k_df_pd, [fid])
       del k_df_pd
-      
+
       # filter out previous degree neighbors
       k_scores = [ score for score in k_scores if score['i'] not in k_minus_list]
 
       return k_scores
   return []
 
-  
+def cleanup():
+  session.close()
 
+# Example usage (you can remove or modify this as needed)
+if __name__ == "__main__":
+  try:
+    # Your main code here
+    pass
+  finally:
+    cleanup()
