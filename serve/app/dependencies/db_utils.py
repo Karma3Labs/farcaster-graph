@@ -981,15 +981,18 @@ async def get_trending_casts_lite(
                 MIN(cast_ts) as cast_ts
             FROM fid_cast_scores
             GROUP BY cast_hash
-        )
+        ),
+    cast_details as (
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', cast_ts) as cast_hour
+        DATE_TRUNC('hour', cast_ts) as cast_hour,
+        row_number() over(partition by date_trunc('hour',cast_ts) order by random()) as rn
     FROM scores
     WHERE cast_score*10000000>1
     ORDER BY cast_hour DESC, cast_score DESC
     OFFSET $1
-    LIMIT $2 
+    LIMIT $2)
+    select cast_hash,cast_hour from cast_details order by rn
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
@@ -1047,7 +1050,8 @@ async def get_trending_casts_heavy(
                 {agg_sql} as cast_score
                 FROM fid_cast_scores
                 GROUP BY cast_hash
-            )
+            ),
+    cast_details as (
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', casts.timestamp) as cast_hour,
@@ -1056,12 +1060,15 @@ async def get_trending_casts_heavy(
         casts.mentions,
         casts.fid,
         casts.timestamp,
-        cast_score
+        cast_score,
+        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     WHERE cast_score*10000000>1
     ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, cast_score DESC
     OFFSET $1
     LIMIT $2
+    )
+    select cast_hash,cast_hour,text,embeds,mentions,fid,timestamp,cast_score from cast_details order by rn
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
