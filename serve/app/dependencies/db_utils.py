@@ -220,27 +220,46 @@ async def get_unique_handle_metadata_for_fids(
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 
-async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool):
-    sql_query = """
-    WITH total AS (
-        SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
-    )
-    SELECT
-        profile_id as fid,
-        fnames.fname as fname,
-        user_data.value as username,
-        rank,
-        score,
-        ((total.total - (rank - 1))*100 / total.total) as percentile
-    FROM k3l_rank
-    CROSS JOIN total
-    LEFT JOIN fnames on (fnames.fid = profile_id)
-    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
-    WHERE strategy_id = $1
-    ORDER BY rank
-    OFFSET $2
-    LIMIT $3
-    """
+async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool, lite: bool):
+    if lite:
+        sql_query = """
+        WITH total AS (
+            SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+        )
+        SELECT
+            profile_id as fid,
+            rank,
+            score,
+            ((total.total - (rank - 1))*100 / total.total) as percentile
+        FROM k3l_rank
+        CROSS JOIN total
+        WHERE strategy_id = $1
+        ORDER BY rank
+        OFFSET $2
+        LIMIT $3
+        """
+    else:
+        sql_query = """
+        WITH total AS (
+            SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+        )
+        SELECT
+            profile_id as fid,
+            any_value(fnames.fname) as fname,
+            any_value(user_data.value) as username,
+            rank,
+            score,
+            ((total.total - (rank - 1))*100 / total.total) as percentile
+        FROM k3l_rank
+        CROSS JOIN total
+        LEFT JOIN fnames on (fnames.fid = profile_id)
+        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+        WHERE strategy_id = $1
+        GROUP BY profile_id,rank,score,percentile
+        ORDER BY rank
+        OFFSET $2
+        LIMIT $3
+        """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
@@ -317,27 +336,46 @@ async def get_top_channel_profiles(
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool):
-    sql_query = """
-    WITH total AS (
-        SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
-    )
-    SELECT
-        profile_id as fid,
-        fnames.fname as fname,
-        user_data.value as username,
-        rank,
-        score,
-        ((total.total - (rank - 1))*100 / total.total) as percentile
-    FROM k3l_rank
-    CROSS JOIN total
-    LEFT JOIN fnames on (fnames.fid = profile_id)
-    LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
-    WHERE
-        strategy_id = $1
-        AND profile_id = ANY($2::integer[])
-    ORDER BY rank
-    """
+async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite: bool):
+    if lite:
+        sql_query = """
+                WITH total AS (
+                    SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+                )
+                SELECT
+                    profile_id as fid,
+                    rank,
+                    score,
+                    ((total.total - (rank - 1))*100 / total.total) as percentile
+                FROM k3l_rank
+                CROSS JOIN total
+                WHERE
+                    strategy_id = $1
+                    AND profile_id = ANY($2::integer[])
+                ORDER BY rank
+                """
+    else:
+        sql_query = """
+        WITH total AS (
+            SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+        )
+        SELECT
+            profile_id as fid,
+            any_value(fnames.fname) as fname,
+            any_value(user_data.value) as username,
+            rank,
+            score,
+            ((total.total - (rank - 1))*100 / total.total) as percentile
+        FROM k3l_rank
+        CROSS JOIN total
+        LEFT JOIN fnames on (fnames.fid = profile_id)
+        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+        WHERE
+            strategy_id = $1
+            AND profile_id = ANY($2::integer[])
+        GROUP BY profile_id,rank,score,percentile
+        ORDER BY rank
+        """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
 
@@ -659,16 +697,17 @@ async def get_popular_neighbors_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    resp_fields = "'0x' || encode(casts.hash, 'hex') as cast_hash," \
-                  "DATE_TRUNC('hour', casts.timestamp) as cast_hour"
+    resp_fields = "'0x' || encode(hash, 'hex') as cast_hash," \
+                  "DATE_TRUNC('hour', timestamp) as cast_hour, fid, timestamp, cast_score"
+
     if not lite:
         resp_fields = f"""
             {resp_fields}, 
-            casts.text,
-            casts.embeds,
-            casts.mentions,
-            casts.fid,
-            casts.timestamp,
+            text,
+            embeds,
+            mentions,
+            fid,
+            timestamp,
             cast_score
         """
 
@@ -706,15 +745,25 @@ async def get_popular_neighbors_casts(
                 GROUP BY cast_hash
                 --    OFFSET $2
                 --    LIMIT $3 
-            )
+            ),
+    cast_details as (
     SELECT
-        {resp_fields}
+        casts.hash,
+        casts.timestamp,
+        casts.text,
+        casts.embeds,
+        casts.mentions,
+        casts.fid,
+        cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
+    WHERE deleted_at IS NULL
     --    ORDER BY casts.timestamp DESC
-    ORDER BY cast_hour DESC, scores.cast_score DESC
+    ORDER BY casts.timestamp DESC, scores.cast_score DESC
     OFFSET $2
-    LIMIT $3 
+    LIMIT $3
+    )
+    select {resp_fields} from cast_details
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
@@ -726,35 +775,45 @@ async def get_recent_neighbors_casts(
         lite: bool,
         pool: Pool
 ):
-    resp_fields = "'0x' || encode( casts.hash, 'hex') as cast_hash"
+    resp_fields = f"""cast_hash, fid, timestamp"""
     if not lite:
         resp_fields = f"""
             {resp_fields},
             'https://warpcast.com/'||
-            fnames.fname||
-            '/0x' ||
-            substring(encode(casts.hash, 'hex'), 1, 8) as url,
+            fname||cast_hash as url,
+            text,
+            embeds,
+            mentions,  
+            fid,
+            timestamp,
+            cast_score
+        """
+    sql_query = f"""
+    with cast_details as (
+        SELECT
+            '0x' || encode(casts.hash, 'hex') as cast_hash,
+            casts.fid,
+            fnames.fname,
             casts.text,
             casts.embeds,
             casts.mentions,  
-            casts.fid,
             casts.timestamp,
             power(
                 1-(1/(365*24)::numeric),
                 (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60))::numeric
-            )* trust.score as cast_score
-        """
-    sql_query = f"""
-        SELECT
-            {resp_fields}
+            )* trust.score as cast_score,
+        row_number() over(partition by date_trunc('hour', casts.timestamp) order by random()) as rn
         FROM k3l_recent_parent_casts as casts 
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric) 
                 ON casts.fid = trust.fid
         {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
-        ORDER BY casts.timestamp DESC
+        WHERE casts.deleted_at IS NULL
+        ORDER BY casts.timestamp DESC, cast_score desc
         OFFSET $2
         LIMIT $3
+        )
+        select {resp_fields} from cast_details order by rn 
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
@@ -765,7 +824,6 @@ async def get_recent_casts_by_fids(
         limit: int,
         pool: Pool
 ):
-
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash
@@ -926,6 +984,7 @@ async def get_popular_channel_casts_heavy(
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_trending_casts_lite(
         agg: ScoreAgg,
         weights: Weights,
@@ -995,6 +1054,7 @@ async def get_trending_casts_lite(
     select cast_hash,cast_hour from cast_details order by rn
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
 
 async def get_trending_casts_heavy(
         agg: ScoreAgg,
