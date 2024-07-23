@@ -37,5 +37,10 @@ with DAG(
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh localtrust"
     )
 
-    [task1, task2, task3]
+    task4 = BashOperator(
+        task_id='backup_channel_rank',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh channel_rank"
+    )
+
+    [task1, task2, task3, task4]
 
