@@ -132,6 +132,12 @@ elif [ "$TASK" = "consolidate" ]; then
   deactivate
 
   aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
+elif [ "$TASK" = "cleanup" ]; then
+  echo "removing $TMP_GRAPH_OUT"
+  rm -f $TMP_GRAPH_OUT
+
+  # echo "removing ${OUT_DIR}/${RUN_ID}"
+  # rm -f ${OUT_DIR}/${RUN_ID}
 else
   echo "Invalid task specified."
   exit 1

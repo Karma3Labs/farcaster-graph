@@ -11,10 +11,15 @@ from airflow.operators.python import get_current_context
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
+from airflow.utils.trigger_rule import TriggerRule
+
 default_args = {
     'owner': 'coder2j',
     'retries': 5,
     'retry_delay': timedelta(minutes=2),
+
+    # 'on_success_callback':[cleanup_function],
+    # 'on_failure_callback':[cleanup_function],
     # 'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
@@ -81,5 +86,14 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag,
     )
+
+    cleanup_task = SSHOperator(
+        task_id='cleanup_task',
+        command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t cleanup -r {{ run_id }}",
+        trigger_rule=TriggerRule.ALL_DONE,
+        # Ensure this task runs last
+        depends_on_past=False,
+    )
+
 
     eigen7_graph_reload >> eigen7_fetch_fids >> extract_fids_task >> process_tasks >> eigen7_consolidate
