@@ -40,8 +40,8 @@ with DAG(
     dag_id='gen_personal_graph_replica_v1',
     default_args=default_args,
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
-    start_date='0 0 */2 * *',
-    schedule_interval=None,
+    start_date=datetime(2024, 7, 24),
+    schedule_interval='0 0 */2 * *',
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60, cmd_timeout=None)
