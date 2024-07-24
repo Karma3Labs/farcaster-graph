@@ -26,7 +26,7 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     })
 
     pt_len = len(pt_ids_set)
-    pretrust = [{'i': orig_id.get_loc(fid), 'v': 1 / pt_len} for fid in pt_ids_set]
+    pretrust = [{'i': orig_id.get_loc(fid), 'v': 1 / pt_len} for fid in pt_ids_set if fid in orig_id]
     max_pt_id = len(orig_id)
 
     localtrust = pseudo_df.to_dict(orient="records")

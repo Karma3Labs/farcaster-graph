@@ -32,6 +32,9 @@ def yield_np_slices(fids: np.ndarray, num_chunks: int) -> Generator[Tuple[int, n
     if num_chunks <= 0:
         raise ValueError("Number of chunks must be a positive integer")
 
+    # Ensure num_chunks does not exceed the length of fids
+    num_chunks = min(num_chunks, len(fids))
+
     # Split the array into N chunks
     slices = np.array_split(fids, num_chunks)
     logger.info(f"Number of slices: {len(slices)}")
@@ -39,7 +42,6 @@ def yield_np_slices(fids: np.ndarray, num_chunks: int) -> Generator[Tuple[int, n
     for idx, arr in enumerate(slices):
         # Yield the index, array, and total number of slices
         yield (idx, arr, len(slices))
-
 def compute_task(fid: int, maxneighbors: int, localtrust_df: pl.DataFrame, process_label: str) -> list:
     try:
         logger.debug(f"{process_label}processing FID: {fid}")
