@@ -1031,7 +1031,7 @@ async def get_trending_casts_lite(
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
-            LIMIT 1000000
+            LIMIT 10000
         )
         , scores AS (
             SELECT
@@ -1045,10 +1045,11 @@ async def get_trending_casts_lite(
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
-        row_number() over(partition by date_trunc('hour',cast_ts) order by random()) as rn
+        (extract(minute FROM cast_ts)::int / 5) AS min5_slot,
+        row_number() over(partition by date_trunc('hour',cast_ts),(extract(minute FROM cast_ts)::int / 5) order by random()) as rn
     FROM scores
     WHERE cast_score*10000000>1
-    ORDER BY cast_hour DESC, cast_score DESC
+    ORDER BY  cast_hour DESC,min5_slot desc, cast_score DESC
     OFFSET $1
     LIMIT $2)
     select cast_hash,cast_hour from cast_details order by rn
@@ -1115,17 +1116,18 @@ async def get_trending_casts_heavy(
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', casts.timestamp) as cast_hour,
+        (extract(minute FROM casts.timestamp)::int / 5) AS min5_slot,
         casts.text,
         casts.embeds,
         casts.mentions,
         casts.fid,
         casts.timestamp,
         cast_score,
-        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp) order by random()) as rn
+        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp),(extract(minute FROM casts.timestamp)::int / 5) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash 
     WHERE cast_score*10000000>1
-    ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, cast_score DESC
+    ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, min5_slot, cast_score DESC
     OFFSET $1
     LIMIT $2
     )
