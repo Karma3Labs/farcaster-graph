@@ -20,7 +20,7 @@ default_args = {
 
     # 'on_success_callback':[cleanup_function],
     # 'on_failure_callback':[cleanup_function],
-    # 'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
 @task
@@ -40,7 +40,7 @@ with DAG(
     dag_id='gen_personal_graph_replica_v1',
     default_args=default_args,
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
-    start_date=datetime(2024, 7, 9, 18),
+    start_date='0 0 */2 * *',
     schedule_interval=None,
     catchup=False,
 ) as dag:

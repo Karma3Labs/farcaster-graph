@@ -1,10 +1,10 @@
 #!/bin/bash
 
-dayOfYear=`date '+%j'`
-hourOfDay=`date '+%H'`
-hourOfYear="$((dayOfYear * 24 + hourOfDay))"
-echo $dayOfYear $hourOfDay $hourOfYear
-hour_interval=48
+# dayOfYear=`date '+%j'`
+# hourOfDay=`date '+%H'`
+# hourOfYear="$((dayOfYear * 24 + hourOfDay))"
+# echo $dayOfYear $hourOfDay $hourOfYear
+# hour_interval=48
 
 # # TODO use the mtime of the existing parquet file and
 # # ..if current time - mtime > 1 hour, start compute
@@ -129,16 +129,18 @@ elif [ "$TASK" = "consolidate" ]; then
   deactivate
 
   aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
+  intDayOfWeek=$(date '+%u') # keep up to last 7 days of backup copies
+  aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/historical/${intDayOfWeek}/
 
   # remove parsed pkl file from the job
   rm -rf $TMP_GRAPH_OUT
 
 elif [ "$TASK" = "cleanup" ]; then
   echo "removing $TMP_GRAPH_OUT"
-  rm -f $TMP_GRAPH_OUT
+  rm -rf $TMP_GRAPH_OUT
 
   echo "removing ${OUT_DIR}/${RUN_ID}"
-  rm -f ${OUT_DIR}/${RUN_ID}
+  rm -rf ${OUT_DIR}/${RUN_ID}
 else
   echo "Invalid task specified."
   exit 1
