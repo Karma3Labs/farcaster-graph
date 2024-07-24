@@ -98,9 +98,9 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # if previous graph compute exists, confirm that the new output is larger in size
   if [ -d "$OUT_DIR/temp" ]; then
-    new_size=`du -m ${OUT_DIR}/${RUN_ID} | cut -f1`
-    prev_size=`du -m ${OUT_DIR}/temp | cut -f1`
-    size_diff="$((new_size-prev_size))"
+    new_size=$(du -sm ${OUT_DIR}/${RUN_ID} | cut -f1)
+    prev_size=$(du -sm ${OUT_DIR}/temp | cut -f1)
+    size_diff=$((new_size - prev_size))
     if [[ $size_diff -lt -100 ]]; then
       echo 'New graph parts much smaller than previously generated graph parts. Abort script.'
       exit 1
@@ -115,29 +115,30 @@ elif [ "$TASK" = "consolidate" ]; then
   python3 -m graph.rechunk_graph_pqt -i ${OUT_DIR}/temp -o $OUT_DIR/personal_graph.parquet.new
 
   # if previous graph file exists, confirm that the new file is larger in size
-  if [ -n "$OUT_DIR/personal_graph.parquet" ]; then
-    new_size=`du -m $OUT_DIR/personal_graph.parquet.new | cut -f1`
-    prev_size=`du -m $OUT_DIR/personal_graph.parquet | cut -f1`
-    size_diff="$((new_size-prev_size))"
-    if [[ $size_diff -lt -100 ]]; then
+  if [ -f "$OUT_DIR/personal_graph.parquet" ]; then
+    new_size=$(du -sm $OUT_DIR/personal_graph.parquet.new | cut -f1)
+    prev_size=$(du -sm $OUT_DIR/personal_graph.parquet | cut -f1)
+    size_diff=$((new_size - prev_size))
+    if [[ $size_diff -lt -150 ]]; then
       echo 'New graph file much smaller than previously generated graph file. Abort script.'
       exit 1
     fi
   fi
   mv $OUT_DIR/personal_graph.parquet.new $OUT_DIR/personal_graph.parquet
 
-  # remove parsed pkl file from the job
-  rm -rf $TMP_GRAPH_OUT
-
   deactivate
 
   aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
+
+  # remove parsed pkl file from the job
+  rm -rf $TMP_GRAPH_OUT
+
 elif [ "$TASK" = "cleanup" ]; then
   echo "removing $TMP_GRAPH_OUT"
   rm -f $TMP_GRAPH_OUT
 
-  # echo "removing ${OUT_DIR}/${RUN_ID}"
-  # rm -f ${OUT_DIR}/${RUN_ID}
+  echo "removing ${OUT_DIR}/${RUN_ID}"
+  rm -f ${OUT_DIR}/${RUN_ID}
 else
   echo "Invalid task specified."
   exit 1
