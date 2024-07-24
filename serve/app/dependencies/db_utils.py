@@ -1003,8 +1003,8 @@ async def get_trending_casts_lite(
     sql_query = f"""
         with 
         latest_global_rank as (
-        select i as fid, v as score from globaltrust g where strategy_id=3 
-            and date in (select max(date) from globaltrust)
+        select profile_id as fid, score from k3l_rank g where strategy_id=3 
+            and date in (select max(date) from k3l_rank)
         ),
         fid_cast_scores as (
             SELECT
@@ -1031,7 +1031,7 @@ async def get_trending_casts_lite(
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
-            LIMIT 10000
+            LIMIT 100000
         )
         , scores AS (
             SELECT
@@ -1075,8 +1075,8 @@ async def get_trending_casts_heavy(
     sql_query = f"""
         with 
         latest_global_rank as (
-        select i as fid, v as score from globaltrust g where strategy_id=3 
-            and date in (select max(date) from globaltrust)
+        select profile_id as fid, score from k3l_rank g where strategy_id=3 
+            and date in (select max(date) from k3l_rank)
         )
         , fid_cast_scores as (
             SELECT
