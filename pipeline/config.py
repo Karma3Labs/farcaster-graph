@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     AIRFLOW_GID: int
     REMOTE_DB_HOST: str
     AIRFLOW__CORE__FERNET_KEY: str
+    SSH_KEY_PATH: str = 'id_rsa'
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`

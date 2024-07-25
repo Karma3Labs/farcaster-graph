@@ -85,17 +85,20 @@ services:
   #   User ubuntu # Username to connect to SSH service
   #   ForwardAgent yes
   #   TCPKeepAlive yes
-  postgres-tunnel:
-    image: cagataygurturk/docker-ssh-tunnel
-    container_name: airflow-tunnel
+  sshtunnel:
+    build:
+      dockerfile: sshtunnel.Dockerfile
+    container_name: sshtunnel
+    restart: unless-stopped
+    command: |
+      -N -L ${DB_PORT}:localhost:9541
+      ubuntu@${REMOTE_DB_HOST}
     volumes:
-      - $HOME/.ssh:/root/ssh:ro
-    environment:
-      SSH_DEBUG: "-v"
-      TUNNEL_HOST: postgres-tunnel
-      REMOTE_HOST: ${REMOTE_DB_HOST:-localhost}
-      LOCAL_PORT: ${DB_PORT:-9541}
-      REMOTE_PORT: ${DB_PORT:-9541}
+      - $SSH_KEY_PATH:/.ssh/id_rsa:r
+    extra_hosts:
+      - docker-host:172.17.0.1
+    networks:
+      - sshtunnel
 
   airflow-webserver:
     <<: *airflow-common
@@ -135,3 +138,6 @@ services:
 
 volumes:
   postgres-db-volume:
+networks:
+  sshtunnel:
+    driver: bridge
