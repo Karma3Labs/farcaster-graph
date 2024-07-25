@@ -91,7 +91,7 @@ services:
     container_name: sshtunnel
     restart: unless-stopped
     command: |
-      -N -L ${DB_PORT}:localhost:${REMOTE_DB_PORT}
+      -N -L 9599:localhost:${REMOTE_DB_PORT}
       ubuntu@${REMOTE_DB_HOST}
     volumes:
       - $SSH_KEY_PATH:/.ssh/id_rsa:r
@@ -100,7 +100,25 @@ services:
     networks:
       - sshtunnel
     ports:
-      - ${DB_PORT}:${DB_PORT}
+      - 9599:9599
+
+  pgbouncer:
+    image: bitnami/pgbouncer:latest
+    environment:
+      - PGBOUNCER_DATABASE=${DB_NAME}
+      - PGBOUNCER_PORT=${DB_PORT}
+      - POSTGRESQL_USERNAME=${DB_USER}
+      - POSTGRESQL_PASSWORD=${DB_PASSWORD}
+      - POSTGRESQL_DATABASE=${DB_NAME}
+      - POSTGRESQL_HOST=${DB_HOST}
+      - POSTGRESQL_PORT=9599
+      - PGBOUNCER_POOL_MODE=transaction
+      - PGBOUNCER_AUTH_TYPE=scram-sha-256 # remove/comment this line if using postgres:13 and lower
+      - PGBOUNCER_ADMIN_USERS=postgres,dbuser
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    depends_on:
+      - sshtunnel
 
   airflow-webserver:
     <<: *airflow-common
