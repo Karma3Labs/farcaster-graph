@@ -91,7 +91,7 @@ services:
     container_name: sshtunnel
     restart: unless-stopped
     command: |
-      -N -L ${DB_PORT}:localhost:9541
+      -N -L ${DB_PORT}:localhost:${REMOTE_DB_PORT}
       ubuntu@${REMOTE_DB_HOST}
     volumes:
       - $SSH_KEY_PATH:/.ssh/id_rsa:r
@@ -99,6 +99,8 @@ services:
       - docker-host:172.17.0.1
     networks:
       - sshtunnel
+    ports:
+      - ${DB_PORT}:${DB_PORT}
 
   airflow-webserver:
     <<: *airflow-common
@@ -138,6 +140,8 @@ services:
 
 volumes:
   postgres-db-volume:
+
+
 networks:
   sshtunnel:
     driver: bridge
