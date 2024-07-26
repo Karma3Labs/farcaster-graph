@@ -228,12 +228,15 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
         )
         SELECT
             profile_id as fid,
+            any_value(user_data.value) as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_rank
         CROSS JOIN total
+        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
         WHERE strategy_id = $1
+        GROUP BY profile_id,rank,score,percentile
         ORDER BY rank
         OFFSET $2
         LIMIT $3
@@ -344,14 +347,17 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
                 )
                 SELECT
                     profile_id as fid,
+                    any_value(user_data.value) as username,
                     rank,
                     score,
                     ((total.total - (rank - 1))*100 / total.total) as percentile
                 FROM k3l_rank
                 CROSS JOIN total
+                LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
                 WHERE
                     strategy_id = $1
                     AND profile_id = ANY($2::integer[])
+                GROUP BY profile_id,rank,score,percentile
                 ORDER BY rank
                 """
     else:
