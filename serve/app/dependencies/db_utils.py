@@ -851,6 +851,7 @@ async def get_popular_channel_casts_lite(
         weights: Weights,
         offset: int,
         limit: int,
+        sorting_order: str,
         pool: Pool
 ):
     match agg:
@@ -860,6 +861,11 @@ async def get_popular_channel_casts_lite(
             agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
+
+    if sorting_order == 'recent':
+        ordering = True
+    else:
+        ordering = False
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -902,6 +908,7 @@ async def get_popular_channel_casts_lite(
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
+        cast_ts,
         row_number() over(partition by date_trunc('day',cast_ts) order by random()) as rn
     FROM scores
     WHERE cast_score*100000000000>100
@@ -909,7 +916,8 @@ async def get_popular_channel_casts_lite(
     OFFSET $3
     LIMIT $4
     )
-    select cast_hash, cast_hour from cast_details
+    select cast_hash, cast_hour, cast_ts from cast_details
+    {'order by cast_ts desc' if ordering else ''}
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
@@ -921,6 +929,7 @@ async def get_popular_channel_casts_heavy(
         weights: Weights,
         offset: int,
         limit: int,
+        sorting_order: str,
         pool: Pool
 ):
     match agg:
@@ -930,6 +939,11 @@ async def get_popular_channel_casts_heavy(
             agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
+
+    if sorting_order == 'recent':
+        ordering = True
+    else:
+        ordering = False
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -987,6 +1001,7 @@ async def get_popular_channel_casts_heavy(
     )
     select cast_hash, cast_hour, text, embeds, mentions, fid, timestamp, cast_score
     from cast_details
+    {'order by timestamp desc' if ordering else ''}
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
