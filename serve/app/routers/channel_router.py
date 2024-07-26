@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, HTTPException, Path
 from loguru import logger
 from asyncpg.pool import Pool
-from ..models.score_model import ScoreAgg, Weights
+from ..models.score_model import ScoreAgg, Weights, Sorting_Order
 from ..dependencies import  db_pool, db_utils
 from ..utils import fetch_channel
 
@@ -103,6 +103,7 @@ async def get_popular_channel_casts(
   offset: Annotated[int | None, Query()] = 0,
   limit: Annotated[int | None, Query(le=50)] = 25,
   lite: Annotated[bool, Query()] = True,
+  sorting_order: Annotated[Sorting_Order, Query()] = Sorting_Order.POPULAR,
   pool: Pool = Depends(db_pool.get_db),
 ):
   """
@@ -135,6 +136,7 @@ async def get_popular_channel_casts(
                                 weights=weights,
                                 offset=offset,
                                 limit=limit,
+                                sorting_order=sorting_order,
                                 pool=pool)
   else:
     casts = await db_utils.get_popular_channel_casts_heavy(
@@ -144,5 +146,7 @@ async def get_popular_channel_casts(
                             weights=weights,
                             offset=offset,
                             limit=limit,
+                            sorting_order=sorting_order,
                             pool=pool)
+  print(sorting_order)
   return {"result": casts}
