@@ -134,7 +134,6 @@ elif [ "$TASK" = "consolidate" ]; then
 
   # remove parsed pkl file from the job
   rm -rf $TMP_GRAPH_OUT
-
 elif [ "$TASK" = "cleanup" ]; then
   echo "removing $TMP_GRAPH_OUT"
   rm -rf $TMP_GRAPH_OUT
@@ -145,4 +144,3 @@ else
   echo "Invalid task specified."
   exit 1
 fi
-
