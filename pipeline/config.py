@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     FRAMES_SCRAPE_READ_TIMEOUT_SECS: int = 10
 
     CASTS_SLEEP_SECS: int = 10
-    CASTS_BATCH_INTERVAL_HRS: int = 1
+    CASTS_BATCH_INTERVAL_HRS: int = 1 # Deprecated. Remove in future update.
+    CASTS_BATCH_LIMIT:int = 100_000
 
     WARPCAST_CHANNELS_TIMEOUT: int = 5
     CHANNEL_SLEEP_SECS:int = 1
