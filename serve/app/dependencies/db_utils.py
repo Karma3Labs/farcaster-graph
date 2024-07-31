@@ -200,16 +200,16 @@ async def get_unique_handle_metadata_for_fids(
     SELECT fid,'0x' || encode(fids.custody_address, 'hex') as address
     FROM fids where fid=ANY($1::integer[])
     UNION ALL
-    SELECT fid, v.claim->>'address' as address 
+    SELECT fid, v.claim->>'address' as address
     FROM verifications v where fid=ANY($1::integer[])
     ),
     agg_addresses as (
     SELECT fid,
     ARRAY_AGG(DISTINCT address) as address
-    FROM addresses 
+    FROM addresses
     GROUP BY fid
     )
-    SELECT agg_addresses.*, 
+    SELECT agg_addresses.*,
         ANY_VALUE(fnames.fname) as fname,
         ANY_VALUE(user_data.value) as username from agg_addresses
     LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
@@ -279,9 +279,9 @@ async def get_top_channel_profiles(
             ch.fid,
             rank
         FROM k3l_channel_fids as ch
-        WHERE 
-            channel_id = $1 
-            AND 
+        WHERE
+            channel_id = $1
+            AND
             compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ORDER BY rank ASC
         OFFSET $2
@@ -290,16 +290,16 @@ async def get_top_channel_profiles(
     else:
         sql_query = """
         WITH total AS (
-            SELECT count(*) as total from k3l_channel_fids 
+            SELECT count(*) as total from k3l_channel_fids
             WHERE channel_id = $1
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
         addresses as (
         SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
         FROM fids
-        UNION ALL 
+        UNION ALL
          SELECT v.claim->>'address' as address, fid
-         FROM verifications v 
+         FROM verifications v
         ),
         top_records as (
         SELECT
@@ -313,15 +313,15 @@ async def get_top_channel_profiles(
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
-        WHERE 
-            channel_id = $1 
-            AND 
+        WHERE
+            channel_id = $1
+            AND
             compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ORDER BY rank ASC
         ),
         mapped_records as (
-        SELECT top_records.*,addresses.address 
-        FROM top_records 
+        SELECT top_records.*,addresses.address
+        FROM top_records
         LEFT JOIN addresses using (fid)
         )
         select fid,
@@ -398,17 +398,17 @@ async def get_channel_profile_ranks(
             rank
         FROM k3l_channel_fids as ch
         WHERE
-            channel_id = $1 
-            AND 
+            channel_id = $1
+            AND
             compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
-            AND 
+            AND
             fid = ANY($2::integer[])
         ORDER BY rank
         """
     else:
         sql_query = """
         WITH total AS (
-            SELECT count(*) as total from k3l_channel_fids 
+            SELECT count(*) as total from k3l_channel_fids
             WHERE channel_id = $1
             AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
         ),
@@ -417,7 +417,7 @@ async def get_channel_profile_ranks(
         FROM fids
         union all
          SELECT v.claim->>'address' as address, fid
-         FROM verifications v 
+         FROM verifications v
         ),
         top_records as (
         SELECT
@@ -432,16 +432,16 @@ async def get_channel_profile_ranks(
         LEFT JOIN fnames on (fnames.fid = ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE
-            channel_id = $1 
-            AND 
+            channel_id = $1
+            AND
             compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
-            AND 
+            AND
             ch.fid = ANY($2::integer[])
         ORDER BY rank
         ),
         mapped_records as (
-        SELECT top_records.*,addresses.address 
-        FROM top_records 
+        SELECT top_records.*,addresses.address
+        FROM top_records
         LEFT JOIN addresses using (fid)
         )
         SELECT
@@ -455,7 +455,7 @@ async def get_channel_profile_ranks(
         FROM mapped_records
         GROUP BY fid
         ORDER by rank
-        
+
         """
     return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
 
@@ -478,7 +478,7 @@ async def get_top_frames(
             agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
     if recent:
         time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
+            INNER JOIN k3l_url_labels as labels
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
@@ -542,7 +542,7 @@ async def get_top_frames_with_cast_details(
             agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
     if recent:
         time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
+            INNER JOIN k3l_url_labels as labels
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
@@ -628,7 +628,7 @@ async def get_neighbors_frames(
 
     if recent:
         time_filter_sql = """
-            INNER JOIN k3l_url_labels as labels 
+            INNER JOIN k3l_url_labels as labels
       		on (labels.url_id = interactions.url_id and labels.latest_cast_dt > now() - interval '3 days')
         """
     else:
@@ -708,7 +708,7 @@ async def get_popular_neighbors_casts(
 
     if not lite:
         resp_fields = f"""
-            {resp_fields}, 
+            {resp_fields},
             text,
             embeds,
             mentions,
@@ -723,7 +723,7 @@ async def get_popular_neighbors_casts(
                 ci.cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * trust.score * ci.casted) 
+                        ({weights.cast} * trust.score * ci.casted)
                         + ({weights.reply} * trust.score * ci.replied)
                         + ({weights.recast} * trust.score * ci.recasted)
                         + ({weights.like} * trust.score * ci.liked)
@@ -735,10 +735,10 @@ async def get_popular_neighbors_casts(
                     )
                 ) as cast_score
             FROM json_to_recordset($1::json)
-                AS trust(fid int, score numeric) 
+                AS trust(fid int, score numeric)
             INNER JOIN k3l_cast_action as ci
                 ON (ci.fid = trust.fid
-                    AND ci.action_ts BETWEEN now() - interval '5 days' 
+                    AND ci.action_ts BETWEEN now() - interval '5 days'
   										AND now() - interval '10 minutes')
             GROUP BY ci.cast_hash, ci.fid
             LIMIT 100000
@@ -750,7 +750,7 @@ async def get_popular_neighbors_casts(
                 FROM fid_cast_scores
                 GROUP BY cast_hash
                 --    OFFSET $2
-                --    LIMIT $3 
+                --    LIMIT $3
             ),
     cast_details as (
     SELECT
@@ -762,7 +762,7 @@ async def get_popular_neighbors_casts(
         casts.fid,
         cast_score
     FROM k3l_recent_parent_casts as casts
-    INNER JOIN scores on casts.hash = scores.cast_hash 
+    INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE deleted_at IS NULL
     --    ORDER BY casts.timestamp DESC
     ORDER BY casts.timestamp DESC, scores.cast_score DESC
@@ -789,7 +789,7 @@ async def get_recent_neighbors_casts(
             fname||cast_hash as url,
             text,
             embeds,
-            mentions,  
+            mentions,
             fid,
             timestamp,
             cast_score
@@ -802,16 +802,16 @@ async def get_recent_neighbors_casts(
             fnames.fname,
             casts.text,
             casts.embeds,
-            casts.mentions,  
+            casts.mentions,
             casts.timestamp,
             power(
                 1-(1/(365*24)::numeric),
                 (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60))::numeric
             )* trust.score as cast_score,
         row_number() over(partition by date_trunc('hour', casts.timestamp) order by random()) as rn
-        FROM k3l_recent_parent_casts as casts 
+        FROM k3l_recent_parent_casts as casts
         INNER JOIN  json_to_recordset($1::json)
-            AS trust(fid int, score numeric) 
+            AS trust(fid int, score numeric)
                 ON casts.fid = trust.fid
         {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
         WHERE casts.deleted_at IS NULL
@@ -819,7 +819,7 @@ async def get_recent_neighbors_casts(
         OFFSET $2
         LIMIT $3
         )
-        select {resp_fields} from cast_details order by rn 
+        select {resp_fields} from cast_details order by rn
     """
     return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
 
@@ -833,7 +833,7 @@ async def get_recent_casts_by_fids(
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash
-        FROM casts 
+        FROM casts
         WHERE
             casts.fid = ANY($1::integer[])
         ORDER BY casts.timestamp DESC
@@ -873,7 +873,7 @@ async def get_popular_channel_casts_lite(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted) 
+                        ({weights.cast} * fids.score * ci.casted)
                         + ({weights.reply} * fids.score * ci.replied)
                         + ({weights.recast} * fids.score * ci.recasted)
                         + ({weights.like} * fids.score * ci.liked)
@@ -885,10 +885,10 @@ async def get_popular_channel_casts_lite(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts 
+            FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '30 days' 
+                    AND ci.action_ts BETWEEN now() - interval '30 days'
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
@@ -953,7 +953,7 @@ async def get_popular_channel_casts_heavy(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted) 
+                        ({weights.cast} * fids.score * ci.casted)
                         + ({weights.reply} * fids.score * ci.replied)
                         + ({weights.recast} * fids.score * ci.recasted)
                         + ({weights.like} * fids.score * ci.liked)
@@ -965,10 +965,10 @@ async def get_popular_channel_casts_heavy(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts 
+            FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '30 days' 
+                    AND ci.action_ts BETWEEN now() - interval '30 days'
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
@@ -997,7 +997,7 @@ async def get_popular_channel_casts_heavy(
         cast_score,
         row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
-    INNER JOIN scores on casts.hash = scores.cast_hash 
+    INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*100000000000>100
     ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
     OFFSET $3
@@ -1026,9 +1026,9 @@ async def get_trending_casts_lite(
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
     sql_query = f"""
-        with 
+        with
         latest_global_rank as (
-        select profile_id as fid, score from k3l_rank g where strategy_id=3 
+        select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
         ),
         fid_cast_scores as (
@@ -1036,7 +1036,7 @@ async def get_trending_casts_lite(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted) 
+                        ({weights.cast} * fids.score * ci.casted)
                         + ({weights.reply} * fids.score * ci.replied)
                         + ({weights.recast} * fids.score * ci.recasted)
                         + ({weights.like} * fids.score * ci.liked)
@@ -1048,10 +1048,10 @@ async def get_trending_casts_lite(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts 
+            FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '1 days' 
+                    AND ci.action_ts BETWEEN now() - interval '1 days'
   										AND now() - interval '10 minutes')
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
@@ -1098,9 +1098,9 @@ async def get_trending_casts_heavy(
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
     sql_query = f"""
-        with 
+        with
         latest_global_rank as (
-        select profile_id as fid, score from k3l_rank g where strategy_id=3 
+        select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
         )
         , fid_cast_scores as (
@@ -1108,7 +1108,7 @@ async def get_trending_casts_heavy(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted) 
+                        ({weights.cast} * fids.score * ci.casted)
                         + ({weights.reply} * fids.score * ci.replied)
                         + ({weights.recast} * fids.score * ci.recasted)
                         + ({weights.like} * fids.score * ci.liked)
@@ -1120,10 +1120,10 @@ async def get_trending_casts_heavy(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts 
+            FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '1 days' 
+                    AND ci.action_ts BETWEEN now() - interval '1 days'
   										AND now() - interval '10 minutes')
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
@@ -1150,7 +1150,7 @@ async def get_trending_casts_heavy(
         cast_score,
         row_number() over(partition by DATE_TRUNC('hour', casts.timestamp),(extract(minute FROM casts.timestamp)::int / 5) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
-    INNER JOIN scores on casts.hash = scores.cast_hash 
+    INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*10000000>1
     ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, min5_slot, cast_score DESC
     OFFSET $1

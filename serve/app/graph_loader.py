@@ -76,9 +76,9 @@ class GraphLoader:
                     )
         if is_graph_modified:
           # signal to the load balancer to stop sending new requests
-          # TODO co-ordinate with other servers to avoid all 
+          # TODO co-ordinate with other servers to avoid all
           # ... load-balanced servers going down at the same time
-          main.get_pause() 
+          main.get_pause()
           time.sleep(settings.PAUSE_BEFORE_RELOAD_SECS)
           logger.info("reload graphs")
           self.graphs = self.load_graphs()
