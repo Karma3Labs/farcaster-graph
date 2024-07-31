@@ -13,6 +13,10 @@ class Voting(StrEnum):
   # TODO
   # QUADRATIC = 'quadratic'
 
+class Sorting_Order(StrEnum):
+  POPULAR = 'popular'
+  RECENT = 'recent'
+
 class Weights(NamedTuple):
   cast:int = 10
   recast:int = 5

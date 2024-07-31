@@ -87,14 +87,4 @@ with DAG(
         dag=dag,
     )
 
-    # cleanup_task = SSHOperator(
-    #     task_id='cleanup_task',
-    #     command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t cleanup -r {{ run_id }}",
-    #     trigger_rule=TriggerRule.ALL_DONE,
-    #     # Ensure this task runs last
-    #     ssh_hook=ssh_hook,
-    #     depends_on_past=False,
-    # )
-
-
     eigen7_graph_reload >> eigen7_fetch_fids >> extract_fids_task >> process_tasks >> eigen7_consolidate

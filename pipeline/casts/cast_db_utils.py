@@ -6,7 +6,7 @@ import psycopg2
 import psycopg2.extras
 
 @Timer(name="insert_cast_action")
-def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int):
+def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
   insert_sql = f"""
     INSERT INTO k3l_cast_action
     WITH max_cast_action AS (
@@ -29,7 +29,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       AND
       casts.created_at 
         BETWEEN max_cast_action.max_at 
-        AND max_cast_action.max_at + interval '{interval_hours} hours'
+        AND now()
     UNION ALL
     SELECT
       casts.fid as fid,
@@ -48,7 +48,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       AND
       casts.created_at 
         BETWEEN max_cast_action.max_at 
-          AND max_cast_action.max_at + interval '{interval_hours} hours'
+          AND now()
     UNION ALL
     SELECT 
       reactions.fid as fid,
@@ -65,12 +65,13 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, interval_hours: int)
       AND
       reactions.created_at 
         BETWEEN max_cast_action.max_at 
-          AND max_cast_action.max_at + interval '{interval_hours} hours'
+          AND now()
       AND
       reactions.reaction_type IN (1,2)
       AND 
       reactions.target_hash IS NOT NULL
     ORDER BY created_at ASC
+    LIMIT {insert_limit}
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """

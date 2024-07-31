@@ -31,7 +31,7 @@ async def main(daemon: bool):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     cast_db_utils.insert_cast_action(logger,
                                           pg_dsn,
-                                          settings.CASTS_BATCH_INTERVAL_HRS)
+                                          settings.CASTS_BATCH_LIMIT)
 
     if daemon:
       logger.info(f"sleeping for {sleep_duration}s")
