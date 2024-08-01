@@ -1,0 +1,84 @@
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from hooks.discord import send_alert_discord
+from hooks.pagerduty import send_alert_pagerduty
+from datetime import datetime, timedelta
+import requests
+import os
+import io
+from sqlalchemy import create_engine
+import pandas as pd
+
+# Environment variables
+API_KEY = os.getenv('API_KEY')
+DB_ENDPOINT = os.getenv('DB_ENDPOINT')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+
+default_args = {
+    'owner': 'coder2j',
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+}
+
+
+def fetch_data_from_api():
+    params = {'start': '2024-01-01', 'end': '2024-12-31'}
+    headers = {'api-key': f"""{API_KEY}"""}
+    df_automod = pd.DataFrame()
+    for channel in ["degen", "dev", "memes"]:
+        initial_url = f"""https://automod.sh/api/partners/channels/{channel}/activity/export?"""
+        response = requests.get(initial_url, params=params, headers=headers)
+        if response.status_code == 200:
+            # Read the response content into a pandas DataFrame
+            data = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+            df_automod = pd.concat([df_automod, data], axis=0)
+        else:
+            print(f"Failed to fetch data. Status code: {response.status_code}")
+
+    rename_dict = {
+        'createdAt': 'created_at',
+        'affectedUsername': 'affected_username',
+        'affectedUserFid': 'affected_userid',
+        'castHash': 'cast_hash',
+        'castText': 'cast_text'
+    }
+
+    df_automod.rename(columns=rename_dict, inplace=True)
+    df_automod = df_automod[
+        ["created_at", "action", "actor", "affected_username", "affected_userid", "cast_hash", "channel_id"]]
+
+    return df_automod
+
+
+def load_data_to_db(**context):
+    automod_data = context['task_instance'].xcom_pull(task_ids='fetch_data_from_api')
+    engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
+                    % (DB_USER, DB_PASSWORD, DB_ENDPOINT, 9541, 'farcaster')
+
+    postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
+    with postgres_engine.connect() as connection:
+        automod_data.to_sql('automod_data', con=connection, if_exists='replace', index=False)
+
+
+with DAG(
+        'automod_api_to_db_dag',
+        default_args=default_args,
+        description='Fetch data from AUTOMOD API and load into DB daily',
+        schedule_interval=timedelta(days=1),
+        start_date=datetime(2024, 8, 1),
+        catchup=False,
+) as dag:
+    fetch_data_from_api_task = PythonOperator(
+        task_id='fetch_data_from_api',
+        python_callable=fetch_data_from_api,
+    )
+
+    load_data_to_db_task = PythonOperator(
+        task_id='load_data_to_db',
+        python_callable=load_data_to_db,
+        provide_context=True,
+    )
+
+    fetch_data_from_api_task >> load_data_to_db_task
