@@ -867,6 +867,45 @@ async def get_popular_degen_casts(
     sql_query = f"""
         with degen_tip_scores as (
             select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_5
+        ), deduct_degen AS (
+            SELECT
+                casts.parent_hash AS cast_hash,
+                COUNT(*) AS downvotes
+            FROM
+                casts
+            WHERE
+                UPPER(casts.text) LIKE '%DEDEGEN%'
+                AND casts.fid = ANY(ARRAY[2904, 15983, 12493, 250874, 307834, 403619, 269694, 234616, 4482, 274, 243818, 385955, 210201, 3642, 539, 294226, 16405, 3827, 320215, 7637, 4027, 9135, 7258, 211186, 10174, 7464, 13505, 11299, 1048, 2341, 617, 191503, 4877, 3103, 12990, 390940, 7237, 5034, 195117, 8447, 20147, 262938, 307739, 17064, 351897, 426045, 326433, 273147, 270504, 419741, 446697, 354795])
+                AND casts.deleted_at IS NULL
+            GROUP BY
+                casts.parent_hash
+            HAVING COUNT(*) >= 5
+        ),
+        nuke_degen AS (
+            SELECT
+                casts.parent_hash AS cast_hash,
+                COUNT(*) AS downvotes
+            FROM
+                casts
+            WHERE
+                UPPER(casts.text) LIKE '%DEDEGEN%'
+                AND casts.fid IN (2904, 15983, 12493)
+                AND casts.deleted_at IS NULL
+            GROUP BY
+                casts.parent_hash
+        ),
+        tipped_casts AS (
+            SELECT *
+            FROM casts
+            WHERE
+                casts.fid NOT IN (217745, 234434, 244128, 364927) -- Exclude specific FIDs
+                AND casts.parent_fid NOT IN (364927) -- Exclude specific FIDs
+                AND COALESCE(ARRAY_POSITION(casts.mentions, 364927), 0) = 0 -- Exclude specific mentions
+                AND casts.text ~* '[0-9]+ \$DEGEN' -- Use PostgreSQL's case-insensitive regex match
+                AND casts.parent_hash IS NOT NULL
+                AND casts.timestamp >= TO_DATE('2024-07-31', 'YYYY-MM-DD') -- Corrected date format
+                AND casts.parent_fid <> casts.fid
+			order by timestamp desc
         ), fid_cast_scores as (
             SELECT
                 hash as cast_hash,
@@ -884,7 +923,7 @@ async def get_popular_degen_casts(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts
+            FROM tipped_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
                     AND ci.action_ts BETWEEN now() - interval '5 days'
@@ -912,7 +951,7 @@ async def get_popular_degen_casts(
             cast_score,
             casts.timestamp,
             row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-        FROM k3l_recent_parent_casts as casts
+        FROM tipped_casts as casts
         INNER JOIN scores on casts.hash = scores.cast_hash
         WHERE cast_score*100000000000>100
         ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
@@ -923,94 +962,6 @@ async def get_popular_degen_casts(
         {'order by timestamp desc' if ordering else ''}
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
-
-async def get_popular_degen_channel_casts(
-        channel_id: str,
-        channel_url: str,
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        sorting_order: str,
-        pool: Pool
-):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
-
-    if sorting_order == 'recent':
-        ordering = True
-    else:
-        ordering = False
-
-    sql_query = f"""
-        with degen_tip_scores as (
-            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_5
-        ), fid_cast_scores as (
-            SELECT
-                hash as cast_hash,
-                SUM(
-                    (
-                        ({weights.cast} * tip_scores.v * ci.casted)
-                        + ({weights.reply} * tip_scores.v * ci.replied)
-                        + ({weights.recast} * tip_scores.v * ci.recasted)
-                        + ({weights.like} * tip_scores.v * ci.liked)
-                    )
-                    *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
-                ) as cast_score,
-                MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts
-            INNER JOIN k3l_cast_action as ci
-                ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '5 days'
-										AND now() - interval '10 minutes'
-                    AND casts.root_parent_url = $2)
-            INNER JOIN degen_tip_scores as tip_scores ON (tip_scores.i = ci.fid )
-            INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE ci.fid not in (
-                SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
-            GROUP BY casts.hash, ci.fid
-            ORDER BY cast_ts desc
-            LIMIT 100000
-        )
-        , scores AS (
-            SELECT
-                cast_hash,
-                {agg_sql} as cast_score
-                FROM fid_cast_scores
-                GROUP BY cast_hash
-            ),
-    cast_details as (
-    SELECT
-        '0x' || encode(casts.hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', casts.timestamp) as cast_hour,
-        casts.text,
-        casts.embeds,
-        casts.mentions,
-        casts.fid,
-        casts.timestamp,
-        cast_score,
-        row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-    FROM k3l_recent_parent_casts as casts
-    INNER JOIN scores on casts.hash = scores.cast_hash
-    WHERE cast_score*100000000000>100
-    ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
-    OFFSET $3
-    LIMIT $4
-    )
-    select cast_hash, cast_hour, text, embeds, mentions, fid, timestamp, cast_score
-    from cast_details
-    {'order by timestamp desc' if ordering else ''}
-    """
-    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
 
 async def get_popular_channel_casts_lite(
