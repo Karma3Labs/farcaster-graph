@@ -1182,6 +1182,7 @@ async def get_popular_channel_casts_heavy(
 async def get_trending_casts_lite(
         agg: ScoreAgg,
         weights: Weights,
+        score_threshold_multiplier:int,
         offset: int,
         limit: int,
         pool: Pool
@@ -1242,7 +1243,7 @@ async def get_trending_casts_lite(
         (extract(minute FROM cast_ts)::int / 5) AS min5_slot,
         row_number() over(partition by date_trunc('hour',cast_ts),(extract(minute FROM cast_ts)::int / 5) order by random()) as rn
     FROM scores
-    WHERE cast_score*10000000>1
+    WHERE cast_score*{score_threshold_multiplier}>1
     ORDER BY  cast_hour DESC,min5_slot desc, cast_score DESC
     OFFSET $1
     LIMIT $2)
@@ -1254,6 +1255,7 @@ async def get_trending_casts_lite(
 async def get_trending_casts_heavy(
         agg: ScoreAgg,
         weights: Weights,
+        score_threshold_multiplier:int,
         offset: int,
         limit: int,
         pool: Pool
@@ -1320,7 +1322,7 @@ async def get_trending_casts_heavy(
         row_number() over(partition by DATE_TRUNC('hour', casts.timestamp),(extract(minute FROM casts.timestamp)::int / 5) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
-    WHERE cast_score*10000000>1
+    WHERE cast_score*{score_threshold_multiplier}>1
     ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, min5_slot, cast_score DESC
     OFFSET $1
     LIMIT $2
