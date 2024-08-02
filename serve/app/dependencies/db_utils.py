@@ -1151,6 +1151,7 @@ async def get_trending_casts_lite(
         latest_global_rank as (
         select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
+            and rank <= 40000
         ),
         fid_cast_scores as (
             SELECT
@@ -1224,6 +1225,7 @@ async def get_trending_casts_heavy(
         latest_global_rank as (
         select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
+            and rank <= 40000
         )
         , fid_cast_scores as (
             SELECT
