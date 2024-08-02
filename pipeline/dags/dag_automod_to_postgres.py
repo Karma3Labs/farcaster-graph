@@ -8,6 +8,7 @@ import requests
 import os
 import io
 from sqlalchemy import create_engine
+from datetime import date
 import pandas as pd
 
 # Environment variables
@@ -51,6 +52,7 @@ def fetch_data_from_api():
     df_automod.rename(columns=rename_dict, inplace=True)
     df_automod = df_automod[
         ["created_at", "action", "actor", "affected_username", "affected_userid", "cast_hash", "channel_id"]]
+    df_automod["date_iso"] = date.today()
 
     engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
                     % (DB_USER, DB_PASSWORD, DB_ENDPOINT, 9541, 'farcaster')
@@ -59,7 +61,7 @@ def fetch_data_from_api():
     with postgres_engine.connect() as connection:
         df_automod.to_sql('automod_data', con=connection, if_exists='replace', index=False)
 
-    return df_automod
+    return None
 
 with DAG(
         'automod_api_to_db_dag',
