@@ -25,10 +25,10 @@ default_args = {
 def fetch_data_from_api():
     params = {'start': '2024-01-01', 'end': '2024-12-31'}
     headers = {'api-key': f"""{API_KEY}"""}
+    print(headers)
     df_automod = pd.DataFrame()
     for channel in ["degen", "dev", "memes"]:
         initial_url = f"""https://automod.sh/api/partners/channels/{channel}/activity/export?"""
-        print(initial_url)
         response = requests.get(initial_url, params=params, headers=headers)
         if response.status_code == 200:
             # Read the response content into a pandas DataFrame
