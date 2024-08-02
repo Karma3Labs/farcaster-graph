@@ -151,52 +151,6 @@ async def get_popular_channel_casts(
   print(sorting_order)
   return {"result": casts}
 
-@router.get("/experiments/degen/channel_casts/{channel}")
-async def get_popular_channel_casts_from_degen_graph(
-  channel: str,
-  agg: Annotated[ScoreAgg | None,
-                 Query(description="Define the aggregation function"\
-                       " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
-  weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
-  offset: Annotated[int | None, Query()] = 0,
-  limit: Annotated[int | None, Query(le=50)] = 50,
-  sorting_order: Annotated[Sorting_Order, Query()] = Sorting_Order.POPULAR,
-  pool: Pool = Depends(db_pool.get_db),
-):
-  """
-  Get a list of recent casts that are the most popular
-    based on Eigentrust scores of fids in the channel. \n
-  This API takes optional parameters -
-    agg, weights, offset, limit andlite. \n
-  Parameter 'agg' is used to define the aggregation function and
-    can take any of the following values - `rms`, `sumsquare`, `sum`. \n
-  Parameter 'weights' is used to define the weights to be assigned
-    to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
-  Parameter 'lite' is used to constrain the result to just cast hashes. \n
-  Parameter 'offset' is used to specify how many results to skip
-    and can be useful for paginating through results. \n
-  Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=sumsquare, weights='L1C10R5Y1', offset=0,
-    limit=25, and lite=true
-    i.e., returns recent 25 popular casts.
-  """
-  try:
-    weights = Weights.from_str(weights)
-  except:
-    raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
-
-  casts = await db_utils.get_popular_degen_channel_casts(
-                                channel_id=channel,
-                                channel_url=fetch_channel(channel_id=channel),
-                                agg=agg,
-                                weights=weights,
-                                offset=offset,
-                                limit=limit,
-                                sorting_order=sorting_order,
-                                pool=pool)
-
-  return {"result": casts}
-
 
 @router.get("/experiments/degen/casts")
 async def get_popular_casts_from_degen_graph(
@@ -205,7 +159,7 @@ async def get_popular_casts_from_degen_graph(
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
   weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
   offset: Annotated[int | None, Query()] = 0,
-  limit: Annotated[int | None, Query(le=50)] = 50,
+  limit: Annotated[int | None, Query(le=10000)] = 100,
   sorting_order: Annotated[Sorting_Order, Query()] = Sorting_Order.POPULAR,
   pool: Pool = Depends(db_pool.get_db),
 ):
