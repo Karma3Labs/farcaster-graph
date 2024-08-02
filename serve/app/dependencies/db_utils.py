@@ -895,7 +895,8 @@ async def get_popular_degen_casts(
                 casts.parent_hash
         ),
         tipped_casts AS (
-            SELECT *
+            SELECT
+                parent_hash as cast_hash -- cast_hash is parent hash. do not use other columns.
             FROM casts
             WHERE
                 casts.fid NOT IN (217745, 234434, 244128, 364927) -- Exclude specific FIDs
@@ -908,7 +909,7 @@ async def get_popular_degen_casts(
 			order by timestamp desc
         ), fid_cast_scores as (
             SELECT
-                hash as cast_hash,
+                tipped_casts.cast_hash,
                 SUM(
                     (
                         ({weights.cast} * fids.v * ci.casted)
@@ -923,13 +924,13 @@ async def get_popular_degen_casts(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM tipped_casts as casts
+            FROM tipped_casts
             INNER JOIN k3l_cast_action as ci
-                ON (ci.cast_hash = casts.hash
+                ON (ci.cast_hash = tipped_casts.cast_hash
                     AND ci.action_ts BETWEEN now() - interval '5 days'
                                         AND now() - interval '10 minutes')
             INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid )
-            GROUP BY casts.hash, ci.fid
+            GROUP BY tipped_casts.cast_hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
         )
@@ -942,7 +943,7 @@ async def get_popular_degen_casts(
         ),
         cast_details as (
         SELECT
-            '0x' || encode(casts.hash, 'hex') as cast_hash,
+            '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
             DATE_TRUNC('hour', casts.timestamp) as cast_hour,
             casts.text,
             casts.embeds,
@@ -951,7 +952,7 @@ async def get_popular_degen_casts(
             cast_score,
             casts.timestamp,
             row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-        FROM tipped_casts as casts
+        FROM casts
         INNER JOIN scores on casts.hash = scores.cast_hash
         WHERE cast_score*100000000000>100
         ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
