@@ -12,7 +12,6 @@ import pandas as pd
 
 # Environment variables
 API_KEY = Variable.get('API_KEY')
-print(API_KEY)
 DB_ENDPOINT = Variable.get('DB_ENDPOINT')
 DB_USER = Variable.get('DB_USER')
 DB_PASSWORD = Variable.get('DB_PASSWORD')
@@ -31,9 +30,12 @@ def fetch_data_from_api():
     for channel in ["degen", "dev", "memes"]:
         initial_url = f"""https://automod.sh/api/partners/channels/{channel}/activity/export?"""
         response = requests.get(initial_url, params=params, headers=headers)
+        print(response.url)
         if response.status_code == 200:
             # Read the response content into a pandas DataFrame
             data = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+            data["channel_id"] = channel
+            print(len(data))
             df_automod = pd.concat([df_automod, data], axis=0)
         else:
             print(f"Failed to fetch data. Status code: {response.status_code}")
