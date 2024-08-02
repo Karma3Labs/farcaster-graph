@@ -11,6 +11,7 @@ import pandas as pd
 
 # Environment variables
 API_KEY = os.getenv('API_KEY')
+print(API_KEY)
 DB_ENDPOINT = os.getenv('DB_ENDPOINT')
 DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
@@ -25,7 +26,6 @@ default_args = {
 def fetch_data_from_api():
     params = {'start': '2024-01-01', 'end': '2024-12-31'}
     headers = {'api-key': f"""{API_KEY}"""}
-    print(headers)
     df_automod = pd.DataFrame()
     for channel in ["degen", "dev", "memes"]:
         initial_url = f"""https://automod.sh/api/partners/channels/{channel}/activity/export?"""
