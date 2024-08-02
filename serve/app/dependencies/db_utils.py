@@ -906,7 +906,7 @@ async def get_popular_degen_casts(
                 AND casts.parent_hash IS NOT NULL
                 AND casts.timestamp >= TO_DATE('2024-07-31', 'YYYY-MM-DD') -- Corrected date format
                 AND casts.parent_fid <> casts.fid
-			order by timestamp desc
+            ORDER BY timestamp DESC
         ), fid_cast_scores as (
             SELECT
                 tipped_casts.cast_hash,
@@ -1016,7 +1016,7 @@ async def get_popular_channel_casts_lite(
             WHERE ci.fid not in (
                 SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
             GROUP BY casts.hash, ci.fid
-            ORDER BY cast_ts desc
+            ORDER BY cast_ts DESC
             LIMIT 100000
         )
         , scores AS (
