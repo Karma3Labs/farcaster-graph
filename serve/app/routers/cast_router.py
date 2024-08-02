@@ -141,8 +141,9 @@ async def get_trending_casts(
                  Query(description="Define the aggregation function"\
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
         weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
-        offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=5000)] = 100,
+        score_mask: Annotated[int | None, Query(ge=0, le=10)] = 6,
+        offset: Annotated[int | None, Query(ge=0)] = 0,
+        limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
         lite: Annotated[bool, Query()] = True,
         pool: Pool = Depends(db_pool.get_db)
 ):
@@ -155,13 +156,17 @@ async def get_trending_casts(
     can take any of the following values - `rms`, `sumsquare`, `sum`. \n
   Parameter 'weights' is used to define the weights to be assigned
     to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+  Parameter 'score_mask' is used to define how many decimal places to consider
+    when deciding whether or not to show a cast. 
+    The lower this number the higher the score that a cast needs to have 
+    to be included in the feed. \n 
   Parameter 'lite' is used to constrain the result to just cast hashes. \n
   Parameter 'offset' is used to specify how many results to skip
     and can be useful for paginating through results. \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=sumsquare, weights='L1C10R5Y1', offset=0,
+  By default, agg=sumsquare, weights='L1C10R5Y1', score_mask=6, offset=0,
     limit=25, and lite=true
-    i.e., returns recent 100 popular casts.
+    i.e., returns recent 100 popular casts whose score is greater than 1e-6.
   """
     # compute eigentrust on the neighbor graph using fids
     try:
@@ -173,6 +178,7 @@ async def get_trending_casts(
         casts = await db_utils.get_trending_casts_lite(
             agg=agg,
             weights=weights,
+            score_threshold_multiplier=pow(10,score_mask),
             offset=offset,
             limit=limit,
             pool=pool)
@@ -180,6 +186,7 @@ async def get_trending_casts(
         casts = await db_utils.get_trending_casts_heavy(
             agg=agg,
             weights=weights,
+            score_threshold_multiplier=pow(10,score_mask),
             offset=offset,
             limit=limit,
             pool=pool)
