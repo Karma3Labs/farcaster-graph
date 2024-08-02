@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
+from airflow.models import Variable
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 from datetime import datetime, timedelta
@@ -10,11 +11,11 @@ from sqlalchemy import create_engine
 import pandas as pd
 
 # Environment variables
-API_KEY = os.getenv('API_KEY')
+API_KEY = Variable.get('API_KEY')
 print(API_KEY)
-DB_ENDPOINT = os.getenv('DB_ENDPOINT')
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_ENDPOINT = Variable.get('DB_ENDPOINT')
+DB_USER = Variable.get('DB_USER')
+DB_PASSWORD = Variable.get('DB_PASSWORD')
 
 default_args = {
     'owner': 'coder2j',
