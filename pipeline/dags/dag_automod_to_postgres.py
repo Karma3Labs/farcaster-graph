@@ -60,7 +60,7 @@ def fetch_data_from_api():
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
     with postgres_engine.connect() as connection:
-        df_automod.to_sql('automod_daily_data', con=connection, if_exists='replace', index=False)
+        df_automod.to_sql('automod_data', con=connection, if_exists='replace', index=False)
 
     return None
 
