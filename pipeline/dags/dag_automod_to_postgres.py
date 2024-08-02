@@ -52,7 +52,7 @@ def fetch_data_from_api():
     df_automod.rename(columns=rename_dict, inplace=True)
     df_automod = df_automod[
         ["created_at", "action", "actor", "affected_username", "affected_userid", "cast_hash", "channel_id"]]
-    df_automod['createdAt'] = pd.to_datetime(df_automod['createdAt'], unit='ms')
+    df_automod['created_at'] = pd.to_datetime(df_automod['created_at'], unit='ms')
     df_automod["date_iso"] = date.today()
 
     engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
