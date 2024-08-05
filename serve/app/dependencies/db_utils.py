@@ -866,7 +866,7 @@ async def get_popular_degen_casts(
 
     sql_query = f"""
         with degen_tip_scores as (
-            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_5
+            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
         ), deduct_degen AS (
             SELECT
                 casts.parent_hash AS cast_hash,
@@ -895,20 +895,21 @@ async def get_popular_degen_casts(
                 casts.parent_hash
         ),
         tipped_casts AS (
-            SELECT *
+            SELECT
+                parent_hash as cast_hash -- cast_hash is parent hash. do not use other columns.
             FROM casts
             WHERE
                 casts.fid NOT IN (217745, 234434, 244128, 364927) -- Exclude specific FIDs
                 AND casts.parent_fid NOT IN (364927) -- Exclude specific FIDs
                 AND COALESCE(ARRAY_POSITION(casts.mentions, 364927), 0) = 0 -- Exclude specific mentions
-                AND casts.text ~* '[0-9]+ \$DEGEN' -- Use PostgreSQL's case-insensitive regex match
+                AND casts.text ~* '[0-9]+ \\$DEGEN' -- Use PostgreSQL's case-insensitive regex match
                 AND casts.parent_hash IS NOT NULL
                 AND casts.timestamp >= TO_DATE('2024-07-31', 'YYYY-MM-DD') -- Corrected date format
                 AND casts.parent_fid <> casts.fid
-			order by timestamp desc
+            ORDER BY timestamp DESC
         ), fid_cast_scores as (
             SELECT
-                hash as cast_hash,
+                tipped_casts.cast_hash,
                 SUM(
                     (
                         ({weights.cast} * fids.v * ci.casted)
@@ -923,13 +924,13 @@ async def get_popular_degen_casts(
                     )
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
-            FROM tipped_casts as casts
+            FROM tipped_casts
             INNER JOIN k3l_cast_action as ci
-                ON (ci.cast_hash = casts.hash
+                ON (ci.cast_hash = tipped_casts.cast_hash
                     AND ci.action_ts BETWEEN now() - interval '5 days'
                                         AND now() - interval '10 minutes')
             INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid )
-            GROUP BY casts.hash, ci.fid
+            GROUP BY tipped_casts.cast_hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
         )
@@ -942,7 +943,7 @@ async def get_popular_degen_casts(
         ),
         cast_details as (
         SELECT
-            '0x' || encode(casts.hash, 'hex') as cast_hash,
+            '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
             DATE_TRUNC('hour', casts.timestamp) as cast_hour,
             casts.text,
             casts.embeds,
@@ -951,7 +952,7 @@ async def get_popular_degen_casts(
             cast_score,
             casts.timestamp,
             row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-        FROM tipped_casts as casts
+        FROM casts
         INNER JOIN scores on casts.hash = scores.cast_hash
         WHERE cast_score*100000000000>100
         ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
@@ -988,7 +989,12 @@ async def get_popular_channel_casts_lite(
         ordering = False
 
     sql_query = f"""
-        with fid_cast_scores as (
+        with banned_fids as (
+        select distinct affected_userid 
+        from automod_data 
+        where channel_id = $1 and action = 'ban'
+            ),
+            fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1012,10 +1018,13 @@ async def get_popular_channel_casts_lite(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE ci.fid not in (
-                SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM banned_fids bf
+                WHERE bf.affected_userid = ci.fid
+            )
             GROUP BY casts.hash, ci.fid
-            ORDER BY cast_ts desc
+            ORDER BY cast_ts DESC
             LIMIT 100000
         )
         , scores AS (
@@ -1068,7 +1077,13 @@ async def get_popular_channel_casts_heavy(
         ordering = False
 
     sql_query = f"""
-        with fid_cast_scores as (
+        with 
+        banned_fids as (
+        select distinct affected_userid 
+        from automod_data 
+        where channel_id = $1 and action = 'ban'
+            ),
+        fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1092,8 +1107,11 @@ async def get_popular_channel_casts_heavy(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE ci.fid not in (
-                SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM banned_fids bf
+                WHERE bf.affected_userid = ci.fid
+            )
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
@@ -1151,6 +1169,7 @@ async def get_trending_casts_lite(
         latest_global_rank as (
         select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
+            and rank <= 15000
         ),
         fid_cast_scores as (
             SELECT
@@ -1172,7 +1191,7 @@ async def get_trending_casts_lite(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '1 days'
+                    AND ci.action_ts BETWEEN now() - interval '3 days'
   										AND now() - interval '10 minutes')
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
@@ -1191,11 +1210,10 @@ async def get_trending_casts_lite(
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
-        (extract(minute FROM cast_ts)::int / 5) AS min5_slot,
-        row_number() over(partition by date_trunc('hour',cast_ts),(extract(minute FROM cast_ts)::int / 5) order by random()) as rn
+        row_number() over(partition by date_trunc('hour',cast_ts) order by random()) as rn
     FROM scores
     WHERE cast_score*{score_threshold_multiplier}>1
-    ORDER BY  cast_hour DESC,min5_slot desc, cast_score DESC
+    ORDER BY  cast_hour DESC,cast_score DESC
     OFFSET $1
     LIMIT $2)
     select cast_hash,cast_hour from cast_details order by rn
@@ -1224,6 +1242,7 @@ async def get_trending_casts_heavy(
         latest_global_rank as (
         select profile_id as fid, score from k3l_rank g where strategy_id=3
             and date in (select max(date) from k3l_rank)
+            and rank <= 15000
         )
         , fid_cast_scores as (
             SELECT
@@ -1245,7 +1264,7 @@ async def get_trending_casts_heavy(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '1 days'
+                    AND ci.action_ts BETWEEN now() - interval '3 days'
   										AND now() - interval '10 minutes')
             INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
             GROUP BY casts.hash, ci.fid
@@ -1263,18 +1282,17 @@ async def get_trending_casts_heavy(
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', casts.timestamp) as cast_hour,
-        (extract(minute FROM casts.timestamp)::int / 5) AS min5_slot,
         casts.text,
         casts.embeds,
         casts.mentions,
         casts.fid,
         casts.timestamp,
         cast_score,
-        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp),(extract(minute FROM casts.timestamp)::int / 5) order by random()) as rn
+        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp) order by random()) as rn
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*{score_threshold_multiplier}>1
-    ORDER BY DATE_TRUNC('hour', casts.timestamp) DESC, min5_slot, cast_score DESC
+    ORDER BY cast_hour DESC, cast_score DESC
     OFFSET $1
     LIMIT $2
     )

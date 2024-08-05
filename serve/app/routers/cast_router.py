@@ -141,7 +141,7 @@ async def get_trending_casts(
                  Query(description="Define the aggregation function"\
                        " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
         weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
-        score_mask: Annotated[int | None, Query(ge=0, le=10)] = 6,
+        score_mask: Annotated[int | None, Query(ge=0, le=10)] = 5,
         offset: Annotated[int | None, Query(ge=0)] = 0,
         limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
         lite: Annotated[bool, Query()] = True,
