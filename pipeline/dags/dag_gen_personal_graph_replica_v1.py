@@ -85,6 +85,7 @@ with DAG(
         command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate -r {{ run_id }}",
         ssh_hook=ssh_hook,
         dag=dag,
+        priority_weight=42,
     )
 
     eigen7_graph_reload >> eigen7_fetch_fids >> extract_fids_task >> process_tasks >> eigen7_consolidate

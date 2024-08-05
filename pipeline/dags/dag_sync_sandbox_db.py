@@ -25,7 +25,6 @@ with DAG(
     start_date=datetime(2024, 7, 10, 18),
     schedule_interval='*/5 * * * *',
     catchup=False,
-    priority_weight='upstream',
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
