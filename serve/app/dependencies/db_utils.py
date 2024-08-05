@@ -866,7 +866,7 @@ async def get_popular_degen_casts(
 
     sql_query = f"""
         with degen_tip_scores as (
-            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_5
+            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
         ), deduct_degen AS (
             SELECT
                 casts.parent_hash AS cast_hash,
@@ -989,7 +989,12 @@ async def get_popular_channel_casts_lite(
         ordering = False
 
     sql_query = f"""
-        with fid_cast_scores as (
+        with banned_fids as (
+        select distinct affected_userid 
+        from automod_data 
+        where channel_id = $1 and action = 'ban'
+            ),
+            fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1013,8 +1018,11 @@ async def get_popular_channel_casts_lite(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE ci.fid not in (
-                SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM banned_fids bf
+                WHERE bf.affected_userid = ci.fid
+            )
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts DESC
             LIMIT 100000
@@ -1069,7 +1077,13 @@ async def get_popular_channel_casts_heavy(
         ordering = False
 
     sql_query = f"""
-        with fid_cast_scores as (
+        with 
+        banned_fids as (
+        select distinct affected_userid 
+        from automod_data 
+        where channel_id = $1 and action = 'ban'
+            ),
+        fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1093,8 +1107,11 @@ async def get_popular_channel_casts_heavy(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE ci.fid not in (
-                SELECT affected_userid FROM automod_data where channel_id = $1 and action = 'ban')
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM banned_fids bf
+                WHERE bf.affected_userid = ci.fid
+            )
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
