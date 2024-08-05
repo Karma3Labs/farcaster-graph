@@ -96,6 +96,9 @@ elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
+  # remove parsed pkl file from the job
+  rm -rf $TMP_GRAPH_OUT
+
   # if previous graph compute exists, confirm that the new output is larger in size
   if [ -d "$OUT_DIR/temp" ]; then
     new_size=$(du -sm ${OUT_DIR}/${RUN_ID} | cut -f1)
@@ -131,9 +134,6 @@ elif [ "$TASK" = "consolidate" ]; then
   aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/
   intDayOfWeek=$(date '+%u') # keep up to last 7 days of backup copies
   aws s3 cp $OUT_DIR/personal_graph.parquet s3://${S3_BKT}/historical/${intDayOfWeek}/
-
-  # remove parsed pkl file from the job
-  rm -rf $TMP_GRAPH_OUT
 elif [ "$TASK" = "cleanup" ]; then
   echo "removing $TMP_GRAPH_OUT"
   rm -rf $TMP_GRAPH_OUT
