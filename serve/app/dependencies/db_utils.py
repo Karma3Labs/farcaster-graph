@@ -866,7 +866,7 @@ async def get_popular_degen_casts(
 
     sql_query = f"""
         with degen_tip_scores as (
-            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_5
+            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
         ), deduct_degen AS (
             SELECT
                 casts.parent_hash AS cast_hash,
