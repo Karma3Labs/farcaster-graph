@@ -245,3 +245,16 @@ CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fi
 
 CREATE INDEX k3l_channel_rank_ch_idx ON public.k3l_channel_rank USING btree (channel_id);
 ------------------------------------------------------------------------------------
+
+CREATE TABLE public.automod_data (
+	created_at timestamp NULL,
+	"action" text NULL,
+	actor text NULL,
+	affected_username text NULL,
+	affected_userid int8 NULL,
+	cast_hash text NULL,
+	channel_id text NULL,
+	date_iso date NULL
+);
+
+-------------------------------------------------------------------------------------
