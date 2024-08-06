@@ -40,6 +40,12 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
 
+    run_refresh = SSHOperator(
+        task_id="run_refresh_v0",
+        command=f"cd {sandbox_db_sync_path}; ./4-run-refresh.sh ",
+        ssh_hook=ssh_hook,
+        dag=dag)
+
     run_append_dev = SSHOperator(
         task_id="run_append_dev_v0",
         command=f"cd {dev_sandbox_db_sync_path}; ./1-run-append.sh -d 5 ",
@@ -53,5 +59,6 @@ with DAG(
         dag=dag)
 
     run_append >> run_remove
+    run_refresh
     run_append_dev >> run_remove_dev
 
