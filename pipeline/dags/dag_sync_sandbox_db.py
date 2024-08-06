@@ -23,14 +23,14 @@ with DAG(
     default_args=default_args,
     description='sync the db table of the sandboxed read replica',
     start_date=datetime(2024, 7, 10, 18),
-    schedule_interval='*/5 * * * *',
+    schedule_interval='*/10 * * * *',
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
     run_append = SSHOperator(
         task_id="run_append_v0",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append.sh -d 5 ",
+        command=f"cd {sandbox_db_sync_path}; ./1-run-append.sh -d 10",
         ssh_hook=ssh_hook,
         dag=dag)
 
