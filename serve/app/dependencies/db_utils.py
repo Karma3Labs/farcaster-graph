@@ -989,12 +989,7 @@ async def get_popular_channel_casts_lite(
         ordering = False
 
     sql_query = f"""
-        with banned_fids as (
-        select distinct affected_userid 
-        from automod_data 
-        where channel_id = $1 and action = 'ban'
-            ),
-            fid_cast_scores as (
+        with fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1018,11 +1013,7 @@ async def get_popular_channel_casts_lite(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM banned_fids bf
-                WHERE bf.affected_userid = ci.fid
-            )
+            LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts DESC
             LIMIT 100000
@@ -1077,13 +1068,7 @@ async def get_popular_channel_casts_heavy(
         ordering = False
 
     sql_query = f"""
-        with 
-        banned_fids as (
-        select distinct affected_userid 
-        from automod_data 
-        where channel_id = $1 and action = 'ban'
-            ),
-        fid_cast_scores as (
+        with fid_cast_scores as (
             SELECT
                 hash as cast_hash,
                 SUM(
@@ -1107,11 +1092,7 @@ async def get_popular_channel_casts_heavy(
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM banned_fids bf
-                WHERE bf.affected_userid = ci.fid
-            )
+            LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
