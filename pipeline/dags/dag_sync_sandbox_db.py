@@ -58,7 +58,6 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
 
-    run_append >> run_remove
-    run_refresh
+    run_append >> run_remove >> run_refresh
     run_append_dev >> run_remove_dev
 
