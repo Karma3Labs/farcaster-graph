@@ -17,6 +17,11 @@ class Sorting_Order(StrEnum):
   POPULAR = 'popular'
   RECENT = 'recent'
 
+class QueryType(StrEnum):
+  SUPERLITE = 'superlite'
+  LITE = 'lite'
+  HEAVY = 'heavy'
+
 class Weights(NamedTuple):
   cast:int = 10
   recast:int = 5
