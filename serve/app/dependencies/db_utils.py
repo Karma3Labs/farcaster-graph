@@ -220,8 +220,8 @@ async def get_unique_handle_metadata_for_fids(
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 
-async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool, lite: bool):
-    if lite:
+async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool, query_type: str):
+    if query_type == 'lite':
         sql_query = """
         WITH total AS (
             SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
@@ -240,6 +240,26 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
         ORDER BY rank
         OFFSET $2
         LIMIT $3
+        """
+    elif query_type == 'superlite':
+        sql_query = """
+        WITH total AS (
+            SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
+        ),ranks as (
+        SELECT
+            profile_id as fid,
+            rank,
+            score,
+            ((total.total - (rank - 1))*100 / total.total) as percentile
+        FROM k3l_rank
+        CROSS JOIN total
+        WHERE strategy_id = $1
+        GROUP BY profile_id,rank,score,percentile
+        ORDER BY rank
+        OFFSET $2
+        LIMIT $3
+        )
+        select fid from ranks
         """
     else:
         sql_query = """
@@ -955,12 +975,12 @@ async def get_popular_degen_casts(
         FROM casts
         INNER JOIN scores on casts.hash = scores.cast_hash
         WHERE cast_score*100000000000>100
-        ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
+        {"ORDER BY casts.timestamp DESC" if ordering else "ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC"}
         OFFSET $1
         LIMIT $2
         )
         select cast_hash, cast_hour, text, embeds, mentions, fid, cast_score, timestamp from cast_details
-        {'order by timestamp desc' if ordering else ''}
+        
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
@@ -1034,12 +1054,12 @@ async def get_popular_channel_casts_lite(
         row_number() over(partition by date_trunc('day',cast_ts) order by random()) as rn
     FROM scores
     WHERE cast_score*100000000000>100
-    ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC
+    {"ORDER BY cast_ts desc" if ordering else "ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC"}
     OFFSET $3
     LIMIT $4
     )
     select cast_hash, cast_hour, cast_ts from cast_details
-    {'order by cast_ts desc' if ordering else ''}
+    
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
@@ -1118,13 +1138,12 @@ async def get_popular_channel_casts_heavy(
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*100000000000>100
-    ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC
+    {"ORDER BY casts.timestamp desc" if ordering else "ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC"}
     OFFSET $3
     LIMIT $4
     )
     select cast_hash, cast_hour, text, embeds, mentions, fid, timestamp, cast_score
     from cast_details
-    {'order by timestamp desc' if ordering else ''}
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
