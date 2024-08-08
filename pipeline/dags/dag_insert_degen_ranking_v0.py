@@ -17,12 +17,13 @@ with DAG(
     default_args=default_args,
     description='Process DEGEN tips from casts',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='*/10 * * * *',  # Run every 10 minutes
+    schedule_interval='10 */6 * * *',
     catchup=False,
 ) as dag:
+
     task_update_degen_tips = BashOperator(
         task_id='update_degen_tips_v0',
-        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv -t extract
+        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv -t insert_scores
         '''
     )
 
