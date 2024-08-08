@@ -156,6 +156,7 @@ def update_degen_tips():
         insert_query = """
         INSERT INTO k3l_degen_tips (cast_hash, parent_hash, fid, parent_fid, degen_amount, "timestamp", parent_timestamp, parsed_at)
         VALUES %s
+        ON CONFLICT (cast_hash) DO NOTHING
         """
         execute_values(cur, insert_query, degen_tips_data)
 
