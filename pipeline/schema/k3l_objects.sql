@@ -1,3 +1,25 @@
+CREATE TABLE public.globaltrust_config (
+	strategy_id int4 NOT NULL,
+	strategy_name varchar(255) NOT NULL,
+	pretrust text NULL,
+	localtrust text NULL,
+	alpha float4 NULL,
+	"date" date NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT globaltrust_config_pkey PRIMARY KEY (strategy_id, date)
+);
+
+INSERT INTO public.globaltrust_config (strategy_id, strategy_name, pretrust, localtrust, alpha, date) VALUES
+(1, 'follows', 'pretrustAllEqually', 'existingConnections', 0.5, '2023-12-07'),
+(3, 'engagement', 'pretrustAllEqually', 'l1rep6rec3m12enhancedConnections', 0.5, '2023-12-07'),
+(5, 'activity', 'pretrustAllEqually', 'l1rep1rec1m1enhancedConnections', 0.5, '2023-12-07'),
+(7, 'OG circles', 'pretrustSpecificUsernames', 'existingConnections', 0.5, '2023-12-07'),
+(9, 'OG engagement', 'pretrustSpecificUsernames', 'l1rep6rec3m12enhancedConnections', 0.5, '2023-12-07'),
+(11, 'OG activity', 'pretrustSpecificUsernames', 'l1rep1rec1m1enhancedConnections', 0.5, '2023-12-07'),
+(1, 'follows', 'pretrustTopTier', 'existingConnections', 0.5, '2024-03-14'),
+(3, 'engagement', 'pretrustTopTier', 'l1rep6rec3m12enhancedConnections', 0.5, '2024-03-14');
+
+----------------------------------------------------------------------------------------------------------------
+
 CREATE MATERIALIZED VIEW public.k3l_rank AS
  WITH latest_gt AS (
          SELECT max(globaltrust_1.date) AS dt,
@@ -264,56 +286,3 @@ CREATE INDEX idx_automod_data_affected_userid ON public.automod_data USING btree
 CREATE INDEX idx_automod_data_ch_userid_idx ON public.automod_data USING btree (channel_id, affected_userid)
 
 -------------------------------------------------------------------------------------
-CREATE TABLE public.globaltrust_config (
-	strategy_id int4 NOT NULL,
-	strategy_name varchar(255) NOT NULL,
-	pretrust text NULL,
-	localtrust text NULL,
-	alpha float4 NULL,
-	"date" date NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	CONSTRAINT globaltrust_config_pkey PRIMARY KEY (strategy_id, date)
-);
-
-INSERT INTO public.globaltrust_config (strategy_id, strategy_name, pretrust, localtrust, alpha, date) VALUES
-(1, 'follows', 'pretrustAllEqually', 'existingConnections', 0.5, '2023-12-07'),
-(3, 'engagement', 'pretrustAllEqually', 'l1rep6rec3m12enhancedConnections', 0.5, '2023-12-07'),
-(5, 'activity', 'pretrustAllEqually', 'l1rep1rec1m1enhancedConnections', 0.5, '2023-12-07'),
-(7, 'OG circles', 'pretrustSpecificUsernames', 'existingConnections', 0.5, '2023-12-07'),
-(9, 'OG engagement', 'pretrustSpecificUsernames', 'l1rep6rec3m12enhancedConnections', 0.5, '2023-12-07'),
-(11, 'OG activity', 'pretrustSpecificUsernames', 'l1rep1rec1m1enhancedConnections', 0.5, '2023-12-07'),
-(1, 'follows', 'pretrustTopTier', 'existingConnections', 0.5, '2024-03-14'),
-(3, 'engagement', 'pretrustTopTier', 'l1rep6rec3m12enhancedConnections', 0.5, '2024-03-14');
-
----------------------------------------------------------------------------------------------------
-CREATE MATERIALIZED VIEW public.k3l_rank
-TABLESPACE pg_default
-AS WITH latest_gt AS (
-         SELECT max(globaltrust_1.date) AS dt,
-            globaltrust_1.strategy_id
-           FROM globaltrust globaltrust_1
-          GROUP BY globaltrust_1.strategy_id
-        ), latest_gt_config AS (
-         SELECT DISTINCT ON (globaltrust_config.strategy_id) globaltrust_config.strategy_id,
-            globaltrust_config.strategy_name
-           FROM globaltrust_config
-          ORDER BY globaltrust_config.strategy_id, globaltrust_config.date DESC
-        )
- SELECT row_number() OVER () AS pseudo_id,
-    row_number() OVER (PARTITION BY globaltrust.date, globaltrust.strategy_id ORDER BY globaltrust.v DESC) AS rank,
-    globaltrust.v AS score,
-    globaltrust.i AS profile_id,
-    globaltrust.strategy_id,
-    latest_gt_config.strategy_name,
-    globaltrust.date
-   FROM globaltrust
-     JOIN latest_gt_config ON globaltrust.strategy_id = latest_gt_config.strategy_id
-     JOIN latest_gt ON globaltrust.strategy_id = latest_gt.strategy_id AND globaltrust.date = latest_gt.dt
-WITH DATA;
-
--- View indexes:
-CREATE UNIQUE INDEX k3l_rank_idx ON public.k3l_rank USING btree (pseudo_id);
-CREATE INDEX k3l_rank_profile_id_idx ON public.k3l_rank USING btree (profile_id);
-CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree (profile_id, strategy_id);
-CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id);
-
-----------------------------------------------------------------------------------------------------------------
