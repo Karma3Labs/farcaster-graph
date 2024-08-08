@@ -899,7 +899,7 @@ async def get_popular_degen_casts(
                     )
                 ) as cast_score
             FROM k3l_degen_tips dt
-            INNER JOIN k3l_cast_action ca ON ca.cast_hash = dt.parent_hash
+            INNER JOIN k3l_cast_action ca ON (ca.cast_hash = dt.parent_hash AND ca.action_ts = dt.parent_timestamp)
             INNER JOIN degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1 scores ON scores.i = ca.fid
             WHERE dt.parent_timestamp BETWEEN now() - interval '2 days' AND now() - interval '10 minutes'
         ),
