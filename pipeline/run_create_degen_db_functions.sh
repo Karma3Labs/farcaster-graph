@@ -30,7 +30,7 @@ set -o pipefail
 source $VENV/bin/activate
 pip install -r requirements.txt
 
-log "Executing task: $TASK"
+echo "Executing task: $TASK"
 if [ "$TASK" = "extract" ]; then
   python3 -m degen.create_degen_sql_functions
 elif [ "$TASK" = "insert_scores" ]; then
