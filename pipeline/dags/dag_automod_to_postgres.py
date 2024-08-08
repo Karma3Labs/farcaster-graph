@@ -60,7 +60,8 @@ def fetch_data_from_api():
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
     with postgres_engine.connect() as connection:
-        df_automod.to_sql('automod_data', con=connection, if_exists='replace', index=False)
+        connection.execute("TRUNCATE TABLE automod_data")
+        df_automod.to_sql('automod_data', con=connection, index=False)
 
     return None
 
