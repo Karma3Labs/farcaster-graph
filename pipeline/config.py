@@ -58,7 +58,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
-        env_file=('.env', '.env.prod')
+        env_file=('.env', '.env.prod'),
+        extra="allow"  # Allow extra environment variables
     )
 
     @computed_field
