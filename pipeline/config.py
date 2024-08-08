@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     SSH_KEY_PATH: str = 'id_rsa'
     REMOTE_DB_PORT: int = 9541
 
+    DUNE_API_KEY: str = 'repalce_me'
+
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
         env_file=('.env', '.env.prod')

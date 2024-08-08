@@ -3,10 +3,11 @@
 set -x
 set -e
 
-while getopts v: flag
+while getopts v:t: flag
 do
     case "${flag}" in
         v) VENV=${OPTARG};;
+        t) TASK=${OPTARG};;
     esac
 done
 
@@ -17,6 +18,7 @@ if [ -z "$VENV" ]; then
   echo ""
   echo "Params:"
   echo "  [venv] The path where a python3 virtualenv has been created."
+  echo "  [task] The task to perform: 'extract' or 'insert_scores'."
   echo ""
   exit
 fi
@@ -25,8 +27,16 @@ fi
 set -e
 set -o pipefail
 
-
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m degen.create_degen_sql_functions
-deactivate
+
+log "Executing task: $TASK"
+if [ "$TASK" = "extract" ]; then
+  python3 -m degen.create_degen_sql_functions
+elif [ "$TASK" = "insert_scores" ]; then
+  python3 -m degen.calculate_rank
+else
+  echo "Invalid task specified. Use 'extract' or 'insert_scores'."
+  exit 1
+fi
+  deactivate

@@ -20,10 +20,15 @@ with DAG(
     schedule_interval='*/10 * * * *',  # Run every 10 minutes
     catchup=False,
 ) as dag:
+    task_insert_scores_from_dune = BashOperator(
+        task_id='insert_scores_from_dune_v0',
+        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv -t insert_scores
+        '''
+    )
 
     task_update_degen_tips = BashOperator(
         task_id='update_degen_tips_v0',
-        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv
+        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv -t extract
         '''
     )
 
@@ -36,4 +41,4 @@ with DAG(
     )
 
     # Set up the task dependencies
-    task_update_degen_tips >> task_analyze_degen_tips
+    task_insert_scores_from_dune >> task_update_degen_tips >> task_analyze_degen_tips
