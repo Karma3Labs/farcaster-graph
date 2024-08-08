@@ -908,7 +908,7 @@ async def get_popular_degen_casts(
             FROM tipped_casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = tipped_casts.cast_hash
-                    AND ci.action_ts BETWEEN now() - interval '5 days'
+                    AND ci.action_ts BETWEEN now() - interval '2 days'
                                         AND now() - interval '10 minutes')
             INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid)
             GROUP BY tipped_casts.cast_hash, ci.fid

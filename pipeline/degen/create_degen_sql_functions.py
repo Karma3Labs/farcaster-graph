@@ -51,7 +51,7 @@ BEGIN
             UPPER(casts.text) LIKE '%DEDEGEN%'
             AND casts.fid = ANY(ARRAY[2904, 15983, 12493, 250874, 307834, 403619, 269694, 234616, 4482, 274, 243818, 385955, 210201, 3642, 539, 294226, 16405, 3827, 320215, 7637, 4027, 9135, 7258, 211186, 10174, 7464, 13505, 11299, 1048, 2341, 617, 191503, 4877, 3103, 12990, 390940, 7237, 5034, 195117, 8447, 20147, 262938, 307739, 17064, 351897, 426045, 326433, 273147, 270504, 419741, 446697, 354795])
             AND casts.deleted_at IS NULL
-            AND casts.timestamp > last_processed_timestamp
+            AND casts."timestamp" > last_processed_timestamp
         GROUP BY
             casts.parent_hash
         HAVING COUNT(*) >= 5
@@ -65,7 +65,7 @@ BEGIN
             UPPER(casts.text) LIKE '%DEDEGEN%'
             AND casts.fid IN (2904, 15983, 12493)
             AND casts.deleted_at IS NULL
-            AND casts.timestamp > last_processed_timestamp
+            AND casts."timestamp" > last_processed_timestamp
         GROUP BY
             casts.parent_hash
     ),
@@ -78,18 +78,22 @@ BEGIN
             casts,
             LATERAL parse_degen_tip(casts.text) p
         WHERE
-            casts.timestamp > last_processed_timestamp
+            casts."timestamp" > last_processed_timestamp
     ),
     new_tips AS (
-        INSERT INTO k3l_degen_tips (cast_hash, parent_hash, fid, parent_fid, degen_amount)
+        INSERT INTO k3l_degen_tips (cast_hash, parent_hash, fid, parent_fid, degen_amount, "timestamp", parent_timestamp)
         SELECT
             parsed_casts.hash,
             parsed_casts.parent_hash,
             parsed_casts.fid,
             parsed_casts.parent_fid,
-            parsed_casts.degen_amount
+            parsed_casts.degen_amount,
+            parsed_casts."timestamp",
+            parent_casts."timestamp"
         FROM
             parsed_casts
+        INNER JOIN
+            casts AS parent_casts ON parsed_casts.parent_hash = parent_casts.hash
         WHERE
             parsed_casts.is_valid
             AND parsed_casts.parent_hash IS NOT NULL
@@ -113,7 +117,7 @@ BEGIN
                 FROM nuke_degen
                 WHERE nuke_degen.cast_hash = parsed_casts.parent_hash
             )
-        ORDER BY parsed_casts.timestamp DESC
+        ORDER BY parsed_casts."timestamp" DESC
         RETURNING 1
     )
     SELECT COUNT(*) INTO rows_inserted FROM new_tips;
