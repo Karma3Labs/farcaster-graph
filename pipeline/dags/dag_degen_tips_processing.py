@@ -21,15 +21,9 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    task_create_degen_functions = BashOperator(
-        task_id='create_degen_functions_v0',
-        bash_command='cd /pipeline/ && ./run_create_degen_db_functions.sh '
-    )
-
     task_update_degen_tips = BashOperator(
         task_id='update_degen_tips_v0',
-        bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        SELECT update_degen_tips();"
+        bash_command='''cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv
         '''
     )
 
@@ -42,4 +36,4 @@ with DAG(
     )
 
     # Set up the task dependencies
-    task_create_degen_functions >> task_update_degen_tips >> task_analyze_degen_tips
+    task_update_degen_tips >> task_analyze_degen_tips
