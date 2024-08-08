@@ -879,67 +879,56 @@ async def get_popular_degen_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    ordering = "casts.timestamp DESC" if sorting_order == 'recent' else "date_trunc('day',casts.timestamp) DESC, cast_score DESC"
+    ordering = "casts.timestamp DESC" if sorting_order == 'recent' else "date_trunc('day',c.timestamp) DESC, cast_score DESC"
 
     sql_query = f"""
-        WITH degen_tip_scores AS (
-            SELECT * FROM degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
-        ), tipped_casts AS (
+        WITH fid_cast_scores AS (
             SELECT
-                parent_hash as cast_hash
-            FROM k3l_degen_tips
-        ), fid_cast_scores AS (
-            SELECT
-                tipped_casts.cast_hash,
-                SUM(
+                ca.cast_hash, ca.fid, ca.casted, ca.replied, ca.recasted, ca.liked, dt.parent_timestamp as timestamp, scores.v,
+                (
                     (
-                        ({weights.cast} * fids.v * ci.casted)
-                        + ({weights.reply} * fids.v * ci.replied)
-                        + ({weights.recast} * fids.v * ci.recasted)
-                        + ({weights.like} * fids.v * ci.liked)
+                        ({weights.cast} * scores.v * ca.casted)
+                        + ({weights.reply} * scores.v * ca.replied)
+                        + ({weights.recast} * scores.v * ca.recasted)
+                        + ({weights.like} * scores.v * ca.liked)
                     )
                     *
                     power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+                        0.99::numeric, -- After 24 hours: 0.78584693
+                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - dt.parent_timestamp)) / (60 * 60))::numeric
                     )
-                ) as cast_score,
-                MIN(ci.action_ts) as cast_ts
-            FROM tipped_casts
-            INNER JOIN k3l_cast_action as ci
-                ON (ci.cast_hash = tipped_casts.cast_hash
-                    AND ci.action_ts BETWEEN now() - interval '2 days'
-                                        AND now() - interval '10 minutes')
-            INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid)
-            GROUP BY tipped_casts.cast_hash, ci.fid
-            ORDER BY cast_ts desc
-            LIMIT 100000
-        ), scores AS (
+                ) as cast_score
+            FROM k3l_degen_tips dt
+            INNER JOIN k3l_cast_action ca ON ca.cast_hash = dt.parent_hash
+            INNER JOIN degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1 scores ON scores.i = ca.fid
+            WHERE dt.parent_timestamp BETWEEN now() - interval '2 days' AND now() - interval '10 minutes'
+        ),
+        filtered_actions AS (
             SELECT
                 cast_hash,
                 {agg_sql} as cast_score
             FROM fid_cast_scores
-            GROUP BY cast_hash
-        ), cast_details AS (
-            SELECT
-                '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
-                DATE_TRUNC('hour', casts.timestamp) as cast_hour,
-                casts.text,
-                casts.embeds,
-                casts.mentions,
-                casts.fid,
-                cast_score,
-                casts.timestamp,
-                row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-            FROM casts
-            INNER JOIN scores ON casts.hash = scores.cast_hash
             WHERE cast_score * 100000000000 > 100
+            GROUP BY cast_hash
+        ),
+        cast_details AS (
+            SELECT
+                '0x' || encode(fa.cast_hash, 'hex') as cast_hash,
+                DATE_TRUNC('hour', c.timestamp) as cast_hour,
+                c.text,
+                c.embeds,
+                c.mentions,
+                c.fid,
+                fa.cast_score,
+                c.timestamp
+            FROM filtered_actions fa
+            INNER JOIN casts c ON c.hash = fa.cast_hash
             ORDER BY {ordering}
             OFFSET $1
             LIMIT $2
         )
-        SELECT cast_hash, cast_hour, text, embeds, mentions, fid, cast_score, timestamp
-        FROM cast_details
+        SELECT cast_hash, timestamp, cast_score, fid, text, embeds, mentions
+        FROM cast_details;
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
