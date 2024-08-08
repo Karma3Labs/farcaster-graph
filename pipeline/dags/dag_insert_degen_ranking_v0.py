@@ -13,7 +13,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='dag_degen_tips_processing_v0',
+    dag_id='dag_degen_insert_ranking_v0',
     default_args=default_args,
     description='Process DEGEN tips from casts',
     start_date=datetime(2024, 7, 9, 18),
