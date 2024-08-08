@@ -17,13 +17,13 @@ with DAG(
     default_args=default_args,
     description='Process DEGEN tips from casts',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='*/20 * * * *',  # Run every 20 minutes
+    schedule_interval='*/10 * * * *',  # Run every 10 minutes
     catchup=False,
 ) as dag:
 
     task_create_degen_functions = BashOperator(
         task_id='create_degen_functions_v0',
-        bash_command='cd /pipeline/ && ./run_create_degen_functions.sh'
+        bash_command='cd /pipeline/ && ./run_create_degen_db_functions.sh '
     )
 
     task_update_degen_tips = BashOperator(
@@ -37,8 +37,7 @@ with DAG(
         task_id='analyze_degen_tips_v0',
         bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
         ANALYZE k3l_degen_tips;
-        ANALYZE k3l_cast_action;
-        ANALYZE casts;"
+        ANALYZE k3l_cast_action;"
         '''
     )
 
