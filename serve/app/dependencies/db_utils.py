@@ -879,55 +879,16 @@ async def get_popular_degen_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    if sorting_order == 'recent':
-        ordering = True
-    else:
-        ordering = False
+    ordering = "casts.timestamp DESC" if sorting_order == 'recent' else "date_trunc('day',casts.timestamp) DESC, cast_score DESC"
 
     sql_query = f"""
-        with degen_tip_scores as (
-            select * from degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
-        ), deduct_degen AS (
+        WITH degen_tip_scores AS (
+            SELECT * FROM degen_tip_allowance_pretrust_received_amount_top_100_alpha_0_1
+        ), tipped_casts AS (
             SELECT
-                casts.parent_hash AS cast_hash,
-                COUNT(*) AS downvotes
-            FROM
-                casts
-            WHERE
-                UPPER(casts.text) LIKE '%DEDEGEN%'
-                AND casts.fid = ANY(ARRAY[2904, 15983, 12493, 250874, 307834, 403619, 269694, 234616, 4482, 274, 243818, 385955, 210201, 3642, 539, 294226, 16405, 3827, 320215, 7637, 4027, 9135, 7258, 211186, 10174, 7464, 13505, 11299, 1048, 2341, 617, 191503, 4877, 3103, 12990, 390940, 7237, 5034, 195117, 8447, 20147, 262938, 307739, 17064, 351897, 426045, 326433, 273147, 270504, 419741, 446697, 354795])
-                AND casts.deleted_at IS NULL
-            GROUP BY
-                casts.parent_hash
-            HAVING COUNT(*) >= 5
-        ),
-        nuke_degen AS (
-            SELECT
-                casts.parent_hash AS cast_hash,
-                COUNT(*) AS downvotes
-            FROM
-                casts
-            WHERE
-                UPPER(casts.text) LIKE '%DEDEGEN%'
-                AND casts.fid IN (2904, 15983, 12493)
-                AND casts.deleted_at IS NULL
-            GROUP BY
-                casts.parent_hash
-        ),
-        tipped_casts AS (
-            SELECT
-                parent_hash as cast_hash -- cast_hash is parent hash. do not use other columns.
-            FROM casts
-            WHERE
-                casts.fid NOT IN (217745, 234434, 244128, 364927) -- Exclude specific FIDs
-                AND casts.parent_fid NOT IN (364927) -- Exclude specific FIDs
-                AND COALESCE(ARRAY_POSITION(casts.mentions, 364927), 0) = 0 -- Exclude specific mentions
-                AND casts.text ~* '[0-9]+ \\$DEGEN' -- Use PostgreSQL's case-insensitive regex match
-                AND casts.parent_hash IS NOT NULL
-                AND casts.timestamp >= TO_DATE('2024-07-31', 'YYYY-MM-DD') -- Corrected date format
-                AND casts.parent_fid <> casts.fid
-            ORDER BY timestamp DESC
-        ), fid_cast_scores as (
+                parent_hash as cast_hash
+            FROM k3l_degen_tips
+        ), fid_cast_scores AS (
             SELECT
                 tipped_casts.cast_hash,
                 SUM(
@@ -949,41 +910,38 @@ async def get_popular_degen_casts(
                 ON (ci.cast_hash = tipped_casts.cast_hash
                     AND ci.action_ts BETWEEN now() - interval '5 days'
                                         AND now() - interval '10 minutes')
-            INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid )
+            INNER JOIN degen_tip_scores as fids ON (fids.i = ci.fid)
             GROUP BY tipped_casts.cast_hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
-        )
-        , scores AS (
+        ), scores AS (
             SELECT
                 cast_hash,
                 {agg_sql} as cast_score
             FROM fid_cast_scores
             GROUP BY cast_hash
-        ),
-        cast_details as (
-        SELECT
-            '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
-            DATE_TRUNC('hour', casts.timestamp) as cast_hour,
-            casts.text,
-            casts.embeds,
-            casts.mentions,
-            casts.fid,
-            cast_score,
-            casts.timestamp,
-            row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
-        FROM casts
-        INNER JOIN scores on casts.hash = scores.cast_hash
-        WHERE cast_score*100000000000>100
-        {"ORDER BY casts.timestamp DESC" if ordering else "ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC"}
-        OFFSET $1
-        LIMIT $2
+        ), cast_details AS (
+            SELECT
+                '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
+                DATE_TRUNC('hour', casts.timestamp) as cast_hour,
+                casts.text,
+                casts.embeds,
+                casts.mentions,
+                casts.fid,
+                cast_score,
+                casts.timestamp,
+                row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
+            FROM casts
+            INNER JOIN scores ON casts.hash = scores.cast_hash
+            WHERE cast_score * 100000000000 > 100
+            ORDER BY {ordering}
+            OFFSET $1
+            LIMIT $2
         )
-        select cast_hash, cast_hour, text, embeds, mentions, fid, cast_score, timestamp from cast_details
-        
+        SELECT cast_hash, cast_hour, text, embeds, mentions, fid, cast_score, timestamp
+        FROM cast_details
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
-
 
 async def get_popular_channel_casts_lite(
         channel_id: str,
@@ -1059,7 +1017,7 @@ async def get_popular_channel_casts_lite(
     LIMIT $4
     )
     select cast_hash, cast_hour, cast_ts from cast_details
-    
+
     """
     return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
 
