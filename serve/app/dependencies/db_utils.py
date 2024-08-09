@@ -920,15 +920,15 @@ async def get_popular_degen_casts(
                 c.mentions,
                 c.fid,
                 fa.cast_score,
-                c.timestamp
+                c.timestamp,
+              row_number() over ( partition by date_trunc('day',c.timestamp) order by date_trunc('day',c.timestamp), cast_score ) row_num
             FROM filtered_actions fa
-            INNER JOIN casts c ON c.hash = fa.cast_hash
+            INNER JOIN casts c ON (c.hash = fa.cast_hash)
             ORDER BY {ordering}
-            OFFSET $1
-            LIMIT $2
         )
         SELECT cast_hash, timestamp, cast_score, fid, text, embeds, mentions
-        FROM cast_details;
+        FROM cast_details
+        WHERE row_num between $1 and $2;
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
