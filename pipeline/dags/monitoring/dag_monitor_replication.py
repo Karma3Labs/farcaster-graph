@@ -12,8 +12,8 @@ from airflow.providers.common.sql.operators.sql import (
     # SQLExecuteQueryOperator,
 )
 
-# from hooks.discord import send_alert_discord
-# from hooks.pagerduty import send_alert_pagerduty
+from hooks.discord import send_alert_discord
+from hooks.pagerduty import send_alert_pagerduty
 
 _CONN_ID = "eig2_postgres_user"
 
@@ -21,7 +21,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    # 'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
