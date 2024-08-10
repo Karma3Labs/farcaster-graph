@@ -54,7 +54,7 @@ with DAG(
         checks={
             "row_count_check": {
                 "check_statement": "COUNT(*) = 2",
-                "partition_clause": "where state='streaming'"
+                "partition_clause": "state='streaming'"
             }
         },
     )
