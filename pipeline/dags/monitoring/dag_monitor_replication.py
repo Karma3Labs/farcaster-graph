@@ -7,7 +7,7 @@ from airflow.providers.common.sql.operators.sql import (
     # SQLColumnCheckOperator,
     # SQLIntervalCheckOperator,
     SQLTableCheckOperator,
-    # SQLThresholdCheckOperator,
+    SQLThresholdCheckOperator,
     # SQLValueCheckOperator,
     # SQLExecuteQueryOperator,
 )
@@ -59,6 +59,14 @@ with DAG(
         },
     )
 
+    lag_check = SQLThresholdCheckOperator(
+        task_id="lag_check",
+        conn_id=_CONN_ID,
+        sql="SELECT round(EXTRACT(epoch FROM max(replay_lag))/60) FROM pg_stat_replication",
+        min_threshold=0,
+        max_threshold=60, # fail task if more than 60 minutes of lag
+    )
+
     end = EmptyOperator(task_id="end")
 
-    start >> check_wal_status >> check_replication_state >> end
+    start >> check_wal_status >> check_replication_state >> lag_check >> end
