@@ -191,6 +191,7 @@ process_localtrust() {
   filename="k3l_cast_localtrust"
   csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+# TODO FIX THIS - eig5-jobs
   export_to_csv "localtrust" "$csv_file" "\COPY (SELECT i,j,v,date,strategy_id FROM localtrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
   export_to_s3 "$csv_file" "$s3_bucket"

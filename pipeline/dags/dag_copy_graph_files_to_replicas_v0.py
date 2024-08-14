@@ -31,8 +31,10 @@ with DAG(
     schedule_interval='20 1-23/6 * * *',
     catchup=False,
 ) as dag:
+    # TODO FIX THIS - eig5-jobs
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
+    # TODO FIX THIS - eig5-jobs
     run_graph_pipeline_remote = SSHOperator(
         task_id="run_graph_pipeline_remote_v0",
         command= "cd ~/farcaster-graph/pipeline; ./run_graph_pipeline.sh -w . -o ~/serve_files -v ./.venv ",

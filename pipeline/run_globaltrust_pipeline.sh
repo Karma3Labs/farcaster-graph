@@ -19,21 +19,22 @@ function validate_date() {
     fi
 }
 
-while getopts w:v:d: flag
+while getopts w:v:d:o flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
         d) TARGET_DATE=${OPTARG};;
+        o) OUT_DIR=${OPTARG};;
     esac
 done
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv]"
-  echo "Usage:   $0 -w [work_dir] -v [venv] -d [date]"
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -o "$OUT_DIR" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir]"
+  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -d [date]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv"
-  echo "         $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -d 2024-06-01"
+  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o /tmp"
+  echo "         $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o /tmp -d 2024-06-01"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
@@ -82,22 +83,11 @@ function log() {
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m globaltrust.gen_globaltrust $DATE_OPTION
+python3 -m globaltrust.gen_globaltrust -o $OUT_DIR -d $DATE_OPTION
 deactivate
 
-# We won't touch the localtrust table if we are running it based on a prior date
+# We won't touch the localtrust stats table if we are running it based on a prior date
 if [ -z "$TARGET_DATE" ]; then
-  # NOTE: We could have replaced localtrust and upserted into globaltrust in python but ..
-  # .. separating out like this helps us run steps in isolation.
-  # For example, we can comment out the below code and ..
-  # .. experiment with the python code (weights for example) without worrying about affecting prod.
-  log "Replacing $DB_LOCALTRUST"
-  PGPASSWORD=$DB_PASSWORD \
-  $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "DROP TABLE $DB_LOCALTRUST; ALTER TABLE $DB_TEMP_LOCALTRUST RENAME TO $DB_LOCALTRUST;"
-
-  wait $!
-
   log "Inserting localtrust stats"
   PGPASSWORD=$DB_PASSWORD \
   $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
@@ -106,6 +96,7 @@ if [ -z "$TARGET_DATE" ]; then
   wait $!
 fi
 
+# TODO FIX THIS - eig5-jobs
 log "Upserting $DB_GLOBALTRUST"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \

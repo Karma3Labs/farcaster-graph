@@ -55,7 +55,7 @@ function log() {
 
 mkdir -p $OUT_DIR
 
-# TODO parametrize strategy names in .sql files
+# TODO FIX THIS - eig5-jobs
 log "Exporting localtrust existingConnections from Postgres to $OUT_DIR folder"
 PGPASSWORD=$DB_PASSWORD \
 $PSQL -t -A -F',' -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
