@@ -44,8 +44,19 @@ def run_strategy(pg_dsn: str, pg_url: str, outdir:Path, strategy: compute.Strate
     (lt_filename, gt_filename) = gen_lt_gt_filepath(target_date)
     logger.info(f"CSV filenames: {(lt_filename, gt_filename)}")
 
+    lt_df['strategy_id'] = strategy.value[1]
+    gt_df['strategy_id'] = strategy.value[1]
+    if target_date:
+      lt_df['date'] = target_date
+      gt_df['date'] = target_date
+    else:
+      dt_str = datetime.strftime(datetime.now(), '%Y-%m-%d')
+      lt_df['date'] = dt_str
+      gt_df['date'] = dt_str
+
     with Timer(name=f"localtrust_{strategy}_to_csv"):
       lt_df.to_csv(lt_filename, index=False, header=True)
+
     with Timer(name=f"globaltrust_{strategy}_to_csv"):
       gt_df.to_csv(gt_filename, index=False, header=True)
 
