@@ -150,7 +150,7 @@ def lt_gt_for_strategy(
       max_pt_id = pt_df['i'].max()
     # manually call garbage collector to free up pt and lt dataframe immediately
     utils.log_memusage(logger)
-    logger.info(f"calling garbage collector to free up pt and lt dataframe immediately")
+    logger.debug("calling garbage collector to free up pt and lt dataframe immediately")
     gc.collect()
     utils.log_memusage(logger)
 
@@ -161,7 +161,7 @@ def lt_gt_for_strategy(
                                               )
     # manually call garbage collector to free up localtrust immediately
     utils.log_memusage(logger)
-    logger.info(f"calling garbage collector to free up localtrust immediately")
+    logger.debug("calling garbage collector to free up localtrust immediately")
     gc.collect()
     logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
     utils.log_memusage(logger)
@@ -172,7 +172,7 @@ def lt_gt_for_strategy(
 
     # manually call garbage collector to free up globaltrust immediately
     utils.log_memusage(logger)
-    logger.info(f"calling garbage collector to free up globaltrust immediately")
+    logger.debug("calling garbage collector to free up globaltrust immediately")
     gc.collect()
     utils.log_memusage(logger)
   # end Timer

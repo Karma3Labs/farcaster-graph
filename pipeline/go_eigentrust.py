@@ -12,7 +12,7 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     # Filter out entries where i == j
     lt_df = lt_df[lt_df['i'] != lt_df['j']]
 
-    # Convert pt_ids to set for better performance in membership checks
+    # Convert pt_ids to set to remove duplicates
     pt_ids_set = set(pt_ids)
 
     stacked = lt_df[['i', 'j']].stack()
@@ -32,7 +32,7 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     localtrust = pseudo_df.to_dict(orient="records")
     max_lt_id = len(orig_id)
 
-    logger.debug(f"max_lt_id: {max_lt_id}, localtrust size: {len(localtrust)},"
+    logger.info(f"max_lt_id: {max_lt_id}, localtrust size: {len(localtrust)},"
                 f" max_pt_id: {max_pt_id}, pretrust size: {len(pretrust)}")
     logger.trace(f"localtrust: {localtrust}")
     logger.trace(f"pretrust: {pretrust}")
@@ -50,7 +50,7 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     # logger.info(f"Max index in scores: {max_index_in_scores}, Size of orig_id: {len(orig_id)}")
 
     i_scores = [{'i': int(orig_id[score['i']]), 'v': score['v']} for score in scores if score['i'] < len(orig_id)]
-    logger.debug(f"get_scores took {time.perf_counter() - start_time} secs for {len(i_scores)} scores")
+    logger.info(f"get_scores took {time.perf_counter() - start_time} secs for {len(i_scores)} scores")
     return i_scores
 
 def go_eigentrust(
@@ -84,7 +84,7 @@ def go_eigentrust(
         # "flatTail": settings.EIGENTRUST_FLAT_TAIL
     }
 
-    logger.debug(f"calling go_eigentrust")
+    logger.info("calling go_eigentrust")
     response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                              json=req,
                              headers={
@@ -97,5 +97,5 @@ def go_eigentrust(
         logger.error(f"Server error: {response.status_code}:{response.reason}")
         raise Exception(f"Server error: {response.status_code}:{response.reason}")
     trustscores = response.json()['entries']
-    logger.debug(f"go_eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
+    logger.info(f"go_eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
     return trustscores
