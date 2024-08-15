@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.providers.ssh.operators.ssh import SSHOperator
 from airflow.operators.empty import EmptyOperator
-from airflow.providers.ssh.hooks.ssh import SSHHook
+from airflow.operators.bash import BashOperator
+
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -21,43 +21,36 @@ with DAG(
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     start_date=datetime(2024, 8, 16),
-    # schedule_interval=None,
-    schedule_interval='0 */6 * * *',
+    schedule_interval=None,
+    # schedule_interval='0 */6 * * *',
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
 
-    ssh_hook = SSHHook(ssh_conn_id='eigen5', keepalive_interval=60, cmd_timeout=None)
-
-    mkdir_tmp =  SSHOperator(
+    mkdir_tmp =  BashOperator(
         task_id="mkdir_tmp",
-        command= "cd ~/farcaster-graph/pipeline; mkdir -p tmp/{{ run_id }}",
-        ssh_hook=ssh_hook,
+        bash_command= "cd ~/farcaster-graph/pipeline; mkdir -p tmp/{{ run_id }}",
         dag=dag)
 
-    prep_globaltrust = SSHOperator(
+    prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
-        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
-        ssh_hook=ssh_hook,
+        bash_command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         dag=dag)
     
-    compute_globaltrust = SSHOperator(
+    compute_globaltrust = BashOperator(
         task_id="compute_globaltrust",
-        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
-        ssh_hook=ssh_hook,
+        bash_command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         dag=dag)
     
-    # upload_to_dune =  SSHOperator(
+    # upload_to_dune =  BashOperator(
     #     task_id="insert_globaltrust_to_dune_v3",
-    #     command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
-    #     ssh_hook=ssh_hook,
+    #     bash_command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
     #     dag=dag)
     upload_to_dune = EmptyOperator(task_id="insert_globaltrust_to_dune_v3")
     
-    rmdir_tmp =  SSHOperator(
+    rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
-        command= "cd ~/farcaster-graph/pipeline; rm -rf tmp/{{ run_id }}",
-        ssh_hook=ssh_hook,
+        bash_command= "cd ~/farcaster-graph/pipeline; rm -rf tmp/{{ run_id }}",
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
