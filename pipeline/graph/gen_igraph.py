@@ -17,7 +17,7 @@ import pandas as pd
 def main(incsv:Path,  outdir:Path, prefix:str, logger:logging.Logger):
   utils.log_memusage(logger)
   with Timer(name="read_csv"):
-    edges_df = pd.read_csv(incsv)
+    edges_df = pd.read_csv(incsv, usecols=['i','j','v'])
     # DF is already indexed by i. Setting multi-index is not worth it.
     # edges_df.set_index(['i', 'j'])
   logger.info(utils.df_info_to_string(edges_df, with_sample=True))
