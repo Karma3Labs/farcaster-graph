@@ -32,9 +32,9 @@ logger.add(sys.stdout,
 def gen_lt_gt_filepath(
     basedir: Path, strategy: compute.Strategy, target_date: str
 ) -> tuple[Path, Path]:
-    lt_filename = f"localtrust.{strategy.value[0]}{'_'+target_date if target_date else '' }.csv"
-    gt_filename = f"globaltrust.{strategy.value[0]}{'_'+target_date if target_date else '' }.csv"
-    lt_stats_filename = f"localtrust_stats.{strategy.value[0]}{'_'+target_date if target_date else '' }.csv"
+    lt_filename = f"localtrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
+    gt_filename = f"globaltrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
+    lt_stats_filename = f"localtrust_stats.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
     return (
         os.path.join(basedir, lt_filename),
         os.path.join(basedir, gt_filename),
@@ -100,7 +100,7 @@ def gen_strategy_to_csv(
 @Timer(name="main")
 def main(pg_dsn: str, outdir:Path, target_date: str = None):
   utils.log_memusage(logger)
-  gen_strategy_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWS, target_date)
+  gen_strategy_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
   gen_strategy_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
   # gen_strategy_to_csv(pg_dsn, outdir, compute.Strategy.ACTIVITY, target_date)
 

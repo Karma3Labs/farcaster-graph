@@ -16,7 +16,7 @@ _pretrust_toptier_df: pd.DataFrame = None
 _interactions_df: pd.DataFrame = None
 
 class Strategy(Enum):
-  FOLLOWS = ('follows', 1)
+  FOLLOWING = ('follows', 1)
   ENGAGEMENT = ('engagement', 3)
   ACTIVITY = ('activity', 5)
 
@@ -118,7 +118,7 @@ def lt_gt_for_strategy(
   with Timer(name=f"{strategy}"):
     intx_df = _fetch_interactions_df(logger, pg_dsn, target_date)
     match strategy:
-      case Strategy.FOLLOWS:
+      case Strategy.FOLLOWING:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \

@@ -26,25 +26,28 @@ function validate_date() {
     fi
 }
 
-while getopts w:v:o:d: flag
+while getopts w:v:o:d:t: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
+        t) TEMP_DIR=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         d) TARGET_DATE=${OPTARG};;
     esac
 done
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir]"
-  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -d [date]"
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
+  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o /tmp"
-  echo "         $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o /tmp -d 2024-06-01"
+  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
+  echo "         $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
+  echo "  [temp_dir]  The temporary directory where csv files are to be written to."
+  echo "  [out_dir]  The final destination directory to write localtrust files to."
   echo "  [venv]      The path where a python3 virtualenv has been created."
   echo "  [date]      (optional) Target date to run the globaltrust and localtrust generation."
   echo ""
@@ -95,21 +98,8 @@ log $TARGET_DATE_SUFFIX
 
 source $VENV/bin/activate
 pip install -r requirements.txt
-python3 -m globaltrust.gen_globaltrust -o $OUT_DIR $DATE_OPTION
+python3 -m globaltrust.gen_globaltrust -o $TEMP_DIR $DATE_OPTION
 deactivate
-
-log "Inserting localtrust_stats"
-PGPASSWORD=$REMOTE_DB_PASSWORD \
-$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  -c  "COPY localtrust_stats
-  (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < /tmp/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
-
-PGPASSWORD=$REMOTE_DB_PASSWORD \
-$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  -c  "COPY localtrust_stats
-  (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < /tmp/localtrust_stats.follows${TARGET_DATE_SUFFIX}.csv
 
 log "Inserting globaltrust"
 PGPASSWORD=$REMOTE_DB_PASSWORD \
@@ -121,20 +111,42 @@ PGPASSWORD=$REMOTE_DB_PASSWORD \
 $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
   -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
   (i,v,date,strategy_id) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < /tmp/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
+  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
 
 PGPASSWORD=$REMOTE_DB_PASSWORD \
 $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
   -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
   (i,v,date,strategy_id) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < /tmp/globaltrust.follows${TARGET_DATE_SUFFIX}.csv
+  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
 
 PGPASSWORD=$REMOTE_DB_PASSWORD \
 $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
 INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
 
+if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
+  log "Moving generated files to graph folder"
+  mv ${TEMP_DIR}/globaltrust.engagement.csv ${OUT_DIR}/
+  mv ${TEMP_DIR}/globaltrust.following.csv ${OUT_DIR}/
+  mv ${TEMP_DIR}/localtrust.engagement.csv ${OUT_DIR}/
+  mv ${TEMP_DIR}/localtrust.following.csv ${OUT_DIR}/
+fi
+
+log "Inserting localtrust_stats"
+PGPASSWORD=$REMOTE_DB_PASSWORD \
+$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+  -c  "COPY localtrust_stats
+  (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
+  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
+
+PGPASSWORD=$REMOTE_DB_PASSWORD \
+$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+  -c  "COPY localtrust_stats
+  (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
+  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
+
 wait $!
 
 this_name=`basename "$0"`
+
 log "$this_name done!"

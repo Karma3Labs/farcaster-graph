@@ -191,8 +191,24 @@ process_localtrust() {
   filename="k3l_cast_localtrust"
   csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
-# TODO FIX THIS - eig5-jobs
   export_to_csv "localtrust" "$csv_file" "\COPY (SELECT i,j,v,date,strategy_id FROM localtrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
+  export_to_s3 "$csv_file" "$s3_bucket"
+  #export_csv_to_bq "$csv_file"
+  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+# Function to export and process localtrust table
+process_localtrust_v1() {
+  local graph_folder="$1"
+
+  filename="k3l_cast_localtrust"
+  csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
+  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+
+  cat $graph_folder/localtrust.engagement.csv > $csv_file
+  cat $graph_folder/localtrust.following.csv >> $csv_file
+
   # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
   export_to_s3 "$csv_file" "$s3_bucket"
   #export_csv_to_bq "$csv_file"
@@ -240,6 +256,27 @@ insert_globaltrust_to_dune_v3() {
   rm -f "$tmp_folder"/*
 
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
+  dune_table_name="dataset_k3l_cast_globaltrust"
+  _clear_dune_table "openrank" $dune_table_name
+
+  split_and_post_csv "$csv_file" 25 $dune_table_name
+  rm $csv_file
+  rm -rf $tmp_folder
+}
+
+insert_globaltrust_to_dune_v4() {
+  local graph_folder="$1"
+
+  filename="k3l_cast_globaltrust_full"
+  tmp_folder="tmp_insert_globaltrust_to_dune_v3"
+  csv_file="$tmp_folder/${filename}.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
+  cat $graph_folder/globaltrust.engagement.csv > $csv_file
+  cat $graph_folder/globaltrust.following.csv >> $csv_file
 
   dune_table_name="dataset_k3l_cast_globaltrust"
   _clear_dune_table "openrank" $dune_table_name
@@ -369,6 +406,9 @@ case "$1" in
     localtrust)
         process_localtrust
         ;;
+    localtrust_v1)
+        process_localtrust_v1 $2
+        ;;
     channel_rank)
         process_channel_rank
         ;;
@@ -380,6 +420,9 @@ case "$1" in
         ;;
     insert_globaltrust_to_dune_v3)
         insert_globaltrust_to_dune_v3
+        ;;
+    insert_globaltrust_to_dune_v4)
+        insert_globaltrust_to_dune_v4 $2
         ;;
     insert_channel_rank_to_dune_v3)
         insert_channel_rank_to_dune_v3

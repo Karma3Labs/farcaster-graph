@@ -10,12 +10,6 @@ class Settings(BaseSettings):
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
 
-    REMOTE_DB_USER:str
-    REMOTE_DB_PASSWORD:SecretStr
-    REMOTE_DB_NAME:str
-    REMOTE_DB_HOST:str
-    REMOTE_DB_PORT:int = 9541
-
     DB_CHANNEL_FIDS:str
 
     POSTGRES_TIMEOUT_SECS: int = 60
@@ -50,6 +44,12 @@ class Settings(BaseSettings):
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
     LOG_PATH: str = '/tmp/'
 
+    REMOTE_DB_USER:str
+    REMOTE_DB_PASSWORD:SecretStr
+    REMOTE_DB_NAME:str
+    REMOTE_DB_HOST:str
+    REMOTE_DB_PORT:int = 9541
+    
     AIRFLOW_UID: int
     AIRFLOW_GID: int
     AIRFLOW__CORE__FERNET_KEY: str
