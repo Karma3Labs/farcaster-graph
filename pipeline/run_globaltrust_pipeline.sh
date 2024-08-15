@@ -93,10 +93,10 @@ function log() {
 log $OPT_DATE_SUFFIX
 log $TARGET_DATE_SUFFIX
 
-# source $VENV/bin/activate
-# pip install -r requirements.txt
-# python3 -m globaltrust.gen_globaltrust -o $OUT_DIR $DATE_OPTION
-# deactivate
+source $VENV/bin/activate
+pip install -r requirements.txt
+python3 -m globaltrust.gen_globaltrust -o $OUT_DIR $DATE_OPTION
+deactivate
 
 log "Inserting localtrust_stats"
 PGPASSWORD=$REMOTE_DB_PASSWORD \
