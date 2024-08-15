@@ -4,16 +4,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
 class Settings(BaseSettings):
-    DB_USER:str = 'replicator'
+    DB_USER:str
     DB_PASSWORD:SecretStr
-    DB_NAME:str = 'replicator'
+    DB_NAME:str
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
 
-    DB_TEMP_LOCALTRUST:str = 'tmp_lt'
-    DB_LOCALTRUST:str
-    DB_TEMP_GLOBALTRUST:str = 'tmp_gt'
-    DB_GLOBALTRUST:str
+    REMOTE_DB_USER:str
+    REMOTE_DB_PASSWORD:SecretStr
+    REMOTE_DB_NAME:str
+    REMOTE_DB_HOST:str
+    REMOTE_DB_PORT:int = 9541
+
     DB_CHANNEL_FIDS:str
 
     POSTGRES_TIMEOUT_SECS: int = 60
@@ -41,7 +43,6 @@ class Settings(BaseSettings):
     PERSONAL_IGRAPH_INPUT: str
     PERSONAL_IGRAPH_URL: str
 
-    USE_NEYNAR: bool = False
     IS_TEST: bool = False
 
     LOG_LEVEL: str = 'INFO'
@@ -51,12 +52,10 @@ class Settings(BaseSettings):
 
     AIRFLOW_UID: int
     AIRFLOW_GID: int
-    REMOTE_DB_HOST: str
     AIRFLOW__CORE__FERNET_KEY: str
-    SSH_KEY_PATH: str = 'id_rsa'
-    REMOTE_DB_PORT: int = 9541
+    SSH_KEY_PATH: str = 'changeme'
 
-    DUNE_API_KEY: str = 'repalce_me'
+    DUNE_API_KEY: str = 'changeme'
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`

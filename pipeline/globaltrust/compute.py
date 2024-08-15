@@ -40,7 +40,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   # All the tables referred to in this function def have the same timestamp field
   where_clause = "" if target_date is None else f"timestamp <= '{target_date}'::date + interval '1 day'"
 
-  query = db_utils.construct_query(IJVSql.LIKES_NEYNAR if settings.USE_NEYNAR else IJVSql.LIKES, where_clause=where_clause)
+  query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
   _interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
@@ -55,7 +55,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.MENTIONS_NEYNAR if settings.USE_NEYNAR else IJVSql.MENTIONS, where_clause=where_clause)
+  query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
   with Timer(name="merge_mentions"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -65,7 +65,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.RECASTS_NEYNAR if settings.USE_NEYNAR else IJVSql.RECASTS, where_clause=where_clause)
+  query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
   with Timer(name="merge_recasts"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
@@ -75,7 +75,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.FOLLOWS_NEYNAR if settings.USE_NEYNAR else IJVSql.FOLLOWS, where_clause=where_clause)
+  query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
   with Timer(name="merge_follows"):
     _interactions_df = _interactions_df.merge(
                         db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),

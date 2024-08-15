@@ -1,3 +1,40 @@
+CREATE UNLOGGED TABLE public.localtrust (
+    strategy_id integer,
+    i character varying(255),
+    j character varying(255),
+    v double precision,
+    date date
+);
+----------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE public.localtrust_stats (
+    date date,
+    strategy_id_1_row_count bigint,
+    strategy_id_1_mean double precision,
+    strategy_id_1_stddev double precision,
+    strategy_id_1_range double precision,
+    strategy_id_3_row_count bigint,
+    strategy_id_3_mean double precision,
+    strategy_id_3_stddev double precision,
+    strategy_id_3_range double precision,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+----------------------------------------------------------------------------------------------------------------
+
+CREATE UNLOGGED TABLE public.globaltrust (
+    strategy_id integer,
+    i bigint,
+    v real,
+    date date DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE ONLY public.globaltrust
+    ADD CONSTRAINT globaltrust_strategy_name_date_i_unique UNIQUE (strategy_id, date, i);
+
+CREATE INDEX globaltrust_id_idx ON public.globaltrust USING btree (strategy_id);
+
+----------------------------------------------------------------------------------------------------------------
+
 CREATE TABLE public.globaltrust_config (
 	strategy_id int4 NOT NULL,
 	strategy_name varchar(255) NOT NULL,
@@ -18,6 +55,19 @@ INSERT INTO public.globaltrust_config (strategy_id, strategy_name, pretrust, loc
 (1, 'follows', 'pretrustTopTier', 'existingConnections', 0.5, '2024-03-14'),
 (3, 'engagement', 'pretrustTopTier', 'l1rep6rec3m12enhancedConnections', 0.5, '2024-03-14');
 
+----------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE public.pretrust (
+    fid bigint NOT NULL,
+    fname text NOT NULL,
+    fid_active_tier integer NOT NULL,
+    fid_active_tier_name text NOT NULL,
+    data_source character varying(32) DEFAULT 'Dune'::character varying,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE ONLY public.pretrust
+    ADD CONSTRAINT fid_insert_ts_unique UNIQUE (fid, insert_ts);
 ----------------------------------------------------------------------------------------------------------------
 
 CREATE MATERIALIZED VIEW public.k3l_rank AS
