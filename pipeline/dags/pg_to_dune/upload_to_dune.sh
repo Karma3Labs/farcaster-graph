@@ -207,7 +207,7 @@ process_localtrust_v1() {
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
 
   cat $graph_folder/localtrust.engagement.csv > $csv_file
-  cat $graph_folder/localtrust.following.csv >> $csv_file
+  cat $graph_folder/localtrust.follows.csv >> $csv_file
 
   # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
   export_to_s3 "$csv_file" "$s3_bucket"
@@ -276,7 +276,7 @@ insert_globaltrust_to_dune_v4() {
   rm -f "$tmp_folder"/*
 
   cat $graph_folder/globaltrust.engagement.csv > $csv_file
-  cat $graph_folder/globaltrust.following.csv >> $csv_file
+  cat $graph_folder/globaltrust.follows.csv >> $csv_file
 
   dune_table_name="dataset_k3l_cast_globaltrust"
   _clear_dune_table "openrank" $dune_table_name
