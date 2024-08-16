@@ -19,8 +19,9 @@ with DAG(
     dag_id='gen_globaltrust_v1',
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
-    start_date=datetime(2024, 6, 21, 2),
-    schedule_interval='0 */6 * * *'
+    start_date=datetime(2024, 8, 16),
+    schedule_interval='0 */6 * * *',
+    catchup=False,
 ) as dag:
 
     ssh_hook = SSHHook(ssh_conn_id='eigen5', keepalive_interval=60, cmd_timeout=None)
