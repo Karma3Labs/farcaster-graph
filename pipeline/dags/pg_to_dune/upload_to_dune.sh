@@ -3,7 +3,11 @@
 source ./.env
 S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-cast-to-dune/constant"}
 S3_BUCKET_NAME_DAILY=${S3_BUCKET_NAME_DAILY:-"k3l-cast-to-dune"}
-TIMESTAMP=$(date +"%Y-%m-%d" -d yesterday)
+if [[ $(uname) == "Darwin" ]]; then
+  TIMESTAMP=$(date -j -v-1d +%Y-%m-%d)
+else
+  TIMESTAMP=$(date +"%Y-%m-%d" -d yesterday)
+fi
 CURR_DIR=$PWD
 WORK_DIR=$PWD/csv/$TIMESTAMP
 GCP_ACTIVE_ACCT=$(gcloud auth list 2>&1 | grep '*' | awk {'print $2'})
