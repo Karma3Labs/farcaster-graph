@@ -283,11 +283,11 @@ insert_globaltrust_to_dune_v4() {
   cat $graph_folder/globaltrust.follows.csv >> $csv_file
 
   dune_table_name="dataset_k3l_cast_globaltrust"
-  _clear_dune_table "openrank" $dune_table_name
+  # _clear_dune_table "openrank" $dune_table_name
 
-  split_and_post_csv "$csv_file" 25 $dune_table_name
-  rm $csv_file
-  rm -rf $tmp_folder
+  # split_and_post_csv "$csv_file" 25 $dune_table_name
+  # rm $csv_file
+  # rm -rf $tmp_folder
 }
 
 insert_channel_rank_to_dune_v3() {
