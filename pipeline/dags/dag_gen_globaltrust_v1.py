@@ -38,8 +38,8 @@ with DAG(
         dag=dag)
     
     upload_to_dune =  SSHOperator(
-        task_id="insert_globaltrust_to_dune_v3.sh",
-        command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v4 ~/graph_files/",
+        task_id="insert_globaltrust_to_dune_v3",
+        command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
         ssh_hook=ssh_hook,
         dag=dag)
     
