@@ -26,7 +26,7 @@ with DAG(
     ssh_hook = SSHHook(ssh_conn_id='eigen5', keepalive_interval=60, cmd_timeout=None)
 
     mkdir_tmp =  SSHOperator(
-        task_id="mkdir_tmp",
+        task_id="cleanup_tmp",
         command= "cd ~/farcaster-graph/pipeline; mkdir -p tmp/{{ run_id }}",
         ssh_hook=ssh_hook,
         dag=dag)
@@ -38,13 +38,13 @@ with DAG(
         dag=dag)
     
     upload_to_dune =  SSHOperator(
-        task_id="insert_globaltrust_to_dune_v3.sh",
-        command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v4 ~/graph_files/",
+        task_id="insert_globaltrust_to_dune_v3",
+        command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
         ssh_hook=ssh_hook,
         dag=dag)
     
     rmdir_tmp =  SSHOperator(
-        task_id="rmdir_tmp",
+        task_id="cleanup_tmp",
         command= "cd ~/farcaster-graph/pipeline; rm -rf tmp/{{ run_id }}",
         ssh_hook=ssh_hook,
         trigger_rule=TriggerRule.ONE_SUCCESS,
