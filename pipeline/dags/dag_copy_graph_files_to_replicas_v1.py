@@ -17,7 +17,7 @@ default_args = {
 eigen2_ipv4 = Variable.get("eigen2_ipv4")
 eigen4_ipv4 = Variable.get("eigen4_ipv4")
 eigen7_ipv4 = Variable.get("eigen7_ipv4")
-eigen5_ssh_cred_path = Variable.get("eigen6_ssh_cred_path")
+eigen6_ssh_cred_path = Variable.get("eigen6_ssh_cred_path")
 
 with DAG(
     dag_id="dag_copy_graph_files_to_replicas_v1",
@@ -37,38 +37,38 @@ with DAG(
 
     eigen2_copy_all_pkl_files = BashOperator(
         task_id="eigen2_copy_all_pkl_v0",
-        bash_bcommand=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
+        bash_bcommand=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
         dag=dag,
     )
 
     eigen2_copy_success_pkl_files = BashOperator(
         task_id="eigen2_copy_success_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
         dag=dag,
     )
 
     eigen4_copy_all_pkl_files = BashOperator(
         task_id="eigen4_copy_all_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen4_ipv4}:~/serve_files/",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen4_ipv4}:~/serve_files/",
         dag=dag,
     )
 
     eigen4_copy_success_pkl_files = BashOperator(
         task_id="eigen4_copy_success_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen4_ipv4}:~/serve_files/",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen4_ipv4}:~/serve_files/",
         dag=dag,
     )
 
     eigen7_copy_personal_pkl_files = BashOperator(
         task_id="eigen7_copy_personal_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
         dag=dag,
     )
 
     eigen7_copy_localtrust_csv_files = BashOperator(
         task_id="eigen7_copy_localtrust_csv_v0",
         # TODO stop renaming to lt_l1rep6rec3m12enhancedConnections_fid.csv and just call it engagement
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv",
         dag=dag,
     )
 

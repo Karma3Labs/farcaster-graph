@@ -18,7 +18,7 @@ with DAG(
     dag_id='backup_to_s3_v1',
     default_args=default_args,
     description='This backs up globaltrust, localtrust and channel_ranking into s3',
-    start_date=datetime(2024, 6, 21, 2),
+    start_date=datetime(2024, 8, 15),
     schedule_interval='30 20 * * *',
     catchup=False,
 ) as dag:
