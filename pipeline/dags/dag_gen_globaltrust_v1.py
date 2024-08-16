@@ -26,7 +26,7 @@ with DAG(
     ssh_hook = SSHHook(ssh_conn_id='eigen5', keepalive_interval=60, cmd_timeout=None)
 
     mkdir_tmp =  SSHOperator(
-        task_id="cleanup_tmp",
+        task_id="mkdir_tmp",
         command= "cd ~/farcaster-graph/pipeline; mkdir -p tmp/{{ run_id }}",
         ssh_hook=ssh_hook,
         dag=dag)
@@ -44,7 +44,7 @@ with DAG(
         dag=dag)
     
     rmdir_tmp =  SSHOperator(
-        task_id="cleanup_tmp",
+        task_id="rmdir_tmp",
         command= "cd ~/farcaster-graph/pipeline; rm -rf tmp/{{ run_id }}",
         ssh_hook=ssh_hook,
         trigger_rule=TriggerRule.ONE_SUCCESS,
