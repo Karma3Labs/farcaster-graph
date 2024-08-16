@@ -41,35 +41,35 @@ with DAG(
 
     eigen2_copy_all_pkl_files = SSHOperator(
         task_id="eigen2_copy_all_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen2_copy_success_pkl_files = SSHOperator(
         task_id="eigen2_copy_success_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen4_copy_all_pkl_files = SSHOperator(
         task_id="eigen4_copy_all_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen4_ipv4}:~/serve_files/",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen4_ipv4}:~/serve_files/",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen4_copy_success_pkl_files = SSHOperator(
         task_id="eigen4_copy_success_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen4_ipv4}:~/serve_files/",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_*_SUCCESS ubuntu@{eigen4_ipv4}:~/serve_files/",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen7_copy_personal_pkl_files = SSHOperator(
         task_id="eigen7_copy_personal_pkl_v0",
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
         ssh_hook=ssh_hook,
         dag=dag,
     )
@@ -77,7 +77,7 @@ with DAG(
     eigen7_copy_localtrust_csv_files = SSHOperator(
         task_id="eigen7_copy_localtrust_csv_v0",
         # TODO stop renaming to lt_l1rep6rec3m12enhancedConnections_fid.csv and just call it engagement
-        bash_command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv",
+        command=f"scp -v -i {eigen5_ssh_cred_path} ~/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv",
         ssh_hook=ssh_hook,
         dag=dag,
     )
