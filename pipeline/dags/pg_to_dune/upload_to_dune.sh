@@ -269,26 +269,6 @@ insert_globaltrust_to_dune_v3() {
   rm -rf $tmp_folder
 }
 
-insert_globaltrust_to_dune_v4() {
-  local graph_folder="$1"
-
-  filename="k3l_cast_globaltrust_full"
-  tmp_folder="tmp_insert_globaltrust_to_dune_v3"
-  csv_file="$tmp_folder/${filename}.csv"
-  mkdir -p $tmp_folder
-  shopt -s nullglob
-  rm -f "$tmp_folder"/*
-
-  cat $graph_folder/globaltrust.engagement.csv > $csv_file
-  cat $graph_folder/globaltrust.follows.csv >> $csv_file
-
-  dune_table_name="dataset_k3l_cast_globaltrust"
-  # _clear_dune_table "openrank" $dune_table_name
-
-  # split_and_post_csv "$csv_file" 25 $dune_table_name
-  # rm $csv_file
-  # rm -rf $tmp_folder
-}
 
 insert_channel_rank_to_dune_v3() {
   filename="k3l_channel_rankings_full"
@@ -424,9 +404,6 @@ case "$1" in
         ;;
     insert_globaltrust_to_dune_v3)
         insert_globaltrust_to_dune_v3
-        ;;
-    insert_globaltrust_to_dune_v4)
-        insert_globaltrust_to_dune_v4 $2
         ;;
     insert_channel_rank_to_dune_v3)
         insert_channel_rank_to_dune_v3
