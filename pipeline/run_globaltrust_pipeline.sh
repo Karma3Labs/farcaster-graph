@@ -125,6 +125,10 @@ $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_
 #   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
 # INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
 
+# PGPASSWORD=$DB_PASSWORD \
+# $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+#   -c "VACUUM ANALYZE globaltrust;"
+
 if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
   log "Moving generated files to graph folder"
   mv ${TEMP_DIR}/globaltrust.engagement.csv ${OUT_DIR}/
