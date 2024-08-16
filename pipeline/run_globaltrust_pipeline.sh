@@ -101,7 +101,7 @@ pip install -r requirements.txt
 python3 -m globaltrust.gen_globaltrust -o $TEMP_DIR $DATE_OPTION
 deactivate
 
-log "Inserting globaltrust"
+log "Inserting tmp_globaltrust${OPT_DATE_SUFFIX}"
 PGPASSWORD=$REMOTE_DB_PASSWORD \
 $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
   -c "DROP TABLE IF EXISTS tmp_globaltrust${OPT_DATE_SUFFIX}; 
@@ -119,6 +119,7 @@ $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_
   (i,v,date,strategy_id) 
   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
 
+# log "Inserting tmp_globaltrust"
 # PGPASSWORD=$REMOTE_DB_PASSWORD \
 # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
 #   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
