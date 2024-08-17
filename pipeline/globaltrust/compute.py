@@ -143,6 +143,9 @@ def lt_gt_for_strategy(
     logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
     utils.log_memusage(logger)
 
+    # Filter out entries where i == j
+    lt_df = lt_df[lt_df['i'] != lt_df['j']]
+
     with Timer(name=f"prep_eigentrust_{strategy}"):
       localtrust = lt_df.to_dict(orient="records")
       max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
