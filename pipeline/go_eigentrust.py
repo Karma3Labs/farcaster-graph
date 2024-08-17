@@ -61,12 +61,6 @@ def go_eigentrust(
 ) -> List[Dict[str, float]]:
     start_time = time.perf_counter()
 
-    lt_len_before = len(localtrust)
-    localtrust = [x for x in localtrust if x['i'] != x['j']]
-    lt_len_after = len(localtrust)
-    if lt_len_before != lt_len_after:
-        logger.info(f"dropped {lt_len_before - lt_len_after} records with i == j")
-
     req = {
         "pretrust": {
             "scheme": 'inline',
