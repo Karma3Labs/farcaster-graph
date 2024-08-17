@@ -130,33 +130,53 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   return _interactions_df
 
-
-def lt_gt_for_strategy(
+def localtrust_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
     strategy: Strategy,
     target_date: str = None
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
   with Timer(name=f"{strategy}"):
     intx_df = _fetch_interactions_df(logger, pg_dsn, target_date)
     match strategy:
       case Strategy.FOLLOWING:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','follows_v']].rename(columns={'follows_v':'v'})
       case Strategy.ENGAGEMENT:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
       case Strategy.ACTIVITY:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
             [['i','j','l1rep1rec1m1']] \
               .rename(columns={'l1rep1rec1m1':'v'})
+      case _:
+        raise Exception(f"Unknown Strategy: {strategy}")
+    # end of match
+    logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
+    utils.log_memusage(logger)
+  # end Timer
+  return lt_df
+# end localtrust_for_strategy
+
+def globaltrust_for_strategy(
+    logger: logging.Logger,
+    pg_dsn: str,
+    lt_df: pd.DataFrame,
+    strategy: Strategy,
+    target_date: str = None
+) -> pd.DataFrame:
+  with Timer(name=f"{strategy}"):
+    match strategy:
+      case Strategy.FOLLOWING:
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
+      case Strategy.ENGAGEMENT:
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
+      case Strategy.ACTIVITY:
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
       case _:
         raise Exception(f"Unknown Strategy: {strategy}")
     # end of match
@@ -173,7 +193,9 @@ def lt_gt_for_strategy(
 
     # manually call garbage collector to free up intermediate pandas objects 
     utils.log_memusage(logger)
-    logger.debug("calling garbage collector to free up intermediate pandas and db objects")
+    logger.info("calling garbage collector to free up intermediate pandas and db objects")
+    del lt_df
+    del pt_df
     gc.collect()
     utils.log_memusage(logger)
 
@@ -203,5 +225,5 @@ def lt_gt_for_strategy(
     gc.collect()
     utils.log_memusage(logger)
   # end Timer
-  return (lt_df, gt_df)
-# compute_lt_gt_for_strategy
+  return gt_df
+# end globaltrust_for_strategy
