@@ -90,7 +90,7 @@ elif [ "$TASK" = "generate" ]; then
   # echo "received FIDS: $FIDS"
 
   # generate graph with 10 parallel worker chunks and 1000 neighbors
-  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/${RUN_ID} -c 40 -m 1000 -f $FIDS -s $MAP_INDEX
+  python3 -m graph.gen_personal_graph_amp_v1 -i $TMP_GRAPH_PKL -o ${OUT_DIR}/${RUN_ID} -c 60 -m 1000 -f $FIDS -s $MAP_INDEX
 
 elif [ "$TASK" = "consolidate" ]; then
   source $VENV/bin/activate
