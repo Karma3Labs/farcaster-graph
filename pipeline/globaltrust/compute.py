@@ -108,6 +108,10 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   # drop unused columns to recover some memory
   _interactions_df = _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'])
+
+  # Filter out entries where i == j
+  _interactions_df = _interactions_df[_interactions_df['i'] != _interactions_df['j']]
+
   return _interactions_df
 
 
@@ -145,9 +149,6 @@ def lt_gt_for_strategy(
     logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
     utils.log_memusage(logger)
 
-    # Filter out entries where i == j
-    lt_df = lt_df[lt_df['i'] != lt_df['j']]
-
     with Timer(name=f"prep_eigentrust_{strategy}"):
       localtrust = lt_df.to_dict(orient="records")
       max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
@@ -156,7 +157,7 @@ def lt_gt_for_strategy(
 
     # manually call garbage collector to free up intermediate pandas objects 
     utils.log_memusage(logger)
-    logger.debug("calling garbage collector to free up localtrust immediately")
+    logger.debug("calling garbage collector to free up intermediate pandas and db objects")
     gc.collect()
     utils.log_memusage(logger)
 
