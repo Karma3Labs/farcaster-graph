@@ -103,7 +103,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
         logger.error(f"No local trust for channel {cid}")
         # return {cid: absent_fids}
 
-        raise e
+        raise Exception(f"No local trust for channel {cid}")
 
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
