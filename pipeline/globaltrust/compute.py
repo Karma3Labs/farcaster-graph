@@ -41,47 +41,63 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   where_clause = "" if target_date is None else f"timestamp <= '{target_date}'::date + interval '1 day'"
 
   query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
-  _interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+  l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
   with Timer(name="merge_replies"):
-    _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+    query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
+    replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    lr_df = l_df.merge(
+                        replies_df,
                         how='outer',
                         left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
+    # outer join will create new dataframe; explicit del may help reduce memusage
+    del replies_df
+    del l_df 
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
   with Timer(name="merge_mentions"):
-    _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+    query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
+    mentions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    lrm_df = lr_df.merge(
+                        mentions_df,
                         how='outer',
                         left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
+    # outer join will create new dataframe; explicit del may help reduce memusage
+    del mentions_df
+    del lr_df
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
   with Timer(name="merge_recasts"):
-    _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+    query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
+    recasts_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    lrmc_df = lrm_df.merge(
+                        recasts_df,
                         how='outer',
                         left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
+    # outer join will create new dataframe; explicit del may help reduce memusage
+    del recasts_df
+    del lrm_df
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
   with Timer(name="merge_follows"):
-    _interactions_df = _interactions_df.merge(
-                        db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query),
+    query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
+    follows_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    _interactions_df = lrmc_df.merge(
+                        follows_df,
                         how='outer',
                         left_on=['i','j'], right_on=['i','j'],
                         indicator=False)
+    # outer join will create new dataframe; explicit del may help reduce memusage
+    del follows_df
+    del lrmc_df
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
@@ -107,7 +123,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   utils.log_memusage(logger)
 
   # drop unused columns to recover some memory
-  _interactions_df = _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'])
+  _interactions_df = _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'], inplace=True)
 
   # Filter out entries where i == j
   _interactions_df = _interactions_df[_interactions_df['i'] != _interactions_df['j']]
