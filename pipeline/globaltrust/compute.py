@@ -42,12 +42,14 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
   l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+  l_df['likes_v'] = l_df['likes_v'].astype('int32')
   logger.info(utils.df_info_to_string(l_df, with_sample=True))
   utils.log_memusage(logger)
 
   with Timer(name="merge_replies"):
     query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
     replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    replies_df['replies_v'] = replies_df['replies_v'].astype('int32')
     lr_df = l_df.merge(
                         replies_df,
                         how='outer',
@@ -62,6 +64,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   with Timer(name="merge_mentions"):
     query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
     mentions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    mentions_df['mentions_v'] = mentions_df['mentions_v'].astype('int32')
     lrm_df = lr_df.merge(
                         mentions_df,
                         how='outer',
@@ -76,6 +79,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   with Timer(name="merge_recasts"):
     query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
     recasts_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    recasts_df['recasts_v'] = recasts_df['recasts_v'].astype('int32')
     lrmc_df = lrm_df.merge(
                         recasts_df,
                         how='outer',
@@ -90,6 +94,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   with Timer(name="merge_follows"):
     query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
     follows_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    follows_df['follows_v'] = follows_df['follows_v'].astype('int32')
     _interactions_df = lrmc_df.merge(
                         follows_df,
                         how='outer',
@@ -123,7 +128,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   utils.log_memusage(logger)
 
   # drop unused columns to recover some memory
-  _interactions_df = _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'], inplace=True)
+  _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'], inplace=True)
 
   # Filter out entries where i == j
   _interactions_df = _interactions_df[_interactions_df['i'] != _interactions_df['j']]
