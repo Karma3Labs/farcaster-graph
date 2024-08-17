@@ -26,9 +26,10 @@ function validate_date() {
     fi
 }
 
-while getopts w:v:o:d:t: flag
+while getopts w:v:o:d:t:s: flag
 do
     case "${flag}" in
+        s) STEP=${OPTARG};;
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
         t) TEMP_DIR=${OPTARG};;
@@ -37,14 +38,15 @@ do
     esac
 done
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
-  echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
+if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
+  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
+  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
-  echo "         $0 -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
+  echo "Example: $0 -s localtrust -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
+  echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
   echo ""
   echo "Params:"
+  echo "  [step]  localtrust or compute"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [temp_dir]  The temporary directory where csv files are to be written to."
   echo "  [out_dir]  The final destination directory to write localtrust files to."
@@ -72,22 +74,13 @@ source $WORK_DIR/.env
 
 REMOTE_DB_HOST=${REMOTE_DB_HOST:-127.0.0.1}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-5432}
-REMOTE_DB_USER=${REMOTE_DB_USER:-replicator}
-REMOTE_DB_NAME=${REMOTE_DB_NAME:-replicator}
+REMOTE_DB_USER=${REMOTE_DB_USER:-k3l_user}
+REMOTE_DB_NAME=${REMOTE_DB_NAME:-farcaster}
 REMOTE_DB_PASSWORD=${REMOTE_DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
 
 # set -x
 set -e
 set -o pipefail
-
-if hash psql 2>/dev/null; then
-  echo "OK, you have psql in the path. We’ll use that."
-  PSQL=psql
-else
-  echo "You don't have psql in the path. Let's try /usr/bin"
-  hash /usr/bin/psql
-  PSQL=/usr/bin/psql
-fi
 
 function log() {
   echo "`date` - $1"
@@ -96,59 +89,84 @@ function log() {
 log $OPT_DATE_SUFFIX
 log $TARGET_DATE_SUFFIX
 
-source $VENV/bin/activate
-pip install -r requirements.txt
-python3 -m globaltrust.gen_globaltrust -o $TEMP_DIR $DATE_OPTION
-deactivate
 
-log "Inserting tmp_globaltrust${OPT_DATE_SUFFIX}"
-PGPASSWORD=$REMOTE_DB_PASSWORD \
-$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  -c "DROP TABLE IF EXISTS tmp_globaltrust${OPT_DATE_SUFFIX}; 
-  CREATE UNLOGGED TABLE tmp_globaltrust${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
+echo "Executing step: $STEP"
+if [ "$STEP" = "localtrust" ]; then
 
-PGPASSWORD=$REMOTE_DB_PASSWORD \
-$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
-  (i,v,date,strategy_id) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
+  source $VENV/bin/activate
+  pip install -r requirements.txt
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION
+  deactivate
 
-PGPASSWORD=$REMOTE_DB_PASSWORD \
-$PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
-  (i,v,date,strategy_id) 
-  FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
+elif [ "$STEP" = "compute" ]; then
 
-# log "Inserting tmp_globaltrust"
-# PGPASSWORD=$REMOTE_DB_PASSWORD \
-# $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-#   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
-# INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
+  if hash psql 2>/dev/null; then
+    echo "OK, you have psql in the path. We’ll use that."
+    PSQL=psql
+  else
+    echo "You don't have psql in the path. Let's try /usr/bin"
+    hash /usr/bin/psql
+    PSQL=/usr/bin/psql
+  fi
 
-# PGPASSWORD=$DB_PASSWORD \
-# $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-#   -c "VACUUM ANALYZE globaltrust;"
+  source $VENV/bin/activate
+  pip install -r requirements.txt
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION
+  deactivate
 
-if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
-  log "Moving generated files to graph folder"
-  mv ${TEMP_DIR}/globaltrust.engagement.csv ${OUT_DIR}/
-  mv ${TEMP_DIR}/globaltrust.following.csv ${OUT_DIR}/
-  mv ${TEMP_DIR}/localtrust.engagement.csv ${OUT_DIR}/
-  mv ${TEMP_DIR}/localtrust.following.csv ${OUT_DIR}/
+  log "Inserting tmp_globaltrust${OPT_DATE_SUFFIX}"
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c "DROP TABLE IF EXISTS tmp_globaltrust${OPT_DATE_SUFFIX}; 
+    CREATE UNLOGGED TABLE tmp_globaltrust${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
+
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
+    (i,v,date,strategy_id) 
+    FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
+
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
+    (i,v,date,strategy_id) 
+    FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
+
+  # log "Inserting tmp_globaltrust"
+  # PGPASSWORD=$REMOTE_DB_PASSWORD \
+  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+  #   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
+  # INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
+
+  # PGPASSWORD=$DB_PASSWORD \
+  # $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+  #   -c "VACUUM ANALYZE globaltrust;"
+
+  if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
+    log "Moving generated files to graph folder"
+    mv ${TEMP_DIR}/globaltrust.engagement.csv ${OUT_DIR}/
+    mv ${TEMP_DIR}/globaltrust.following.csv ${OUT_DIR}/
+    mv ${TEMP_DIR}/localtrust.engagement.csv ${OUT_DIR}/
+    mv ${TEMP_DIR}/localtrust.following.csv ${OUT_DIR}/
+  fi
+
+  # log "Inserting localtrust_stats"
+  # PGPASSWORD=$REMOTE_DB_PASSWORD \
+  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+  #   -c  "COPY localtrust_stats
+  #   (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
+  #   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
+
+  # PGPASSWORD=$REMOTE_DB_PASSWORD \
+  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+  #   -c  "COPY localtrust_stats
+  #   (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
+  #   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
+
+else
+  echo "Invalid step specified."
+  exit 1
 fi
-
-# log "Inserting localtrust_stats"
-# PGPASSWORD=$REMOTE_DB_PASSWORD \
-# $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-#   -c  "COPY localtrust_stats
-#   (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
-#   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
-
-# PGPASSWORD=$REMOTE_DB_PASSWORD \
-# $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-#   -c  "COPY localtrust_stats
-#   (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
-#   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
 
 wait $!
 
