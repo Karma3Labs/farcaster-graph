@@ -33,8 +33,14 @@ with DAG(
         dag=dag)
 
     gen_globaltrust = SSHOperator(
-        task_id="run_globaltrust_pipeline.sh",
-        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
+        task_id="gen_localtrust",
+        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s localtrust -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
+        ssh_hook=ssh_hook,
+        dag=dag)
+    
+    gen_globaltrust = SSHOperator(
+        task_id="compute_globaltrust",
+        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         ssh_hook=ssh_hook,
         dag=dag)
     
