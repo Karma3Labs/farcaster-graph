@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+from pathlib import Path
 
 import utils
 import db_utils
@@ -7,6 +8,7 @@ import go_eigentrust
 from timer import Timer
 from .queries import IJVSql, IVSql
 from config import settings
+
 
 import pandas as pd
 import gc
@@ -162,13 +164,13 @@ def localtrust_for_strategy(
   return lt_df
 # end localtrust_for_strategy
 
-def globaltrust_for_strategy(
+def pretrust_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
-    lt_df: pd.DataFrame,
     strategy: Strategy,
     target_date: str = None
 ) -> pd.DataFrame:
+
   with Timer(name=f"{strategy}"):
     match strategy:
       case Strategy.FOLLOWING:
@@ -182,38 +184,22 @@ def globaltrust_for_strategy(
     # end of match
 
     logger.info(f"{strategy} Pre-Trust: {utils.df_info_to_string(pt_df, with_sample=True)}")
-    logger.info(f"{strategy} LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
     utils.log_memusage(logger)
+  # end Timer
+  return pt_df
+# end pretrust_for_strategy
 
-    with Timer(name=f"prep_eigentrust_{strategy}"):
-      localtrust = lt_df.to_dict(orient="records")
-      max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
-      pretrust = pt_df.to_dict(orient="records")
-      max_pt_id = pt_df['i'].max()
+def globaltrust_for_strategy(
+    logger: logging.Logger,
+    pt_filepath: Path,
+    lt_filepath: Path,
+    strategy: Strategy,
+) -> pd.DataFrame:
 
-    # manually call garbage collector to free up intermediate pandas objects 
-    utils.log_memusage(logger)
-    logger.info("calling garbage collector to free up intermediate pandas and db objects")
-    del lt_df
-    del pt_df
-    gc.collect()
-    utils.log_memusage(logger)
-
-    globaltrust = go_eigentrust.go_eigentrust(pretrust,
-                                              max_pt_id,
-                                              localtrust,
-                                              max_lt_id
-                                              )
+  with Timer(name=f"{strategy}"):
+    globaltrust = go_eigentrust.go_eigentrust_from_file(pt_filepath, lt_filepath)
     logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
     
-    # manually call garbage collector to free up localtrust 
-    utils.log_memusage(logger)
-    logger.debug("calling garbage collector to free up localtrust immediately")
-    del localtrust
-    del pretrust
-    gc.collect()
-    utils.log_memusage(logger)
-
     with Timer(name=f"post_eigentrust_{strategy}"):
       gt_df = pd.DataFrame.from_records(globaltrust)
     logger.info(utils.df_info_to_string(gt_df, with_sample=True))

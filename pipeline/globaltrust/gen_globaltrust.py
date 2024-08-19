@@ -19,8 +19,9 @@ import pandas as pd
 from loguru import logger
 
 class Step(Enum):
-  localtrust = 1
-  compute = 2
+  prep = 1
+  compute_following = 2
+  compute_engagement = 3
 
   def __str__(self):
     return self.name
@@ -44,16 +45,18 @@ logger.add(sys.stdout,
            filter=level_per_module,
            level=0)
 
-def gen_lt_gt_filepath(
+def gen_filepaths(
     basedir: Path, strategy: compute.Strategy, target_date: str
-) -> tuple[Path, Path]:
+) -> tuple[Path, Path, Path, Path]:
     lt_filename = f"localtrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
     gt_filename = f"globaltrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
     lt_stats_filename = f"localtrust_stats.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
+    pt_stats_filename = f"pretrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
     return (
         os.path.join(basedir, lt_filename),
         os.path.join(basedir, gt_filename),
         os.path.join(basedir, lt_stats_filename),
+        os.path.join(basedir, pt_stats_filename),
     )
 
 def gen_localtrust_to_csv(
@@ -70,8 +73,8 @@ def gen_localtrust_to_csv(
 
         lt_df = compute.localtrust_for_strategy(logger, pg_dsn, strategy, target_date)
 
-        (lt_filename, _, _) = gen_lt_gt_filepath(outdir, strategy, target_date)
-        logger.info(f"CSV filename: {lt_filename}")
+        (lt_filepath, _, lt_stats_filepath, _) = gen_filepaths(outdir, strategy, target_date)
+        logger.info(f"CSV filepaths: {lt_filepath, lt_stats_filepath}")
 
         strategy_id: int = strategy.value[1]
         dt_str: str = (
@@ -79,43 +82,13 @@ def gen_localtrust_to_csv(
             if target_date
             else datetime.strftime(datetime.now(), "%Y-%m-%d")
         )
-
         with Timer(name=f"localtrust_{strategy}_to_csv"):
             lt_df["date"] = dt_str
             lt_df["strategy_id"] = strategy_id
-            lt_df.to_csv(lt_filename, index=False, header=True)
+            lt_df['v'] = lt_df['v'].astype('int32')
+            lt_df.to_csv(lt_filepath, index=False, header=True)
 
-
-def gen_globaltrust_to_csv(
-    pg_dsn: str,
-    outdir: Path,
-    strategy: compute.Strategy,
-    target_date: str = None,
-) :
-    with Timer(name=f"gen_globaltrust_{strategy}"):
-        logDate = "today" if target_date is None else f"{target_date}"
-        logger.info(
-            f"Generate globaltrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
-        )
-
-        (lt_filename, gt_filename, lt_stats_filename) = gen_lt_gt_filepath(outdir, strategy, target_date)
-        logger.info(f"CSV filenames: {(lt_filename, gt_filename, lt_stats_filename)}")
-        lt_df = pd.read_csv(lt_filename)
         lt_stats = lt_df["v"].describe()
-        gt_df = compute.globaltrust_for_strategy(logger, pg_dsn, lt_df, strategy, target_date)
-
-        strategy_id: int = strategy.value[1]
-        dt_str: str = (
-            target_date
-            if target_date
-            else datetime.strftime(datetime.now(), "%Y-%m-%d")
-        )
-
-        with Timer(name=f"globaltrust_{strategy}_to_csv"):
-            gt_df["date"] = dt_str
-            gt_df["strategy_id"] = strategy_id
-            gt_df.to_csv(gt_filename, index=False, header=True)
-
         with Timer(name=f"localtrust_stats_{strategy}_to_csv"):
           stats_row = (
               dt_str,
@@ -131,21 +104,72 @@ def gen_globaltrust_to_csv(
               f"strategy_id_{strategy_id}_stddev",
               f"strategy_id_{strategy_id}_range",
           ]
-          with open(lt_stats_filename, 'w', newline='') as stats_file:
+          with open(lt_stats_filepath, 'w', newline='') as stats_file:
             writer = csv.writer(stats_file)
             writer.writerow(stats_header)
             writer.writerow(stats_row)
 
+def gen_pretrust_to_csv(
+    pg_dsn: str,
+    outdir: Path,
+    strategy: compute.Strategy,
+    target_date: str = None,
+) :
+    with Timer(name=f"gen_pretrust_{strategy}"):
+        logDate = "today" if target_date is None else f"{target_date}"
+        logger.info(
+            f"Generate pretrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
+        )
+
+        pt_df = compute.pretrust_for_strategy(logger, pg_dsn, strategy, target_date)
+
+        (_, _, _, pt_filepath) = gen_filepaths(outdir, strategy, target_date)
+        logger.info(f"CSV filepath: {pt_filepath}")
+
+        with Timer(name=f"pretrust_{strategy}_to_csv"):
+            pt_df.to_csv(pt_filepath, index=False, header=True)
+
+def gen_globaltrust_to_csv(
+    ptcsv: Path,
+    ltcsv: Path, 
+    outdir: Path,
+    strategy: compute.Strategy,
+    target_date: str = None,
+) :
+    with Timer(name=f"gen_globaltrust_{strategy}"):
+        logDate = "today" if target_date is None else f"{target_date}"
+        logger.info(
+            f"Generate globaltrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
+        )
+
+        (_, gt_filepath, _, _) = gen_filepaths(outdir, strategy, target_date)
+        logger.info(f"CSV filepaths: {(gt_filepath)}")
+        gt_df = compute.globaltrust_for_strategy(logger, ptcsv, ltcsv, strategy)
+
+        strategy_id: int = strategy.value[1]
+        dt_str: str = (
+            target_date
+            if target_date
+            else datetime.strftime(datetime.now(), "%Y-%m-%d")
+        )
+        with Timer(name=f"globaltrust_{strategy}_to_csv"):
+            gt_df["date"] = dt_str
+            gt_df["strategy_id"] = strategy_id
+            gt_df.to_csv(gt_filepath, index=False, header=True)
+
 @Timer(name="main")
-def main(step:Step, pg_dsn: str, outdir:Path, target_date: str = None):
+def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_date: str = None):
   utils.log_memusage(logger)
   match step:
-    case Step.localtrust:
+    case Step.prep:
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
-    case Step.compute:
-      gen_globaltrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date) 
-      gen_globaltrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date) 
+      gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
+      gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
+    case Step.compute_following:
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.FOLLOWING, target_date) 
+    case Step.compute_engagement:
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date) 
 
 if __name__ == '__main__':
     load_dotenv()
@@ -160,10 +184,24 @@ if __name__ == '__main__':
     parser.add_argument(
         "-s",
         "--step",
-        help="localtrust or compute",
+        help="prep or compute",
         required=True,
         choices=list(Step),
         type=Step.from_string,
+    )
+    parser.add_argument(
+        "-l",
+        "--ltcsv",
+        help="localtrust csv in i,j,v format required for compute",
+        required=False,
+        type=lambda f: Path(f).expanduser().resolve(),
+    )
+    parser.add_argument(
+        "-p",
+        "--ptcsv",
+        help="pretrust csv in i,v format required for compute",
+        required=False,
+        type=lambda f: Path(f).expanduser().resolve(),
     )
     parser.add_argument(
         "-o",
@@ -182,6 +220,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
+    if args.step in [Step.compute_following, Step.compute_engagement] and (
+        not args.ltcsv or not args.ptcsv
+    ):
+        raise ValueError("Step Compute requires localtrust and preturst argument")
 
     target_date:str = None
     if args.date:
@@ -190,6 +232,8 @@ if __name__ == '__main__':
     main(
         args.step,
         settings.POSTGRES_DSN.get_secret_value(),
+        args.ptcsv,
+        args.ltcsv,
         args.outdir,
         target_date,
     )

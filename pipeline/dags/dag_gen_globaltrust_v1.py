@@ -35,9 +35,9 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
 
-    gen_localtrust = SSHOperator(
-        task_id="gen_localtrust",
-        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s localtrust -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
+    prep_globaltrust = SSHOperator(
+        task_id="prep_globaltrust",
+        command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         ssh_hook=ssh_hook,
         dag=dag)
     
@@ -61,4 +61,4 @@ with DAG(
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
-    mkdir_tmp >> gen_localtrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    mkdir_tmp >> prep_globaltrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
