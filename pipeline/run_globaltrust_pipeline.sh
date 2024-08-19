@@ -132,7 +132,7 @@ elif [ "$STEP" = "compute" ]; then
     (i,v,date,strategy_id) 
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
 
-  # log "Inserting tmp_globaltrust"
+  # log "Inserting globaltrust"
   # PGPASSWORD=$REMOTE_DB_PASSWORD \
   # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
   #   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
