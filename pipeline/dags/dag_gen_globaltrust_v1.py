@@ -20,7 +20,9 @@ with DAG(
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     start_date=datetime(2024, 8, 16),
-    schedule_interval='0 */6 * * *',
+    schedule_interval=None,
+    # schedule_interval='0 */6 * * *',
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
 
