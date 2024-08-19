@@ -91,7 +91,7 @@ log $TARGET_DATE_SUFFIX
 
 
 echo "Executing step: $STEP"
-if [ "$STEP" = "localtrust" ]; then
+if [ "$STEP" = "prep" ]; then
 
   source $VENV/bin/activate
   pip install -r requirements.txt
@@ -111,27 +111,46 @@ elif [ "$STEP" = "compute" ]; then
 
   source $VENV/bin/activate
   pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION
+
+  # localtrust has i,j,v,date,strategy_id for downstream processing but
+  # go-eigentrust requires only i,j,v 
+  cut -d',' -f1,2,3 ${TEMP_DIR}/localtrust.following.csv > ${TEMP_DIR}/tmp_localtrust.following.csv 
+  python3 -m globaltrust.gen_globaltrust -s compute_following \
+    -l ${TEMP_DIR}/tmp_localtrust.following.csv \
+    -p ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv \
+    -o $TEMP_DIR \
+    $DATE_OPTION
+
+  cut -d',' -f1,2,3 ${TEMP_DIR}/localtrust.engagement.csv > ${TEMP_DIR}/tmp_localtrust.engagement.csv 
+  python3 -m globaltrust.gen_globaltrust -s compute_engagement \
+    -l ${TEMP_DIR}/tmp_localtrust.engagement.csv \
+    -p ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv \
+    -o $TEMP_DIR \
+    $DATE_OPTION
   deactivate
 
+  # create temp table for globaltrust csv import 
   log "Inserting tmp_globaltrust${OPT_DATE_SUFFIX}"
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c "DROP TABLE IF EXISTS tmp_globaltrust${OPT_DATE_SUFFIX}; 
     CREATE UNLOGGED TABLE tmp_globaltrust${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
 
+  # import engagement globaltrust csv into temp table 
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
     (i,v,date,strategy_id) 
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
 
+  # import following globaltrust csv into temp table 
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
     (i,v,date,strategy_id) 
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
 
+  # copy globaltrust from temp table into main table
   # log "Inserting globaltrust"
   # PGPASSWORD=$REMOTE_DB_PASSWORD \
   # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \

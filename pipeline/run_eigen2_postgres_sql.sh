@@ -42,10 +42,5 @@ else
   PSQL=/usr/bin/psql
 fi
 
-if [[ $(uname) == "Darwin" ]];
-then
-    SP=" " # Needed for portability with sed
-fi
-
 PGPASSWORD=$DB_PASSWORD $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
   -c "$SQL_STATEMENT"
