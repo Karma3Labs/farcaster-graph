@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.providers.ssh.operators.ssh import SSHOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.providers.ssh.hooks.ssh import SSHHook
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -46,11 +47,12 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
     
-    upload_to_dune =  SSHOperator(
-        task_id="insert_globaltrust_to_dune_v3",
-        command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
-        ssh_hook=ssh_hook,
-        dag=dag)
+    # upload_to_dune =  SSHOperator(
+    #     task_id="insert_globaltrust_to_dune_v3",
+    #     command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
+    #     ssh_hook=ssh_hook,
+    #     dag=dag)
+    upload_to_dune = EmptyOperator(task_id="insert_globaltrust_to_dune_v3")
     
     rmdir_tmp =  SSHOperator(
         task_id="rmdir_tmp",
@@ -59,5 +61,4 @@ with DAG(
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
-    # mkdir_tmp >> gen_localtrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
-    mkdir_tmp >> gen_localtrust >> compute_globaltrust  >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    mkdir_tmp >> gen_localtrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
