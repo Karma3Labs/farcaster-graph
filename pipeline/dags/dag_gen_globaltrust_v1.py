@@ -57,4 +57,5 @@ with DAG(
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
-    mkdir_tmp >> gen_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    # mkdir_tmp >> gen_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    mkdir_tmp >> gen_globaltrust >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
