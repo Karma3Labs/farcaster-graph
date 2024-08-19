@@ -20,7 +20,9 @@ with DAG(
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     start_date=datetime(2024, 8, 16),
-    schedule_interval='0 */6 * * *',
+    schedule_interval=None,
+    # schedule_interval='0 */6 * * *',
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
 
@@ -32,13 +34,13 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
 
-    gen_globaltrust = SSHOperator(
+    gen_localtrust = SSHOperator(
         task_id="gen_localtrust",
         command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s localtrust -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         ssh_hook=ssh_hook,
         dag=dag)
     
-    gen_globaltrust = SSHOperator(
+    compute_globaltrust = SSHOperator(
         task_id="compute_globaltrust",
         command= "cd ~/farcaster-graph/pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
         ssh_hook=ssh_hook,
@@ -57,5 +59,5 @@ with DAG(
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
-    # mkdir_tmp >> gen_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
-    mkdir_tmp >> gen_globaltrust >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    # mkdir_tmp >> gen_localtrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    mkdir_tmp >> gen_localtrust >> compute_globaltrust  >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
