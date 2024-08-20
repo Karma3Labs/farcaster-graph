@@ -88,7 +88,7 @@ function log() {
 
 log $OPT_DATE_SUFFIX
 log $TARGET_DATE_SUFFIX
-
+echo $TEMP_DIR
 
 echo "Executing step: $STEP"
 if [ "$STEP" = "prep" ]; then
@@ -114,17 +114,22 @@ elif [ "$STEP" = "compute" ]; then
 
   # localtrust has i,j,v,date,strategy_id for downstream processing but
   # go-eigentrust requires only i,j,v 
-  cut -d',' -f1,2,3 ${TEMP_DIR}/localtrust.following.csv > ${TEMP_DIR}/tmp_localtrust.following.csv 
+  cp  ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv
+
+  cut -d',' -f1,2,3 \
+  ${TEMP_DIR}/localtrust.following${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv 
   python3 -m globaltrust.gen_globaltrust -s compute_following \
-    -l ${TEMP_DIR}/tmp_localtrust.following.csv \
-    -p ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv \
+    -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
+    -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
     $DATE_OPTION
 
-  cut -d',' -f1,2,3 ${TEMP_DIR}/localtrust.engagement.csv > ${TEMP_DIR}/tmp_localtrust.engagement.csv 
+  cp  ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv 
+  cut -d',' -f1,2,3 \
+  ${TEMP_DIR}/localtrust.engagement${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv
   python3 -m globaltrust.gen_globaltrust -s compute_engagement \
-    -l ${TEMP_DIR}/tmp_localtrust.engagement.csv \
-    -p ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv \
+    -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
+    -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
     $DATE_OPTION
   deactivate
