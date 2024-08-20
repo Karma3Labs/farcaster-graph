@@ -10,6 +10,7 @@ from timer import Timer
 # 3rd party dependencies
 from loguru import logger
 import niquests
+from sqlalchemy import create_engine
 
 
 @Timer(name="fetch_all_channels")
@@ -41,6 +42,14 @@ def fetch_channel(http_session: niquests.Session, channel_id: str) -> channel_mo
         raise Exception(f"Server error: {response.status_code}:{response.reason}")
     data = response.json()['result']['channel']
     return channel_model.Channel(data)
+
+
+@Timer(name="fetch_channel_details")
+def fetch_channel_details(pg_url: str, channel_id: str) -> channel_model.Channel:
+    sql_engine = create_engine(pg_url)
+    tmp_sql = f"select * from warpcast_channels_data where id = '{channel_id}'"
+    df = pd.read_sql_query(tmp_sql, sql_engine)
+    return channel_model.Channel(df.to_dict(orient='records')[0])
 
 
 @Timer(name="fetch_channel_followers")
