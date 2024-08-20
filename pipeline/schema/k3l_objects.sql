@@ -287,15 +287,15 @@ CREATE INDEX idx_automod_data_ch_userid_idx ON public.automod_data USING btree (
 
 -------------------------------------------------------------------------------------
 CREATE TABLE public.warpcast_channels_data (
-	id text null,
-	url text null,
-	name text null,
-	description text null,
-	imageurl text null,
-	leadfid int8 null,
-	moderatorfid float8 null,
+	id text NOT NULL,
+	url text NOT NULL,
+	name text NOT NULL,
+	description text NULL,
+	imageurl text NULL,
+	leadfid int8 NULL,
+	moderatorfid float8 NULL,
 	createdat timestamp NULL,
-	followercount int8 null,
-	hostfids integer[] null,
-	dateiso date null
+	followercount int8 NULL,
+	hostfids integer[] NULL,
+	dateiso date NULL
 );
