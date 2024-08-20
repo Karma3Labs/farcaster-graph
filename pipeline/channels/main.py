@@ -51,7 +51,7 @@ def fetch_channel_data(csv_path):
 
 def process_channel(cid, channel_data, pg_dsn, pg_url):
     try:
-        channel = channel_utils.fetch_channel_details(pg_url, channel_id=cid)
+        channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         host_fids = list(
             set(int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))
     except Exception as e:
@@ -138,13 +138,6 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
 
 def process_channels(csv_path: str, channel_ids_str: str):
     # Setup connection pool for querying Warpcast API
-    retries = Retry(
-        total=3,
-        backoff_factor=0.1,
-        status_forcelist=[502, 503, 504],
-        allowed_methods=['GET']
-    )
-    http_session = niquests.Session(retries=retries)
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
@@ -155,7 +148,7 @@ def process_channels(csv_path: str, channel_ids_str: str):
 
     for cid in channel_ids:
         try:
-            result = process_channel(cid, channel_data, http_session, pg_dsn, pg_url)
+            result = process_channel(cid, channel_data, pg_dsn, pg_url)
             missing_seed_fids.append(result)
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
