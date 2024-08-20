@@ -104,11 +104,11 @@ def go_eigentrust_from_file(
     req = {
         "pretrust": {
             "scheme": 'objectstorage',
-            "url": f"file:/{pretrust_path}",
+            "url": f"file://{pretrust_path}",
         },
         "localTrust": {
             "scheme": 'objectstorage',
-            "url": f"file:/{localtrust_path}",
+            "url": f"file://{localtrust_path}",
         },
         "alpha": settings.EIGENTRUST_ALPHA,
         # "epsilon": settings.EIGENTRUST_EPSILON,
@@ -116,7 +116,7 @@ def go_eigentrust_from_file(
         # "flatTail": settings.EIGENTRUST_FLAT_TAIL
     }
 
-    logger.info("calling go_eigentrust")
+    logger.info(f"calling go_eigentrust with request: {req}")
     response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                              json=req,
                              headers={
