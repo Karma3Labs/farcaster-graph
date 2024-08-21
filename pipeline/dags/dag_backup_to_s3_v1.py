@@ -35,7 +35,7 @@ with DAG(
 
     task3 = BashOperator(
         task_id='backup_localtrust',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh localtrust_v1 /pipeline/tmp/graph_files/"
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh localtrust_v1 /pipeline/tmp/graph_files"
     )
 
     [task1, task2, task3]
