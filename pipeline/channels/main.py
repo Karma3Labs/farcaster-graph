@@ -51,7 +51,6 @@ def fetch_channel_data(csv_path):
 
 def process_channel(cid, channel_data, pg_dsn, pg_url):
     try:
-        print(pg_url)
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         host_fids = list(
             set(int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))

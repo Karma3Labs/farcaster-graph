@@ -10,7 +10,6 @@ from timer import Timer
 # 3rd party dependencies
 from loguru import logger
 import niquests
-from sqlalchemy import create_engine
 
 
 @Timer(name="fetch_all_channels")
