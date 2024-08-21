@@ -191,18 +191,6 @@ process_globaltrust_config() {
 }
 
 # Function to export and process localtrust table
-process_localtrust() {
-  filename="k3l_cast_localtrust"
-  csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
-  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
-  export_to_csv "localtrust" "$csv_file" "\COPY (SELECT i,j,v,date,strategy_id FROM localtrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
-  # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
-  export_to_s3 "$csv_file" "$s3_bucket"
-  #export_csv_to_bq "$csv_file"
-  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
-}
-
-# Function to export and process localtrust table
 process_localtrust_v1() {
   local graph_folder="$1"
 
@@ -384,9 +372,6 @@ case "$1" in
         ;;
     globaltrust_config)
         process_globaltrust_config
-        ;;
-    localtrust)
-        process_localtrust
         ;;
     localtrust_v1)
         process_localtrust_v1 $2
