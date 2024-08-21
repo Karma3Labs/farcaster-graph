@@ -156,15 +156,15 @@ elif [ "$STEP" = "compute" ]; then
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
 
   # copy globaltrust from temp table into main table
-  # log "Inserting globaltrust"
-  # PGPASSWORD=$REMOTE_DB_PASSWORD \
-  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  #   -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
-  # INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
+  log "Inserting globaltrust"
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
+  INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
 
-  # PGPASSWORD=$DB_PASSWORD \
-  # $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-  #   -c "VACUUM ANALYZE globaltrust;"
+  PGPASSWORD=$DB_PASSWORD \
+  $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+    -c "VACUUM ANALYZE globaltrust;"
 
   if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
     log "Moving generated files to graph folder"
@@ -174,18 +174,18 @@ elif [ "$STEP" = "compute" ]; then
     mv ${TEMP_DIR}/localtrust.following.csv ${OUT_DIR}/
   fi
 
-  # log "Inserting localtrust_stats"
-  # PGPASSWORD=$REMOTE_DB_PASSWORD \
-  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  #   -c  "COPY localtrust_stats
-  #   (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
-  #   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
+  log "Inserting localtrust_stats"
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c  "COPY localtrust_stats
+    (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
+    FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
 
-  # PGPASSWORD=$REMOTE_DB_PASSWORD \
-  # $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-  #   -c  "COPY localtrust_stats
-  #   (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
-  #   FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c  "COPY localtrust_stats
+    (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range) 
+    FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
 
 else
   echo "Invalid step specified."
