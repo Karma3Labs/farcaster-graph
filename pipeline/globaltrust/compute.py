@@ -199,14 +199,19 @@ def globaltrust_for_strategy(
   with Timer(name=f"{strategy}"):
     if settings.GO_EIGENTRUST_FILE_MODE:
       with Timer(name="go_eigentrust_from_file"):
+        logger.info(f"go_eigentrust_from_file {(pt_filepath, lt_filepath)}")
         globaltrust = go_eigentrust.go_eigentrust_from_file(pt_filepath, lt_filepath)
     else:
       with Timer(name=f"prep_eigentrust_{strategy}"):
         # we could have used list(csv.DictReader) but we need the max id
+        logger.info(f"reading localtrust from {lt_filepath}")
         lt_df = pd.read_csv(lt_filepath, usecols=['i','j','v'])
+        logger.info("converting localtrust dataframe to dict")
         localtrust = lt_df.to_dict(orient="records")
         max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
+        logger.info(f"reading pretrust from {pt_filepath}")
         pt_df = pd.read_csv(pt_filepath, usecols=['i','v'])
+        logger.info("converting pretrust dataframe to dict")
         pretrust = pt_df.to_dict(orient="records")
         max_pt_id = pt_df['i'].max()
 
