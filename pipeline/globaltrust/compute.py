@@ -197,9 +197,42 @@ def globaltrust_for_strategy(
 ) -> pd.DataFrame:
 
   with Timer(name=f"{strategy}"):
-    globaltrust = go_eigentrust.go_eigentrust_from_file(pt_filepath, lt_filepath)
-    logger.info(f"go_eigentrust returned {len(globaltrust)} entries")
-    
+    if settings.GO_EIGENTRUST_FILE_MODE:
+      with Timer(name="go_eigentrust_from_file"):
+        globaltrust = go_eigentrust.go_eigentrust_from_file(pt_filepath, lt_filepath)
+    else:
+      with Timer(name=f"prep_eigentrust_{strategy}"):
+        # we could have used list(csv.DictReader) but we need the max id
+        lt_df = pd.read_csv(lt_filepath, usecols=['i','j','v'])
+        localtrust = lt_df.to_dict(orient="records")
+        max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
+        pt_df = pd.read_csv(pt_filepath, usecols=['i','v'])
+        pretrust = pt_df.to_dict(orient="records")
+        max_pt_id = pt_df['i'].max()
+
+      # manually call garbage collector to free up intermediate pandas objects 
+      utils.log_memusage(logger)
+      logger.info("calling garbage collector to free up intermediate pandas and db objects")
+      del lt_df
+      del pt_df
+      gc.collect()
+      utils.log_memusage(logger)
+
+      with Timer(name="go_eigentrust_from_file"):
+        globaltrust = go_eigentrust.go_eigentrust(pretrust,
+                                                max_pt_id,
+                                                localtrust,
+                                                max_lt_id
+                                                )      
+      # manually call garbage collector to free up localtrust 
+      utils.log_memusage(logger)
+      logger.debug("calling garbage collector to free up localtrust immediately")
+      del localtrust
+      del pretrust
+      gc.collect()
+      utils.log_memusage(logger)
+    # end if GO_EIGENTRUST_FILE_MODE
+        
     with Timer(name=f"post_eigentrust_{strategy}"):
       gt_df = pd.DataFrame.from_records(globaltrust)
     logger.info(utils.df_info_to_string(gt_df, with_sample=True))
