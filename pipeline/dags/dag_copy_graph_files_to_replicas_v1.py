@@ -37,7 +37,7 @@ with DAG(
 
     eigen2_copy_all_pkl_files = BashOperator(
         task_id="eigen2_copy_all_pkl_v0",
-        bash_bcommand=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
+        bash_command=f"scp -v -i {eigen6_ssh_cred_path} ~/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
         dag=dag,
     )
 
