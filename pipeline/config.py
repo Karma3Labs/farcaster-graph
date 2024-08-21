@@ -4,9 +4,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
 class Settings(BaseSettings):
-    DB_USER:str
-    DB_PASSWORD:SecretStr
-    DB_NAME:str
+    DB_USER:str = 'postgres'
+    DB_PASSWORD:SecretStr = 'password'
+    DB_NAME:str = 'postgres'
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
 
@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     PERSONAL_IGRAPH_INPUT: str
     PERSONAL_IGRAPH_URL: str
 
+    USE_NEYNAR:bool = True # TODO deprecate this
     IS_TEST: bool = False
 
     LOG_LEVEL: str = 'INFO'
@@ -47,10 +48,10 @@ class Settings(BaseSettings):
     LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
     LOG_PATH: str = '/tmp/'
 
-    REMOTE_DB_USER:str
-    REMOTE_DB_PASSWORD:SecretStr
-    REMOTE_DB_NAME:str
-    REMOTE_DB_HOST:str
+    REMOTE_DB_USER:str = 'postgres'
+    REMOTE_DB_PASSWORD:SecretStr = 'password'
+    REMOTE_DB_NAME:str = 'postgres'
+    REMOTE_DB_HOST:str = '127.0.0.1'
     REMOTE_DB_PORT:int = 9541
     
     AIRFLOW_UID: int
