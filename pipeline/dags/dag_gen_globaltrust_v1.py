@@ -42,11 +42,10 @@ with DAG(
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
     
-    # upload_to_dune =  BashOperator(
-    #     task_id="insert_globaltrust_to_dune_v3",
-    #     bash_command= "cd ~/farcaster-graph/pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
-    #     dag=dag)
-    upload_to_dune = EmptyOperator(task_id="insert_globaltrust_to_dune_v3")
+    upload_to_dune =  BashOperator(
+        task_id="insert_globaltrust_to_dune_v3",
+        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
+        dag=dag)
     
     rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
