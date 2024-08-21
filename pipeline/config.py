@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     GO_EIGENTRUST_TIMEOUT_MS:int = 600_000 # 10 mins
     GO_EIGENTRUST_BIND_SRC:str = '/tmp'
     GO_EIGENTRUST_BIND_TARGET:str = '/tmp'
+    GO_EIGENTRUST_FILE_MODE:bool = False
     EIGENTRUST_ALPHA:float = 0.5
     EIGENTRUST_EPSILON:float = 1.0
     EIGENTRUST_MAX_ITER:int = 50

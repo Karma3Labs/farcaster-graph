@@ -79,7 +79,7 @@ def go_eigentrust(
         # "flatTail": settings.EIGENTRUST_FLAT_TAIL
     }
 
-    logger.info("calling go_eigentrust")
+    logger.info("calling go_eigentrust with inline scheme")
     response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
                              json=req,
                              headers={
