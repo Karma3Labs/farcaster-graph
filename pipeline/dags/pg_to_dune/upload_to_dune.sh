@@ -213,9 +213,7 @@ process_localtrust_v1() {
   cat $graph_folder/localtrust.engagement.csv > $csv_file
   cat $graph_folder/localtrust.follows.csv >> $csv_file
 
-  # split_and_post_csv "$csv_file" 30 "dataset_k3l_cast_localtrust_v2"
   export_to_s3 "$csv_file" "$s3_bucket"
-  #export_csv_to_bq "$csv_file"
   export_historical_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
