@@ -29,17 +29,17 @@ with DAG(
 
     mkdir_tmp =  BashOperator(
         task_id="mkdir_tmp",
-        bash_command= "cd /pipeline; mkdir -p tmp/{{ run_id }}",
+        bash_command= "cd /pipeline; mkdir -p tmp/{{ run_id }}; mkdir -p tmp/graph_files",
         dag=dag)
 
     prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
     
     compute_globaltrust = BashOperator(
         task_id="compute_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o ~/graph_files/",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
     
     # upload_to_dune =  BashOperator(
