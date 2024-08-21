@@ -3,6 +3,7 @@ from io import StringIO
 import csv
 from enum import Enum
 
+from channels import channel_model
 from timer import Timer
 from config import settings
 from loguru import logger
@@ -126,3 +127,11 @@ def _psql_insert_copy(table, conn, keys, data_iter):
 
         sql = 'COPY {} ({}) FROM STDIN WITH CSV'.format(table_name, columns)
         cur.copy_expert(sql=sql, file=s_buf)
+
+@Timer(name="fetch_channel_details")
+def fetch_channel_details(pg_url: str, channel_id: str) -> channel_model.Channel:
+    sql_engine = create_engine(pg_url)
+    tmp_sql = f"select * from warpcast_channels_data where id = '{channel_id}'"
+    df = pd.read_sql_query(tmp_sql, sql_engine)
+    return channel_model.Channel(df.to_dict(orient='records')[0])
+

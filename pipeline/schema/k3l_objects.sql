@@ -286,3 +286,16 @@ CREATE INDEX idx_automod_data_affected_userid ON public.automod_data USING btree
 CREATE INDEX idx_automod_data_ch_userid_idx ON public.automod_data USING btree (channel_id, affected_userid)
 
 -------------------------------------------------------------------------------------
+CREATE TABLE public.warpcast_channels_data (
+	id text NOT NULL,
+	url text NOT NULL,
+	name text NOT NULL,
+	description text NULL,
+	imageurl text NULL,
+	leadfid int8 NULL,
+	moderatorfid float8 NULL,
+	createdat timestamp NULL,
+	followercount int8 NULL,
+	hostfids integer[] NULL,
+	dateiso date NULL
+);
