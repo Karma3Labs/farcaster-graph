@@ -5,6 +5,7 @@ from airflow.models import Variable
 from airflow.operators.bash import BashOperator
 from airflow.providers.ssh.operators.ssh import SSHHook
 from airflow.providers.ssh.operators.ssh import SSHOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -26,10 +27,18 @@ with DAG(
     default_args=default_args,
     description="re-generate graph for farcaster-graph API server. copy re-generated all graph files to eigen4 and eigen7 from eigen2",
     start_date=datetime(2024, 7, 9, 18),
-#     schedule_interval="20 1-23/6 * * *",
-    schedule_interval=None,
+    schedule_interval="20 1-23/6 * * *",
     catchup=False,
 ) as dag:
+
+    # TODO change this to TriggerDagRunOperator
+    check_upstream = ExternalTaskSensor(
+        task_id="check_upstream",
+        external_dag_id="gen_globaltrust_v1",
+        external_task_id="rmdir_tmp",
+        allowed_states=["success"],
+        failed_states=["failed", "skipped"],
+    )
 
     ssh_hook = SSHHook(ssh_conn_id='eigen6', keepalive_interval=60, cmd_timeout=None)
  
@@ -82,9 +91,9 @@ with DAG(
         dag=dag,
     )
 
-    run_graph_pipeline >> eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
-    run_graph_pipeline >> eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
-    run_graph_pipeline >> [
+    check_upstream >> run_graph_pipeline >> eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
+    check_upstream >> run_graph_pipeline >> eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
+    check_upstream >> run_graph_pipeline >> [
         eigen7_copy_personal_pkl_files,
         eigen7_copy_localtrust_csv_files,
     ]

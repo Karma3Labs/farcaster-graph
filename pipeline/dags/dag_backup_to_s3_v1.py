@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -19,10 +20,18 @@ with DAG(
     default_args=default_args,
     description='This backs up globaltrust, localtrust and channel_ranking into s3',
     start_date=datetime(2024, 8, 15),
-    # schedule_interval='30 20 * * *',
-    schedule_interval=None,
+    schedule_interval='30 20 * * *',
     catchup=False,
 ) as dag:
+    
+    check_upstream = ExternalTaskSensor(
+        task_id="check_upstream",
+        external_dag_id="gen_globaltrust_v1",
+        external_task_id="rmdir_tmp",
+        allowed_states=["success"],
+        failed_states=["failed", "skipped"],
+    )
+        
     task1 = BashOperator(
         task_id='backup_globaltrust',
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh globaltrust"
@@ -38,5 +47,5 @@ with DAG(
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh localtrust_v1 /pipeline/tmp/graph_files"
     )
 
-    [task1, task2, task3]
+    check_upstream >> [task1, task2, task3]
 
