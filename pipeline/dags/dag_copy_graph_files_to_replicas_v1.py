@@ -19,6 +19,7 @@ default_args = {
 
 eigen2_ipv4 = Variable.get("eigen2_ipv4")
 eigen4_ipv4 = Variable.get("eigen4_ipv4")
+eigen5_ipv4 = Variable.get("eigen5_ipv4")
 eigen7_ipv4 = Variable.get("eigen7_ipv4")
 eigen6_ssh_cred_path = Variable.get("eigen6_ssh_cred_path")
 
@@ -76,6 +77,20 @@ with DAG(
         dag=dag,
     )
 
+    eigen5_copy_all_pkl_files = SSHOperator(
+        task_id="eigen5_copy_all_pkl_files",
+        command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*.pkl ubuntu@{eigen5_ipv4}:~/serve_files/",
+        ssh_hook=ssh_hook,
+        dag=dag,
+    )
+
+    eigen5_copy_success_pkl_files = SSHOperator(
+        task_id="eigen5_copy_success_pkl_files",
+        command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*_SUCCESS ubuntu@{eigen5_ipv4}:~/serve_files/",
+        ssh_hook=ssh_hook,
+        dag=dag,
+    )
+
     eigen7_copy_personal_pkl_files = SSHOperator(
         task_id="eigen7_copy_personal_pkl_files",
         command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
@@ -93,6 +108,7 @@ with DAG(
 
     check_upstream >> run_graph_pipeline >> eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
     check_upstream >> run_graph_pipeline >> eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
+    check_upstream >> run_graph_pipeline >> eigen5_copy_all_pkl_files >> eigen5_copy_success_pkl_files
     check_upstream >> run_graph_pipeline >> [
         eigen7_copy_personal_pkl_files,
         eigen7_copy_localtrust_csv_files,
