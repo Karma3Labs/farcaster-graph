@@ -18,4 +18,3 @@ apache-airflow==2.9.2
 dune-client==1.7.4
 openrank-sdk==0.2.2
 apache-airflow-providers-ssh==3.12.0
-apache-airflow-providers-sftp==4.10.3
