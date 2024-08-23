@@ -32,15 +32,6 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    # TODO change this to TriggerDagRunOperator
-    check_upstream = ExternalTaskSensor(
-        task_id="check_upstream",
-        external_dag_id="gen_globaltrust_v1",
-        external_task_id="rmdir_tmp",
-        allowed_states=["success"],
-        failed_states=["failed", "skipped"],
-    )
-
     ssh_hook = SSHHook(ssh_conn_id='eigen6', keepalive_interval=60, cmd_timeout=None)
  
     run_graph_pipeline = BashOperator(
@@ -106,10 +97,10 @@ with DAG(
         dag=dag,
     )
 
-    check_upstream >> run_graph_pipeline >> eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
-    check_upstream >> run_graph_pipeline >> eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
-    check_upstream >> run_graph_pipeline >> eigen5_copy_all_pkl_files >> eigen5_copy_success_pkl_files
-    check_upstream >> run_graph_pipeline >> [
+    run_graph_pipeline >> eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
+    run_graph_pipeline >> eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
+    run_graph_pipeline >> eigen5_copy_all_pkl_files >> eigen5_copy_success_pkl_files
+    run_graph_pipeline >> [
         eigen7_copy_personal_pkl_files,
         eigen7_copy_localtrust_csv_files,
     ]

@@ -22,15 +22,6 @@ with DAG(
     schedule_interval='0 1-23/6 * * *',
     catchup=False,
 ) as dag:
-    
-    # TODO change this to TriggerDagRunOperator
-    check_upstream = ExternalTaskSensor(
-        task_id="check_upstream",
-        external_dag_id="gen_globaltrust_v1",
-        external_task_id="rmdir_tmp",
-        allowed_states=["success"],
-        failed_states=["failed", "skipped"],
-    )
         
     task1 = BashOperator(
         task_id='refresh_view_k3l_rank',
@@ -46,4 +37,4 @@ with DAG(
         '''
     )
 
-    check_upstream >> task1 >> task2
+    task1 >> task2
