@@ -28,7 +28,8 @@ with DAG(
     default_args=default_args,
     description="re-generate graph for farcaster-graph API server. copy re-generated all graph files to eigen4 and eigen7 from eigen2",
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval="20 1-23/6 * * *",
+    # schedule_interval="20 1-23/6 * * *",
+    schedule=None,
     catchup=False,
 ) as dag:
 

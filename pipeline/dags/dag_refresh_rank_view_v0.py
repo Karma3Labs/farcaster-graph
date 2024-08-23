@@ -19,7 +19,8 @@ with DAG(
     default_args=default_args,
     description='This refreshes k3l_rank materialized view and vacuums k3l_rank table',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='0 1-23/6 * * *',
+    # schedule_interval='0 1-23/6 * * *',
+    schedule=None,
     catchup=False,
 ) as dag:
         

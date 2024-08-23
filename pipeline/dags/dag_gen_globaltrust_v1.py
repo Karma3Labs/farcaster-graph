@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.utils.trigger_rule import TriggerRule
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.bash import BashOperator
 
 from hooks.discord import send_alert_discord
@@ -51,4 +52,31 @@ with DAG(
         trigger_rule=TriggerRule.ONE_SUCCESS,
         dag=dag)
 
-    mkdir_tmp >> prep_globaltrust >> compute_globaltrust >> upload_to_dune >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+    trigger_copy_to_replica = TriggerDagRunOperator(
+        task_id="trigger_copy_to_replica",
+        trigger_dag_id="dag_copy_graph_files_to_replicas_v1",  
+        conf={"trigger": "gen_globaltrust_v1"},
+    )
+
+    trigger_refresh_views = TriggerDagRunOperator(
+        task_id="trigger_refresh_views",
+        trigger_dag_id="refresh_rank_view_v0", 
+        conf={"trigger": "gen_globaltrust_v1"},
+    )
+
+    # TODO do we need to backup every 6 hours ? Revisit this later.
+    # trigger_backup = TriggerDagRunOperator(
+    #     task_id="trigger_backup",
+    #     trigger_dag_id="backup_to_s3_v1",
+    #     conf={"trigger": "gen_globaltrust_v1"},
+    # )
+
+    (
+        mkdir_tmp
+        >> prep_globaltrust
+        >> compute_globaltrust
+        >> upload_to_dune
+        >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+        >> trigger_refresh_views
+        >> trigger_copy_to_replica
+    )
