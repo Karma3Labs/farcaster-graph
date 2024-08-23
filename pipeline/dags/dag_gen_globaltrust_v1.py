@@ -76,7 +76,7 @@ with DAG(
         >> prep_globaltrust
         >> compute_globaltrust
         >> upload_to_dune
-        >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
         >> trigger_refresh_views
         >> trigger_copy_to_replica
+        >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
     )
