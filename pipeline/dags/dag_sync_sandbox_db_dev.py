@@ -15,11 +15,10 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-sandbox_db_sync_path = Variable.get("sandbox_db_sync_path")
 dev_sandbox_db_sync_path = Variable.get("dev_sandbox_db_sync_path")
 
 with DAG(
-    dag_id='dag_sync_sandbox_db_v0',
+    dag_id='dag_sync_sandbox_db_dev_v0',
     default_args=default_args,
     description='sync the db table of the sandboxed read replica',
     start_date=datetime(2024, 7, 10, 18),
@@ -28,23 +27,17 @@ with DAG(
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
-    run_append = SSHOperator(
-        task_id="run_append_v0",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append.sh -d 10",
+    run_append_dev = SSHOperator(
+        task_id="run_append_dev_v0",
+        command=f"cd {dev_sandbox_db_sync_path}; ./1-run-append.sh -d 5 ",
         ssh_hook=ssh_hook,
         dag=dag)
 
-    run_remove = SSHOperator(
-        task_id="run_remove_v0",
-        command=f"cd {sandbox_db_sync_path}; ./2-run-remove.sh ",
+    run_remove_dev = SSHOperator(
+        task_id="run_remove_dev_v0",
+        command=f"cd {dev_sandbox_db_sync_path}; ./2-run-remove.sh ",
         ssh_hook=ssh_hook,
         dag=dag)
 
-    run_refresh = SSHOperator(
-        task_id="run_refresh_v0",
-        command=f"cd {sandbox_db_sync_path}; ./4-run-refresh.sh ",
-        ssh_hook=ssh_hook,
-        dag=dag)
-
-    run_append >> run_remove >> run_refresh
+    run_append_dev >> run_remove_dev
 
