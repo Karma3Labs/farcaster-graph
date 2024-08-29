@@ -19,7 +19,7 @@ sandbox_db_sync_path = Variable.get("sandbox_db_sync_path")
 dev_sandbox_db_sync_path = Variable.get("dev_sandbox_db_sync_path")
 
 with DAG(
-    dag_id='dag_sync_sandbox_db_v0',
+    dag_id='sync_sandbox_db_v0',
     default_args=default_args,
     description='sync the db table of the sandboxed read replica',
     start_date=datetime(2024, 7, 10, 18),

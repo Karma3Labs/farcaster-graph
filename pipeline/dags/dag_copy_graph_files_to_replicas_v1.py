@@ -24,7 +24,7 @@ eigen7_ipv4 = Variable.get("eigen7_ipv4")
 eigen6_ssh_cred_path = Variable.get("eigen6_ssh_cred_path")
 
 with DAG(
-    dag_id="dag_copy_graph_files_to_replicas_v1",
+    dag_id="copy_graph_files_to_replicas_v1",
     default_args=default_args,
     description="re-generate graph for farcaster-graph API server. copy re-generated all graph files to eigen4 and eigen7 from eigen2",
     start_date=datetime(2024, 7, 9, 18),
