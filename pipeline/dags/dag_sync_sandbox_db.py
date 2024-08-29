@@ -24,6 +24,7 @@ with DAG(
     description='sync the db table of the sandboxed read replica',
     start_date=datetime(2024, 7, 10, 18),
     schedule_interval='*/10 * * * *',
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
