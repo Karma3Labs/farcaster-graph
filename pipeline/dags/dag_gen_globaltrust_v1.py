@@ -23,6 +23,7 @@ with DAG(
     start_date=datetime(2024, 8, 16),
     schedule_interval='0 */6 * * *',
     is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
 
