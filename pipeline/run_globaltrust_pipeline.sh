@@ -112,26 +112,34 @@ elif [ "$STEP" = "compute" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
+  #### START Globaltrust for FOLLOWING strategy
+  cp  ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv
   # localtrust has i,j,v,date,strategy_id for downstream processing but
   # go-eigentrust requires only i,j,v 
-  cp  ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv
-
   cut -d',' -f1,2,3 \
   ${TEMP_DIR}/localtrust.following${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv 
+  # run compute
   python3 -m globaltrust.gen_globaltrust -s compute_following \
     -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
     -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
     $DATE_OPTION
+  #### END Globaltrust for FOLLOWING strategy
 
+  #### START Globaltrust for ENGAGEMENT strategy
   cp  ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv 
+
+  # localtrust has i,j,v,date,strategy_id for downstream processing but
+  # go-eigentrust requires only i,j,v 
   cut -d',' -f1,2,3 \
   ${TEMP_DIR}/localtrust.engagement${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv
+  # run compute
   python3 -m globaltrust.gen_globaltrust -s compute_engagement \
     -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
     -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
     $DATE_OPTION
+  #### END Globaltrust for ENGAGEMENT strategy
   deactivate
 
   # create temp table for globaltrust csv import 
@@ -141,14 +149,14 @@ elif [ "$STEP" = "compute" ]; then
     -c "DROP TABLE IF EXISTS tmp_globaltrust${OPT_DATE_SUFFIX}; 
     CREATE UNLOGGED TABLE tmp_globaltrust${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
 
-  # import engagement globaltrust csv into temp table 
+  # import ENGAGEMENT globaltrust csv into temp table 
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
     (i,v,date,strategy_id) 
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
 
-  # import following globaltrust csv into temp table 
+  # import FOLLOWING globaltrust csv into temp table 
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY tmp_globaltrust${OPT_DATE_SUFFIX}
@@ -175,12 +183,14 @@ elif [ "$STEP" = "compute" ]; then
   fi
 
   log "Inserting localtrust_stats"
+  # insert localtrust stats for ENGAGEMENT strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY localtrust_stats
     (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range) 
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
 
+  # insert localtrust stats for FOLLOWING strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY localtrust_stats
