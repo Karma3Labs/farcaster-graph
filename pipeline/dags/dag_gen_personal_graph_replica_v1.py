@@ -42,6 +42,8 @@ with DAG(
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
     start_date=datetime(2024, 7, 24),
     schedule_interval='0 0 */2 * *',
+    max_active_runs=1,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60, cmd_timeout=None)
@@ -62,7 +64,7 @@ with DAG(
     )
 
     @task(max_active_tis_per_dagrun=30)
-    def process_channel_chunk(chunk: str):
+    def process_personal_chunk(chunk: str):
         context = get_current_context()
         map_index = context['ti'].map_index
         run_id = context['run_id']
@@ -78,7 +80,7 @@ with DAG(
     extract_fids_task = extract_fids(eigen7_fetch_fids.output)
 
     # Create dynamic tasks
-    process_tasks = process_channel_chunk.expand(chunk=extract_fids_task)
+    process_tasks = process_personal_chunk.expand(chunk=extract_fids_task)
 
     eigen7_consolidate = SSHOperator(
         task_id="eigen7_consolidate_v1",
