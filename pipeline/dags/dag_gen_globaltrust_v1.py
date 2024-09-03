@@ -55,7 +55,7 @@ with DAG(
 
     trigger_copy_to_replica = TriggerDagRunOperator(
         task_id="trigger_copy_to_replica",
-        trigger_dag_id="dag_copy_graph_files_to_replicas_v1",  
+        trigger_dag_id="copy_graph_files_to_replicas_v1",  
         conf={"trigger": "gen_globaltrust_v1"},
     )
 
