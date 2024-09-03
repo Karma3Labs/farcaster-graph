@@ -21,6 +21,7 @@ class Strategy(Enum):
   FOLLOWING = ('follows', 1)
   ENGAGEMENT = ('engagement', 3)
   ACTIVITY = ('activity', 5)
+  V2ENGAGEMENT = ('v2engagement', 7)
 
 def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) -> pd.DataFrame:
   global _pretrust_toptier_df
@@ -103,22 +104,36 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
-  with Timer(name="l1rep1rec1m1"):
-    _interactions_df['l1rep1rec1m1'] = \
-                        _interactions_df.loc[:,
-                          ['likes_v',
-                           'replies_v',
-                           'mentions_v',
-                           'recasts_v',
-                           'follows_v']].sum(axis=1)
-  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  utils.log_memusage(logger)
+  # We don't compute Activity strategy anymore. 
+  # Save compute time by not computing this column.
+  # with Timer(name="l1rep1rec1m1"):
+  #   _interactions_df['l1rep1rec1m1'] = \
+  #                       _interactions_df.loc[:,
+  #                         ['likes_v',
+  #                          'replies_v',
+  #                          'mentions_v',
+  #                          'recasts_v',
+  #                          'follows_v']].sum(axis=1)
+  # logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+  # utils.log_memusage(logger)
 
+  # for Enagement Strategy
   with Timer(name="l1rep6rec3m12"):
     _interactions_df['l1rep6rec3m12'] = \
                         _interactions_df['likes_v'].fillna(0) \
                           + (_interactions_df['replies_v'].fillna(0) * 6.0) \
                           + (_interactions_df['recasts_v'].fillna(0) * 3.0) \
+                          + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
+                          + _interactions_df['follows_v'].fillna(0)
+  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+  utils.log_memusage(logger)
+
+  # for EngagementV2 strategy
+  with Timer(name="l1rep3rec6m12"):
+    _interactions_df['l1rep3rec6m12'] = \
+                        _interactions_df['likes_v'].fillna(0) \
+                          + (_interactions_df['replies_v'].fillna(0) * 3.0) \
+                          + (_interactions_df['recasts_v'].fillna(0) * 6.0) \
                           + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
                           + _interactions_df['follows_v'].fillna(0)
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
@@ -150,6 +165,11 @@ def localtrust_for_strategy(
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
+      case Strategy.V2ENGAGEMENT:
+        lt_df = \
+          intx_df[intx_df['l1rep3rec6m12'] > 0] \
+            [['i','j','l1rep3rec6m12']] \
+              .rename(columns={'l1rep3rec6m12':'v'})
       case Strategy.ACTIVITY:
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
@@ -176,6 +196,8 @@ def pretrust_for_strategy(
       case Strategy.FOLLOWING:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
       case Strategy.ENGAGEMENT:
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
+      case Strategy.V2ENGAGEMENT:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
       case Strategy.ACTIVITY:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
