@@ -165,6 +165,7 @@ def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_dat
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V2ENGAGEMENT, target_date)
+      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
     case Step.compute_following:

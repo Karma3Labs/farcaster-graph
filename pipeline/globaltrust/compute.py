@@ -19,9 +19,10 @@ _interactions_df: pd.DataFrame = None
 
 class Strategy(Enum):
   FOLLOWING = ('follows', 1)
-  ENGAGEMENT = ('engagement', 3)
+  ENGAGEMENT = ('engagement', 3) # Follows1Likes1Replies6Recasts3Mentions12
   ACTIVITY = ('activity', 5)
-  V2ENGAGEMENT = ('v2engagement', 7)
+  V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
+  V3ENGAGEMENT = ('v2engagement', 9) # Follows1Likes1or2Replies6or7Recasts3or4Mentions12or13
 
 def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) -> pd.DataFrame:
   global _pretrust_toptier_df
@@ -139,6 +140,24 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
   utils.log_memusage(logger)
 
+  # for EngagementV3 strategy we boost all inteactions by 1
+  with Timer(name="fboostedl1rep3rec6m12"):
+    _interactions_df['fboostedl1rep3rec6m12'] = \
+                        _interactions_df['likes_v'].fillna(0) \
+                          + (_interactions_df['replies_v'].fillna(0) * 3.0) \
+                          + (_interactions_df['recasts_v'].fillna(0) * 6.0) \
+                          + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
+                          + _interactions_df['follows_v'].fillna(0) \
+                          + (_interactions_df['follows_v'].fillna(0) \
+                             * (
+                              _interactions_df['replies_v'].fillna(0)
+                              + _interactions_df['recasts_v'].fillna(0)
+                              + _interactions_df['mentions_v'].fillna(0)
+                              )
+                            )
+  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+  utils.log_memusage(logger)
+
   # drop unused columns to recover some memory
   _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'], inplace=True)
 
@@ -170,6 +189,11 @@ def localtrust_for_strategy(
           intx_df[intx_df['l1rep3rec6m12'] > 0] \
             [['i','j','l1rep3rec6m12']] \
               .rename(columns={'l1rep3rec6m12':'v'})
+      case Strategy.V3ENGAGEMENT:
+        lt_df = \
+          intx_df[intx_df['fboostedl1rep3rec6m12'] > 0] \
+            [['i','j','fboostedl1rep3rec6m12']] \
+              .rename(columns={'fboostedl1rep3rec6m12':'v'})
       case Strategy.ACTIVITY:
         lt_df = \
           intx_df[intx_df['follows_v'].notna()] \
