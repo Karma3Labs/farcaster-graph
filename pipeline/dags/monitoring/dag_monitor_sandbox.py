@@ -25,9 +25,9 @@ default_args = {
 }
 
 with DAG(
-    "monitor_replication",
+    "monitor_sandbox",
     default_args=default_args,
-    description="Monitor the status of replication and \
+    description="Monitor the status of sandbox and \
                 raise alerts if there are significant lags",
     schedule_interval=timedelta(hours=1),
     start_date=datetime(2024, 8, 1),
