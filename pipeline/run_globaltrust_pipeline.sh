@@ -170,8 +170,8 @@ elif [ "$STEP" = "compute" ]; then
     -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust${OPT_DATE_SUFFIX});
   INSERT INTO globaltrust SELECT * FROM tmp_globaltrust${OPT_DATE_SUFFIX};"
 
-  PGPASSWORD=$DB_PASSWORD \
-  $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+  PGPASSWORD=$REMOTE_DB_PASSWORD \
+  $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c "VACUUM ANALYZE globaltrust;"
 
   if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
