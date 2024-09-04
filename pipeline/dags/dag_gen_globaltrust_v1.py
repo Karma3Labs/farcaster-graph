@@ -36,17 +36,17 @@ with DAG(
         task_id="prep_globaltrust",
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
-    
+
     compute_globaltrust = BashOperator(
         task_id="compute_globaltrust",
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
-    
+
     upload_to_dune =  BashOperator(
         task_id="insert_globaltrust_to_dune_v3",
         bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
         dag=dag)
-    
+
     rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
         bash_command= "cd /pipeline; rm -rf tmp/{{ run_id }}",
@@ -55,13 +55,13 @@ with DAG(
 
     trigger_copy_to_replica = TriggerDagRunOperator(
         task_id="trigger_copy_to_replica",
-        trigger_dag_id="copy_graph_files_to_replicas_v1",  
+        trigger_dag_id="copy_graph_files_to_replicas_v1",
         conf={"trigger": "gen_globaltrust_v1"},
     )
 
     trigger_refresh_views = TriggerDagRunOperator(
         task_id="trigger_refresh_views",
-        trigger_dag_id="refresh_rank_view_v0", 
+        trigger_dag_id="refresh_rank_view_v0",
         conf={"trigger": "gen_globaltrust_v1"},
     )
 

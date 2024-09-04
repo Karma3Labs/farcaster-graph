@@ -30,11 +30,13 @@ with DAG(
     start_date=datetime(2024, 7, 9, 18),
     # schedule_interval="20 1-23/6 * * *",
     schedule=None,
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
 
     ssh_hook = SSHHook(ssh_conn_id='eigen6', keepalive_interval=60, cmd_timeout=None)
- 
+
     run_graph_pipeline = BashOperator(
         task_id="run_graph_pipeline",
         bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -i tmp/graph_files/ -o tmp/graph_files/ -v ./.venv ",
