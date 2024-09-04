@@ -94,7 +94,7 @@ services:
       -N -L 9599:localhost:${SANDBOX_REMOTE_PORT}
       ${SANDBOX_REMOTE_USER}@${SANDBOX_REMOTE_HOST}
     volumes:
-      - $SSH_KEY_PATH:/.ssh/id_rsa:r
+      - ${SSH_KEY_PATH}:/root/.ssh/id_rsa:ro
     extra_hosts:
       - docker-host:172.17.0.1
     networks:
