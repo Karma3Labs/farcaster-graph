@@ -91,8 +91,8 @@ services:
     container_name: sshtunnel
     restart: unless-stopped
     command: |
-      -N -L 9599:localhost:${SANDBOX_DB_PORT}
-      ubuntu@${SANDBOX_DB_HOST}
+      -N -L 9599:localhost:${SANDBOX_REMOTE_PORT}
+      ${SANDBOX_REMOTE_USER}@${SANDBOX_REMOTE_HOST}
     volumes:
       - $SSH_KEY_PATH:/.ssh/id_rsa:r
     extra_hosts:

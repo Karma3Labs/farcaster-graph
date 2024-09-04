@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     SANDBOX_DB_NAME:str = 'postgres'
     SANDBOX_DB_HOST:str = '127.0.0.1'
     SANDBOX_DB_PORT:int = 9541
+    SANDBOX_REMOTE_HOST:str = 'changeme.elb.us-east-1.amazonaws.com'
+    SANDBOX_REMOTE_PORT:int = 5432
+    SANDBOX_REMOTE_USER: str = 'openrank'
 
     AIRFLOW_UID: int
     AIRFLOW_GID: int
