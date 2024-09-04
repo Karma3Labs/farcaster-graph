@@ -29,12 +29,12 @@ with DAG(
 
     mkdir_tmp =  BashOperator(
         task_id="mkdir_tmp",
-        bash_command= "cd /pipeline; mkdir -p tmp/{{ run_id }}; mkdir -p tmp/one_off_graph_files",
+        bash_command= "cd /pipeline; mkdir -p tmp/one_off_graph_files",
         dag=dag)
 
     prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/one_off_graph_files/",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/one_off_graph_files -o tmp/one_off_graph_files/",
         dag=dag)
     
     push_to_s3 = BashOperator(
