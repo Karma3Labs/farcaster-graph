@@ -42,12 +42,6 @@ with DAG(
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh localtrust_v1 /pipeline/tmp/one_off_graph_files"
     )
 
-    rmdir_tmp =  BashOperator(
-        task_id="rmdir_tmp",
-        bash_command= "cd /pipeline; rm -rf tmp/{{ run_id }}",
-        trigger_rule=TriggerRule.ONE_SUCCESS,
-        dag=dag)
-
     # TODO do we need to backup every 6 hours ? Revisit this later.
     # trigger_backup = TriggerDagRunOperator(
     #     task_id="trigger_backup",
@@ -59,5 +53,4 @@ with DAG(
         mkdir_tmp
         >> prep_globaltrust
         >> push_to_s3
-        >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
     )
