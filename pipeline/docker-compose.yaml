@@ -91,8 +91,8 @@ services:
     container_name: sshtunnel
     restart: unless-stopped
     command: |
-      -N -L 9599:localhost:${REMOTE_DB_PORT}
-      ubuntu@${REMOTE_DB_HOST}
+      -N -L 9599:localhost:${SANDBOX_DB_PORT}
+      ubuntu@${SANDBOX_DB_HOST}
     volumes:
       - $SSH_KEY_PATH:/.ssh/id_rsa:r
     extra_hosts:
@@ -105,18 +105,18 @@ services:
   pgbouncer:
     image: bitnami/pgbouncer:latest
     environment:
-      - PGBOUNCER_DATABASE=${DB_NAME}
-      - PGBOUNCER_PORT=${DB_PORT}
-      - POSTGRESQL_USERNAME=${DB_USER}
-      - POSTGRESQL_PASSWORD=${DB_PASSWORD}
-      - POSTGRESQL_DATABASE=${DB_NAME}
-      - POSTGRESQL_HOST=${DB_HOST}
-      - POSTGRESQL_PORT=9599
+      - PGBOUNCER_DATABASE=${SANDBOX_DB_NAME} # pgbouncer has same name as sandbox
+      - PGBOUNCER_PORT=${SANDBOX_DB_PORT} # pgbouncer listens on same port as sandbox
+      - POSTGRESQL_USERNAME=${SANDBOX_DB_USER}
+      - POSTGRESQL_PASSWORD=${SANDBOX_DB_PASSWORD}
+      - POSTGRESQL_DATABASE=${SANDBOX_DB_NAME}
+      - POSTGRESQL_HOST=172.17.0.1 # ssh tunnel is on localhost
+      - POSTGRESQL_PORT=9599 # ssh tunnnel listens on 9599
       - PGBOUNCER_POOL_MODE=transaction
       - PGBOUNCER_AUTH_TYPE=scram-sha-256 # remove/comment this line if using postgres:13 and lower
       - PGBOUNCER_ADMIN_USERS=postgres,dbuser
     ports:
-      - "${DB_PORT}:${DB_PORT}"
+      - "${SANDBOX_DB_PORT}:${SANDBOX_DB_PORT}" # pgbouncer listens on same port as sandbox
     depends_on:
       - sshtunnel
 
