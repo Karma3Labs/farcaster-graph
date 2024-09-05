@@ -41,14 +41,16 @@ with DAG(
         task_id="check_channel_rank", # covers the channel_fids table also
         conn_id=_CONN_ID,
         sql="SELECT count(*) FROM k3l_channel_rank WHERE compute_ts > now() - interval '12 hours' AND strategy_name = 'channel_engagement'",
-        min_threshold=1_900_000
+        min_threshold=1_900_000,
+        max_threshold=3_000_000 # alert if size increases dramatically
     )
 
     check_global_engagement_rank = SQLThresholdCheckOperator(
         task_id="check_global_engagement_rank", # covers the globaltrust table also
         conn_id=_CONN_ID,
         sql="SELECT count(*) FROM k3l_rank WHERE date > now() - interval '1 days' AND strategy_name = 'engagement'",
-        min_threshold=700_000
+        min_threshold=700_000,
+        max_threshold=1_400_000 # alert if size doubles
     )
 
     check_parent_casts_count = SQLTableCheckOperator(
