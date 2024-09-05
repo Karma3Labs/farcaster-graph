@@ -6,7 +6,7 @@ from airflow.providers.common.sql.operators.sql import (
     # SQLCheckOperator,
     # SQLColumnCheckOperator,
     # SQLIntervalCheckOperator,
-    # SQLTableCheckOperator,
+    SQLTableCheckOperator,
     SQLThresholdCheckOperator,
     # SQLValueCheckOperator,
     # SQLExecuteQueryOperator,
@@ -51,11 +51,16 @@ with DAG(
         min_threshold=700_000
     )
 
-    check_parent_casts_count = SQLThresholdCheckOperator(
-        task_id="check_parent_casts_count", 
+    check_parent_casts_count = SQLTableCheckOperator(
+        task_id="check_parent_casts_count",
         conn_id=_CONN_ID,
-        sql="SELECT COUNT(*) AS ct FROM k3l_recent_parent_casts WHERE timestamp > now() - interval '30 min'",
-        min_threshold=100
+        table="k3l_recent_parent_casts",
+        checks={
+            "row_count_check": {
+                "check_statement": "COUNT(*) > 100",
+                "partition_clause": "timestamp > now() - interval '30 min'"
+            }
+        },
     )
 
     check_parent_casts_lag = SQLThresholdCheckOperator(
@@ -68,11 +73,16 @@ with DAG(
         max_threshold=30
     )
 
-    check_cast_actions_count = SQLThresholdCheckOperator(
-        task_id="check_cast_actions_count", 
+    check_cast_actions_count = SQLTableCheckOperator(
+        task_id="check_cast_actions_count",
         conn_id=_CONN_ID,
-        sql="SELECT COUNT(*) AS ct FROM k3l_cast_action WHERE action_ts > now() - interval '30 min'",
-        min_threshold=10_000
+        table="k3l_cast_action",
+        checks={
+            "row_count_check": {
+                "check_statement": "COUNT(*) > 10000",
+                "partition_clause": "action_ts > now() - interval '30 min'"
+            }
+        },
     )
 
     check_cast_actions_lag = SQLThresholdCheckOperator(
