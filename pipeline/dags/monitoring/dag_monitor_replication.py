@@ -31,6 +31,8 @@ with DAG(
                 raise alerts if there are significant lags",
     schedule_interval=timedelta(hours=1),
     start_date=datetime(2024, 8, 1),
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
     start = EmptyOperator(task_id="start")
