@@ -1,21 +1,13 @@
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash_operator import BashOperator
 from airflow.models import Variable
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 from datetime import datetime, timedelta
-import subprocess
 
-
-def fetch_warpcast_data():
-    # Fetching variables from Airflow
-    db_endpoint = Variable.get('DB_ENDPOINT', default_var="test")
-    db_user = Variable.get('DB_USER', default_var="test")
-    db_password = Variable.get('DB_PASSWORD', default_var="test")
-
-    # Running the Python script with the parameters
-    subprocess.run(["python3", "pipeline/extractors/warpcast_extractor.py", db_endpoint, db_user, db_password],
-                   check=True)
+db_endpoint = Variable.get('DB_ENDPOINT', default_var="test")
+db_user = Variable.get('DB_USER', default_var="test")
+db_password = Variable.get('DB_PASSWORD', default_var="test")
 
 
 default_args = {
@@ -34,9 +26,9 @@ with DAG(
         max_active_runs=1,
         catchup=False,
 ) as dag:
-    fetch_data_from_warpcast = PythonOperator(
+    fetch_data_from_warpcast = BashOperator(
         task_id='fetch_warpcast_data_from_api',
-        python_callable=fetch_warpcast_data,
+        bash_command=f"cd /pipeline/extractors ; python3 warpcast_extractor.py {{ db_user }} {{ db_password }} {{ db_endpoint }}"
     )
 
     fetch_data_from_warpcast
