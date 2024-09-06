@@ -30,7 +30,7 @@ with DAG(
 
     run_sandbox_backup = SSHOperator(
         task_id="run_sandbox_backup_v0",
-        command=f"cd {sandbox_db_sync_path}; ./run-backup.sh",
+        command=f"cd {sandbox_db_sync_path}; ./run-backup.sh ",
         ssh_hook=ssh_hook,
         dag=dag)
 
