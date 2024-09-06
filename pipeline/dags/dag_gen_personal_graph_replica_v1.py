@@ -47,12 +47,13 @@ with DAG(
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
-    ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60, cmd_timeout=None)
+    ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60)
 
     eigen7_graph_reload = SSHOperator(
         task_id="eigen7_graph_reload_v1",
         command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t graph_reload -r {{ run_id }}",
         ssh_hook=ssh_hook,
+        cmd_timeout=600, # average is 4.5mins
         dag=dag,
     )
 
@@ -60,8 +61,9 @@ with DAG(
         task_id="eigen7_fetch_fids_v1",
         command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t fetch_fids -r {{ run_id }}",
         ssh_hook=ssh_hook,
+        cmd_timeout=180, # average is 30secs
         dag=dag,
-        do_xcom_push=True,
+        do_xcom_push=True, # ssh command output is pushed to xcom ie., fid[][] in stdout
     )
 
     @task(max_active_tis_per_dagrun=30)
@@ -74,6 +76,7 @@ with DAG(
             task_id=f'eigen7_gen_personal_chunk_v1_{map_index}',  # Use the map index for a unique task_id
             command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk} -r {run_id} -m {map_index}",
             ssh_hook=ssh_hook,
+            cmd_timeout=3 * 60 * 60, # average is 2h19m
             dag=dag,
         )
         process_task.execute(context)
@@ -87,6 +90,7 @@ with DAG(
         task_id="eigen7_consolidate_v1",
         command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate -r {{ run_id }}",
         ssh_hook=ssh_hook,
+        cmd_timeout=30*60, # average is 3.5mins but be lenient since this is the last task in DAG
         dag=dag,
         priority_weight=42,
     )
