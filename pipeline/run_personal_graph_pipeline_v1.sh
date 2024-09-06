@@ -70,9 +70,13 @@ TMP_GRAPH_PKL="${TMP_GRAPH_OUT}/edges_df.pkl"
 
 echo "Executing task: $TASK"
 if [ "$TASK" = "fetch_fids" ]; then
+  echo "Activating virtual env"
   source $VENV/bin/activate
+
+  echo "PIP installing"
   pip install -r requirements.txt
 
+  echo "Fetching node edges from $IN_CSV"
   python3 -m graph.fetch_nodes_edges -i $IN_CSV -c 1000 -o $TMP_GRAPH_PKL
 elif [ "$TASK" = "graph_reload" ]; then
   # TODO - Fix this ugly code
