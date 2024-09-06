@@ -48,7 +48,8 @@ with DAG(
     check_global_engagement_rank = SQLThresholdCheckOperator(
         task_id="check_global_engagement_rank", # covers the globaltrust table also
         conn_id=_CONN_ID,
-        sql="SELECT count(*) FROM k3l_rank WHERE date > now() - interval '1 days' AND strategy_name = 'engagement'",
+        # 26 hours because date timezone transitions
+        sql="SELECT count(*) FROM k3l_rank WHERE date > now() - interval '26 hours' AND strategy_name = 'engagement'",
         min_threshold=700_000,
         max_threshold=1_400_000 # alert if size doubles
     )
