@@ -1,8 +1,6 @@
 import time
-import gc
 
 import go_eigentrust
-import utils
 from config import settings
 
 import pandas as pd

@@ -5,7 +5,6 @@ import sys
 import os
 
 # local dependencies
-from config import settings
 
 # 3rd party dependencies
 from loguru import logger

@@ -3,19 +3,16 @@ from pathlib import Path
 from typing import Generator, Tuple
 import argparse
 import time
-import math
 import os
 import sys
 import asyncio
-import gc
-from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
 # local dependencies
 import utils
-from config import settings
 from . import graph_utils
-from .fetch_nodes_edges import fetch_fids_edges_from_csv, fetch_edges_df_from_pkl
+from .fetch_nodes_edges import fetch_edges_df_from_pkl
+
 # 3rd party dependencies
 import polars as pl
 import numpy as np

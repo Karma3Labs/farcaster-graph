@@ -1,7 +1,6 @@
 from pathlib import Path
 import argparse
 import math
-import json
 
 import polars as pl
 import pandas as pd
