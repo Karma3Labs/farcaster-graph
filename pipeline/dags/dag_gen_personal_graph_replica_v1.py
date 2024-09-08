@@ -16,7 +16,7 @@ from airflow.utils.trigger_rule import TriggerRule
 default_args = {
     'owner': 'coder2j',
     'retries': 5,
-    'retry_delay': timedelta(minutes=2),
+    'retry_delay': timedelta(minutes=5),
 
     # 'on_success_callback':[cleanup_function],
     # 'on_failure_callback':[cleanup_function],
@@ -42,7 +42,7 @@ with DAG(
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
     start_date=datetime(2024, 7, 24),
     # schedule_interval='0 0 */2 * *',
-    schedule_interval=None,
+    schedule_interval=timedelta(hours=1),
     max_active_runs=1,
     is_paused_upon_creation=True,
     catchup=False,
