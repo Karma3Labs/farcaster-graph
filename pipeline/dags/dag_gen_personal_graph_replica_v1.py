@@ -76,7 +76,7 @@ with DAG(
             task_id=f'eigen7_gen_personal_chunk_v1_{map_index}',  # Use the map index for a unique task_id
             command=f"cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t generate -f {chunk} -r {run_id} -m {map_index}",
             ssh_hook=ssh_hook,
-            cmd_timeout=3 * 60 * 60, # average is 2h19m
+            cmd_timeout=None,
             dag=dag,
         )
         process_task.execute(context)
@@ -90,7 +90,7 @@ with DAG(
         task_id="eigen7_consolidate_v1",
         command="cd ~/farcaster-graph/pipeline; ./run_personal_graph_pipeline_v1.sh -i ~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv -o ~/wip_files/ -w . -v .venv -s k3l-openrank-farcaster -t consolidate -r {{ run_id }}",
         ssh_hook=ssh_hook,
-        cmd_timeout=30*60, # average is 3.5mins but be lenient since this is the last task in DAG
+        cmd_timeout=900, # average is 3.5mins but be lenient since this is the last task in DAG
         dag=dag,
         priority_weight=42,
     )
