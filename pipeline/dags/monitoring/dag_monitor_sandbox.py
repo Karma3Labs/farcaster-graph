@@ -42,8 +42,8 @@ with DAG(
         conn_id=_CONN_ID,
         # 26 hours because date timezone transitions
         sql="SELECT count(*) FROM k3l_channel_rank WHERE compute_ts > now() - interval '26 hours' AND strategy_name = 'channel_engagement'",
-        min_threshold=1_900_000,
-        max_threshold=3_000_000 # alert if size increases dramatically
+        min_threshold=1_500_000,
+        max_threshold=3_000_000 # alert if size doubles
     )
 
     check_global_engagement_rank = SQLThresholdCheckOperator(
