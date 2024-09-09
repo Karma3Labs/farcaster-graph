@@ -199,8 +199,9 @@ process_localtrust_v1() {
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
 
   cat $graph_folder/localtrust.engagement.csv > $csv_file
-  cat $graph_folder/localtrust.v2engagement.csv >> $csv_file
-  cat $graph_folder/localtrust.following.csv >> $csv_file
+  tail -n+2 $graph_folder/localtrust.v2engagement.csv >> $csv_file
+  tail -n+2 $graph_folder/localtrust.v3engagement.csv >> $csv_file
+  tail -n+2 $graph_folder/localtrust.following.csv >> $csv_file
 
 
   export_to_s3 "$csv_file" "$s3_bucket"

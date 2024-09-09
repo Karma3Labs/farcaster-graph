@@ -180,6 +180,7 @@ elif [ "$STEP" = "compute" ]; then
     mv ${TEMP_DIR}/globaltrust.following.csv ${OUT_DIR}/
     mv ${TEMP_DIR}/localtrust.engagement.csv ${OUT_DIR}/
     mv ${TEMP_DIR}/localtrust.v2engagement.csv ${OUT_DIR}/
+    mv ${TEMP_DIR}/localtrust.v3engagement.csv ${OUT_DIR}/
     mv ${TEMP_DIR}/localtrust.following.csv ${OUT_DIR}/
   fi
 
