@@ -94,6 +94,12 @@ class Settings(BaseSettings):
                        f"{self.DB_USER}:{self.DB_PASSWORD.get_secret_value()}@"
                        f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
 
+    @computed_field
+    def POSTGRES_ASYNC_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql://{self.DB_USER}:{self.DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                            f"?random_page_cost=1.1")
+
 settings = Settings()
 
 
