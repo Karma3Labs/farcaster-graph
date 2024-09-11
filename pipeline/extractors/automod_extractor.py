@@ -4,6 +4,7 @@ import requests
 from sqlalchemy import create_engine
 import io
 from loguru import logger
+import sys
 
 
 def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
@@ -51,4 +52,12 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
 
 if __name__ == "__main__":
     # Get the parameters from the command line arguments
-    fetch_data_from_api('api_key', 'test', 'test', 'test')
+    if len(sys.argv) != 4:
+        raise ValueError("Please provide db_user, db_password, and db_endpoint as arguments.")
+
+    api_key = sys.argv[1]
+    db_user = sys.argv[2]
+    db_password = sys.argv[3]
+    db_endpoint = sys.argv[4]
+
+    fetch_data_from_api(api_key, db_user, db_password, db_endpoint)
