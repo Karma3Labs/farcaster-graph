@@ -32,7 +32,7 @@ with DAG(
 
     run_append = SSHOperator(
         task_id="run_append_v1",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh",
+        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh ",
         ssh_hook=ssh_hook,
         dag=dag)
 
