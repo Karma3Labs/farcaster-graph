@@ -5,7 +5,7 @@ from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 from datetime import datetime, timedelta
 
-db_endpoint = Variable.get('DB_ENDPOINT')
+db_endpoint = Variable.get('FARCASTER_ENDPOINT')
 print(db_endpoint)
 db_user = Variable.get('DB_USER', default_var="test")
 db_password = Variable.get('DB_PASSWORD', default_var="test")
@@ -29,7 +29,7 @@ with DAG(
 ) as dag:
     fetch_data_from_warpcast = BashOperator(
         task_id='fetch_warpcast_data_from_api',
-        bash_command=f"cd /pipeline/extractors ; python3 warpcast_extractor.py {{ db_user }} {{ db_password }} {{ db_endpoint }}"
+        bash_command=f"cd /pipeline/extractors ; python3 warpcast_extractor.py { db_user } { db_password } { db_endpoint }"
     )
 
     fetch_data_from_warpcast
