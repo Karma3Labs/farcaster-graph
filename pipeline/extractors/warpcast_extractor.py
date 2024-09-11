@@ -1,3 +1,5 @@
+import sys
+
 import requests
 import pandas as pd
 from datetime import date
@@ -30,4 +32,11 @@ def fetch_data_from_api(db_user, db_password, db_endpoint):
 
 if __name__ == "__main__":
     # Get the parameters from the command line arguments
-    fetch_data_from_api('test', 'test', 'test')
+    if len(sys.argv) != 4:
+        raise ValueError("Please provide db_user, db_password, and db_endpoint as arguments.")
+
+    db_user = sys.argv[1]
+    db_password = sys.argv[2]
+    db_endpoint = sys.argv[3]
+
+    fetch_data_from_api(db_user, db_password, db_endpoint)
