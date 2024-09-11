@@ -5,8 +5,7 @@ from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 from datetime import datetime, timedelta
 
-db_endpoint = Variable.get('FARCASTER_ENDPOINT')
-print(db_endpoint)
+db_endpoint = Variable.get('DB_ENDPOINT', default_var="test")
 db_user = Variable.get('DB_USER', default_var="test")
 db_password = Variable.get('DB_PASSWORD', default_var="test")
 
