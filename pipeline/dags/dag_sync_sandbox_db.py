@@ -31,8 +31,8 @@ with DAG(
     ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
     run_append = SSHOperator(
-        task_id="run_append_v0",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append.sh -d 10",
+        task_id="run_append_v1",
+        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh",
         ssh_hook=ssh_hook,
         dag=dag)
 
