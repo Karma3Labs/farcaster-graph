@@ -52,7 +52,7 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
 
 if __name__ == "__main__":
     # Get the parameters from the command line arguments
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         raise ValueError("Please provide db_user, db_password, and db_endpoint as arguments.")
 
     api_key = sys.argv[1]
