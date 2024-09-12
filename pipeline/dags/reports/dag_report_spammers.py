@@ -28,7 +28,7 @@ with DAG(
 
     report_top_spammers = BashOperator(
         task_id='report_top_spammers',
-        bash_command="cd /pipeline && ./run_fetch_top_caster.sh -v ./.venv -s k3l-openrank-farcaster"
+        bash_command="cd /pipeline && ./run_fetch_top_spammers.sh -v ./.venv -s k3l-openrank-farcaster"
     )
 
     report_top_spammers
