@@ -55,16 +55,14 @@ with DAG(
         max_threshold=1_400_000 # alert if size doubles
     )
 
-    check_parent_casts_count = SQLTableCheckOperator(
+    # use SQLThresholdCheckOperator instead of SQLTableCheckOperator
+    # when SQLThresholdCheckOperator fails, we get actual count and easier to debug
+    check_parent_casts_count = SQLThresholdCheckOperator(
         task_id="check_parent_casts_count",
         conn_id=_CONN_ID,
-        table="k3l_recent_parent_casts",
-        checks={
-            "row_count_check": {
-                "check_statement": "COUNT(*) > 100",
-                "partition_clause": "timestamp > now() - interval '30 min'"
-            }
-        },
+        sql = "SELECT count(*) FROM k3l_recent_parent_casts WHERE timestamp > now() - interval '30 min'",
+        min_threshold=100,
+        max_threshold=1_000_000, # some arbitrarily large number
     )
 
     check_parent_casts_lag = SQLThresholdCheckOperator(
@@ -77,16 +75,14 @@ with DAG(
         max_threshold=30
     )
 
-    check_cast_actions_count = SQLTableCheckOperator(
+    # use SQLThresholdCheckOperator instead of SQLTableCheckOperator
+    # when SQLThresholdCheckOperator fails, we get actual count and easier to debug
+    check_cast_actions_count = SQLThresholdCheckOperator(
         task_id="check_cast_actions_count",
         conn_id=_CONN_ID,
-        table="k3l_cast_action",
-        checks={
-            "row_count_check": {
-                "check_statement": "COUNT(*) > 10000",
-                "partition_clause": "action_ts > now() - interval '30 min'"
-            }
-        },
+        sql="SELECT count(*) > 10000 FROM k3l_cast_action WHERE action_ts > now() - interval '30 min'",
+        min_threshold=10_000,
+        max_threshold=100_000_000# some arbitrarily large number
     )
 
     check_cast_actions_lag = SQLThresholdCheckOperator(
