@@ -80,7 +80,7 @@ with DAG(
     check_cast_actions_count = SQLThresholdCheckOperator(
         task_id="check_cast_actions_count",
         conn_id=_CONN_ID,
-        sql="SELECT count(*) FROM k3l_cast_action WHERE action_ts > now() - interval '30 min'",
+        sql="SELECT count(*) FROM k3l_cast_action WHERE action_ts > now() - interval '45 min'",
         min_threshold=10_000,
         max_threshold=100_000_000# some arbitrarily large number
     )
@@ -92,7 +92,7 @@ with DAG(
 	            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - max(action_ts)))/60)::integer as diff_mins
                 FROM k3l_cast_action""",
         min_threshold=0,
-        max_threshold=30
+        max_threshold=45
     )
 
     end = EmptyOperator(task_id="end")
