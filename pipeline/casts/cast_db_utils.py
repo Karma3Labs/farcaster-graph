@@ -3,6 +3,7 @@ import logging
 from timer import Timer
 import time
 from config import settings
+from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
@@ -190,3 +191,109 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
   """
   return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
 
+@Timer(name="fetch_top_spammers")
+async def fetch_top_spammers(logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime):
+  pool = await asyncpg.create_pool(pg_dsn,
+                                         min_size=1,
+                                         max_size=5)
+
+  start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+  end_date_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+
+  sql = f"""
+    WITH all_casts AS (
+      SELECT
+        fc.*
+      FROM casts fc
+      WHERE created_at BETWEEN '{start_date_str}' AND '{end_date_str}'
+    ),
+    distinct_fids AS (
+      SELECT DISTINCT fid
+      FROM all_casts
+    ),
+    parent_casts AS (
+      SELECT
+        fid,
+        COUNT(*) AS total_parent_casts
+      FROM all_casts
+      WHERE parent_hash IS NULL
+      GROUP BY fid
+    ),
+    replies_with_parent_hash AS (
+      SELECT
+        fid,
+        COUNT(*) AS total_replies_with_parent_hash
+      FROM all_casts
+      WHERE parent_hash IS NOT NULL
+      GROUP BY fid
+    ),
+    filtered_data AS (
+      SELECT
+        i,
+        v,
+        date,
+        strategy_id
+      FROM globaltrust
+      WHERE strategy_id = 3
+        AND date in (select max(date) from globaltrust)
+    ),
+    global_ranked_data AS (
+      SELECT
+        i,
+        v,
+        ROW_NUMBER() OVER (ORDER BY v DESC) AS rank,
+        COUNT(*) OVER () AS total_rows
+      FROM filtered_data
+    ),
+    bottom_percentage_data AS (
+      SELECT
+        i,
+        rank,
+        total_rows,
+        CASE
+          WHEN rank > 0.9 * total_rows THEN '10%'
+          WHEN rank > 0.8 * total_rows THEN '20%'
+          WHEN rank > 0.7 * total_rows THEN '30%'
+          WHEN rank > 0.6 * total_rows THEN '40%'
+          WHEN rank > 0.5 * total_rows THEN '50%'
+          WHEN rank > 0.4 * total_rows THEN '60%'
+          WHEN rank > 0.3 * total_rows THEN '70%'
+          WHEN rank > 0.2 * total_rows THEN '80%'
+          WHEN rank > 0.1 * total_rows THEN '90%'
+          WHEN rank > 0.05 * total_rows THEN '95%'
+          -- Add more cases as needed
+          ELSE 'Above 95%'
+        END AS bottom_percentage
+      FROM global_ranked_data
+    )
+    ,
+    user_data_filtered AS (
+      SELECT
+        fid,
+        value
+      FROM user_data
+      WHERE type = 2
+    )
+    -- Final output
+    SELECT
+      dfid.fid,
+      ud.value AS display_name,
+      --bpd.bottom_percentage as bottom_global_percentage,
+      COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0) as total_outgoing,
+      (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0))/(r.v+1e10) as spammer_score,
+      COALESCE(pc.total_parent_casts, 0) AS total_parent_casts,
+      COALESCE(rp.total_replies_with_parent_hash, 0) AS total_replies_with_parent_hash,
+      r.v AS global_openrank_score,
+      r.rank AS global_rank,
+      r.total_rows AS total_global_rank_rows
+    FROM distinct_fids dfid
+    LEFT JOIN parent_casts pc ON dfid.fid = pc.fid
+    LEFT JOIN replies_with_parent_hash rp ON dfid.fid = rp.fid
+    LEFT JOIN global_ranked_data r ON dfid.fid = r.i
+    LEFT JOIN bottom_percentage_data bpd ON r.i = bpd.i
+    LEFT JOIN user_data_filtered ud ON dfid.fid = ud.fid
+    WHERE (bpd.bottom_percentage != 'Above 95%' OR bpd.bottom_percentage IS NULL)
+    AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
+    ORDER BY spammer_score DESC
+  """
+  return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
