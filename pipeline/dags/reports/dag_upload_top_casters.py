@@ -16,7 +16,7 @@ default_args = {
 
 
 with DAG(
-    dag_id='upload_top_casters',
+    dag_id='report_top_casters',
     default_args=default_args,
     description='This backs up globaltrust, localtrust and channel_ranking into s3',
     start_date=datetime(2024, 8, 15),
