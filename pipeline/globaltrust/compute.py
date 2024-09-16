@@ -45,12 +45,14 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
   where_clause = "" if target_date is None else f"timestamp <= '{target_date}'::date + interval '1 day'"
 
   query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
+  logger.info(f"Fetching likes: {query}")
   l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   logger.info(utils.df_info_to_string(l_df, with_sample=True))
   utils.log_memusage(logger)
 
   with Timer(name="merge_replies"):
     query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
+    logger.info(f"Fetching replies: {query}")
     replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     lr_df = l_df.merge(
                         replies_df,
@@ -65,6 +67,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   with Timer(name="merge_mentions"):
     query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
+    logger.info(f"Fetching mentions: {query}")
     mentions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     lrm_df = lr_df.merge(
                         mentions_df,
@@ -79,6 +82,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   with Timer(name="merge_recasts"):
     query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
+    logger.info(f"Fetching recasts: {query}")
     recasts_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     lrmc_df = lrm_df.merge(
                         recasts_df,
@@ -93,6 +97,7 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
   with Timer(name="merge_follows"):
     query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
+    logger.info(f"Fetching follows: {query}")
     follows_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     _interactions_df = lrmc_df.merge(
                         follows_df,
