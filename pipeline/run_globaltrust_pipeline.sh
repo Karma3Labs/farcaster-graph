@@ -26,7 +26,7 @@ function validate_date() {
     fi
 }
 
-while getopts w:v:o:d:t:s: flag
+while getopts s:w:v:t:o:d:c flag
 do
     case "${flag}" in
         s) STEP=${OPTARG};;
@@ -35,15 +35,18 @@ do
         t) TEMP_DIR=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         d) TARGET_DATE=${OPTARG};;
+        c) CUTOFF_DATE_FLAG="--cutoff_date_flag";;
     esac
 done
 
 if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
+  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date] -c"
   echo ""
   echo "Example: $0 -s localtrust -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
   echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
+  echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01 -c"
   echo ""
   echo "Params:"
   echo "  [step]  localtrust or compute"
@@ -52,6 +55,7 @@ if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ] 
   echo "  [out_dir]  The final destination directory to write localtrust files to."
   echo "  [venv]      The path where a python3 virtualenv has been created."
   echo "  [date]      (optional) Target date to run the globaltrust and localtrust generation."
+  echo "  [c]         (optional) Cut off the date before the target date. Default is false."
   echo ""
   exit
 fi
@@ -95,7 +99,7 @@ if [ "$STEP" = "prep" ]; then
 
   source $VENV/bin/activate
   pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION $CUTOFF_DATE_FLAG
   deactivate
 
 elif [ "$STEP" = "compute" ]; then

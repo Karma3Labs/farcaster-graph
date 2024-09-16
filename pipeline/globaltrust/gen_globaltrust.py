@@ -64,6 +64,7 @@ def gen_localtrust_to_csv(
     outdir: Path,
     strategy: compute.Strategy,
     target_date: str = None,
+    cutoff_date_flag: bool = False
 ) :
     with Timer(name=f"gen_localtrust_{strategy}"):
         logDate = "today" if target_date is None else f"{target_date}"
@@ -71,7 +72,7 @@ def gen_localtrust_to_csv(
             f"Generate localtrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
         )
 
-        lt_df = compute.localtrust_for_strategy(logger, pg_dsn, strategy, target_date)
+        lt_df = compute.localtrust_for_strategy(logger, pg_dsn, strategy, target_date, cutoff_date_flag)
 
         (lt_filepath, _, lt_stats_filepath, _) = gen_filepaths(outdir, strategy, target_date)
         logger.info(f"CSV filepaths: {lt_filepath, lt_stats_filepath}")
@@ -158,14 +159,14 @@ def gen_globaltrust_to_csv(
             gt_df.to_csv(gt_filepath, index=False, header=True)
 
 @Timer(name="main")
-def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_date: str = None):
+def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_date: str = None, cutoff_date_flag: bool = False):
   utils.log_memusage(logger)
   match step:
     case Step.prep:
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V2ENGAGEMENT, target_date)
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
+      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date, cutoff_date_flag)
+      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date, cutoff_date_flag)
+      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V2ENGAGEMENT, target_date, cutoff_date_flag)
+      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date, cutoff_date_flag)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
     case Step.compute_following:
@@ -219,6 +220,13 @@ if __name__ == '__main__':
         required=False,
         type=lambda d: datetime.strptime(d, "%Y-%m-%d"),
     )
+    parser.add_argument(
+       "-c",
+       "--cutoff_date_flag",
+       help="Date condition for the queries, format: YYYY-MM-DD",
+       required=False,
+       action="store_true",
+    )
     args = parser.parse_args()
     print(args)
 
@@ -238,4 +246,5 @@ if __name__ == '__main__':
         args.ltcsv,
         args.outdir,
         target_date,
+        args.cutoff_date_flag
     )

@@ -35,150 +35,171 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) 
   _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   return _pretrust_toptier_df
 
-def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str = None) -> pd.DataFrame:
-  global _interactions_df
+def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str = None, cutoff_date_flag: bool = False) -> pd.DataFrame:
+    global _interactions_df
 
-  if _interactions_df is not None:
+    if _interactions_df is not None:
+        return _interactions_df
+
+    # All the tables referred to in this function def have the same timestamp field
+    where_clause = (
+        ""
+        if target_date is None
+        else f"timestamp >= '{target_date}'::date"
+        if cutoff_date_flag
+        else f"timestamp <= '{target_date}'::date + interval '1 day'"
+    )
+
+    query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
+    logger.info(f"Fetching likes: {query}")
+    l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+    logger.info(utils.df_info_to_string(l_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    with Timer(name="merge_replies"):
+        query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
+        logger.info(f"Fetching replies: {query}")
+        replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+        lr_df = l_df.merge(
+            replies_df,
+            how="outer",
+            left_on=["i", "j"],
+            right_on=["i", "j"],
+            indicator=False,
+        )
+        # outer join will create new dataframe; explicit del may help reduce memusage
+        del replies_df
+        del l_df
+    logger.info(utils.df_info_to_string(lr_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    with Timer(name="merge_mentions"):
+        query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
+        logger.info(f"Fetching mentions: {query}")
+        mentions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+        lrm_df = lr_df.merge(
+            mentions_df,
+            how="outer",
+            left_on=["i", "j"],
+            right_on=["i", "j"],
+            indicator=False,
+        )
+        # outer join will create new dataframe; explicit del may help reduce memusage
+        del mentions_df
+        del lr_df
+    logger.info(utils.df_info_to_string(lrm_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    with Timer(name="merge_recasts"):
+        query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
+        logger.info(f"Fetching recasts: {query}")
+        recasts_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+        lrmc_df = lrm_df.merge(
+            recasts_df,
+            how="outer",
+            left_on=["i", "j"],
+            right_on=["i", "j"],
+            indicator=False,
+        )
+        # outer join will create new dataframe; explicit del may help reduce memusage
+        del recasts_df
+        del lrm_df
+    logger.info(utils.df_info_to_string(lrmc_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    with Timer(name="merge_follows"):
+        query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
+        logger.info(f"Fetching follows: {query}")
+        follows_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
+        _interactions_df = lrmc_df.merge(
+            follows_df,
+            how="outer",
+            left_on=["i", "j"],
+            right_on=["i", "j"],
+            indicator=False,
+        )
+        # outer join will create new dataframe; explicit del may help reduce memusage
+        del follows_df
+        del lrmc_df
+    logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    # We don't compute Activity strategy anymore.
+    # Save compute time by not computing this column.
+    # with Timer(name="l1rep1rec1m1"):
+    #   _interactions_df['l1rep1rec1m1'] = \
+    #                       _interactions_df.loc[:,
+    #                         ['likes_v',
+    #                          'replies_v',
+    #                          'mentions_v',
+    #                          'recasts_v',
+    #                          'follows_v']].sum(axis=1)
+    # logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+    # utils.log_memusage(logger)
+
+    # for Enagement Strategy
+    with Timer(name="l1rep6rec3m12"):
+        _interactions_df["l1rep6rec3m12"] = (
+            _interactions_df["likes_v"].fillna(0)
+            + (_interactions_df["replies_v"].fillna(0) * 6.0)
+            + (_interactions_df["recasts_v"].fillna(0) * 3.0)
+            + (_interactions_df["mentions_v"].fillna(0) * 12.0)
+            + _interactions_df["follows_v"].fillna(0)
+        )
+    logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    # for EngagementV2 strategy
+    with Timer(name="l1rep3rec6m12"):
+        _interactions_df["l1rep3rec6m12"] = (
+            _interactions_df["likes_v"].fillna(0)
+            + (_interactions_df["replies_v"].fillna(0) * 3.0)
+            + (_interactions_df["recasts_v"].fillna(0) * 6.0)
+            + (_interactions_df["mentions_v"].fillna(0) * 12.0)
+            + _interactions_df["follows_v"].fillna(0)
+        )
+    logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    # for EngagementV3 strategy we boost all inteactions by 1
+    with Timer(name="fboostedl1rep3rec6m12"):
+        _interactions_df["fboostedl1rep3rec6m12"] = (
+            _interactions_df["likes_v"].fillna(0)
+            + (_interactions_df["replies_v"].fillna(0) * 3.0)
+            + (_interactions_df["recasts_v"].fillna(0) * 6.0)
+            + (_interactions_df["mentions_v"].fillna(0) * 12.0)
+            + _interactions_df["follows_v"].fillna(0)
+            + (
+                _interactions_df["follows_v"].fillna(0)
+                * (
+                    _interactions_df["replies_v"].fillna(0)
+                    + _interactions_df["recasts_v"].fillna(0)
+                    + _interactions_df["mentions_v"].fillna(0)
+                )
+            )
+        )
+    logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
+    utils.log_memusage(logger)
+
+    # drop unused columns to recover some memory
+    _interactions_df.drop(
+        columns=["likes_v", "replies_v", "recasts_v", "mentions_v"], inplace=True
+    )
+
+    # Filter out entries where i == j
+    _interactions_df = _interactions_df[_interactions_df["i"] != _interactions_df["j"]]
+
     return _interactions_df
-
-  # All the tables referred to in this function def have the same timestamp field
-  where_clause = "" if target_date is None else f"timestamp <= '{target_date}'::date + interval '1 day'"
-
-  query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
-  logger.info(f"Fetching likes: {query}")
-  l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
-  logger.info(utils.df_info_to_string(l_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  with Timer(name="merge_replies"):
-    query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
-    logger.info(f"Fetching replies: {query}")
-    replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
-    lr_df = l_df.merge(
-                        replies_df,
-                        how='outer',
-                        left_on=['i','j'], right_on=['i','j'],
-                        indicator=False)
-    # outer join will create new dataframe; explicit del may help reduce memusage
-    del replies_df
-    del l_df 
-  logger.info(utils.df_info_to_string(lr_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  with Timer(name="merge_mentions"):
-    query = db_utils.construct_query(IJVSql.MENTIONS, where_clause=where_clause)
-    logger.info(f"Fetching mentions: {query}")
-    mentions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
-    lrm_df = lr_df.merge(
-                        mentions_df,
-                        how='outer',
-                        left_on=['i','j'], right_on=['i','j'],
-                        indicator=False)
-    # outer join will create new dataframe; explicit del may help reduce memusage
-    del mentions_df
-    del lr_df
-  logger.info(utils.df_info_to_string(lrm_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  with Timer(name="merge_recasts"):
-    query = db_utils.construct_query(IJVSql.RECASTS, where_clause=where_clause)
-    logger.info(f"Fetching recasts: {query}")
-    recasts_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
-    lrmc_df = lrm_df.merge(
-                        recasts_df,
-                        how='outer',
-                        left_on=['i','j'], right_on=['i','j'],
-                        indicator=False)
-    # outer join will create new dataframe; explicit del may help reduce memusage
-    del recasts_df
-    del lrm_df
-  logger.info(utils.df_info_to_string(lrmc_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  with Timer(name="merge_follows"):
-    query = db_utils.construct_query(IJVSql.FOLLOWS, where_clause=where_clause)
-    logger.info(f"Fetching follows: {query}")
-    follows_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
-    _interactions_df = lrmc_df.merge(
-                        follows_df,
-                        how='outer',
-                        left_on=['i','j'], right_on=['i','j'],
-                        indicator=False)
-    # outer join will create new dataframe; explicit del may help reduce memusage
-    del follows_df
-    del lrmc_df
-  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  # We don't compute Activity strategy anymore. 
-  # Save compute time by not computing this column.
-  # with Timer(name="l1rep1rec1m1"):
-  #   _interactions_df['l1rep1rec1m1'] = \
-  #                       _interactions_df.loc[:,
-  #                         ['likes_v',
-  #                          'replies_v',
-  #                          'mentions_v',
-  #                          'recasts_v',
-  #                          'follows_v']].sum(axis=1)
-  # logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  # utils.log_memusage(logger)
-
-  # for Enagement Strategy
-  with Timer(name="l1rep6rec3m12"):
-    _interactions_df['l1rep6rec3m12'] = \
-                        _interactions_df['likes_v'].fillna(0) \
-                          + (_interactions_df['replies_v'].fillna(0) * 6.0) \
-                          + (_interactions_df['recasts_v'].fillna(0) * 3.0) \
-                          + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
-                          + _interactions_df['follows_v'].fillna(0)
-  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  # for EngagementV2 strategy
-  with Timer(name="l1rep3rec6m12"):
-    _interactions_df['l1rep3rec6m12'] = \
-                        _interactions_df['likes_v'].fillna(0) \
-                          + (_interactions_df['replies_v'].fillna(0) * 3.0) \
-                          + (_interactions_df['recasts_v'].fillna(0) * 6.0) \
-                          + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
-                          + _interactions_df['follows_v'].fillna(0)
-  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  # for EngagementV3 strategy we boost all inteactions by 1
-  with Timer(name="fboostedl1rep3rec6m12"):
-    _interactions_df['fboostedl1rep3rec6m12'] = \
-                        _interactions_df['likes_v'].fillna(0) \
-                          + (_interactions_df['replies_v'].fillna(0) * 3.0) \
-                          + (_interactions_df['recasts_v'].fillna(0) * 6.0) \
-                          + (_interactions_df['mentions_v'].fillna(0) * 12.0) \
-                          + _interactions_df['follows_v'].fillna(0) \
-                          + (_interactions_df['follows_v'].fillna(0) \
-                             * (
-                              _interactions_df['replies_v'].fillna(0)
-                              + _interactions_df['recasts_v'].fillna(0)
-                              + _interactions_df['mentions_v'].fillna(0)
-                              )
-                            )
-  logger.info(utils.df_info_to_string(_interactions_df, with_sample=True))
-  utils.log_memusage(logger)
-
-  # drop unused columns to recover some memory
-  _interactions_df.drop(columns=['likes_v', 'replies_v', 'recasts_v', 'mentions_v'], inplace=True)
-
-  # Filter out entries where i == j
-  _interactions_df = _interactions_df[_interactions_df['i'] != _interactions_df['j']]
-
-  return _interactions_df
 
 def localtrust_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
     strategy: Strategy,
-    target_date: str = None
+    target_date: str = None,
+    cutoff_date_flag: bool = False
 ) -> pd.DataFrame:
   with Timer(name=f"{strategy}"):
-    intx_df = _fetch_interactions_df(logger, pg_dsn, target_date)
+    intx_df = _fetch_interactions_df(logger, pg_dsn, target_date, cutoff_date_flag)
     match strategy:
       case Strategy.FOLLOWING:
         lt_df = \
