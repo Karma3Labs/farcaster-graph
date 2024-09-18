@@ -18,7 +18,7 @@ default_args = {
 with DAG(
     dag_id='report_top_casters',
     default_args=default_args,
-    description='This backs up globaltrust, localtrust and channel_ranking into s3',
+    description='This backs up top caster everyday into postgres db',
     start_date=datetime(2024, 8, 15),
     schedule_interval='30 20 * * *',
     is_paused_upon_creation=True,
@@ -28,7 +28,7 @@ with DAG(
 
     fetch_dune_s3_upload_top_casters = BashOperator(
         task_id='fetch_dune_s3_upload_top_casters',
-        bash_command="cd /pipeline && ./run_fetch_top_caster.sh -v ./.venv -s k3l-openrank-farcaster"
+        bash_command="cd /pipeline && ./run_fetch_top_caster.sh -v ./.venv"
     )
 
     fetch_dune_s3_upload_top_casters

@@ -8,9 +8,10 @@ import json
 
 # local dependencies
 from config import settings
+from sqlalchemy import create_engine
 from timer import Timer
 from . import cast_db_utils
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -29,7 +30,7 @@ logger.add(sys.stdout,
            filter=level_per_module,
            level=0)
 
-async def main(filename: str):
+async def main():
   pg_dsn = settings.POSTGRES_ASYNC_URI.get_secret_value()
 
   now =  datetime.now()
@@ -40,7 +41,7 @@ async def main(filename: str):
   top_spammers = []
   for s in rows:
     row = {
-      'fid': int(s['fid']),
+      'fid': s['fid'],
       'display_name': str(s['display_name']),
       'total_outgoing': int(s['total_outgoing']),
       'spammer_score': float(s['spammer_score']) if s['spammer_score'] else 0.0,
@@ -52,21 +53,38 @@ async def main(filename: str):
     }
     top_spammers.append(row)
 
-  with open(filename, 'w', encoding='utf-8') as fp:
-    json.dump(top_spammers, fp, ensure_ascii=False)
-    logger.info(f'wrote to {filename}')
+  df = pd.DataFrame(top_spammers)
+  df['date_iso'] = date.today()
+  # with open(filename, 'w', encoding='utf-8') as fp:
+  #   json.dump(top_spammers, fp, ensure_ascii=False)
+  #   logger.info(f'wrote to {filename}')
 
-  logger.info("bye bye")
+  logger.info(df.head())
+
+  engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
+                  % (settings.DB_USER, settings.DB_PASSWORD.get_secret_value(),
+                     settings.DB_HOST, settings.DB_PORT, settings.DB_NAME)
+
+  postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
+  logger.info(postgres_engine)
+  with postgres_engine.connect() as connection:
+      df.to_sql('top_spammers', con=connection, if_exists='append', index=False)
+
+  # with open(filename, 'w', encoding='utf-8') as fp:
+  #   json.dump(top_spammers, fp, ensure_ascii=False)
+  #   logger.info(f'wrote to {filename}')
+
+  logger.info("top spammers data updated to DB")
 
 
 if __name__ == "__main__":
   load_dotenv()
   print(settings)
 
-  parser = argparse.ArgumentParser(description='Fetch top spammers, and save it locally')
-  parser.add_argument('-f', '--filename')
-
-  args = parser.parse_args()
+  # parser = argparse.ArgumentParser(description='Fetch top spammers, and save it locally')
+  # parser.add_argument('-f', '--filename')
+  #
+  # args = parser.parse_args()
 
   logger.info('hello hello')
-  asyncio.run(main(args.filename))
+  asyncio.run(main())
