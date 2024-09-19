@@ -68,7 +68,6 @@ async def main(csv_path):
                           'cast_text']
             df['channel_id'] = channel[1]['id']
             all_casters.append(df)
-            break
         else:
             pass
 
