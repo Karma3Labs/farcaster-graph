@@ -69,7 +69,7 @@ async def main():
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
     logger.info(postgres_engine)
     with postgres_engine.connect() as connection:
-        df.to_sql('top_casters', con=connection, if_exists='append', index=False)
+        df.to_sql('k3l_top_casters', con=connection, if_exists='append', index=False)
 
 
     # insert_dune_table(settings.DUNE_API_KEY, 'openrank', 'top_caster', df)
