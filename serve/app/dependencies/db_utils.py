@@ -863,6 +863,7 @@ async def get_recent_casts_by_fids(
 
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_popular_degen_casts(
         agg: ScoreAgg,
         weights: Weights,
@@ -931,6 +932,7 @@ async def get_popular_degen_casts(
         WHERE row_num between $1 and $2;
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
 
 async def get_popular_channel_casts_lite(
         channel_id: str,
@@ -1098,7 +1100,7 @@ async def get_popular_channel_casts_heavy(
 async def get_trending_casts_lite(
         agg: ScoreAgg,
         weights: Weights,
-        score_threshold_multiplier:int,
+        score_threshold_multiplier: int,
         offset: int,
         limit: int,
         pool: Pool
@@ -1171,7 +1173,7 @@ async def get_trending_casts_lite(
 async def get_trending_casts_heavy(
         agg: ScoreAgg,
         weights: Weights,
-        score_threshold_multiplier:int,
+        score_threshold_multiplier: int,
         offset: int,
         limit: int,
         pool: Pool
@@ -1245,4 +1247,15 @@ async def get_trending_casts_heavy(
     )
     select cast_hash,cast_hour,text,embeds,mentions,fid,timestamp,cast_score from cast_details order by rn
     """
+    return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
+
+async def get_top_casters(
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    sql_query = f""" select i as fid, v as score from top_casters 
+                    where date_iso = (select max(date_iso) from top_casters)
+                    OFFSET $1 LIMIT $2"""
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
