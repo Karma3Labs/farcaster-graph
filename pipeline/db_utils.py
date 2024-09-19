@@ -12,12 +12,15 @@ import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
 
+
 class SQL:
     def __init__(self, name: str, value: str):
         self.name = name
         self.value = value
+
     def __str__(self):
         return self.value
+
 
 def construct_query(query: SQL, where_clause: str) -> SQL:
     if not where_clause:
@@ -30,11 +33,13 @@ def construct_query(query: SQL, where_clause: str) -> SQL:
     query.value = query.value.format(condition=condition)
     return query
 
+
 def execute_query(pg_dsn: str, query: str):
     with psycopg2.connect(pg_dsn) as conn:
         with conn.cursor() as cursor:
             logger.info(f"Executing: {query}")
             cursor.execute(query)
+
 
 def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
     query_sql = f"""
@@ -53,6 +58,7 @@ def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
             fids = [row[0] for row in records]
             return fids
 
+
 def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, channel_url: str = None) -> pd.DataFrame:
     with Timer(name=query.name):
         with tempfile.TemporaryFile() as tmpfile:
@@ -70,12 +76,14 @@ def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, channel_url: str = None) ->
                     df = pd.read_csv(tmpfile, dtype={'i': 'Int32', 'j': 'Int32'})
                     return df
 
+
 def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
     create_sql = f"DROP TABLE IF EXISTS {temp_tbl}; CREATE UNLOGGED TABLE {temp_tbl} AS SELECT * FROM {orig_tbl} LIMIT 0;"
     with psycopg2.connect(pg_dsn) as conn:
         with conn.cursor() as cursor:
             logger.info(f"Executing: {create_sql}")
             cursor.execute(create_sql)
+
 
 def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None):
     date_setting = "date=now()" if date_str is None else f"date='{date_str}'::date"
@@ -89,6 +97,7 @@ def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_st
             logger.info(f"Executing: {update_sql}")
             cursor.execute(update_sql)
 
+
 def df_insert_copy(pg_url: str, df: pd.DataFrame, dest_tablename: str):
     logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")
     sql_engine = create_engine(pg_url)
@@ -99,6 +108,7 @@ def df_insert_copy(pg_url: str, df: pd.DataFrame, dest_tablename: str):
         index=False,
         method=_psql_insert_copy
     )
+
 
 def _psql_insert_copy(table, conn, keys, data_iter):
     """
@@ -128,6 +138,7 @@ def _psql_insert_copy(table, conn, keys, data_iter):
         sql = 'COPY {} ({}) FROM STDIN WITH CSV'.format(table_name, columns)
         cur.copy_expert(sql=sql, file=s_buf)
 
+
 @Timer(name="fetch_channel_details")
 def fetch_channel_details(pg_url: str, channel_id: str) -> channel_model.Channel:
     sql_engine = create_engine(pg_url)
@@ -135,3 +146,10 @@ def fetch_channel_details(pg_url: str, channel_id: str) -> channel_model.Channel
     df = pd.read_sql_query(tmp_sql, sql_engine)
     return channel_model.Channel(df.to_dict(orient='records')[0])
 
+
+@Timer(name="fetch_all_channel_details")
+def fetch_all_channel_details(pg_url: str):
+    sql_engine = create_engine(pg_url)
+    tmp_sql = f"select * from warpcast_channels_data"
+    df = pd.read_sql_query(tmp_sql, sql_engine)
+    return df
