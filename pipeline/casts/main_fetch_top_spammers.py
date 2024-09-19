@@ -61,9 +61,7 @@ async def main():
 
   logger.info(df.head())
 
-  engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
-                  % (settings.DB_USER, settings.DB_PASSWORD.get_secret_value(),
-                     settings.DB_HOST, settings.DB_PORT, settings.DB_NAME)
+  engine_string = settings.POSTGRES_URL.get_secret_value()
 
   postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
   logger.info(postgres_engine)
