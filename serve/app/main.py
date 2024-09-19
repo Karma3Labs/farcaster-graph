@@ -27,6 +27,7 @@ from .routers.globaltrust_router import router as gt_router
 from .routers.frame_router import router as frame_router
 from .routers.cast_router import router as cast_router
 from .routers.channel_router import router as channel_router
+from .routers.user_router import router as user_router
 
 from loguru import logger
 
@@ -150,6 +151,7 @@ app.include_router(gt_router, prefix='/scores/global')
 app.include_router(frame_router, prefix='/frames')
 app.include_router(cast_router, prefix='/casts')
 app.include_router(channel_router, prefix='/channels')
+app.include_router(user_router, prefix='/users')
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")

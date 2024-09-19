@@ -1259,3 +1259,24 @@ async def get_top_casters(
                     where date_iso = (select max(date_iso) from top_casters)
                     OFFSET $1 LIMIT $2"""
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
+
+async def get_top_spammers(
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    sql_query = f""" select 
+                    fid,
+                    display_name,
+                    total_outgoing,
+                    spammer_score,
+                    total_parent_casts,
+                    total_replies_with_parent_hash,
+                    global_openrank_score,
+                    global_rank,
+                    total_global_rank_rows
+                    from top_spammers 
+                    where date_iso = (select max(date_iso) from top_casters)
+                    OFFSET $1 LIMIT $2"""
+    return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
