@@ -349,3 +349,25 @@ CREATE TABLE public.warpcast_channels_data (
 	hostfids integer[] NULL,
 	dateiso date NULL
 );
+
+----------------------------------------------
+CREATE TABLE public.k3l_top_casters (
+	i int8 NOT NULL,
+	v float8 NOT NULL,
+	date_iso date NOT NULL
+);
+
+-----------------------------------------
+
+CREATE TABLE public.k3l_top_spammers (
+  fid int8 NOT NULL,
+  display_name text NOT NULL,
+  total_outgoing int8 NOT NULL,
+  spammer_score float8 NOT NULL,
+  total_parent_casts int8 NOT NULL,
+  total_replies_with_parent_hash int8 NOT NULL,
+  global_openrank_score float8 NOT NULL,
+  global_rank int8 NOT NULL,
+  total_global_rank_rows int8 NOT NULL,
+  date_iso date NOT NULL
+);
