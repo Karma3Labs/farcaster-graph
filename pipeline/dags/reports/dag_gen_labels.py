@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.sensors.external_task import ExternalTaskSensor
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -16,9 +17,9 @@ default_args = {
 
 
 with DAG(
-    dag_id='report_top_casters',
+    dag_id='gen_labels',
     default_args=default_args,
-    description='This backs up top caster everyday into postgres db',
+    description='This fetches spammers and save the list into s3',
     start_date=datetime(2024, 8, 15),
     schedule_interval='30 20 * * *',
     is_paused_upon_creation=True,
@@ -26,10 +27,21 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    fetch_dune_s3_upload_top_casters = BashOperator(
-        task_id='fetch_dune_s3_upload_top_casters',
+    gen_top_spammers = BashOperator(
+        task_id='gen_top_spammers',
+        bash_command="cd /pipeline && ./run_fetch_top_spammers.sh -v ./.venv"
+    )
+
+    gen_top_casters = BashOperator(
+        task_id='gen_top_casters',
         bash_command="cd /pipeline && ./run_fetch_top_caster.sh -v ./.venv"
     )
 
-    fetch_dune_s3_upload_top_casters
+    trigger_sync_sandbox = TriggerDagRunOperator(
+        task_id="trigger_sync_sandbox",
+        trigger_dag_id="sync_sandbox_db_labels",
+        conf={"trigger": "gen_labels"},
+    )
+
+    gen_top_spammers >> gen_top_casters >> trigger_sync_sandbox
 
