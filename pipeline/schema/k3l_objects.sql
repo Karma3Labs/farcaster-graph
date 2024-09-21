@@ -343,7 +343,7 @@ CREATE TABLE public.warpcast_channels_data (
 	description text NULL,
 	imageurl text NULL,
 	leadfid int8 NULL,
-	-- moderatorfids float8 NULL,
+	moderatorfid float8 NULL,
 	createdat timestamp NULL,
 	followercount int8 NULL,
 	hostfids integer[] NULL,
