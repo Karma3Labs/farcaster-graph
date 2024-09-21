@@ -17,7 +17,7 @@ default_args = {
 
 
 with DAG(
-    dag_id='gen_labels',
+    dag_id='report_gen_labels',
     default_args=default_args,
     description='This fetches spammers and save the list into s3',
     start_date=datetime(2024, 8, 15),
@@ -40,7 +40,7 @@ with DAG(
     trigger_sync_sandbox = TriggerDagRunOperator(
         task_id="trigger_sync_sandbox",
         trigger_dag_id="sync_sandbox_db_labels",
-        conf={"trigger": "gen_labels"},
+        conf={"trigger": "report_gen_labels"},
     )
 
     gen_top_spammers >> gen_top_casters >> trigger_sync_sandbox
