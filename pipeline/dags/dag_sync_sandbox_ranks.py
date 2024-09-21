@@ -19,11 +19,12 @@ sandbox_db_sync_path = Variable.get("sandbox_db_sync_path")
 dev_sandbox_db_sync_path = Variable.get("dev_sandbox_db_sync_path")
 
 with DAG(
-    dag_id='sync_sandbox_db_v0',
+    dag_id='sync_sandbox_db_ranks',
     default_args=default_args,
-    description='sync the db table of the sandboxed read replica',
+    description='sync ranks to the sandbox',
     start_date=datetime(2024, 7, 10, 18),
-    schedule_interval='*/10 * * * *',
+    # schedule_interval='*/10 * * * *',
+    schedule=None,
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
@@ -32,13 +33,7 @@ with DAG(
 
     run_append = SSHOperator(
         task_id="run_append_v1",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh ",
-        ssh_hook=ssh_hook,
-        dag=dag)
-
-    run_remove = SSHOperator(
-        task_id="run_remove_v0",
-        command=f"cd {sandbox_db_sync_path}; ./2-run-remove.sh ",
+        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh -c -g ",
         ssh_hook=ssh_hook,
         dag=dag)
 
@@ -48,5 +43,5 @@ with DAG(
         ssh_hook=ssh_hook,
         dag=dag)
 
-    run_append >> run_remove >> run_refresh
+    run_append >> run_refresh
 
