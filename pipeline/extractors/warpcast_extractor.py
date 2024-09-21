@@ -16,6 +16,7 @@ def fetch_data_from_api(db_user, db_password, db_endpoint):
     df_warpcast_channels.columns = df_warpcast_channels.columns.str.lower()
     df_warpcast_channels['createdat'] = pd.to_datetime(df_warpcast_channels['createdat'], unit='ms')
     df_warpcast_channels["dateiso"] = date.today()
+    df_warpcast_channels.drop(columns=["moderatorFids"], inplace=True)
 
     logger.info(df_warpcast_channels.head())
 
