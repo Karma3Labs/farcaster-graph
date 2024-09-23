@@ -9,10 +9,10 @@ import sys
 
 def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
     params = {'start': '2024-01-01', 'end': '2024-12-31'}
-    headers = {'api-key': f"""{api_key}"""}
+    headers = {'api-key': f"{api_key}"}
     df_automod = pd.DataFrame()
     for channel in ["degen", "dev", "memes"]:
-        initial_url = f"""https://automod.sh/api/partners/channels/{channel}/activity/export?"""
+        initial_url = f"https://automod.sh/api/partners/channels/{channel}/activity/export?"
         response = requests.get(initial_url, params=params, headers=headers)
         print(response.url)
         if response.status_code == 200:
@@ -22,7 +22,10 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
             print(len(data))
             df_automod = pd.concat([df_automod, data], axis=0)
         else:
-            print(f"Failed to fetch data. Status code: {response.status_code}")
+            raise Exception(f"Failed to fetch data from automod. Status code: {response.status_code}")
+    
+    if len(df_automod) == 0: 
+        raise Exception("Failed to fetch data from automod. No data found.")   
 
     rename_dict = {
         'createdAt': 'created_at',
@@ -43,9 +46,10 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
                     % (db_user, db_password, db_endpoint, 9541, 'farcaster')
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
-    with postgres_engine.connect() as connection:
-        connection.execute("TRUNCATE TABLE automod_data")
-        df_automod.to_sql('automod_data', con=connection, if_exists='append', index=False)
+    with postgres_engine.connect() as conn, conn.begin():
+        conn.execute("TRUNCATE TABLE automod_data")
+        df_automod.to_sql('automod_data', con=conn, if_exists='append', index=False)
+        conn.commit()
 
     return None
 

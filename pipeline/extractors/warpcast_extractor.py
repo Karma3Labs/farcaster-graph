@@ -9,7 +9,7 @@ from loguru import logger
 
 
 def fetch_data_from_api(db_user, db_password, db_endpoint):
-    initial_url = f"""https://api.warpcast.com/v2/all-channels"""
+    initial_url = "https://api.warpcast.com/v2/all-channels"
     response = requests.get(initial_url)
 
     df_warpcast_channels = pd.DataFrame(response.json()["result"]["channels"])
@@ -19,14 +19,17 @@ def fetch_data_from_api(db_user, db_password, db_endpoint):
     df_warpcast_channels.drop(columns=["moderatorfids"], inplace=True)
 
     logger.info(df_warpcast_channels.head())
+    if len(df_warpcast_channels) == 0:
+        raise Exception("Failed to fetch data from warpcast. No data found.")
 
     engine_string = "postgresql+psycopg2://%s:%s@%s:%d/%s" \
                     % (db_user, db_password, db_endpoint, 9541, 'farcaster')
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
-    with postgres_engine.connect() as connection:
-        connection.execute("TRUNCATE TABLE warpcast_channels_data")
-        df_warpcast_channels.to_sql('warpcast_channels_data', con=connection, if_exists='append', index=False)
+    with postgres_engine.connect() as conn, conn.begin():
+        conn.execute("TRUNCATE TABLE warpcast_channels_data")
+        df_warpcast_channels.to_sql('warpcast_channels_data', con=conn, if_exists='append', index=False)
+        conn.commit()
 
     return None
 
