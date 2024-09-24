@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import date
 import requests
 from sqlalchemy import create_engine
+from sqlalchemy import text
 import io
 from loguru import logger
 import sys
@@ -47,7 +48,7 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
     with postgres_engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE automod_data")
+        conn.execute(text("TRUNCATE TABLE automod_data"))
         df_automod.to_sql('automod_data', con=conn, if_exists='append', index=False)
     return None
 

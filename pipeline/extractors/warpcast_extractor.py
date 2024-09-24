@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 from datetime import date
 from sqlalchemy import create_engine
+from sqlalchemy import text
 
 from loguru import logger
 
@@ -27,7 +28,7 @@ def fetch_data_from_api(db_user, db_password, db_endpoint):
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
     with postgres_engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE warpcast_channels_data")
+        conn.execute(text("TRUNCATE TABLE warpcast_channels_data"))
         df_warpcast_channels.to_sql('warpcast_channels_data', con=conn, if_exists='append', index=False)
 
     return None
