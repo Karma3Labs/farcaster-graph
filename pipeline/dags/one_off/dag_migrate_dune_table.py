@@ -12,11 +12,13 @@ default_args = {
 
 
 with DAG(
-    dag_id='migrate_dune_table',
+    dag_id='one_off_migrate_dune_table',
     default_args=default_args,
     description='This backs up globaltrust, localtrust and channel_ranking into s3',
-    start_date=datetime(2024, 6, 21, 2),
     schedule_interval=None,
+    start_date=None,
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
     task1 = BashOperator(

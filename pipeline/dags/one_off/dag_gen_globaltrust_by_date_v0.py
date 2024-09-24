@@ -25,11 +25,13 @@ default_args = {
 # 2024-06-16 00:00
 # 960387
 with DAG(
-    dag_id='dag_gen_globaltrust_by_date_v1',
+    dag_id='one_off_gen_globaltrust_by_date_v1',
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
-    start_date=datetime(2024, 6, 21, 2),
     schedule_interval=None,
+    start_date=None,
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
     push_to_dune = BashOperator(

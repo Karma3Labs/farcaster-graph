@@ -25,7 +25,7 @@ with DAG(
 
     echo =  BashOperator(
         task_id="echo", 
-        bash_command= "echo {{ logical_date - timedelta(days=90) }}",
+        bash_command= "echo {{ (logical_date - macros.timedelta(days=90)) | ds }}",
         dag=dag
     )
 

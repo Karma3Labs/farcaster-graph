@@ -15,11 +15,13 @@ default_args = {
 
 
 with DAG(
-    dag_id='insert_to_dune_tables',
+    dag_id='one_off_insert_to_dune_tables',
     default_args=default_args,
     description='This inserts globaltrust and channel_ranking into dune',
-    start_date=datetime(2024, 6, 21, 2),
-    schedule_interval='30 20 * * *',
+    schedule_interval=None,
+    start_date=None,
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
     task4 = BashOperator(
