@@ -46,11 +46,10 @@ def fetch_data_from_api(api_key, db_user, db_password, db_endpoint):
                     % (db_user, db_password, db_endpoint, 9541, 'farcaster')
 
     postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
-    with postgres_engine.connect() as conn, conn.begin():
-        conn.execute("TRUNCATE TABLE automod_data")
-        df_automod.to_sql('automod_data', con=conn, if_exists='append', index=False)
-        conn.commit()
-
+    with postgres_engine.connect() as conn:
+        with conn.begin():
+            conn.execute("TRUNCATE TABLE automod_data")
+            df_automod.to_sql('automod_data', con=conn, if_exists='append', index=False)
     return None
 
 
