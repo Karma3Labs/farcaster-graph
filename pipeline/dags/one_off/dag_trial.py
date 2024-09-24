@@ -41,12 +41,17 @@ with DAG(
         dag=dag
     )
 
+    echo4 =  BashOperator(
+        task_id="echo4", 
+        bash_command= "echo {{ logical_date }}",
+        dag=dag
+    )
+
     end = EmptyOperator(task_id="end")
 
     (
-        start >> [
-            echo1 >> echo2,
-            echo3
-        ]
-        >> end
+        start >> echo1 >> [
+            echo2 >> echo3,
+            echo4
+        ] >> end
     )
