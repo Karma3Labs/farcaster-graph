@@ -219,7 +219,7 @@ def localtrust_for_strategy(
           intx_df[intx_df['l1rep3rec6m12'] > 0] \
             [['i','j','l1rep3rec6m12']] \
               .rename(columns={'l1rep3rec6m12':'v'})
-      case Strategy.V3ENGAGEMENT:
+      case Strategy.V3ENGAGEMENT | Strategy.GRAPH_90DV3:
         lt_df = \
           intx_df[intx_df['fboostedl1rep3rec6m12'] > 0] \
             [['i','j','fboostedl1rep3rec6m12']] \
