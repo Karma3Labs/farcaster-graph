@@ -23,17 +23,23 @@ with DAG(
 ) as dag:
     start = EmptyOperator(task_id="start")
 
-    echo =  BashOperator(
+    echo1 =  BashOperator(
         task_id="echo", 
         bash_command= "echo {{ (logical_date - macros.timedelta(days=90)) | ds }}",
         dag=dag
     )
 
+    echo2 =  BashOperator(
+        task_id="echo", 
+        bash_command= "echo {{ macros.ds_add(logical_date, -90) }}",
+        dag=dag
+    )
 
     end = EmptyOperator(task_id="end")
 
     (
         start
-        >> echo
+        >> echo1
+        >> echo2
         >> end
     )
