@@ -34,12 +34,21 @@ with DAG(
 
     prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
+    
+    gen_90day_graph = BashOperator(
+        task_id="gen_90day_localtrust",
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s graph"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d {{ (logical_date - macros.timedelta(days=90)) | ds }}",
+        dag=dag,
+    )
 
     compute_globaltrust = BashOperator(
         task_id="compute_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
 
     upload_to_dune =  BashOperator(
@@ -80,6 +89,7 @@ with DAG(
     (
         mkdir_tmp
         >> prep_globaltrust
+        >> gen_90day_graph
         >> compute_globaltrust
         >> upload_to_dune
         >> trigger_refresh_views

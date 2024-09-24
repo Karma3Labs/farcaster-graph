@@ -26,7 +26,7 @@ function validate_date() {
     fi
 }
 
-while getopts s:w:v:t:o:d:c flag
+while getopts s:w:v:t:o:d: flag
 do
     case "${flag}" in
         s) STEP=${OPTARG};;
@@ -35,18 +35,17 @@ do
         t) TEMP_DIR=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         d) TARGET_DATE=${OPTARG};;
-        c) CUTOFF_DATE_FLAG="--cutoff_date_flag";;
     esac
 done
 
 if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
-  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date] -c"
+  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
   echo ""
-  echo "Example: $0 -s localtrust -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
+  echo "Example: $0 -s prep -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
   echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
-  echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01 -c"
+  echo "         $0 -s graph -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
   echo ""
   echo "Params:"
   echo "  [step]  localtrust or compute"
@@ -90,16 +89,43 @@ function log() {
   echo "`date` - $1"
 }
 
-log $OPT_DATE_SUFFIX
-log $TARGET_DATE_SUFFIX
-echo $TEMP_DIR
+log "DATE_OPTION: $OPT_DATE_SUFFIX"
+log "TARGET_DATE: $TARGET_DATE_SUFFIX"
+log "TEMP_DIR: $TEMP_DIR"
+log "OUT_DIR: $OUT_DIR"
+log "REMOTE_DB_HOST: $REMOTE_DB_HOST"
+log "REMOTE_DB_PORT: $REMOTE_DB_PORT"
+log "REMOTE_DB_USER: $REMOTE_DB_USER"
+log "REMOTE_DB_NAME: $REMOTE_DB_NAME"
+
 
 echo "Executing step: $STEP"
-if [ "$STEP" = "prep" ]; then
+if [ "$STEP" = "graph" ]; then
+
+  if [ -z "$DATE_OPTION" ]; then
+    echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -s [step] -date [date]"
+    echo ""
+    echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -o /tmp -s graph -date 2024-03-01"
+    echo ""
+    echo "Params:"
+    echo "  [work_dir]  The working directory to read .env file and execute scripts from."
+    echo "  [venv] The path where a python3 virtualenv has been created."
+    echo "  [out_dir] The output directory to write the graph file."
+    echo "  [step] The step to execute. Possible values are 'graph' or 'prep'."
+    echo "  [date] The cut off date to use for processing in the format 'YYYY-MM-DD'."
+    echo ""
+    exit 1
+  fi
+  source $VENV/bin/activate
+  pip install -r requirements.txt
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR $DATE_OPTION
+  deactivate
+
+elif [ "$STEP" = "prep" ]; then
 
   source $VENV/bin/activate
   pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION $CUTOFF_DATE_FLAG
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION 
   deactivate
 
 elif [ "$STEP" = "compute" ]; then
