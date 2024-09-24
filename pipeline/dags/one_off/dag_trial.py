@@ -35,11 +35,18 @@ with DAG(
         dag=dag
     )
 
+    echo3 =  BashOperator(
+        task_id="echo3", 
+        bash_command= "echo {{ ds }}",
+        dag=dag
+    )
+
     end = EmptyOperator(task_id="end")
 
     (
-        start
-        >> echo1
-        >> echo2
+        start >> [
+            echo1 >> echo2,
+            echo3
+        ]
         >> end
     )
