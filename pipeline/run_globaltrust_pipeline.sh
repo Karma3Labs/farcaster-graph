@@ -102,23 +102,9 @@ log "REMOTE_DB_NAME: $REMOTE_DB_NAME"
 echo "Executing step: $STEP"
 if [ "$STEP" = "graph" ]; then
 
-  if [ -z "$DATE_OPTION" ]; then
-    echo "Usage:   $0 -w [work_dir] -v [venv] -o [out_dir] -s [step] -date [date]"
-    echo ""
-    echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -o /tmp -s graph -date 2024-03-01"
-    echo ""
-    echo "Params:"
-    echo "  [work_dir]  The working directory to read .env file and execute scripts from."
-    echo "  [venv] The path where a python3 virtualenv has been created."
-    echo "  [out_dir] The output directory to write the graph file."
-    echo "  [step] The step to execute. Possible values are 'graph' or 'prep'."
-    echo "  [date] The cut off date to use for processing in the format 'YYYY-MM-DD'."
-    echo ""
-    exit 1
-  fi
   source $VENV/bin/activate
   pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR $DATE_OPTION
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR
   deactivate
 
 elif [ "$STEP" = "prep" ]; then

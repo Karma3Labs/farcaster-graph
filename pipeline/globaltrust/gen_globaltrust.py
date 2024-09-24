@@ -47,12 +47,15 @@ logger.add(sys.stdout,
            level=0)
 
 def gen_filepaths(
-    basedir: Path, strategy: compute.Strategy, target_date: str
+    basedir: Path, strategy: compute.Strategy, target_date: str,
 ) -> tuple[Path, Path, Path, Path]:
-    lt_filename = f"localtrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
-    gt_filename = f"globaltrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
-    lt_stats_filename = f"localtrust_stats.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
-    pt_stats_filename = f"pretrust.{strategy.name.lower()}{'_'+target_date if target_date else '' }.csv"
+    
+    suffix =  f"_{target_date}" if target_date else ""
+
+    lt_filename = f"localtrust.{strategy.name.lower()}{suffix}.csv"
+    gt_filename = f"globaltrust.{strategy.name.lower()}{suffix}.csv"
+    lt_stats_filename = f"localtrust_stats.{strategy.name.lower()}{suffix}.csv"
+    pt_stats_filename = f"pretrust.{strategy.name.lower()}{suffix}.csv"
     return (
         os.path.join(basedir, lt_filename),
         os.path.join(basedir, gt_filename),
@@ -65,15 +68,15 @@ def gen_localtrust_to_csv(
     outdir: Path,
     strategy: compute.Strategy,
     target_date: str = None,
-    cutoff_date_flag: bool = False
+    interval: int = 0,
 ) :
     with Timer(name=f"gen_localtrust_{strategy}"):
         logDate = "today" if target_date is None else f"{target_date}"
         logger.info(
-            f"Generate localtrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate} with cutoff {cutoff_date_flag}"
+            f"Generate localtrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate} with interval {interval}"
         )
 
-        lt_df = compute.localtrust_for_strategy(logger, pg_dsn, strategy, target_date, cutoff_date_flag)
+        lt_df = compute.localtrust_for_strategy(logger, pg_dsn, strategy, target_date, interval)
 
         (lt_filepath, _, lt_stats_filepath, _) = gen_filepaths(outdir, strategy, target_date)
         logger.info(f"CSV filepaths: {lt_filepath, lt_stats_filepath}")
@@ -164,7 +167,7 @@ def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_dat
   utils.log_memusage(logger)
   match step:
     case Step.graph:
-        gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date, cutoff_date_flag=True)
+        gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.GRAPH_90DV3, target_date = None, interval = 90)
     case Step.prep:
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)

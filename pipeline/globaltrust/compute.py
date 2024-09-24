@@ -23,6 +23,7 @@ class Strategy(Enum):
   ACTIVITY = ('activity', 5)
   V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
   V3ENGAGEMENT = ('v3engagement', 9) # Follows1Likes1or2Replies6or7Recasts3or4Mentions12or13
+  GRAPH_90DV3 = ('graph_90dv3', 11) # Similar to V3 but with 90d window
 
 def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) -> pd.DataFrame:
   global _pretrust_toptier_df
@@ -35,7 +36,12 @@ def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) 
   _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   return _pretrust_toptier_df
 
-def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str = None, cutoff_date_flag: bool = False) -> pd.DataFrame:
+def _fetch_interactions_df(
+    logger: logging.Logger, 
+    pg_dsn: str, 
+    target_date: str = None, 
+    interval: int = 0
+) -> pd.DataFrame:
     global _interactions_df
 
     if _interactions_df is not None:
@@ -43,9 +49,9 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
     # All the tables referred to in this function def have the same timestamp field
     where_clause = (
-        "" if target_date is None
-        else f"timestamp >= '{target_date}'::date" if cutoff_date_flag
-        else f"timestamp <= '{target_date}'::date + interval '1 day'"
+      f"timestamp >= now() - interval '{interval} days'" if interval > 0
+      else f"timestamp <= '{target_date}'::date + interval '1 day'" if target_date is not None
+      else None
     )
 
     query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
@@ -194,10 +200,10 @@ def localtrust_for_strategy(
     pg_dsn: str,
     strategy: Strategy,
     target_date: str = None,
-    cutoff_date_flag: bool = False
+    interval: int = 0
 ) -> pd.DataFrame:
   with Timer(name=f"{strategy}"):
-    intx_df = _fetch_interactions_df(logger, pg_dsn, target_date, cutoff_date_flag)
+    intx_df = _fetch_interactions_df(logger, pg_dsn, target_date, interval)
     match strategy:
       case Strategy.FOLLOWING:
         lt_df = \
