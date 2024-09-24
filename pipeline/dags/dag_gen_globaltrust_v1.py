@@ -41,7 +41,7 @@ with DAG(
     gen_90day_graph = BashOperator(
         task_id="gen_90day_localtrust",
         bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s graph"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d {{ (logical_date - macros.timedelta(days=90)) | ds }}",
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d {{ macros.ds_add(ds, -90) }}",
         dag=dag,
     )
 
