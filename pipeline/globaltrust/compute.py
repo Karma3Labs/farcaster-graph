@@ -43,10 +43,8 @@ def _fetch_interactions_df(logger: logging.Logger, pg_dsn: str, target_date: str
 
     # All the tables referred to in this function def have the same timestamp field
     where_clause = (
-        ""
-        if target_date is None
-        else f"timestamp >= '{target_date}'::date"
-        if cutoff_date_flag
+        "" if target_date is None
+        else f"timestamp >= '{target_date}'::date" if cutoff_date_flag
         else f"timestamp <= '{target_date}'::date + interval '1 day'"
     )
 

@@ -117,7 +117,10 @@ elif [ "$STEP" = "compute" ]; then
   pip install -r requirements.txt
 
   #### START Globaltrust for FOLLOWING strategy
+  # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   cp  ${TEMP_DIR}/pretrust.following${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv
+
+  # copy localtrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   # localtrust has i,j,v,date,strategy_id for downstream processing but
   # go-eigentrust requires only i,j,v 
   cut -d',' -f1,2,3 \
@@ -131,8 +134,10 @@ elif [ "$STEP" = "compute" ]; then
   #### END Globaltrust for FOLLOWING strategy
 
   #### START Globaltrust for ENGAGEMENT strategy
+  # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   cp  ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv 
 
+  # copy localtrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   # localtrust has i,j,v,date,strategy_id for downstream processing but
   # go-eigentrust requires only i,j,v 
   cut -d',' -f1,2,3 \
