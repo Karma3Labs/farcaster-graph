@@ -31,7 +31,7 @@ with DAG(
 
     echo2 =  BashOperator(
         task_id="echo2", 
-        bash_command= "echo {{ macros.ds_add(logical_date, -90) }}",
+        bash_command= "echo {{ macros.ds_add(ds, -90) }}",
         dag=dag
     )
 
