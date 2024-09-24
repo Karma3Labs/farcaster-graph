@@ -12,3 +12,4 @@ build/
 notebooks/data/
 **/pg_to_dune/csv
 pipeline/logs
+**/.vscode
