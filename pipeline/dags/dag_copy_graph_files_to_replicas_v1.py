@@ -37,7 +37,7 @@ with DAG(
 
     ssh_hook = SSHHook(ssh_conn_id='eigen6', keepalive_interval=60, cmd_timeout=None)
 
-    @task_group(group_id="tg_gen_graphs")
+    @task_group(group_id="gen_graphs")
     def tg_gen_graphs():
         gen_following_graph = BashOperator(
             task_id="gen_following_graph",
@@ -64,7 +64,7 @@ with DAG(
 
     # end tg_gen_graphs
 
-    @task_group(group_id="tg_copy_graphs")
+    @task_group(group_id="copy_graphs")
     def tg_copy_graphs():
         eigen2_copy_all_pkl_files = SSHOperator(
             task_id="eigen2_copy_all_pkl_files",
