@@ -8,6 +8,11 @@ import pandas
 class GraphType(Enum):
   following = 1
   engagement = 3
+  ninetydays = 5
+
+class GraphTimeframe(str, Enum):
+  lifetime = "lifetime"
+  ninetydays = "90d"
 
 class Graph(NamedTuple):
   success_file: str

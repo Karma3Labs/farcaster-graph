@@ -22,6 +22,9 @@ def get_following_graph(request: Request) -> Graph:
 def get_engagement_graph(request: Request) -> Graph:
     return request.state.graphs[GraphType.engagement]
 
+def get_ninetydays_graph(request: Request) -> Graph:
+    return request.state.graphs[GraphType.ninetydays]
+
 def find_vertex_idx(ig: igraph.GraphBase, fid:int) -> int:
   try:
       logger.debug(fid)

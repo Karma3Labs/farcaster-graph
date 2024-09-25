@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..models.graph_model import Graph
+from ..models.graph_model import Graph, GraphTimeframe
 from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["Personalized OpenRank Scores"])
@@ -20,27 +20,38 @@ async def get_personalized_engagement_for_addresses(
   )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  lifetime_model: Graph = Depends(graph.get_engagement_graph),
+  ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
-  """
-  Given a list of input addresses, return a list of addresses
-    trusted by the extended network of the input addresses. \n
-  The addresses in the result are ranked by a relative scoring mechanism 
-    that is based on the EigenTrust algorithm. \n
-  The extended network is derived based on a BFS traversal of the social engagement graph 
-    upto **k** degrees and until **limit** is reached. \n
-  Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
-  **IMPORTANT**: Please use HTTP POST method and not GET method.
-  """
+    """
+    Given a list of input addresses, return a list of addresses
+      trusted by the extended network of the input addresses. \n
+    The addresses in the result are ranked by a relative scoring mechanism
+      that is based on the EigenTrust algorithm. \n
+    The extended network is derived based on a BFS traversal of the social engagement graph
+      upto **k** degrees and until **limit** is reached. \n
+    Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
+    **IMPORTANT**: Please use HTTP POST method and not GET method.
+    """
 
-  if not (1 <= len(addresses) <= 100):
-    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  logger.debug(addresses)
-  res = await _get_personalized_scores_for_addresses(addresses, k, limit, pool, graph_model)
+    if not (1 <= len(addresses) <= 100):
+        raise HTTPException(
+            status_code=400, detail="Input should have between 1 and 100 entries"
+        )
+    logger.debug(addresses)
+    logger.debug(timeframe)
+    res = await _get_personalized_scores_for_addresses(
+        addresses,
+        k,
+        limit,
+        pool,
+        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+    )
 
-  logger.debug(f"Result has {len(res)} rows")
-  return {"result": res}
+    logger.debug(f"Result has {len(res)} rows")
+    return {"result": res}
 
 @router.post("/following/addresses")
 async def get_personalized_following_for_addresses(  
@@ -54,7 +65,7 @@ async def get_personalized_following_for_addresses(
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_following_graph),
+  lifetime_model: Graph = Depends(graph.get_following_graph),
 ):
   """
   Given a list of input addresses, return a list of addresses
@@ -69,7 +80,7 @@ async def get_personalized_following_for_addresses(
   if not (1 <= len(addresses) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(addresses)
-  res = await _get_personalized_scores_for_addresses(addresses, k, limit, pool, graph_model)
+  res = await _get_personalized_scores_for_addresses(addresses, k, limit, pool, lifetime_model)
 
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
@@ -117,25 +128,36 @@ async def get_personalized_engagement_for_handles(
     )],
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
+  timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  lifetime_model: Graph = Depends(graph.get_engagement_graph),
+  ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
-  """
-  Given a list of input handles, return a list of handles
-    trusted by the extended network of the input handles. \n
-  The addresses in the result are ranked by a relative scoring mechanism 
-    that is based on the EigenTrust algorithm. \n
-  The extended network is derived based on a BFS traversal of the social engagement graph 
-    upto **k** degrees and until **limit** is reached. \n
-  Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
-  **IMPORTANT**: Please use HTTP POST method and not GET method.
-  """
-  if not (1 <= len(handles) <= 100):
-    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  logger.debug(handles)
-  res = await _get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
-  logger.debug(f"Result has {len(res)} rows")
-  return {"result": res}
+    """
+    Given a list of input handles, return a list of handles
+      trusted by the extended network of the input handles. \n
+    The addresses in the result are ranked by a relative scoring mechanism
+      that is based on the EigenTrust algorithm. \n
+    The extended network is derived based on a BFS traversal of the social engagement graph
+      upto **k** degrees and until **limit** is reached. \n
+    Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
+    **IMPORTANT**: Please use HTTP POST method and not GET method.
+    """
+    if not (1 <= len(handles) <= 100):
+        raise HTTPException(
+            status_code=400, detail="Input should have between 1 and 100 entries"
+        )
+    logger.debug(handles)
+    logger.debug(timeframe)
+    res = await _get_personalized_scores_for_handles(
+        handles,
+        k,
+        limit,
+        pool,
+        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+    )
+    logger.debug(f"Result has {len(res)} rows")
+    return {"result": res}
 
 @router.post("/following/handles")
 async def get_personalized_following_for_handles(  
@@ -154,7 +176,7 @@ async def get_personalized_following_for_handles(
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_following_graph),
+  lifetime_model: Graph = Depends(graph.get_following_graph),
 ):
   """
   Given a list of input handles, return a list of handles
@@ -169,7 +191,7 @@ async def get_personalized_following_for_handles(
   if not (1 <= len(handles) <= 100):
     raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
   logger.debug(handles)
-  res = await _get_personalized_scores_for_handles(handles, k, limit, pool, graph_model)
+  res = await _get_personalized_scores_for_handles(handles, k, limit, pool, lifetime_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
@@ -208,34 +230,42 @@ async def get_personalized_engagement_for_fids(
   k: Annotated[int, Query(le=5)] = 2,
   limit: Annotated[int | None, Query(le=5000)] = 100,
   lite: Annotated[bool, Query()] = False,
+  timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  lifetime_model: Graph = Depends(graph.get_engagement_graph),
+  ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
-  """
-  Given a list of input fids, return a list of fids
-    trusted by the extended network of the input fids. \n
-  The addresses in the result are ranked by a relative scoring mechanism 
-    that is based on the EigenTrust algorithm. \n
-  The extended network is derived based on a BFS traversal of the social engagement graph 
-    upto **k** degrees and until **limit** is reached. \n
-  The API returns fnames and usernames by default. 
-    If you want a lighter and faster response, just pass in `lite=true`. \n
-  Example: [1, 2] \n
-  **IMPORTANT**: Please use HTTP POST method and not GET method.
-  """
-  if not (1 <= len(fids) <= 100):
-    raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-  logger.debug(fids)
-  res = await _get_personalized_scores_for_fids(
-                    fetch_all_addrs=False, 
-                    fids=fids, 
-                    k=k, 
-                    limit=limit, 
-                    lite=lite,
-                    pool=pool, 
-                    graph_model=graph_model)
-  logger.debug(f"Result has {len(res)} rows")
-  return {"result": res}
+    """
+    Given a list of input fids, return a list of fids
+      trusted by the extended network of the input fids. \n
+    The addresses in the result are ranked by a relative scoring mechanism
+      that is based on the EigenTrust algorithm. \n
+    The extended network is derived based on a BFS traversal of the social engagement graph
+      upto **k** degrees and until **limit** is reached. \n
+    The API returns fnames and usernames by default.
+      If you want a lighter and faster response, just pass in `lite=true`. \n
+    Example: [1, 2] \n
+    **IMPORTANT**: Please use HTTP POST method and not GET method.
+    """
+    if not (1 <= len(fids) <= 100):
+        raise HTTPException(
+            status_code=400, detail="Input should have between 1 and 100 entries"
+        )
+    logger.debug(fids)
+    logger.debug(timeframe)
+    res = await _get_personalized_scores_for_fids(
+        fetch_all_addrs=False,
+        fids=fids,
+        k=k,
+        limit=limit,
+        lite=lite,
+        pool=pool,
+        graph_model=lifetime_model
+        if timeframe == GraphTimeframe.lifetime
+        else ninetyday_model,
+    )
+    logger.debug(f"Result has {len(res)} rows")
+    return {"result": res}
 
 @router.post("/following/fids")
 async def get_personalized_following_for_fids(  
@@ -250,7 +280,7 @@ async def get_personalized_following_for_fids(
   limit: Annotated[int | None, Query(le=5000)] = 100,
   lite: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_following_graph),
+  lifetime_model: Graph = Depends(graph.get_following_graph),
 ):
   """
   Given a list of input fids, return a list of fids
@@ -274,7 +304,7 @@ async def get_personalized_following_for_fids(
                     limit=limit, 
                     lite=lite,
                     pool=pool, 
-                    graph_model=graph_model)
+                    graph_model=lifetime_model)
   logger.debug(f"Result has {len(res)} rows")
   return {"result": res}
 
