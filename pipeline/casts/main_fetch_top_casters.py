@@ -1,22 +1,16 @@
 # standard dependencies
 import sys
-import argparse
-from random import sample
 import asyncio
-from io import StringIO
-import json
 from datetime import date
 from sqlalchemy import create_engine
 
 # local dependencies
 from config import settings
-from timer import Timer
 from . import cast_db_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import requests
 import pandas as pd
 
 logger.remove()
@@ -53,7 +47,7 @@ logger.add(sys.stdout,
 
 
 async def main():
-    pg_dsn = settings.POSTGRES_ASYNC_URI.get_secret_value()
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     casters = await cast_db_utils.fetch_top_casters(logger,
                                                     pg_dsn)
     top_casters = []
@@ -66,7 +60,10 @@ async def main():
     logger.info(df.head())
     engine_string = settings.POSTGRES_URL.get_secret_value()
 
-    postgres_engine = create_engine(engine_string, connect_args={"connect_timeout": 1000})
+    postgres_engine = create_engine(
+        engine_string,
+        connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000},
+    )
     logger.info(postgres_engine)
     with postgres_engine.connect() as connection:
         df.to_sql('k3l_top_casters', con=connection, if_exists='append', index=False)
