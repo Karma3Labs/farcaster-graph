@@ -104,7 +104,6 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
   with psycopg2.connect(
     pg_dsn,
     connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
-    options=f'-c statement_timeout={settings.POSTGRES_TIMEOUT_SECS * 1_000}',
   ) as conn:
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
