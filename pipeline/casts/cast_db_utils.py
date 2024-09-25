@@ -7,35 +7,29 @@ from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
-from asyncpg.pool import Pool
-import asyncpg
+from psycopg2._psycopg import connection
+
 
 async def fetch_rows(
-        *args,
-        logger: logging.Logger,
-        sql_query: str,
-        pool: Pool
+    *args, logger: logging.Logger, sql_query: str, connection: connection
 ):
-    start_time = time.perf_counter()
-    logger.debug(f"Execute query: {sql_query}")
-    # Take a connection from the pool.
-    async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                try:
-                    rows = await connection.fetch(
-                        sql_query,
-                        *args,
-                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to execute query: {sql_query}")
-                    logger.error(f"{e}")
-                    return [{"Unknown error. Contact K3L team"}]
-    logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
-    return rows
+  start_time = time.perf_counter()
+  logger.debug(f"Execute query: {sql_query}")
+  # Take a connection from the pool.
+  async with connection.transaction():
+    with connection.query_logger(logger.trace):
+      # Run the query passing the request argument.
+      try:
+        rows = await connection.fetch(
+            sql_query, *args, timeout=settings.POSTGRES_TIMEOUT_SECS
+        )
+      except Exception as e:
+        logger.error(f"Failed to execute query: {sql_query}")
+        logger.error(f"{e}")
+        return [{"Unknown error. Contact K3L team"}]
+  logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
+  return rows
+
 
 @Timer(name="insert_cast_action")
 def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
@@ -57,7 +51,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
     FROM casts, max_cast_action
     WHERE
-    	casts.timestamp > now() - interval '5 days'
+      casts.timestamp > now() - interval '5 days'
       AND
       casts.created_at
         BETWEEN max_cast_action.max_at
@@ -74,7 +68,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
     FROM casts CROSS JOIN max_cast_action
     WHERE
-    	casts.timestamp > now() - interval '5 days'
+      casts.timestamp > now() - interval '5 days'
       AND
       casts.parent_hash IS NOT NULL
       AND
@@ -93,7 +87,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       reactions.created_at
     FROM reactions CROSS JOIN max_cast_action
     WHERE
-    	reactions.timestamp > now() - interval '5 days'
+      reactions.timestamp > now() - interval '5 days'
       AND
       reactions.created_at
         BETWEEN max_cast_action.max_at
@@ -107,17 +101,19 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """
-  with psycopg2.connect(pg_dsn) as conn:
+  with psycopg2.connect(
+    pg_dsn,
+    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+    options=f'-c statement_timeout={settings.POSTGRES_TIMEOUT_SECS}',
+  ) as conn:
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
 
+
 @Timer(name="fetch_top_casters")
 async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
-  pool = await asyncpg.create_pool(pg_dsn,
-                                         min_size=1,
-                                         max_size=5)
-  sql = f"""
+  sql = """
     with
         latest_global_rank as (
           SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=3
@@ -156,7 +152,7 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
             AND casts.fid IN (SELECT fid FROM new_fids)
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
---             LIMIT 100000
+            -- LIMIT 100000
         )
         , scores AS (
             SELECT
@@ -189,16 +185,16 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
     WHERE fid not in (select fid from pretrust)
     order by cast_score DESC
   """
-  return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
+  with psycopg2.connect(pg_dsn) as conn:
+    return await fetch_rows(logger=logger, sql_query=sql, connection=conn)
+
 
 @Timer(name="fetch_top_spammers")
-async def fetch_top_spammers(logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime):
-  pool = await asyncpg.create_pool(pg_dsn,
-                                         min_size=1,
-                                         max_size=5)
-
-  start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
-  end_date_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+async def fetch_top_spammers(
+    logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime
+):
+  start_date_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+  end_date_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
   sql = f"""
     WITH all_casts AS (
@@ -296,4 +292,5 @@ async def fetch_top_spammers(logger: logging.Logger, pg_dsn: str, start_date: da
     AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
     ORDER BY spammer_score DESC
   """
-  return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
+  with psycopg2.connect(pg_dsn) as conn:
+    return await fetch_rows(logger=logger, sql_query=sql, connection=conn)
