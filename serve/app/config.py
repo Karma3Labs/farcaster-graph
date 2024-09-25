@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     FOLLOW_GRAPH_PATHPREFIX: str = '/tmp/fc_following_fid'
     ENGAGEMENT_GRAPH_PATHPREFIX: str = '/tmp/fc_engagement_fid'
+    NINETYDAYS_GRAPH_PATHPREFIX: str = '/tmp/fc_90dv3_fid'
     RELOAD_FREQ_SECS: int = 3600
     PAUSE_BEFORE_RELOAD_SECS: int = 300
 

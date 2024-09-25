@@ -56,10 +56,12 @@ class GraphLoader:
     # TODO fix hardcoding of name -> file, type of model
     graphs[GraphType.following] = self.load_graph(settings.FOLLOW_GRAPH_PATHPREFIX, GraphType.following)
     logger.info(f"loaded {graphs[GraphType.following]}")
-    logger.info(graphs[GraphType.following].graph.summary())
 
     graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATHPREFIX, GraphType.engagement)
     logger.info(f"loaded {graphs[GraphType.engagement]}")
+
+    graphs[GraphType.ninetydays] = self.load_graph(settings.NINETYDAYS_GRAPH_PATHPREFIX, GraphType.ninetydays)
+    logger.info(f"loaded {graphs[GraphType.ninetydays]}")
 
     return graphs
 
