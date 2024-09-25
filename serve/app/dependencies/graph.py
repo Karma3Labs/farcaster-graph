@@ -170,11 +170,11 @@ async def _get_neighbors_edges(
     k_neighbors_set.update(k_set_next)
     if settings.USE_PANDAS_PERF:
       # if multiple CPU cores are available
-      k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
+      k_df = graph.df.query('i in @k_neighbors_set').query('j in @k_neighbors_set')
     else:
       # filter with an '&' is slower because of the size of the dataframe
       # split the filtering so that indexes can be used if present
-      # k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
+      # k_df = graph.df[graph.df['i'].isin(k_neighbors_set) & graph.df['j'].isin(k_neighbors_set)]
       k_df = graph.df[graph.df['i'].isin(k_neighbors_set)]
       k_df = k_df[k_df['j'].isin(k_neighbors_set)]
     # .loc will throw KeyError when fids have no outgoing actions
