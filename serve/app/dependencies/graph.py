@@ -43,12 +43,6 @@ async def go_eigentrust(
 ):
   start_time = time.perf_counter()
 
-  lt_len_before = len(localtrust)
-  localtrust[:] = (x for x in localtrust if x['i'] != x['j'])
-  lt_len_after = len(localtrust)
-  if lt_len_before != lt_len_after:
-    logger.info(f"dropped {lt_len_before-lt_len_after} records with i == j")
-
   req = {
   	"pretrust": {
   		"scheme": 'inline',
@@ -93,24 +87,31 @@ async def get_neighbors_scores(
 
   start_time = time.perf_counter()
   df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
+  # Filter out entries where i == j
+  df = df[df['i'] != df['j']]
   logger.info(f"dataframe took {time.perf_counter() - start_time} secs for {len(df)} edges")
 
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
+  logger.debug(df)
   stacked = df.loc[:, ('i','j')].stack()
+  logger.debug(stacked)
   pseudo_id, orig_id = stacked.factorize()
+  logger.debug(pseudo_id)
+  logger.debug(orig_id)
 
   # pseudo_df is a new dataframe to avoid modifying existing shared global df
   pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
   pseudo_df.loc[:,('v')] = df.loc[:,('v')]
 
+  fids_set = set(fids)
   if len(fids) > 1:
     # when more than 1 fid in input list, the neighbor edges may not have some input fids.
-    pt_fids = orig_id.where(orig_id.isin(fids))
+    pt_fids = orig_id.where(orig_id.isin(fids_set))
   else:
-    pt_fids = fids
-  pt_len = len(fids)
+    pt_fids = fids_set
+  pt_len = len(pt_fids)
   # pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pt_fids]
   pretrust = [{'i': orig_id.get_loc(fid), 'v': 1/pt_len} for fid in pt_fids if not np.isnan(fid) ]
   # max_pt_id = max(pt_fids)
@@ -157,16 +158,16 @@ async def _get_neighbors_edges(
   start_time = time.perf_counter()
   neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
   logger.info(f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges")
-  k_neighbors_list= neighbors_df['j'].unique().tolist()
-  max_neighbors = max_neighbors - len(k_neighbors_list)
+  k_neighbors_set = set(neighbors_df['j']) - set(fids)
+  max_neighbors = max_neighbors - len(k_neighbors_set)
   if max_neighbors > 0 and max_degree > 1:
 
     start_time = time.perf_counter()
-    k_list_next = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
-    logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_list_next)} neighbors")
+    k_set_next = await _fetch_korder_neighbors(fids, graph, max_degree, max_neighbors, min_degree=2)
+    logger.info(f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_set_next)} neighbors")
 
     start_time  = time.perf_counter()
-    k_neighbors_list.extend(k_list_next)
+    k_neighbors_set.update(k_set_next)
     if settings.USE_PANDAS_PERF:
       # if multiple CPU cores are available
       k_df = graph.df.query('i in @k_neighbors_list').query('j in @k_neighbors_list')
@@ -174,8 +175,8 @@ async def _get_neighbors_edges(
       # filter with an '&' is slower because of the size of the dataframe
       # split the filtering so that indexes can be used if present
       # k_df = graph.df[graph.df['i'].isin(k_neighbors_list) & graph.df['j'].isin(k_neighbors_list)]
-      k_df = graph.df[graph.df['i'].isin(k_neighbors_list)]
-      k_df = k_df[k_df['j'].isin(k_neighbors_list)]
+      k_df = graph.df[graph.df['i'].isin(k_neighbors_set)]
+      k_df = k_df[k_df['j'].isin(k_neighbors_set)]
     # .loc will throw KeyError when fids have no outgoing actions
     ### in other words, some neighbor fids may not be present in 'i'
     # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]
