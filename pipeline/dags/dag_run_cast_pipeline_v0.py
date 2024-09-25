@@ -18,7 +18,10 @@ with DAG(
     default_args=default_args,
     description='extract cast interactions and refresh pg statistics',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='*/10 * * * *',
+    # schedule_interval='*/10 * * * *',
+    schedule_interval=timedelta(minutes=2),
+    max_active_runs=1,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     task1 = BashOperator(
