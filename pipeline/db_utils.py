@@ -22,7 +22,7 @@ class SQL:
         return self.value
 
 
-def construct_query(query: SQL, where_clause: str) -> SQL:
+def construct_query(query: SQL, where_clause: str, strategy_id: str = None) -> SQL:
     if not where_clause:
         condition = ""
     else:
@@ -30,7 +30,11 @@ def construct_query(query: SQL, where_clause: str) -> SQL:
             condition = f"AND {where_clause}"
         else:
             condition = f"WHERE {where_clause}"
-    query.value = query.value.format(condition=condition)
+
+    # Add the strategy_id if it's provided
+    strategy = f"{strategy_id}" if strategy_id else ""
+
+    query.value = query.value.format(condition=condition, strategy=strategy)
     return query
 
 

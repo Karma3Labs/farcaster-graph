@@ -23,6 +23,7 @@ class Step(Enum):
   compute_following = 2
   compute_engagement = 3
   graph = 4
+  compute_v3engagement = 9
 
   def __str__(self):
     return self.name
@@ -171,14 +172,16 @@ def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_dat
     case Step.prep:
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V2ENGAGEMENT, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
+      gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
     case Step.compute_following:
       gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.FOLLOWING, target_date) 
     case Step.compute_engagement:
-      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date) 
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date)
+    case Step.compute_engagement_v3:
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
 
 if __name__ == '__main__':
     load_dotenv()

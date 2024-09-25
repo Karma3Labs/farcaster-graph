@@ -20,19 +20,21 @@ _interactions_df: pd.DataFrame = None
 class Strategy(Enum):
   FOLLOWING = ('follows', 1)
   ENGAGEMENT = ('engagement', 3) # Follows1Likes1Replies6Recasts3Mentions12
-  ACTIVITY = ('activity', 5)
-  V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
+  # ACTIVITY = ('activity', 5)
+  # V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
   V3ENGAGEMENT = ('v3engagement', 9) # Follows1Likes1or2Replies6or7Recasts3or4Mentions12or13
   GRAPH_90DV3 = ('graph_90dv3', 11) # Similar to V3 but with 90d window
 
-def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str) -> pd.DataFrame:
+def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, target_date: str, strategy_id: int) -> pd.DataFrame:
   global _pretrust_toptier_df
 
   if _pretrust_toptier_df is not None:
     return _pretrust_toptier_df
 
-  where_clause = "" if target_date is None else f"insert_ts <= '{target_date}'::date + interval '1 day'"
-  query = db_utils.construct_query(IVSql.PRETRUST_TOP_TIER, where_clause=where_clause)
+  where_clause = f"strategy_id = {strategy_id}" if target_date is None else f"strategy_id = {strategy_id} and " \
+                                                                            f"insert_ts <= '{target_date}'::date + " \
+                                                                            f"interval '1 day' "
+  query = db_utils.construct_query(IVSql.PRETRUST_TOP_TIER, where_clause=where_clause, strategy_id=strategy_id)
   _pretrust_toptier_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
   return _pretrust_toptier_df
 
@@ -214,21 +216,21 @@ def localtrust_for_strategy(
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
-      case Strategy.V2ENGAGEMENT:
-        lt_df = \
-          intx_df[intx_df['l1rep3rec6m12'] > 0] \
-            [['i','j','l1rep3rec6m12']] \
-              .rename(columns={'l1rep3rec6m12':'v'})
+      # case Strategy.V2ENGAGEMENT:
+      #   lt_df = \
+      #     intx_df[intx_df['l1rep3rec6m12'] > 0] \
+      #       [['i','j','l1rep3rec6m12']] \
+      #         .rename(columns={'l1rep3rec6m12':'v'})
       case Strategy.V3ENGAGEMENT | Strategy.GRAPH_90DV3:
         lt_df = \
           intx_df[intx_df['fboostedl1rep3rec6m12'] > 0] \
             [['i','j','fboostedl1rep3rec6m12']] \
               .rename(columns={'fboostedl1rep3rec6m12':'v'})
-      case Strategy.ACTIVITY:
-        lt_df = \
-          intx_df[intx_df['follows_v'].notna()] \
-            [['i','j','l1rep1rec1m1']] \
-              .rename(columns={'l1rep1rec1m1':'v'})
+      # case Strategy.ACTIVITY:
+      #   lt_df = \
+      #     intx_df[intx_df['follows_v'].notna()] \
+      #       [['i','j','l1rep1rec1m1']] \
+      #         .rename(columns={'l1rep1rec1m1':'v'})
       case _:
         raise Exception(f"Unknown Strategy: {strategy}")
     # end of match
@@ -248,13 +250,15 @@ def pretrust_for_strategy(
   with Timer(name=f"{strategy}"):
     match strategy:
       case Strategy.FOLLOWING:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.FOLLOWING.value[1])
       case Strategy.ENGAGEMENT:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
-      case Strategy.V2ENGAGEMENT:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
-      case Strategy.ACTIVITY:
-        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date)
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.ENGAGEMENT.value[1])
+      # case Strategy.V2ENGAGEMENT:
+      #   pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.FOLLOWING.value[1])
+      # case Strategy.ACTIVITY:
+      #   pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.FOLLOWING.value[1])
+      case Strategy.V3ENGAGEMENT:
+        pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.V3ENGAGEMENT.value[1])
       case _:
         raise Exception(f"Unknown Strategy: {strategy}")
     # end of match
