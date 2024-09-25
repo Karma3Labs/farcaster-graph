@@ -94,12 +94,12 @@ async def get_neighbors_scores(
   if df.shape[0] < 1:
     raise HTTPException(status_code=404, detail="No neighbors")
 
-  logger.debug(df)
+  logger.trace(df)
   stacked = df.loc[:, ('i','j')].stack()
-  logger.debug(stacked)
+  logger.trace(stacked)
   pseudo_id, orig_id = stacked.factorize()
-  logger.debug(pseudo_id)
-  logger.debug(orig_id)
+  logger.trace(pseudo_id)
+  logger.trace(orig_id)
 
   # pseudo_df is a new dataframe to avoid modifying existing shared global df
   pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
