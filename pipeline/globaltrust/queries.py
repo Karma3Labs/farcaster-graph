@@ -56,7 +56,7 @@ class IVSql:
     SELECT fid as i, 1/ct::numeric as v
     FROM pretrust_v2, pt_size
     WHERE insert_ts=(select max(insert_ts) from pretrust_v2 where strategy_id = {strategy})
-    {condition}
+    AND strategy_id = {strategy}
     """)
   PRETRUST_POPULAR = SQL("PRETRUST_POPULAR", """
     SELECT

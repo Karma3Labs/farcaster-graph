@@ -22,7 +22,7 @@ class SQL:
         return self.value
 
 
-def construct_query(query: SQL, where_clause: str, strategy_id: str = None) -> SQL:
+def construct_query(query: SQL, where_clause: str) -> SQL:
     if not where_clause:
         condition = ""
     else:
@@ -31,10 +31,12 @@ def construct_query(query: SQL, where_clause: str, strategy_id: str = None) -> S
         else:
             condition = f"WHERE {where_clause}"
 
-    # Add the strategy_id if it's provided
-    strategy = f"{strategy_id}" if strategy_id else ""
+    query.value = query.value.format(condition=condition)
+    return query
 
-    query.value = query.value.format(condition=condition, strategy=strategy)
+
+def construct_pretrust_query(query: SQL, strategy_id: int) -> SQL:
+    query.value = query.value.format(strategy=strategy_id)
     return query
 
 

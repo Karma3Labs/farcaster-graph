@@ -127,7 +127,7 @@ def gen_pretrust_to_csv(
             f"Generate pretrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
         )
 
-        pt_df = compute.pretrust_for_strategy(logger, pg_dsn, strategy, target_date)
+        pt_df = compute.pretrust_for_strategy(logger, pg_dsn, strategy)
 
         (_, _, _, pt_filepath) = gen_filepaths(outdir, strategy, target_date)
         logger.info(f"CSV filepath: {pt_filepath}")
