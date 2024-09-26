@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
 
-from ..models.graph_model import Graph
+from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
 from ..dependencies import graph, db_pool, db_utils
 from ..config import settings
@@ -24,8 +24,10 @@ async def get_popular_casts_for_fid(
         limit: Annotated[int | None, Query(le=50)] = 25,
         graph_limit: Annotated[int | None, Query(le=1000)] = 100,
         lite: Annotated[bool, Query()] = True,
+        timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
         pool: Pool = Depends(db_pool.get_db),
-        graph_model: Graph = Depends(graph.get_engagement_graph),
+        lifetime_model: Graph = Depends(graph.get_engagement_graph),
+        ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
     """
     Get a list of casts that have been interacted with the most
@@ -52,7 +54,12 @@ async def get_popular_casts_for_fid(
         raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
 
     # compute eigentrust on the neighbor graph using fids
-    trust_scores = await graph.get_neighbors_scores([fid], graph_model, k, graph_limit)
+    trust_scores = await graph.get_neighbors_scores(
+        [fid],
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
+        k,
+        graph_limit,
+    )
 
     # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
     casts = await db_utils.get_popular_neighbors_casts(agg,
@@ -73,8 +80,10 @@ async def get_recent_casts_for_fid(
         limit: Annotated[int | None, Query(le=50)] = 25,
         graph_limit: Annotated[int | None, Query(le=1000)] = 100,
         lite: Annotated[bool, Query()] = True,
+        timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
         pool: Pool = Depends(db_pool.get_db),
-        graph_model: Graph = Depends(graph.get_engagement_graph),
+        lifetime_model: Graph = Depends(graph.get_engagement_graph),
+        ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
     """
     Get a list of casts that have been casted by the 
@@ -91,7 +100,12 @@ async def get_recent_casts_for_fid(
     i.e., returns recent 25 frame urls casted by extended network.
   """
     # compute eigentrust on the neighbor graph using fids
-    trust_scores = await graph.get_neighbors_scores([fid], graph_model, k, graph_limit)
+    trust_scores = await graph.get_neighbors_scores(
+        [fid],
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
+        k,
+        graph_limit,
+    )
 
     casts = await db_utils.get_recent_neighbors_casts(
         trust_scores=trust_scores,
