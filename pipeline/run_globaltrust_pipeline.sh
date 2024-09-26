@@ -234,26 +234,26 @@ elif [ "$STEP" = "compute" ]; then
   fi
 
   log "Inserting localtrust_stats"
-  # TODO change localstats table structure to include strategy id and keep column names same
+
   # insert localtrust stats for ENGAGEMENT strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY localtrust_stats
-    (date,strategy_id_3_row_count,strategy_id_3_mean,strategy_id_3_stddev,strategy_id_3_range)
+    (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
 
   # insert localtrust stats for FOLLOWING strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY localtrust_stats
-    (date,strategy_id_1_row_count,strategy_id_1_mean,strategy_id_1_stddev,strategy_id_1_range)
+    (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
 
   # insert localtrust stats for V3_ENGAGEMENT strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c  "COPY localtrust_stats
-    (date,strategy_id_9_row_count,strategy_id_9_mean,strategy_id_9_stddev,strategy_id_9_range)
+    (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.v3engagement${TARGET_DATE_SUFFIX}.csv
 
 else

@@ -102,13 +102,15 @@ def gen_localtrust_to_csv(
               lt_stats["mean"],
               lt_stats["std"],
               lt_stats["max"] - lt_stats["min"],
+              strategy_id,
           )
           stats_header = [
               "date",
-              f"strategy_id_{strategy_id}_row_count",
-              f"strategy_id_{strategy_id}_mean",
-              f"strategy_id_{strategy_id}_stddev",
-              f"strategy_id_{strategy_id}_range",
+              f"strategy_id_row_count",
+              f"strategy_id_mean",
+              f"strategy_id_stddev",
+              f"strategy_id_range",
+              f"strategy_id",
           ]
           with open(lt_stats_filepath, 'w', newline='') as stats_file:
             writer = csv.writer(stats_file)
