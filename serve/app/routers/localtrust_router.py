@@ -47,7 +47,7 @@ async def get_personalized_engagement_for_addresses(
         k,
         limit,
         pool,
-        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
     )
 
     logger.debug(f"Result has {len(res)} rows")
@@ -154,7 +154,7 @@ async def get_personalized_engagement_for_handles(
         k,
         limit,
         pool,
-        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
     )
     logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
