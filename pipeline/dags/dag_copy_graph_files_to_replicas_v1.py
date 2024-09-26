@@ -53,6 +53,13 @@ with DAG(
             dag=dag,
         )
 
+        gen_v3engagement_graph = BashOperator(
+            task_id="gen_v3engagement_graph",
+            bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
+                         " -i tmp/graph_files/localtrust.v3engagement.csv -o tmp/graph_files/ -p fc_v3engagement_fid ",
+            dag=dag,
+        )
+
         gen_90day_graph = BashOperator(
             task_id="gen_90day_graph",
             bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
@@ -60,7 +67,7 @@ with DAG(
             dag=dag,
         )
 
-        gen_following_graph >> gen_engagement_graph >> gen_90day_graph
+        gen_following_graph >> gen_engagement_graph >> gen_v3engagement_graph >> gen_90day_graph
 
     # end tg_gen_graphs
 
@@ -117,8 +124,23 @@ with DAG(
 
         eigen7_copy_localtrust_csv_files = SSHOperator(
             task_id="eigen7_copy_localtrust_csv_files",
-            # TODO stop renaming to lt_l1rep6rec3m12enhancedConnections_fid.csv and just call it engagement
-            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/lt_l1rep6rec3m12enhancedConnections_fid.csv",
+            # stopped renaming to lt_l1rep6rec3m12enhancedConnections_fid.csv and just call it engagement
+            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/localtrust.engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/engagement_fid.csv",
+            ssh_hook=ssh_hook,
+            dag=dag,
+        )
+
+        eigen7_copy_personal_v3engagement_pkl_files = SSHOperator(
+            task_id="eigen7_copy_personal_pkl_files",
+            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_v3engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",
+            ssh_hook=ssh_hook,
+            dag=dag,
+        )
+
+        eigen7_copy_localtrust_v3engagement_csv_files = SSHOperator(
+            task_id="eigen7_copy_localtrust_csv_files",
+            # stopped renaming to lt_l1rep6rec3m12enhancedConnections_fid.csv and just call it engagement
+            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/localtrust.v3engagement.csv ubuntu@{eigen7_ipv4}:~/serve_files/v3engagement_fid.csv",
             ssh_hook=ssh_hook,
             dag=dag,
         )
@@ -128,6 +150,8 @@ with DAG(
         eigen5_copy_all_pkl_files >> eigen5_copy_success_pkl_files
         eigen7_copy_personal_pkl_files
         eigen7_copy_localtrust_csv_files
+        eigen7_copy_personal_v3engagement_pkl_files
+        eigen7_copy_localtrust_v3engagement_csv_files
 
     # end tg_copy_graphs
 
