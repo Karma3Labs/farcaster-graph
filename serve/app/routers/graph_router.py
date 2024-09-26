@@ -44,7 +44,7 @@ async def get_neighbors_engagement(
         k,
         limit,
         pool,
-        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
     )
     logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
@@ -146,7 +146,7 @@ async def get_neighbors_engagement_for_handles(
         k,
         limit,
         pool,
-        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
     )
     logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
@@ -251,7 +251,7 @@ async def get_neighbors_engagement_for_fids(
         limit,
         lite,
         pool,
-        lifetime_model if timeframe == GraphTimeframe.lifetime else ninetyday_model,
+        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
     )
     logger.debug(f"Result has {len(res)} rows")
     return {"result": res}

@@ -1,4 +1,7 @@
+from io import StringIO
 import logging
+
+import requests
 
 from timer import Timer
 import time
@@ -7,35 +10,25 @@ from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
-from asyncpg.pool import Pool
-import asyncpg
+import pandas as pd
 
-async def fetch_rows(
-        *args,
-        logger: logging.Logger,
-        sql_query: str,
-        pool: Pool
-):
+def fetch_rows_df(*args, logger: logging.Logger, sql_query: str, pg_dsn: str):
     start_time = time.perf_counter()
-    logger.debug(f"Execute query: {sql_query}")
-    # Take a connection from the pool.
-    async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                try:
-                    rows = await connection.fetch(
-                        sql_query,
-                        *args,
-                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to execute query: {sql_query}")
-                    logger.error(f"{e}")
-                    return [{"Unknown error. Contact K3L team"}]
+    if settings.IS_TEST:
+      sql_query = f"{sql_query} LIMIT 10"
+    logger.info(f"Execute query: {sql_query}")
+    with psycopg2.connect(
+        pg_dsn,
+        connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+    ) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sql_query, *args)
+            rows = cursor.fetchall()
+            cols = list(map(lambda x: x[0], cursor.description))
+            df = pd.DataFrame(rows, columns=cols)
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
-    return rows
+    return df
+
 
 @Timer(name="insert_cast_action")
 def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
@@ -57,7 +50,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
     FROM casts, max_cast_action
     WHERE
-    	casts.timestamp > now() - interval '5 days'
+      casts.timestamp > now() - interval '5 days'
       AND
       casts.created_at
         BETWEEN max_cast_action.max_at
@@ -74,7 +67,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
     FROM casts CROSS JOIN max_cast_action
     WHERE
-    	casts.timestamp > now() - interval '5 days'
+      casts.timestamp > now() - interval '5 days'
       AND
       casts.parent_hash IS NOT NULL
       AND
@@ -93,7 +86,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       reactions.created_at
     FROM reactions CROSS JOIN max_cast_action
     WHERE
-    	reactions.timestamp > now() - interval '5 days'
+      reactions.timestamp > now() - interval '5 days'
       AND
       reactions.created_at
         BETWEEN max_cast_action.max_at
@@ -107,17 +100,18 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """
-  with psycopg2.connect(pg_dsn) as conn:
+  with psycopg2.connect(
+    pg_dsn,
+    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+  ) as conn:
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
 
-@Timer(name="fetch_top_casters")
-async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
-  pool = await asyncpg.create_pool(pg_dsn,
-                                         min_size=1,
-                                         max_size=5)
-  sql = f"""
+
+@Timer(name="fetch_top_casters_df")
+def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
+  sql = """
     with
         latest_global_rank as (
           SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=3
@@ -156,7 +150,7 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
             AND casts.fid IN (SELECT fid FROM new_fids)
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
---             LIMIT 100000
+            -- LIMIT 100000
         )
         , scores AS (
             SELECT
@@ -189,16 +183,15 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str):
     WHERE fid not in (select fid from pretrust)
     order by cast_score DESC
   """
-  return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
+  return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
 
-@Timer(name="fetch_top_spammers")
-async def fetch_top_spammers(logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime):
-  pool = await asyncpg.create_pool(pg_dsn,
-                                         min_size=1,
-                                         max_size=5)
 
-  start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
-  end_date_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+@Timer(name="fetch_top_spammers_df")
+def fetch_top_spammers_df(
+    logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime
+):
+  start_date_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+  end_date_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
   sql = f"""
     WITH all_casts AS (
@@ -296,4 +289,24 @@ async def fetch_top_spammers(logger: logging.Logger, pg_dsn: str, start_date: da
     AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
     ORDER BY spammer_score DESC
   """
-  return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
+  return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
+
+def insert_dune_table(api_key, namespace, table_name, scores_df):
+  headers = {
+      "X-DUNE-API-KEY": api_key,
+      "Content-Type": "text/csv"
+  }
+
+  url = f"https://api.dune.com/api/v1/table/{namespace}/{table_name}/clear"
+  clear_resp = requests.request("POST", url, data="", headers=headers)
+  print('clear_resp', clear_resp.status_code, clear_resp.text)
+
+  csv_buffer = StringIO()
+  scores_df.to_csv(csv_buffer, index=False)
+  csv_buffer.seek(0)
+
+  url = f'https://api.dune.com/api/v1/table/{namespace}/{table_name}/insert'
+
+  insert_resp = requests.request("POST", url, data=csv_buffer.getvalue(), headers=headers)
+  print('insert to dune resp', insert_resp.status_code, insert_resp.text)
+  return insert_resp
