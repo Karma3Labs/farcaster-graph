@@ -351,7 +351,7 @@ CREATE TABLE public.warpcast_channels_data (
 );
 
 ----------------------------------------------
-CREATE TABLE public.k3l_top_casters (
+CREATE TABLE UNLOGGED public.k3l_top_casters (
 	i int8 NOT NULL,
 	v float8 NOT NULL,
 	date_iso date NOT NULL
@@ -359,7 +359,7 @@ CREATE TABLE public.k3l_top_casters (
 
 -----------------------------------------
 
-CREATE TABLE public.k3l_top_spammers (
+CREATE TABLE UNLOGGED public.k3l_top_spammers (
   fid int8 NOT NULL,
   display_name text NOT NULL,
   total_outgoing int8 NOT NULL,
@@ -382,3 +382,54 @@ CREATE TABLE public.localtrust_stats_v2 (
     strategy_id int8,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
+---------------------------------------------------------------
+-- Table structure
+CREATE TABLE public.pretrust_v2 (
+	fid int8 NULL,
+	fname text NULL,
+	fid_active_tier int4 NULL,
+	fid_active_tier_name text NULL,
+	data_source varchar(32) NULL,
+	insert_ts timestamp NULL,
+	strategy_id int8 NULL
+);
+-- How it was created
+CREATE TABLE public.pretrust_v2 AS (
+SELECT * from public.pretrust
+)
+
+ALTER TABLE pretrust_v2
+ADD COLUMN strategy_id int8;
+
+UPDATE pretrust_v2
+SET strategy_id = 1
+
+INSERT INTO pretrust_v2 (fid,fname,fid_active_tier,
+fid_active_tier_name,data_source,insert_ts,strategy_id)
+SELECT fid,fname,fid_active_tier,
+fid_active_tier_name,data_source,insert_ts,3
+FROM pretrust;
+
+-- UPLOADED THE NEW PRETRUST CSV FROM DUNE QUERY
+SELECT DISTINCT
+    q.fid,
+    fid_info.display_name as fname,
+    q.fid_active_tier,
+    q.fid_active_tier_name,
+    'dune' as data_source,
+    current_timestamp as insert_ts,
+    9 as strategy_id
+FROM
+    query_3418402 AS q
+INNER JOIN
+    dune.neynar.dataset_farcaster_warpcast_power_users AS pu
+    ON q.fid = pu.fid
+LEFT JOIN query_3418402 AS engagement_recieved
+    ON q.fid = engagement_recieved.fid
+LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
+    ON q.fid = fid_info.fid
+WHERE
+    q.fid_active_tier IN (2, 3, 4)
+-------------------------------------------------
+
