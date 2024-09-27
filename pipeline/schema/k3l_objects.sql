@@ -371,3 +371,14 @@ CREATE TABLE public.k3l_top_spammers (
   total_global_rank_rows int8 NOT NULL,
   date_iso date NOT NULL
 );
+
+----------------------------------------------------------
+CREATE TABLE public.localtrust_stats_v2 (
+    date date,
+    strategy_id_row_count bigint,
+    strategy_id_mean double precision,
+    strategy_id_stddev double precision,
+    strategy_id_range double precision,
+    strategy_id int8,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);

@@ -245,7 +245,6 @@ def pretrust_for_strategy(
   with Timer(name=f"{strategy}"):
     match strategy:
       case Strategy.FOLLOWING:
-        print('yes')
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, Strategy.FOLLOWING.value[1])
       case Strategy.ENGAGEMENT:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, Strategy.ENGAGEMENT.value[1])

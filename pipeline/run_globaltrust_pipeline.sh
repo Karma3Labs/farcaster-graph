@@ -238,21 +238,21 @@ elif [ "$STEP" = "compute" ]; then
   # insert localtrust stats for ENGAGEMENT strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-    -c  "COPY localtrust_stats
+    -c  "COPY localtrust_stats_v2
     (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
 
   # insert localtrust stats for FOLLOWING strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-    -c  "COPY localtrust_stats
+    -c  "COPY localtrust_stats_v2
     (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
 
   # insert localtrust stats for V3_ENGAGEMENT strategy
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
-    -c  "COPY localtrust_stats
+    -c  "COPY localtrust_stats_v2
     (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.v3engagement${TARGET_DATE_SUFFIX}.csv
 
