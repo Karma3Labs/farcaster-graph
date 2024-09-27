@@ -182,7 +182,7 @@ def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_dat
       gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.FOLLOWING, target_date) 
     case Step.compute_engagement:
       gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date)
-    case Step.compute_engagement_v3:
+    case Step.compute_v3engagement:
       gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
 
 if __name__ == '__main__':
