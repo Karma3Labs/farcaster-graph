@@ -351,7 +351,7 @@ CREATE TABLE public.warpcast_channels_data (
 );
 
 ----------------------------------------------
-CREATE TABLE UNLOGGED public.k3l_top_casters (
+CREATE TABLE public.k3l_top_casters (
 	i int8 NOT NULL,
 	v float8 NOT NULL,
 	date_iso date NOT NULL
@@ -359,7 +359,7 @@ CREATE TABLE UNLOGGED public.k3l_top_casters (
 
 -----------------------------------------
 
-CREATE TABLE UNLOGGED public.k3l_top_spammers (
+CREATE TABLE public.k3l_top_spammers (
   fid int8 NOT NULL,
   display_name text NOT NULL,
   total_outgoing int8 NOT NULL,
@@ -373,7 +373,7 @@ CREATE TABLE UNLOGGED public.k3l_top_spammers (
 );
 
 ----------------------------------------------------------
-CREATE TABLE public.localtrust_stats_v2 (
+CREATE TABLE UNLOGGED public.localtrust_stats_v2 (
     date date,
     strategy_id_row_count bigint,
     strategy_id_mean double precision,
