@@ -23,6 +23,7 @@ class Step(Enum):
   compute_following = 2
   compute_engagement = 3
   graph = 4
+  compute_v3engagement = 9
 
   def __str__(self):
     return self.name
@@ -101,13 +102,15 @@ def gen_localtrust_to_csv(
               lt_stats["mean"],
               lt_stats["std"],
               lt_stats["max"] - lt_stats["min"],
+              strategy_id,
           )
           stats_header = [
               "date",
-              f"strategy_id_{strategy_id}_row_count",
-              f"strategy_id_{strategy_id}_mean",
-              f"strategy_id_{strategy_id}_stddev",
-              f"strategy_id_{strategy_id}_range",
+              f"strategy_id_row_count",
+              f"strategy_id_mean",
+              f"strategy_id_stddev",
+              f"strategy_id_range",
+              f"strategy_id",
           ]
           with open(lt_stats_filepath, 'w', newline='') as stats_file:
             writer = csv.writer(stats_file)
@@ -126,7 +129,7 @@ def gen_pretrust_to_csv(
             f"Generate pretrust {strategy}:{strategy.value[0]}:{strategy.value[1]} for {logDate}"
         )
 
-        pt_df = compute.pretrust_for_strategy(logger, pg_dsn, strategy, target_date)
+        pt_df = compute.pretrust_for_strategy(logger, pg_dsn, strategy)
 
         (_, _, _, pt_filepath) = gen_filepaths(outdir, strategy, target_date)
         logger.info(f"CSV filepath: {pt_filepath}")
@@ -171,14 +174,16 @@ def main(step:Step, pg_dsn: str, ptcsv:Path, ltcsv:Path, outdir:Path, target_dat
     case Step.prep:
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
-      gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V2ENGAGEMENT, target_date)
       gen_localtrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
       gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date)
+      gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
     case Step.compute_following:
       gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.FOLLOWING, target_date) 
     case Step.compute_engagement:
-      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date) 
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.ENGAGEMENT, target_date)
+    case Step.compute_v3engagement:
+      gen_globaltrust_to_csv(ptcsv, ltcsv, outdir, compute.Strategy.V3ENGAGEMENT, target_date)
 
 if __name__ == '__main__':
     load_dotenv()

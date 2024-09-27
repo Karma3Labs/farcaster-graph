@@ -30,7 +30,13 @@ def construct_query(query: SQL, where_clause: str) -> SQL:
             condition = f"AND {where_clause}"
         else:
             condition = f"WHERE {where_clause}"
+
     query.value = query.value.format(condition=condition)
+    return query
+
+
+def construct_pretrust_query(query: SQL, strategy_id: int) -> SQL:
+    query.value = query.value.format(strategy=strategy_id)
     return query
 
 

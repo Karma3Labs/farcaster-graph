@@ -49,13 +49,14 @@ class IJVSql:
 class IVSql:
   PRETRUST_TOP_TIER = SQL("PRETRUST_TOP_TIER", """
     WITH pt_size AS (
-      select count(*) as ct from pretrust 
-      where insert_ts=(select max(insert_ts) from pretrust)
+      select count(*) as ct from pretrust_v2 
+      where insert_ts=(select max(insert_ts) from pretrust_v2 where strategy_id = {strategy})
+      and strategy_id = {strategy}
     ) 
     SELECT fid as i, 1/ct::numeric as v
-    FROM pretrust, pt_size
-    WHERE insert_ts=(select max(insert_ts) from pretrust)
-    {condition}
+    FROM pretrust_v2, pt_size
+    WHERE insert_ts=(select max(insert_ts) from pretrust_v2 where strategy_id = {strategy})
+    AND strategy_id = {strategy}
     """)
   PRETRUST_POPULAR = SQL("PRETRUST_POPULAR", """
     SELECT
