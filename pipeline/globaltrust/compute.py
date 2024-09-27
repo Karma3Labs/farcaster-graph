@@ -22,7 +22,7 @@ class Strategy(Enum):
   ENGAGEMENT = ('engagement', 3) # Follows1Likes1Replies6Recasts3Mentions12
   # ACTIVITY = ('activity', 5)
   # V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
-  V3ENGAGEMENT = ('v3engagement', 9) # Follows1Likes1or2Replies6or7Recasts3or4Mentions12or13
+  V3ENGAGEMENT = ('v3engagement', 9) # Follows1Likes1or2Replies3or4Recasts6or7Mentions12or13
   GRAPH_90DV3 = ('graph_90dv3', 11) # Similar to V3 but with 90d window
 
 def _fetch_pt_toptier_df(logger: logging.Logger, pg_dsn: str, strategy_id: int) -> pd.DataFrame:
