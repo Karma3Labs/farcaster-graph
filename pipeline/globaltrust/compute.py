@@ -21,7 +21,6 @@ class Strategy(Enum):
   FOLLOWING = ('follows', 1)
   ENGAGEMENT = ('engagement', 3) # Follows1Likes1Replies6Recasts3Mentions12
   # ACTIVITY = ('activity', 5)
-  # V2ENGAGEMENT = ('v2engagement', 7) # Follows1Likes1Replies3Recasts6Mentions12
   V3ENGAGEMENT = ('v3engagement', 9) # Follows1Likes1or2Replies3or4Recasts6or7Mentions12or13
   GRAPH_90DV3 = ('graph_90dv3', 11) # Similar to V3 but with 90d window
 
@@ -212,11 +211,6 @@ def localtrust_for_strategy(
           intx_df[intx_df['l1rep6rec3m12'] > 0] \
             [['i','j','l1rep6rec3m12']] \
               .rename(columns={'l1rep6rec3m12':'v'})
-      # case Strategy.V2ENGAGEMENT:
-      #   lt_df = \
-      #     intx_df[intx_df['l1rep3rec6m12'] > 0] \
-      #       [['i','j','l1rep3rec6m12']] \
-      #         .rename(columns={'l1rep3rec6m12':'v'})
       case Strategy.V3ENGAGEMENT | Strategy.GRAPH_90DV3:
         lt_df = \
           intx_df[intx_df['fboostedl1rep3rec6m12'] > 0] \
@@ -248,8 +242,6 @@ def pretrust_for_strategy(
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, Strategy.FOLLOWING.value[1])
       case Strategy.ENGAGEMENT:
         pt_df = _fetch_pt_toptier_df(logger, pg_dsn, Strategy.ENGAGEMENT.value[1])
-      # case Strategy.V2ENGAGEMENT:
-      #   pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.FOLLOWING.value[1])
       # case Strategy.ACTIVITY:
       #   pt_df = _fetch_pt_toptier_df(logger, pg_dsn, target_date, Strategy.FOLLOWING.value[1])
       case Strategy.V3ENGAGEMENT:
