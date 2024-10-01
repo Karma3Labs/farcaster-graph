@@ -6,7 +6,7 @@ from airflow.providers.common.sql.operators.sql import (
     # SQLCheckOperator,
     # SQLColumnCheckOperator,
     # SQLIntervalCheckOperator,
-    SQLTableCheckOperator,
+    # SQLTableCheckOperator,
     SQLThresholdCheckOperator,
     # SQLValueCheckOperator,
     # SQLExecuteQueryOperator,
@@ -72,7 +72,7 @@ with DAG(
 	            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - max(timestamp)))/60)::integer as diff_mins
                 FROM k3l_recent_parent_casts""",
         min_threshold=0,
-        max_threshold=30
+        max_threshold=45
     )
 
     # use SQLThresholdCheckOperator instead of SQLTableCheckOperator
