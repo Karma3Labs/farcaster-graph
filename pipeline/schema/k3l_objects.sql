@@ -412,6 +412,7 @@ fid_active_tier_name,data_source,insert_ts,3
 FROM pretrust;
 
 -- UPLOADED THE NEW PRETRUST CSV FROM DUNE QUERY
+-- https://dune.com/queries/4005516/6743472
 SELECT DISTINCT
     q.fid,
     fid_info.display_name as fname,
