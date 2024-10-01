@@ -95,6 +95,22 @@ with DAG(
         max_threshold=45
     )
 
+    check_spammers_count = SQLThresholdCheckOperator(
+        task_id="check_spammers_count",
+        conn_id=_CONN_ID,
+        sql="""SELECT count(*) FROM k3l_top_spammers WHERE date_iso > now() - interval '1 days'""",
+        min_threshold=25_000,
+        max_threshold=100_000
+    )
+
+    check_top_casters_count = SQLThresholdCheckOperator(
+        task_id="check_top_casters_count",
+        conn_id=_CONN_ID,
+        sql="""SELECT count(*) FROM k3l_top_casters WHERE date_iso > now() - interval '1 days'""",
+        min_threshold=2_000,
+        max_threshold=10_000
+    )
+
     end = EmptyOperator(task_id="end")
 
     (
@@ -105,5 +121,7 @@ with DAG(
         >> check_cast_actions_lag
         >> check_parent_casts_count
         >> check_cast_actions_count
+        >> check_spammers_count
+        >> check_top_casters_count
         >> end
     )
