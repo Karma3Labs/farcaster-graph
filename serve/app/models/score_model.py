@@ -22,6 +22,10 @@ class QueryType(StrEnum):
   LITE = 'lite'
   HEAVY = 'heavy'
 
+class EngagementType(StrEnum):
+  V3Engagement = 'v3_engagement'
+  V1Engagement = 'v1_engagement'
+
 class Weights(NamedTuple):
   cast:int = 10
   recast:int = 5
