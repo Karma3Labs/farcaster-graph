@@ -50,9 +50,9 @@ async def get_top_engagement_profiles(
   This API takes two optional parameters - offset and limit. \n
   By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
   """
-    if engagement_type == 'v1_engagement':
+    if engagement_type == EngagementType.V1Engagement:
         strategy_id = GraphType.engagement.value
-    elif engagement_type == 'v3_engagement':
+    elif engagement_type == EngagementType.V3Engagement:
         strategy_id = GraphType.v3engagement.value
 
     ranks = await db_utils.get_top_profiles(strategy_id=strategy_id,
@@ -152,9 +152,9 @@ async def get_engagement_rank_for_fids(
   """
     if not (1 <= len(fids) <= 100):
         raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-    if engagement_type == 'v1_engagement':
+    if engagement_type == EngagementType.V1Engagement:
         strategy_id = GraphType.engagement.value
-    elif engagement_type == 'v3_engagement':
+    elif engagement_type == EngagementType.V3Engagement:
         strategy_id = GraphType.v3engagement.value
 
     ranks = await db_utils.get_profile_ranks(strategy_id=strategy_id,
@@ -197,9 +197,9 @@ async def get_engagement_rank_for_handles(
     fids = [hf["fid"] for hf in handle_fids]
     print(fids)
 
-    if engagement_type == 'v1_engagement':
+    if engagement_type == EngagementType.V1Engagement:
         strategy_id = GraphType.engagement.value
-    elif engagement_type == 'v3_engagement':
+    elif engagement_type == EngagementType.V3Engagement:
         strategy_id = GraphType.v3engagement.value
 
     ranks = await db_utils.get_profile_ranks(strategy_id=strategy_id,
