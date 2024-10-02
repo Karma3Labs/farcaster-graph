@@ -21,7 +21,7 @@ with DAG(
     default_args=default_args,
     description='This fetches spammers and save the list into s3',
     start_date=datetime(2024, 8, 15),
-    schedule_interval='30 20 * * *',
+    schedule_interval='0 0 * * *',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
