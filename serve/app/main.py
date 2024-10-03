@@ -142,13 +142,13 @@ APP_NAME = "farcaster-graph-a" #os.environ.get("APP_NAME", "farcaster-graph-a")
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
 
 app.add_middleware(CorrelationIdMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 app.include_router(direct_router, prefix='/links')
 app.include_router(graph_router, prefix='/graph')
