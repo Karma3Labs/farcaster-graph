@@ -50,10 +50,11 @@ def fetch_channel_data(csv_path):
 
 
 def process_channel(cid, channel_data, pg_dsn, pg_url):
+    host_fids = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
-        host_fids = list(
-            set(int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]))
+        lead_fid = channel.lead_fid
+        host_fids.append(lead_fid)
     except Exception as e:
         logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
         raise e
@@ -63,12 +64,12 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
 
     utils.log_memusage(logger)
     try:
-        global_lt_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel.project_url)
-        global_lt_df = global_lt_df.rename(columns={'l1rep6rec3m12': 'v'})
-        logger.info(utils.df_info_to_string(global_lt_df, with_sample=True))
+        channel_interactions_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel.project_url)
+        channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
+        logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
     except Exception as e:
-        logger.error(f"Failed to fetch global interactions DataFrame: {e}")
+        logger.error(f"Failed to fetch channel interactions DataFrame: {e}")
         raise e
         # return {cid: []}
 
@@ -88,16 +89,18 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
     fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
 
     try:
-        channel_lt_df = global_lt_df[global_lt_df['i'].isin(fids) & global_lt_df['j'].isin(fids)]
-        logger.info(utils.df_info_to_string(channel_lt_df, with_sample=True))
+        # filter channel interactions by those following the channel
+        channel_lt_df = channel_interactions_df[channel_interactions_df['i'].isin(fids) & channel_interactions_df['j'].isin(fids)]
+        logger.info(f"Localtrust: {utils.df_info_to_string(channel_lt_df, with_sample=True)}")
     except Exception as e:
         logger.error(f"Failed to compute local trust for channel {cid}: {e}")
         # return {cid: []}
         raise e
 
-    present_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
-    absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
-    logger.info(f"Absent Fids for the channel: {absent_fids}")
+    pretrust_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
+    absent_fids = set(host_fids) - set(channel_lt_df['i'].values)
+    logger.info(f"Absent Host Fids for the channel: {absent_fids}")
+    logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_fids, with_sample=True)}")
 
     if len(channel_lt_df) == 0:
         logger.error(f"No local trust for channel {cid}")
@@ -106,7 +109,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
         raise Exception(f"No local trust for channel {cid}")
 
     try:
-        scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=present_fids)
+        scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
         logger.error(f"Failed to compute EigenTrust scores for channel {cid}: {e}")
         # return {cid: absent_fids}
