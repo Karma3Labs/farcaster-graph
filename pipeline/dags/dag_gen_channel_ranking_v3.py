@@ -36,7 +36,10 @@ def extract_channel_ids(channel_ids: str) -> list:
     default_args=default_args,
     description='This runs the channel ranking pipeline',
     start_date=datetime(2024, 6, 21, 2),
-    schedule_interval='0 */6 * * *',
+    # schedule_interval='0 */6 * * *',
+    schedule_interval=timedelta(hours=6),
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False  # To avoid backfilling if not required
 )
 def create_dag():
