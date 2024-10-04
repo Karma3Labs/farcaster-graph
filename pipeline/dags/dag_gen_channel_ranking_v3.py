@@ -3,6 +3,8 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.decorators import task, dag
 from airflow.operators.python import PythonOperator
+from airflow.utils.trigger_rule import TriggerRule
+
 import math
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -67,7 +69,7 @@ def create_dag():
     cleanup_db_task = BashOperator(
         task_id='cleanup_db',
         bash_command=f'cd /pipeline && {SHELL_SCRIPT} -w {PIPELINE_DIR} -v {VENV_DIR} -t cleanup -c {CSV_PATH}',
-        trigger_rule='all_done'
+        trigger_rule=TriggerRule.ALL_SUCCESS
     )
 
     push_to_dune_task = BashOperator(
