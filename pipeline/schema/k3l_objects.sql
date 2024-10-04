@@ -354,7 +354,8 @@ CREATE TABLE public.warpcast_channels_data (
 CREATE TABLE public.k3l_top_casters (
 	i int8 NOT NULL,
 	v float8 NOT NULL,
-	date_iso date NOT NULL
+	date_iso date NOT NULL,
+	cast_hash bytea NULL
 );
 
 -----------------------------------------
