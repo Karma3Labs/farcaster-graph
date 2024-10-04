@@ -100,7 +100,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
     pretrust_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
     absent_fids = set(host_fids) - set(channel_lt_df['i'].values)
     logger.info(f"Absent Host Fids for the channel: {absent_fids}")
-    logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_fids, with_sample=True)}")
+    logger.info(f"Pretrust FIDs: {pretrust_fids}")
 
     if len(channel_lt_df) == 0:
         logger.error(f"No local trust for channel {cid}")
