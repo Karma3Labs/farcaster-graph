@@ -114,7 +114,7 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
   sql = """
     with
         latest_global_rank as (
-          SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=3
+          SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=9
           AND date in (select max(date) from k3l_rank)
         ),
         new_fids AS (
@@ -179,7 +179,7 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
     ORDER BY cast_score DESC
     OFFSET 0
     )
-    select fid as i, cast_score as v from cast_details
+    select cast_hash,fid as i, cast_score as v from cast_details
     WHERE fid not in (select fid from pretrust)
     order by cast_score DESC
   """
