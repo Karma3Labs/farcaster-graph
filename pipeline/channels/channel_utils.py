@@ -83,10 +83,11 @@ def get_seed_fids_from_csv(csv_path):
     Rename the columns and select only relevant columns.
     Create the list of fids
     """
-    seeds_df = pd.read_csv(csv_path, keep_default_na=False)
+    seeds_df = pd.read_csv(csv_path)
+    seeds_df = seeds_df.dropna(subset = ['channel id'])
     seeds_df.rename(columns={"Seed Peers FIDs": "seed_peers"}, inplace=True)
     seeds_df = seeds_df[["channel id", "seed_peers"]]
     seeds_df["seed_peers"] = seeds_df["seed_peers"].astype(str)
-    seeds_df["seed_fids_list"] = seeds_df.apply(lambda row: [] if row["seed_peers"] == "" else row["seed_peers"].split(","), axis=1)
+    seeds_df["seed_fids_list"] = seeds_df.apply(lambda row: [] if row["seed_peers"] == "nan" else row["seed_peers"].split(","), axis=1)
     seeds_df['channel id'] = seeds_df['channel id'].str.lower()
     return seeds_df
