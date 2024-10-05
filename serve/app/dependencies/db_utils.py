@@ -1322,7 +1322,7 @@ async def get_top_channel_followers(
         any_value(username) as username
     FROM followers_data
     GROUP BY fid,channel_id,followedat,channel_rank,global_rank
-    ORDER BY channel_rank,global_rank
+    ORDER BY channel_rank,global_rank NULLS LAST
     """
 
     return await fetch_rows(channel_id, limit, sql_query=sql_query, pool=pool)
