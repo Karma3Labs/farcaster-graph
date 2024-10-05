@@ -1319,8 +1319,6 @@ async def get_top_channel_followers(
     on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
     LEFT JOIN fnames on (fnames.fid = wf.fid)
     LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type=6)
-    OFFSET $2
-    LIMIT $3
     )
     SELECT 
         fid,
@@ -1332,6 +1330,8 @@ async def get_top_channel_followers(
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
     ORDER BY channel_rank,global_rank NULLS LAST
+    OFFSET $2
+    LIMIT $3
     """
 
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
