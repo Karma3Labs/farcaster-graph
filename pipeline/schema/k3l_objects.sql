@@ -441,7 +441,7 @@ CREATE TABLE public.warpcast_followers (
   channel_id text NOT NULL
  );
  
-CREATE UNIQUE INDEX warpcast_followers_ts_ch_fid_idx ON public.warpcast_followers USING btree (insert_ts, channel_id, fid);
+CREATE INDEX warpcast_followers_ts_ch_fid_idx ON public.warpcast_followers USING btree (insert_ts, channel_id, fid);
 CREATE INDEX warpcast_followers_ch_id_idx ON public.warpcast_followers USING btree (channel_id);
 CREATE INDEX warpcast_followers_fid_idx ON public.warpcast_followers USING btree (fid);
 
