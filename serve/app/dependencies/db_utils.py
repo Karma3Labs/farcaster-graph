@@ -1290,14 +1290,15 @@ async def get_top_channel_followers(
         pool: Pool
 ):
     sql_query = """
+    WITH followers_data as (
     SELECT
         wf.fid,
         wf.channel_id,
         wf.followedat,
         klcr.rank as channel_rank,
         k3l_rank.rank as global_rank,
-        any_value(fnames.fname) as fname,
-        any_value(user_data.value) as username
+        fnames.fname as fname,
+        user_data.value as username
     FROM warpcast_followers wf 
     LEFT JOIN k3l_channel_rank klcr 
     on wf.fid = klcr.fid 
@@ -1307,8 +1308,21 @@ async def get_top_channel_followers(
     LEFT JOIN fnames on (fnames.fid = wf.fid)
     LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type=6)
     WHERE wf.channel_id = $1
-    GROUP BY wf.fid,wf.channel_id,wf.followedat,channel_rank,global_rank
-    LIMIT $3
+    AND wf.insert_ts=(select max(insert_ts) 
+        FROM warpcast_followers where channel_id=$1)
+    LIMIT $2
+    )
+    SELECT 
+        fid,
+        channel_id,
+        followedat,
+        channel_rank,
+        global_rank,
+        any_value(fname) as fname,
+        any_value(username) as username
+    FROM followers_data
+    GROUP BY fid,channel_id,followedat,channel_rank,global_rank
+    ORDER BY channel_rank,global_rank
     """
 
     return await fetch_rows(channel_id, limit, sql_query=sql_query, pool=pool)
