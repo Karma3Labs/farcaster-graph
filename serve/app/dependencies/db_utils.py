@@ -1292,7 +1292,7 @@ async def get_top_channel_followers(
     sql_query = """
     SELECT
         wf.fid,
-        wf.channel_id
+        wf.channel_id,
         wf.followedat,
         klcr.rank as channel_rank,
         k3l_rank.rank as global_rank,
@@ -1306,7 +1306,8 @@ async def get_top_channel_followers(
     on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
     LEFT JOIN fnames on (fnames.fid = wf.fid)
     LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type=6)
-    WHERE channel_id = $1 
+    WHERE wf.channel_id = $1
+    GROUP BY wf.fid,wf.channel_id,wf.followedat,channel_rank,global_rank
     LIMIT $3
     """
 
