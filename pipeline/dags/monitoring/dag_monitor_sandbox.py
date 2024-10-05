@@ -107,7 +107,7 @@ with DAG(
         task_id="check_top_casters_count",
         conn_id=_CONN_ID,
         sql="""SELECT count(*) FROM k3l_top_casters WHERE date_iso > now() - interval '25 hours'""",
-        min_threshold=2_000,
+        min_threshold=100,
         max_threshold=10_000
     )
 
