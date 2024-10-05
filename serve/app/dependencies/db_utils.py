@@ -1282,3 +1282,56 @@ async def get_top_spammers(
                     order by global_rank
                     OFFSET $1 LIMIT $2"""
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
+
+
+async def get_top_channel_followers(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    sql_query = """
+    
+    WITH 
+    distinct_warpcast_followers as (
+     SELECT 
+    	distinct
+        fid,
+        channel_id
+    FROM warpcast_followers
+    WHERE channel_id = $1
+    AND insert_ts=(select max(insert_ts) 
+            FROM warpcast_followers where channel_id=$1)
+    ),
+    followers_data as (
+    SELECT
+        wf.fid,
+        wf.channel_id,
+        klcr.rank as channel_rank,
+        k3l_rank.rank as global_rank,
+        fnames.fname as fname,
+        user_data.value as username
+    FROM distinct_warpcast_followers wf 
+    LEFT JOIN k3l_channel_rank klcr 
+    on wf.fid = klcr.fid 
+    and wf.channel_id  = klcr.channel_id 
+    LEFT JOIN k3l_rank
+    on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
+    LEFT JOIN fnames on (fnames.fid = wf.fid)
+    LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type=6)
+    )
+    SELECT 
+        fid,
+        channel_id,
+        channel_rank,
+        global_rank,
+        any_value(fname) as fname,
+        any_value(username) as username
+    FROM followers_data
+    GROUP BY fid,channel_id,channel_rank,global_rank
+    ORDER BY channel_rank,global_rank NULLS LAST
+    OFFSET $2
+    LIMIT $3
+    """
+
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
