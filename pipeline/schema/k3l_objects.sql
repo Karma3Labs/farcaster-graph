@@ -434,7 +434,7 @@ LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
 WHERE
     q.fid_active_tier IN (2, 3, 4)
 -------------------------------------------------
-CREATE UNLOGGED TABLE public.warpcast_followers (
+CREATE TABLE public.warpcast_followers (
   fid int8 NOT NULL,
   followedAt bigint NOT NULL,
   insert_ts timestamp without time zone NOT NULL,
