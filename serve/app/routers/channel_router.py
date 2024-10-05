@@ -203,7 +203,7 @@ async def get_popular_casts_from_degen_graph(
 async def get_top_channel_followers(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=1000)] = 100,
+        limit: Annotated[int | None, Query(le=500000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
 ):
     """
