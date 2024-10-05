@@ -374,7 +374,7 @@ CREATE TABLE public.k3l_top_spammers (
 );
 
 ----------------------------------------------------------
-CREATE TABLE UNLOGGED public.localtrust_stats_v2 (
+CREATE UNLOGGED TABLE public.localtrust_stats_v2 (
     date date,
     strategy_id_row_count bigint,
     strategy_id_mean double precision,
@@ -434,7 +434,7 @@ LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
 WHERE
     q.fid_active_tier IN (2, 3, 4)
 -------------------------------------------------
-CREATE TABLE UNLOGGED public.warpcast_followers (
+CREATE UNLOGGED TABLE public.warpcast_followers (
   fid int8 NOT NULL,
   followedAt bigint NOT NULL,
   insert_ts timestamp without time zone NOT NULL,
