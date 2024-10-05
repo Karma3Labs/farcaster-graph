@@ -200,8 +200,9 @@ async def get_popular_casts_from_degen_graph(
 
 
 @router.get("/followers/{channel}")
-async def get_top_channel_profiles(
+async def get_top_channel_followers(
         channel: str,
+        offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
 ):
@@ -216,6 +217,7 @@ async def get_top_channel_profiles(
   """
     followers = await db_utils.get_top_channel_followers(
         channel_id=channel,
+        offset=offset,
         limit=limit,
         pool=pool)
     return {"result": followers}
