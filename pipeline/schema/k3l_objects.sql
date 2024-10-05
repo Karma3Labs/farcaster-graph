@@ -434,4 +434,14 @@ LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
 WHERE
     q.fid_active_tier IN (2, 3, 4)
 -------------------------------------------------
-
+CREATE TABLE UNLOGGED public.warpcast_followers (
+  fid int8 NOT NULL,
+  followedAt bigint NOT NULL,
+  insert_ts timestamp without time zone NOT NULL,
+  channel_id text NOT NULL
+ );
+ 
+CREATE UNIQUE INDEX warpcast_followers_ts_ch_fid_idx ON public.warpcast_followers USING btree (insert_ts, channel_id, fid);
+CREATE INDEX warpcast_followers_ch_id_idx ON public.warpcast_followers USING btree (channel_id);
+CREATE INDEX warpcast_followers_fid_idx ON public.warpcast_followers USING btree (fid);
+-------------------------------------------------
