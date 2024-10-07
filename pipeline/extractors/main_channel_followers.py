@@ -82,7 +82,7 @@ async def main(daemon: bool, scope: Scope, csv_path: Path):
                                                 sock_read=settings.WARPCAST_CHANNELS_TIMEOUT_SECS)
             connector = aiohttp.TCPConnector(ttl_dns_cache=3000, limit=settings.WARPCAST_PARALLEL_REQUESTS)
 
-            db_pool = await asyncpg.create_pool(settings.POSTGRES_URL.get_secret_value(),
+            db_pool = await asyncpg.create_pool(settings.POSTGRES_ASYNC_URI.get_secret_value(),
                                             min_size=1,
                                             max_size=settings.POSTGRES_POOL_SIZE)
 
