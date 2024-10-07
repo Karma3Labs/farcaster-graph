@@ -14,7 +14,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='extract_refresh_frame_url_v0',
+    dag_id='extract_frame_url_v0',
     default_args=default_args,
     description='Extract urls from cast embeds for frames and refresh pg statistics',
     start_date=datetime(2024, 7, 9, 18),
