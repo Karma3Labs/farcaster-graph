@@ -1255,7 +1255,7 @@ async def get_top_casters(
         limit: int,
         pool: Pool
 ):
-    sql_query = f""" select i as fid, v as score from k3l_top_casters 
+    sql_query = f""" select cast_hash, i as fid, v as score from k3l_top_casters 
                     where date_iso = (select max(date_iso) from k3l_top_casters)
                     order by v desc
                     OFFSET $1 LIMIT $2"""
