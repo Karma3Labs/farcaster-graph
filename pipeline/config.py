@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
 
-    DB_CHANNEL_FIDS:str
+    DB_CHANNEL_FIDS:str # Deprecated. Remove in future update.
 
     POSTGRES_POOL_SIZE: int = 10
     POSTGRES_TIMEOUT_SECS: int = 60
@@ -39,14 +39,14 @@ class Settings(BaseSettings):
     WARPCAST_CHANNELS_TIMEOUT: int = 5 # Deprecated. Remove in future update.
     WARPCAST_PARALLEL_REQUESTS: int = 10
     WARPCAST_CHANNELS_TIMEOUT_SECS: int = 5
-    WARPCAST_SLEEP_SECS:int = 1
+    WARPCAST_SLEEP_SECS:float = 1.0
     DAEMON_SLEEP_SECS: int = 300
     CHANNEL_SLEEP_SECS:int = 1
 
     PERSONAL_IGRAPH_INPUT: str
     PERSONAL_IGRAPH_URL: str
 
-    USE_NEYNAR:bool = True # TODO deprecate this
+    USE_NEYNAR:bool = True # Deprecated. Remove in future update.
     IS_TEST: bool = False
     TEST_CURSOR_LIMIT: int = 2
     TEST_CHANNEL_LIMIT: int = 2
