@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     DB_CHANNEL_FIDS:str
 
+    POSTGRES_POOL_SIZE: int = 10
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
     GO_EIGENTRUST_TIMEOUT_MS:int = 600_000 # 10 mins
@@ -34,7 +35,12 @@ class Settings(BaseSettings):
     CASTS_BATCH_INTERVAL_HRS: int = 1 # Deprecated. Remove in future update.
     CASTS_BATCH_LIMIT:int = 100_000
 
-    WARPCAST_CHANNELS_TIMEOUT: int = 5
+    
+    WARPCAST_CHANNELS_TIMEOUT: int = 5 # Deprecated. Remove in future update.
+    WARPCAST_PARALLEL_REQUESTS: int = 10
+    WARPCAST_CHANNELS_TIMEOUT_SECS: int = 5
+    WARPCAST_SLEEP_SECS:int = 1
+    DAEMON_SLEEP_SECS: int = 300
     CHANNEL_SLEEP_SECS:int = 1
 
     PERSONAL_IGRAPH_INPUT: str
@@ -42,6 +48,8 @@ class Settings(BaseSettings):
 
     USE_NEYNAR:bool = True # TODO deprecate this
     IS_TEST: bool = False
+    TEST_CURSOR_LIMIT: int = 2
+    TEST_CHANNEL_LIMIT: int = 2
 
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = '[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s'

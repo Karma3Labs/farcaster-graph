@@ -1,24 +1,18 @@
 # standard dependencies
 import sys
 import argparse
-from random import sample
 import asyncio
-from io import StringIO
-import json
 from datetime import date
 
 # local dependencies
 import db_utils
 from sqlalchemy import create_engine
 
-from . import channel_utils
 from . import channel_db_utils
 from config import settings
-from timer import Timer
 
 from dotenv import load_dotenv
 from loguru import logger
-import requests
 import pandas as pd
 
 logger.remove()
@@ -35,9 +29,14 @@ logger.add(sys.stdout,
 
 def fetch_channel_data(csv_path):
     try:
-        channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
-        channel_ids = channel_data["channel id"].values.tolist()
-        channel_ids = [e.lower() for e in channel_ids]
+        seeds_df = pd.read_csv(csv_path)
+        seeds_df = seeds_df.dropna(subset = ['channel id'])
+        seeds_df.rename(columns={"Seed Peers FIDs": "seed_peers"}, inplace=True)
+        seeds_df = seeds_df[["channel id", "seed_peers"]]
+        seeds_df["seed_peers"] = seeds_df["seed_peers"].astype(str)
+        seeds_df["seed_fids_list"] = seeds_df.apply(lambda row: [] if row["seed_peers"] == "nan" else row["seed_peers"].split(","), axis=1)
+        seeds_df['channel id'] = seeds_df['channel id'].str.lower()
+        channel_ids = seeds_df["channel id"].values.tolist()
         return channel_ids
     except Exception as e:
         logger.error(f"Failed to read channel data from CSV: {e}")
