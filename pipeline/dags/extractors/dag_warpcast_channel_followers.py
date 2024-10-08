@@ -25,6 +25,9 @@ with DAG(
 ) as dag:
     task1 = BashOperator(
         task_id='extract_channel_followers',
-        bash_command='cd /pipeline; extractors/extract_channel_followers.sh" \
-             " -w . -v .venv -c channels/Top_Channels.csv -s top'
+        bash_command="cd /pipeline; extractors/extract_channel_followers.sh" 
+                        " -w . -v .venv -c channels/Top_Channels.csv -s top",
+        dag=dag
     )
+
+    task1
