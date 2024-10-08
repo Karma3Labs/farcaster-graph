@@ -18,7 +18,10 @@ with DAG(
     default_args=default_args,
     description='Extract urls from cast embeds for frames and refresh pg statistics',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='1-59/20 * * * *',
+    # schedule_interval='1-59/20 * * * *',
+    schedule_interval=timedelta(minutes=20),
+    is_paused_upon_creation=True,
+    max_active_runs=1,
     catchup=False,
 ) as dag:
     task1 = BashOperator(
