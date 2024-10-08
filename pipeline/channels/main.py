@@ -9,15 +9,12 @@ import utils
 import db_utils
 import go_eigentrust
 from config import settings
-from timer import Timer
 from . import channel_utils
 from . import compute_trust
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import niquests
-from urllib3.util import Retry
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -36,18 +33,6 @@ logger.add(sys.stdout,
            level=0)
 
 load_dotenv()
-
-
-def fetch_channel_data(csv_path):
-    try:
-        channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
-        channel_ids = channel_data["channel id"].values.tolist()
-        channel_ids = [e.lower() for e in channel_ids]
-        return channel_ids
-    except Exception as e:
-        logger.error(f"Failed to read channel data from CSV: {e}")
-        return []
-
 
 def process_channel(cid, channel_data, pg_dsn, pg_url):
     host_fids = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
@@ -145,7 +130,7 @@ def process_channels(csv_path: str, channel_ids_str: str):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    channel_data = channel_utils.get_seed_fids_from_csv(csv_path)
+    channel_data = channel_utils.read_channel_seed_fids_csv(csv_path)
     channel_ids = channel_ids_str.split(',')
     missing_seed_fids = []
 
@@ -174,7 +159,7 @@ if __name__ == "__main__":
     logger.debug('hello main')
 
     if args.task == 'fetch':
-        channel_ids = fetch_channel_data(args.csv)
+        channel_ids = channel_utils.read_channel_ids_csv(args.csv)
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
         if args.channel_ids:

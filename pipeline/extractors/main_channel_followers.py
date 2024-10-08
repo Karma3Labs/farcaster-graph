@@ -9,11 +9,11 @@ import asyncpg
 
 from config import settings
 from extractors.channel_extractor_utils import (
-    read_top_channels_csv,
     fetch_all_channels_warpcast,
     process_channel,
 )
 from timer import Timer
+from channels import channel_utils
 
 import aiohttp
 import pandas as pd
@@ -57,7 +57,7 @@ async def main(daemon: bool, scope: Scope, csv_path: Path):
         try:
 
             logger.info(f"Reading all top channels from CSV:{csv_path}")
-            top_channel_ids = read_top_channels_csv(csv_path)
+            top_channel_ids = channel_utils.read_channel_ids_csv(csv_path)
             logger.info(f"Total number of top channels: {len(top_channel_ids)}")
             logger.info(f"First 10 top channel ids: {top_channel_ids[:10]}")
 

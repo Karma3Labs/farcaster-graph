@@ -10,17 +10,6 @@ import aiohttp
 from asyncpg.pool import Pool
 import pandas as pd
 
-def read_top_channels_csv(csv_path):
-    try:
-        channels_df = pd.read_csv(csv_path)
-        channels_df = channels_df.dropna(subset = ['channel id'])
-        channels_df = channels_df[["channel id"]]
-        channels_df['channel id'] = channels_df['channel id'].str.lower()
-        channel_ids = channels_df["channel id"].values.tolist()
-        return channel_ids
-    except Exception as e:
-        logger.error(f"Failed to read channel data from CSV: {e}")
-        return []
 
 async def fetch_all_channels_warpcast():
     url = "https://api.warpcast.com/v2/all-channels"
