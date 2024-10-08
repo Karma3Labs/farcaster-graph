@@ -18,6 +18,9 @@ def fetch_data_from_api(db_user, db_password, db_endpoint):
     df_warpcast_channels['createdat'] = pd.to_datetime(df_warpcast_channels['createdat'], unit='ms')
     df_warpcast_channels["dateiso"] = date.today()
     df_warpcast_channels.drop(columns=["moderatorfids"], inplace=True)
+    df_warpcast_channels = df_warpcast_channels[
+        ['id', 'url', 'name', 'description', 'imageurl', 'leadfid', 'createdat', 'followercount', 'dateiso',
+         'headerimageurl', 'pinnedcasthash', 'membercount']]
 
     logger.info(df_warpcast_channels.head())
     if len(df_warpcast_channels) == 0:
