@@ -38,8 +38,10 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
     host_fids = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
-        lead_fid = channel.lead_fid
-        host_fids.append(lead_fid)
+        if len(host_fids) == 0:
+            lead_fid = channel.lead_fid
+            host_fids.append(lead_fid)
+            # TODO add channel moderator_fids to host_fids
     except Exception as e:
         logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
         raise e
