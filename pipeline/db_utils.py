@@ -1,7 +1,6 @@
 import tempfile
 from io import StringIO
 import csv
-from enum import Enum
 
 from channels import channel_model
 from timer import Timer
@@ -156,6 +155,6 @@ def fetch_channel_details(pg_url: str, channel_id: str) -> channel_model.Channel
 @Timer(name="fetch_all_channel_details")
 def fetch_all_channel_details(pg_url: str):
     sql_engine = create_engine(pg_url)
-    tmp_sql = f"select * from warpcast_channels_data"
+    tmp_sql = "select * from warpcast_channels_data"
     df = pd.read_sql_query(tmp_sql, sql_engine)
     return df

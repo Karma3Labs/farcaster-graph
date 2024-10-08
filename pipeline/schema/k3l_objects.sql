@@ -337,18 +337,23 @@ CREATE INDEX idx_automod_data_ch_userid_idx ON public.automod_data USING btree (
 
 -------------------------------------------------------------------------------------
 CREATE TABLE public.warpcast_channels_data (
-	id text NULL,
-	url text NULL,
-	name text NULL,
+	id text NOT NULL,
+	url text NOT NULL,
+	name text NOT NULL,
 	description text NULL,
 	imageurl text NULL,
+    headerImageUrl text NULL,
 	leadfid int8 NULL,
+    moderatorFids int8[] NULL,
 	createdat timestamp NULL,
-	followercount int8 NULL,
-	hostfids _int4 NULL,
-	dateiso date NULL,
-	moderatorfid float8 NULL
+	followercount int4 NOT NULL,
+    memberCount int4 NOT NULL,
+    pinnedCastHash text NULL,
+	insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX idx_warpcast_channels_data_ch_id_idx ON public.warpcast_channels_data USING btree (id);
+
+GRANT SELECT,REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
 
 ----------------------------------------------
 CREATE TABLE public.k3l_top_casters (
@@ -395,44 +400,45 @@ CREATE TABLE public.pretrust_v2 (
 	insert_ts timestamp NULL,
 	strategy_id int8 NULL
 );
+
 -- How it was created
-CREATE TABLE public.pretrust_v2 AS (
-SELECT * from public.pretrust
-)
+-- CREATE TABLE public.pretrust_v2 AS (
+-- SELECT * from public.pretrust
+-- )
 
-ALTER TABLE pretrust_v2
-ADD COLUMN strategy_id int8;
+-- ALTER TABLE pretrust_v2
+-- ADD COLUMN strategy_id int8;
 
-UPDATE pretrust_v2
-SET strategy_id = 1
+-- UPDATE pretrust_v2
+-- SET strategy_id = 1
 
-INSERT INTO pretrust_v2 (fid,fname,fid_active_tier,
-fid_active_tier_name,data_source,insert_ts,strategy_id)
-SELECT fid,fname,fid_active_tier,
-fid_active_tier_name,data_source,insert_ts,3
-FROM pretrust;
+-- INSERT INTO pretrust_v2 (fid,fname,fid_active_tier,
+-- fid_active_tier_name,data_source,insert_ts,strategy_id)
+-- SELECT fid,fname,fid_active_tier,
+-- fid_active_tier_name,data_source,insert_ts,3
+-- FROM pretrust;
 
 -- UPLOADED THE NEW PRETRUST CSV FROM DUNE QUERY
 -- https://dune.com/queries/4005516/6743472
-SELECT DISTINCT
-    q.fid,
-    fid_info.display_name as fname,
-    q.fid_active_tier,
-    q.fid_active_tier_name,
-    'dune' as data_source,
-    current_timestamp as insert_ts,
-    9 as strategy_id
-FROM
-    query_3418402 AS q
-INNER JOIN
-    dune.neynar.dataset_farcaster_warpcast_power_users AS pu
-    ON q.fid = pu.fid
-LEFT JOIN query_3418402 AS engagement_recieved
-    ON q.fid = engagement_recieved.fid
-LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
-    ON q.fid = fid_info.fid
-WHERE
-    q.fid_active_tier IN (2, 3, 4)
+-- SELECT DISTINCT
+--     q.fid,
+--     fid_info.display_name as fname,
+--     q.fid_active_tier,
+--     q.fid_active_tier_name,
+--     'dune' as data_source,
+--     current_timestamp as insert_ts,
+--     9 as strategy_id
+-- FROM
+--     query_3418402 AS q
+-- INNER JOIN
+--     dune.neynar.dataset_farcaster_warpcast_power_users AS pu
+--     ON q.fid = pu.fid
+-- LEFT JOIN query_3418402 AS engagement_recieved
+--     ON q.fid = engagement_recieved.fid
+-- LEFT JOIN dune.neynar.dataset_farcaster_profile_with_addresses AS fid_info
+--     ON q.fid = fid_info.fid
+-- WHERE
+--     q.fid_active_tier IN (2, 3, 4)
 -------------------------------------------------
 CREATE TABLE public.warpcast_followers (
   fid int8 NOT NULL,

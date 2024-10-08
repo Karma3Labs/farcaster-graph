@@ -28,7 +28,9 @@ with DAG(
 ) as dag:
     fetch_data_from_warpcast = BashOperator(
         task_id='fetch_warpcast_data_from_api',
-        bash_command=f"cd /pipeline/extractors ; python3 warpcast_extractor.py { db_user } { db_password } { db_endpoint }"
+        bash_command="cd /pipeline; extractors/extract_channel_data.sh" 
+                        " -w . -v .venv ",
+        dag=dag
     )
 
     fetch_data_from_warpcast
