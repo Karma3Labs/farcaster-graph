@@ -1,1432 +1,511 @@
-channel id,Seed Peers FIDs
-lp,"4482,564373,4482, 8433, 234616, 368422, 223277,223277, 234616, 243719, 4482, 8433"
-paidgroup,"343622,440220,343622, 368422, 5365,10144, 196041, 216282, 218142, 240847, 343622, 369769, 384929, 385126, 398596, 408777, 417915, 421924, 4715, 5365"
-zora,"8,8, 3380, 2222, 3264, 5952, 17129, 1711"
-masks,"245017,245017, 368422,245017, 246840, 262383, 275757, 290116, 320219, 322682"
-superrare,"9480,9480, 190045, 12299, 346769, 374498, 513681, 270678, 368422,12299, 190045, 270678, 346769, 374498, 513681, 9480"
-banmal-mode,"336963,336963, 368422,336963, 440220"
-degen,"528,2904, 528, 15983, 2210, 14364, 16819, 368422"
-replyguys,"5034,5034, 368422, 269694, 7708, 292880, 18262,18262, 269694, 292880, 5034, 7708"
-base,"12142,565060,99, 12144, 3895, 12142, 211241, 17318, 368422, 17106,12142, 12144, 17106, 17318, 211241, 3895, 99"
-design,"4923,4923, 20270, 1317, 5431, 431, 576, 557, 1355, 771, 7325, 368422,1317, 1355, 20270, 431, 4923, 5431, 557, 576, 7325, 771"
-regen,"17672,368422,17672, 17584, 3046, 10857, 10685, 498811,10685, 10857, 17584, 17672, 3046, 498811"
-founders,"3,3, 368422"
-farcaster,"3,3,3, 368422,3"
-build,"8446, 195255, 221216, 6730, 9856, 4461, 1214, 9816, 15732, 399485, 16085, 14351, 99"
-food,"378,18989, 378, 1887, 13495"
-degentokenbase,"15983,440220"
-south-korea,"286046,286046, 504189"
-memes,"576, 3, 2, 3621, 239, 457, 347, 557, 4407, 1287, 1325"
-farcasther,"1137,565235,5818, 1137, 19858, 17822, 12021, 368422,1137, 12021, 17822, 19858, 5818"
-art,"9135,9135, 528, 195917, 248954, 368422,1287, 13833, 15275, 193930, 195917, 248954, 262475, 265506, 339017, 528, 9135"
-itookaphoto,"283056,283056, 296687"
-omof,"281289,281289, 268571, 322313, 322622, 473086"
-perl,"539,539,539, 577, 21417, 248216, 2252, 368422,21417, 2252, 248216, 539, 577"
-replyke,"250874,250874, 2904, 368422,250874, 2904"
-dev,"191,191, 1407, 6841, 2112, 16877,1407, 16877, 191, 2112, 6841"
-replyors,"247143,440220,247143, 8152, 236581, 8942, 403090, 234796, 242661"
-powerbadgecabal,"307736,368422,307736, 420201, 198629, 324029, 313583, 311387, 413025, 327374, 2904, 368422,198629, 2904, 307736, 311387, 313583, 324029, 324419, 327374, 413025"
-lifeisgood,"7251,7251,7251"
-wearesoearly,"7251,368422,7251, 4483, 269694, 18408, 368422, 297319, 390101, 343622, 323645, 544555"
-co,"230147,230147, 396659"
-powerfeed,"8481,2163,8481, 539940"
-photography,"9055,9055, 6373"
-farcon,"1970,1970, 239, 1626, 20270, 4923, 617, 473, 312, 368422,1626, 1970, 20270, 239, 312, 473, 4923, 617"
-bros,"4483,4483, 7251, 269694, 263147, 368422,263147, 269694, 4483, 7251"
-travel,"347,347"
-cryptoart,"4905,368422,4905, 4534, 3295, 14515,12738, 13874, 14447, 14515, 14937, 15351, 15431, 15821, 195847, 205525, 238243, 294100, 294164, 308337, 308730, 314176, 318213, 3295, 335222, 349545, 362226, 380185, 3828, 398596, 418544, 422213, 422910, 425400, 438085, 439657, 4534, 468120, 4905, 5179, 5583, 9218, 9353"
-83xdao,"292268,292268, 193084"
-appreciation,"2211,2211"
-drakula,"738,738, 343261"
-alfafrens,"340305,340305, 4901, 289702, 9507"
-checkin,"388302,388302, 4065, 9050"
-warpcast,"3,3, 368422"
-nature,"3,3"
-neged,"398355,398355"
-nomadicframe,"309710,309710, 355110, 375831"
-ethereum,"3,7479, 56, 1766, 207, 17675, 5694, 10420, 193551, 4036, 5650, 3, 368422,10420, 1766, 17675, 193551, 207, 3, 4036, 56, 5650, 5694, 7479"
-coffee,"2251,2251, 5179, 3895"
-fitness,"10259,368422,10259, 11040, 4085, 18145, 368422,10259, 11040, 18145, 4085"
-ventures,"7941,7941, 229878, 2231, 350587, 8217, 339655"
-degen-art,"307834,307834, 3372, 7418, 7637"
-yoyotoken,"311845,311845, 532744, 535021"
-tickle,"242661,440220,242661, 496447,496447"
-beatvn,"324703,324703, 370622, 334971"
-frames,"2,2, 368422"
-gifart,"278239,278239, 307128, 318213, 304818, 312666"
-gm,"3,3"
-pill,"11896,11896, 412772"
-competitionalert,"15776,15776, 375831, 307484"
-bitcoin,"124,124,124, 2210, 5620"
-degensxregens,"10857,10857, 233254, 212703, 345467, 3046, 17672, 10685, 17584"
-undrgrnd,"348539,348539, 320189, 438085"
-sonata,"503116,503116, 368422, 206, 210648, 5197, 12871, 240247,12871, 206, 210648, 240247, 503116, 5197"
-success,"403619,368422"
-degen-japan,"263309,263309"
-artfrens,"360600,351531,360600, 367639, 351531, 362405, 381665"
-chatbfg,"269694,269694, 387329, 297319, 7464, 346798, 344203, 248111, 280302, 333273, 2501"
-ai-art,"195917,368422,195917, 18570, 364883,18570, 195917, 279394, 307899, 364883, 366213, 417374"
-art-share,"302556,302556,302556"
-powermonday,"397815,397815, 417063, 311933, 414955, 332571, 327165,311933, 327165, 332571, 397815, 414955, 417063"
-crypto-paradise,"286046,286046, 504189"
-green-pill,"3,3"
-mfers,"18085,18085"
-Football,"10703,10703, 10694, 2329, 426"
-farcastles,"18661,18661, 230147, 329070, 292506"
-bestplaces,"223521,223521"
-farcards,"8152,8152, 253127, 262938, 8942, 18085, 248216, 256829, 488436"
-confessions,"3417,3417"
-saebyuckbaan,"444040,444040"
-music,"3115,368422,3115, 16066, 472, 18910, 4378, 3647, 11818, 3609, 1657,11818, 16066, 1657, 18910, 3609, 3647, 4378, 472"
-alphathailand,"271497,271497"
-anuong,"405994,405994"
-enjoy,"368835,368422,368835,1136, 139, 19574, 3449, 528"
-whoami,"274,274, 251"
-rromd,"302926,292558,302926"
-base-builds,"12142,368422,2433, 767, 12142, 17318, 17106, 12144,12142, 2433, 3895, 767, 99"
-magyarok,"311936,311936, 307047"
-photographers,"278406,278406, 302556, 408865, 309043, 357745, 326433, 352787"
-cats,"617,617"
-meoww,"420772,420772"
-airstack,"602,440220,602, 2602, 11161, 15971,11161, 15971, 2602, 602"
-gig,315256
-spanish,"3,3"
-gen-art,"604,604, 9816, 13833"
-farther,"429188,429188, 4378"
-airdropmemo,"335925,339521,335925, 339521"
-cryptogirls,"2163,2163, 18763, 13861, 19057"
-easypaid,"322602,322602"
-greenpill,"10254,10254, 838"
-publicgoods,"18507,18507, 195659"
-vitamin-girl,"433550,433550"
-crypto,"48,368422,48"
-sevendao,"192905,192905"
-japanese,"386520,386520"
-fire-bonus,"367335,367335"
-boostup,456503
-fomo,"4215,4215,4215"
-tocd,"281289,281289,268571"
-poetry,"13089,13089,13089"
-higher,"13121,368422,13121,7143,1841,368422,13121, 1841, 7143"
-nouns,"1097,1301,3642,4167,1097,2433,1894,3974"
-gn,"284615,284615"
-onrekt,"228390,228390,335741"
-tezos,"3,3,478228"
-onchaincoin,"308771,262563,308771,262563"
-bleu,"253127,368422,253127,533608,533857,262938"
-ogs,"7251,7251,368422,544555,323645,323645, 544555, 7251"
-objkt,"294021,294021,329558,288879,409926"
-japan777iine,"416929,416929"
-fcknclub,"402307,402307,540564"
-f4f,"273111,273111"
-onchainsummer,"12142,440220,7732"
-foundation,"3,3"
-pokemon,"211186,440220,211186"
-no-channel,"617,617"
-thebanana,"391499,391499,487213,485272,397392"
-rewarded,"350139,350139"
-korea-f4f,"397584,500588,397584,500588"
-parenting,"1626,1626"
-zeroorhero,236636
-books,"129,129,19716,383218,368422,129, 19716, 383218"
-tmi,"422353,422353"
-flora,"283144,283144,283144"
-nippon-ham,"428687,428687,22761,426167"
-mask,"966,966"
-illustrations,"367850,368422,367850,228837,364017,341074,335503,15069,455975,15069, 228837, 275945, 335503, 367850, 455975"
-dude,"281836,281836"
-history,"457,1287,457,368422,1287, 457"
-meme,"245306,245306"
-farworld,"294226,16405,294226,16405,297953"
-long,"453896,453896,453967,499104,451775"
-gmers,"315256,315256"
-builtdifferent,"279980,279980,408447,247542,406196,368422,247542, 279980, 406196, 408447"
-solana,"1471,17316,1471"
-architecture,"5361,5361,5361,295725,1657"
-phaver,"236812,236812,7806,8035,12239,13203"
-jamfrens,"10636,10636,231317,211705"
-cars,"11984,11984,343266"
-degen-punks,"221578,221578,214569,204173"
-goat,"2689,2689,1941"
-am,"262938,262938,262938"
-anime-manga,"234616,368422,234616,2904,368422,234616, 2904"
-socola,"400377,400377"
-trasua,400486
-hug,"8942,480626,8942,242661,228795,236581"
-gardening,"3,3"
-reactive,"406863,406863"
-nexus-infinitum,"315697,315697,14524,324395,403090,408746,420540,376214,363992"
-fabric,"576,576"
-frontend,"3854,2745,3854,557,6162,368422,2745, 3854, 557, 6162"
-undefined,"8152,8152"
-coolanimals,"266226,266226"
-black,"14351,368422,14351"
-six,"7143,7143,368422,7143"
-zibb,"418384,418384,461103"
-to,"8942,368422,8942"
-product,"3,3,3,368422"
-fairlaunch,"409781,409781"
-thecryptomasks,"245017,245017,368422,245017"
-bnw,"340132,340132"
-atmospherics,"371561,371561"
-likewen,"299135,299135,353481,285462"
-lounge,"617,368422,617,368422,617"
-doms,"269321,269321"
-degenpad,"398678,398678,434908,324916,409006,396160"
-300,"320215,320215"
-69ism,"539,539,539,577,368422,539, 577"
-welcome,"1593,1593,187961"
-spin2win,"368021,368021"
-9to5,"412192,403619,412192"
-artreply,"332895,332895,339299,344254,311209,384893"
-degencafe,"277620,277620"
-wanderlust,"15776,15776,309567,375831"
-ted,"239,239"
-yup,"133,133,1129,3966,870,368422,1129, 133, 3966, 870"
-layer3,"12662,195577,192800,21071,12662"
-onchain-blocks,"13505,13505,380163"
-airdrop,"20398,20398,20388,368422,20388, 20398"
-theblockexp,"320914,320914,243818"
-cryptomage,"387520,387520"
-696,"13086,368422"
-framedl,"11124,11124"
-zk,"16148,368422,16148,1349,8531,8208,546,1349, 8208, 8531, 941"
-geometric,"249958,249958,249958,281290,281129"
-positivevibes,"291511,291511,368422"
-fc-updates,"2,3,2,3,368422"
-strawberry,"344203,344203,263664"
-diet,"3307,3307,372993"
-sketches,"326271,326271,228837,326147,351539,13797"
-diptychs,"9270,9270"
-toc,"3206,3206"
-fremen,"444025,444025"
-thetaproom,"402888,440220,402888,403619,403020"
-enjoyart,"472,472"
-foodmenu,"343942,343942,284291,505633"
-dulich,"405994,405994"
-onchain,"656,656,15825,15492,321301,429949,383338"
-imagine-infra,"381068,368422,381068,368422,381068"
-neynar,"194,194,191,6131"
-skip,"463303,404408"
-love,"16707,16707"
-metaliminal,"9055,368422,9055,502778,296594,364977,15789, 233880, 249455, 261625, 273442, 296594, 342222, 343593, 355351, 402010, 408753, 409059, 414383, 427838, 435843, 461236, 462693, 469659, 479263, 502778, 6373, 9055"
-vaas,"6111,6111"
-wrt,402888
-funtv,"301773,301773,395748,400486,402797"
-lightchasers,"296687,296687,296687"
-fire-japan,"337426,337426"
-nouns-draws,"2433,368422,2433,5632,2433"
-nba,"3,3"
-degentlemen,"294226,16405,528,16405,294226,2904"
-ottodao,"233254,233254"
-thehugxyz,"1628,1628,282328"
-cryptoart-school,"273147,273147,382808,199989,248226,248226, 273147"
-animals,"274045,274045,276006"
-veg,"355110,355110,326271,326677,375831"
-running,"9052,1887,9052,1887"
-gaming,"9391,368422,9391,382161,190968, 382161"
-movies,"2201,2201"
-gratitude,"2745,2745"
-animal-cutest,"398573,398573,511697,502653"
-ton,"13721,13721"
-degenartists,"298503,316097,298503,316097"
-cute-animals,"293726,293726,6596"
-farquest,"251,274,251"
-motivation,"1237,1237"
-oldmasters,"416094,416094,14436,407937,328983"
-art-hive,"314724,314724,298742,399658"
-goplaces,"366713,368422,366713"
-nice,"566077,408777,338853"
-dau,"6596,368422"
-coop,"206,206,368422,206"
-spirituality,"15850,15850,15850,368422,15850"
-berlin,"1214,1214"
-girthy,311387
-purple,"472,368422,472,1626,4327,10259,6227"
-cameron,"617,368422,617,617"
-airdropfind,"18069,18069"
-quilibrium,"1325,1325"
-allowance,"267915,267915"
-fashion,"312,312,8627,218814,5840,5328,368422,218814, 312, 5328, 5840, 8627"
-dog,"228548,228548,238042"
-tiptoearn,"248389,248389,453989"
-keepushing,"403020,368422,403020"
-ai,"1171,1171,1171"
-cryptobarjos,"352822,352822"
-trading,"4790,4790,2417,389309"
-360,"14351,368422,14351,368422,14351, 480793"
-streamz,"469108,469108"
-tiengviet,"405994,405994"
-chicken,"8106,8106"
-cryptohub,"8207,8207,11280"
-i-like-korea,"416515,416515"
-pet,"286046,286046"
-abstract,"248901,248901"
-skininthegame,"108,260,108,260"
-framedl-pro,"11124,368422,11124,368422,11124"
-golf,"341,341,225"
-rainbow,"534,534,20919,2441,7749,368422,20919, 2441, 534, 7749"
-flowers,"283144,283144"
-castdrop,"446396,446396,446396"
-new-york,"1407,1407"
-founder,"656,656"
-chatcast,"288336,288336"
-builders-brunch,6554
-animeoutcasts,"234616,368422,234616,368422,234616"
-optimism,"20458,20458,2689,300898"
-replygals,"234220,234220,387329"
-neged-jp,"393129,393129"
-gurumenavijp,"396484,396484"
-behindthescenes,"3362,3362,307128,278239"
-karak,"427958,427958,402129,443845,402129, 427958, 443845"
-nihonnofham,"318181,318181"
-konkorat,"243775,243775,243775,300392"
-treeplanting,"276562,276562"
-norse-heathenry,"415305,368422,415305"
-morning-routine,"345272,345272"
-purp,"14364,14364"
-life,"1237,1237"
-coop-recs,"262450,368422,262450,206,196378,5197,368422,196378, 206, 262450, 5197"
-screens,"3,3"
-louder,"238853,15696, 206, 403020, 395131, 508334, 477292"
-cryptoninjas,"376177,376177,294761"
-nouns-animators,"2433,368422,2433,196215,2433"
-apropos,"4409,4409"
-hamsters,427349
-dogs,"4256,4256"
-anime,"17672,17672,17672"
-justreadit,"424937,424937,507698,484863"
-phi,"574,16670,574,1631,16670"
-art-studio,253746
-pixelart,"192539,192539"
-steaktoken,"505725,505725"
-kimchi,"241652,241652,277700,16567,539,500666"
-1337,"9528,480626,9528,1348,4048,1101"
-tradelab,592377
-shower-thoughts,"3,3"
-nippou-nippon,"350993,350993"
-builderfi,"8446,8446"
-sexyparty,451499
-fc-devs,"2,2,194,191,3,3621"
-s-cute,"424218,424218,485108"
-lebleuelefant,"253127,253127,311254,403090,276562,262938"
-politics,"13893,13893"
-boost,"1734,1734,20962,5582,7008"
-dont-do-this,"5774,5774,9135,368422,5774, 9135"
-news,"3306,3306,3,13893"
-free,"7452,7452"
-decentral-perk,"443198,368422,443198,420493,467312,261899"
-quote-art,"436407,308337,436407,294100"
-tiptomint,"14000,14000,8152"
-beearly,"4461,260770,4461,260770"
-consensus-2024,"11491,11491"
-casualcast,"315256,315256"
-fuckin-around,"307834,307834"
-gmfarcaster,"4167,4167,5818,273384"
-albumoftheday,"298503,399715,298503,399715"
-ethereum-aa,"742,742"
-nocontextmemes,"269694,269694"
-northern-army,"329070,329070,234616,230147,18661"
-fans,"487321,487321"
-bounties,"12,368422,12,12152"
-nftartwithlauren,"12626,12626"
-superrare-jp,"408583,408583,433142"
-dt,"293382,293382"
-quotes,"283,283"
-hangul,"316311,316311"
-freemint-oe,"14000,14000"
-cute-baby,"424218,424218,485108"
-fruit,"261364,261364"
-poidh,"2210,2210,18817"
-nft,"17672,17672,17672"
-assclown,"354795,440220"
-skillissue,"369869,369869,414,3002,7348"
-finance,"1285,368422,431,124,8447,1285"
-basefrens,"348814,348814,348814"
-likegroup,"1230,1230"
-marijuana-family,"285061,285061"
-beer,"4904,4904,228469,368422,228469, 4904, 7464"
-eth,"20398,20398"
-gradients,248345
-zatsudan,"414579,414579"
-payclub,"277409,277409,380136,234616,322662"
-yellow,"3642,3642,3642,803,4567,4167,20198,1079,5450"
-caster,"332281,251760,332281,360103,363561,388355"
-words,"12224,12224,5034,3795,8680,211890,11467,4909,7189,6111,246710,2788,3112,3305,236663,3789"
-1sv-hidengem,"254083,254083"
-iconanimals,"423255,423255,498002,464014,423440,424033"
-groupies,"243300,243300"
-wac,"195117,8332,8332,195117,503849"
-privacy,"17672,17672,17672,4926"
-toby,"241644,241644,241644,408347,311141,413350,409922"
-ikare,"416361,416361"
-build-nominate,"531013,531013"
-trippy,"243300,243300"
-senso,"211693,211693,211693"
-paidbulls,"311398,311398,243056,280429,243956,509355,509450,479719"
-outcasts,"5860,5860,5860"
-bangers,"237566,237566"
-rust,"10456,10456,10456"
-birds,"276484,276484,20758"
-morning,"856,856"
-wagmigames,"409781,383091,409781"
-fotografia,"332316,332316"
-white,"353603,353603"
-lessoninthere,"244479,244479,368422,244479"
-farhouse,"2391,2391,953,290437,2549,972"
-fckn,"355023,355023"
-gaycoinz,"211158,211158,7872,3112,409032"
-fight-the-power,"408157,408157"
-weird,"369922,368422,369922,364883,307899"
-minimalism,"270168,270168,262901"
-howmuch,"8942,480626"
-union-stong,14364
-sports,"2201,2201"
-degenfarm,"239530,239530,395022"
-exchgart,"309710,309710"
-quanpho,"405994,405994"
-nerd,"196041,196041,196041"
-base-degen-korea,"245579,245579,442638,503475,245492,402541,434016,451499,323144"
-nook,"3887,3887,368422,4525,3887, 4525"
-toady,"3642,3642"
-sf,"56,224,473,1642,56"
-crypto-news,"3,3"
-empathy,"13796,13796"
-odds,"216400,216400,376903"
-rare,"190045,190045,9480,270678,12299,346769"
-cat,"236739,236739"
-collage-art,"6112,6112"
-space,"124,1287,129,124,368422,124, 1287, 129"
-design-everydays,"1317,1317,1317"
-nouns-retro,"2433,368422,2433,2433, 3642"
-animalchannel,"299135,299135"
-otakulabs,"17327,17327,267647,408583"
-fries,"12921,12921"
-mek,"416094,416094"
-glitch-art,"10895,10895,14601"
-1-of-1,"314724,314724,330839"
-rock,"245024,245024"
-itan-world,"10095,10095,242729"
-kawaii,"627302,387707"
-openventures,"270504,270504,248890,5494"
-geopolitics,"2788,368422,7237,4790,2788,368422,2788, 4790, 7237, 880"
-cheesecoin,"539,539,577,368422,539, 577"
-yoink,"3621,3621"
-someone-build,"13121,13121,4256,16085"
-old,248101
-newtroarts,"227543,227543,227540,415519"
-streetart,"188557,188557"
-wips,"351598,351598"
-apesociety,"536636,518399,536636,535468,516797,518399"
-minimalize,"297531,297531"
-nightcrawlers,"333868,333868"
-give-away,"315256,315256"
-tech,"18529,18529"
-like-cmt-dao,"551061,551061"
-dailyaffirmation,"265298,265298,9138"
-arbitrum,"16707,16707,212581"
-prohibition,"4865,4865,197167,197167, 4865"
-kani,"386043,385067,386043,328948,385038,385067,427017,433142"
-nfc-summit,"388945,388945,375799"
-photo-cast,"385674,385674"
-ham,"4482,368422,4482,368422,4482"
-generalisms,"307736,307736"
-vip,"7258,368422,7258,368422,7258"
-science,"16148,368422,16148,7237,369892,368422,6015,16148, 16148, 369892, 369892, 6015, 6015, 7237, 7237"
-fbi,"292653,4753,189052,4753,292653"
-streetphotos,"5713,5713"
-degentimes,"408681,408681,301144"
-automod,"5179,368422,5179,368422"
-europoooooor,"5708,5708"
-festivals,"6986,6986"
-supercast,"680,680"
-jackpot,"299474,222577,299474"
-plants,"20965,20965,8587"
-banmo,"336963,336963"
-setter,"318702,318702"
-imf,"10810,10810,13443,512603"
-cryptoplaza,"4549,4549,4549,6631"
-nature-macro,"482037,345724,482037,345724,449875"
-tezos-tuesday,"9353,9353,468455"
-basepaint,"5062,368422,5062,701,245439"
-conversations,"422367,440220"
-ak,"14879,14879"
-pichi,"234616,368422,234616,368422,234616"
-july,"1287,1287"
-musicjp,"421000,421000,396484"
-courtyard,"1401,1401,1401"
-talent,"8446,8446,221216,195255,6730,16207,20442"
-airdrop4u,"316311,316311,316311"
-365photo,"355271,380950,355271"
-reployguys,"351236,351236"
-ham-lotto,"230147,230147"
-japan,"211159,211159,211159,234616"
-thestreets,"323070,368422,323070,247018,247018, 323070"
-tocd-jp,"365492,385093,365492,387707"
-degencast,"7061,222577,7061"
-noggles,"193998,193998"
-toka,"8685,8685,400242"
-zksync,"238684,238684,8082"
-amaobanben10,"551157,551157"
-photonam,"430839,430839,443043,393574"
-foodie,"380534,380534"
-degen-lotto,"230147,230147,396659"
-things,"343622,343622"
-wufs,"6806,6806"
-jobs,"4044,4044"
-use-the-light,"471813,471813"
-powerless,"320310,368422,320310,471585"
-degenaissance,"249007,249007"
-purps-packs,14364
-business,"227886,227886"
-electronic,"5851,2,5851"
-un,8152
-dopamine,"451442,451442"
-degenfans,"237205,385955,237205,385955"
-thebuilders,"307991,307991,15776,358266"
-ooo,"336963,336963"
-odegen,"5431,5431,8109,15633,6946"
-sigd,399883
-gloomtoken,"20147,20147,20147"
-brianjckim,"426,426"
-littlehappyjp,"396484,396484"
-frames-devs,"1214,1214"
-japan-cashai,"416929,416929"
-1818,"454852,454852,424419"
-1-bit,"347453,347453"
-project,"247143,440220,247143,16915,252318,473591"
-jpn,"338845,338845"
-womenart,"302642,302642"
-slime,"349228,349228"
-surreal,"3520,368422,3520,3526,367850,3520, 3526, 367850"
-tabletop,"9391,368422,18586, 307457, 473, 9391"
-gaming,"9391,368422,9391, 382161,190968, 382161"
-intelligent,"2341,2341,2341"
-wildcardclub,"4914, 7791"
-blockbeats,"361272,361272"
-openrank,
-moxie-korea,
-fan-token-tavern,
-bigenergy,
-sense,
-moxiejapan,
-victory,
-justbuild,
-collectorscanyon,
-hunt,
-howmoxie,
-buildingbears,
-cloud,
-superrare-fan,
-moshicam,
-fc-kr,
-memes-kr,
-pkok,
-moxart,
-degengate,
-farther-friends,
-woojoo,
-nutellacrepe,
-kr-itap-photos,
-moxie,
-anemale,
-sands-of-sumaii,
-rodeo-club,
-mintclub,
-maxionbase,
-milk,
-soju,
-yeschef,
-kollector,
-cattown,
-savage,
-shitcasters,
-portrait,
-moxiemaxi,
-crypto-trading,
-dogwalk,
-rainstory,
-xbteam,
-okbanger,
-cryptofamily,
-higher-athletics,
-scroll,
-predictandwin,
-wake,
-sota,
-beginners,
-farcasterunion,
-moxietools,
-butterflyeffect,
-carrots,
-ftc,
-itookavideo,
-honmono,
-ckcapital,
-natures-best,
-cryptocommunity,
-japanese-pub,
-matcha,
-nfl,
-dirtykumquats,
-microsub,
-ouliposting,
-bart,
-squid-meeting,
-ponder,
-unique-vehicles,
-farcasterfridays,
-receipts,
-honk,
-consumercrypto,
-aitookaphoto,
-mood,
-brainlet,
-art-everywhere,
-nickname,
-algohan,
-moxito,
-richfriend,
-brasil,
-dropglobalnews,
-beggarschannel,
-los-fomos,
-shape,
-hodlhq,
-cryptodickbutts,
-coinbasewallet,
-phaver-chinese,
-dv,
-web3appdev,
-hoiaefarcastervn,
-shakti,
-adventure,
-live-the-same,
-lotusmarket,
-gm-art,
-punkrat,
-campfire,
-hypersub,
-aesthetic,
-penis,
-ama,
-macro,
-techne,
-antimeme,
-catwalk,
-basedpepe,
-samantha,
-lowcap-x100,
-noc,
-category-quiz,
-thesuperchain,
-stickrun,
-sage,
-vibra,
-base-pidgin,
-devcon,
-the-arena,
-airdropexplorers,
-lightpainting,
-sitio,
-talkstory,
-mlb,
-home-repairs,
-lambchop,
-multiversx,
-based-noobs,
-theai,
-cryptoleft,
-buoy,
-untzuntz,
-apple,
-aerial,
-ethrome,
-genius,
-sixwordstory,
-coinbase,
-madrid,
-polymarket,
-cheryl,
-eigenlayer,
-creators,
-funchables,
-gameplay,
-blobz,
-advantage-hub,
-videogamemusic,
-ncrypt,
-downshift,
-los-angeles,
-quote,
-moz,
-scout-game,
-sandwich-cat,
-impact,
-seemore,
-base-africa,
-hotel-gyms,
-marceland,
-manysuchcases,
-college-football,
-ondo,
-pkokcurated,
-mfergpt,
-sonny,
-viet-nam-farcast,
-atlas,
-sharks,
-paris,
-social,
-kyoto,
-nouns-amigos,
-defi,
-strong,
-wild,
-gmgn,
-dl3,
-paragraph,
-crypto-korea,
-pinkonomic,
-base-creators,
-network-states,
-every-day-art,
-robin,
-comunidadesweb3,
-icebreaker,
-wellness,
-dot,
-heavygweit,
-aaron,
-clubted,
-gift-ft,
-nounspace,
-dinos,
-free-dad-advice,
-pensieve,
-motion,
-latenightcrew,
-fmk,
-venturecapital,
-ham-punks,
-rounds,
-ai-video-art,
-ens,
-art-collection,
-soundxyz,
-farfantasy,
-venting,
-socialnetworks,
-evm,
-scoop,
-comm,
-consmad,
-lilsqueaks,
-basecolors,
-ethfinance,
-ecocaster,
-data,
-blank,
-acf,
-dollar,
-socks,
-farcasthim,
-firstdraft,
-wholeethcatalog,
-liuyue,
-itookaselfie,
-black-art,
-ambassadors,
-brypto,
-ham-rebellion,
-rando,
-op-stack,
-cocreated,
-hyefa,
-berachain,
-retrotoys,
-dedegen,
-poker,
-adhd,
-economics,
-chin-chin,
-vrbs,
-techarchive,
-ginaknowsbest,
-monad,
-random,
-shefi,
-modbot,
-gadgets-gizmo,
-bullcasters,
-words-only,
-polaroffice,
-mountains,
-hard,
-suckit,
-privy,
-plotter-art,
-moviesuggestions,
-hawktuah,
-5phutcrypto,
-boysclub,
-interface,
-harecrypta,
-payflow,
-thekey,
-manifesting,
-law-policy,
-intern,
-berthas,
-wowee,
-justinahn,
-adivinadrone,
-skydaddy,
-miniapps,
-superchainnews,
-opepen,
-shitcoin,
-shark-degenhub,
-pain,
-eulerlagrange,
-philosophy,
-chess,
-flexforgood,
-nftevents,
-christin,
-positivity,
-2009,
-ewclairdrops,
-consciousness,
-humankind,
-quality,
-math,
-nochef,
-instacast,
-writers,
-bracket,
-recaster,
-octant,
-tako,
-crystal-hearts,
-podcasts,
-dudegen,
-dylan,
-1up,
-walletconnect,
-zuzalu,
-autumn,
-pidgin,
-longevity,
-rish,
-trashgang,
-ink,
-standwithcrypto,
-kartel,
-ctrl,
-aj,
-starfire,
-3d,
-london,
-meme-investor,
-icecream,
-nouns-impact,
-ogiri,
-creatorcalls,
-prosocial,
-movement-vietnam,
-notdevin,
-bar,
-baseitaly,
-firefly-garden,
-readingnow,
-brazil,
-medium,
-manga-anime,
-sportcaster,
-chineses,
-nftart,
-police,
-america,
-autobounty,
-dune,
-42069,
-idlabs,
-art-cc,
-cub,
-goblincore,
-workinprogress,
-content-creators,
-shelf,
-theory,
-conservative,
-photez,
-bnfarcaster,
-fishin,
-imagine,
-now-playing,
-fufu,
-gen-x,
-visual-poetry,
-chicago,
-jellybeans,
-raffleverse,
-pentacle,
-ghostlymates,
-now,
-foodmasku,
-djs,
-fractalvisions,
-trade,
-whatshesaid,
-tavern,
-manifold,
-classical,
-bicycling,
-uno,
-aoe2,
-highlight,
-miw,
-nomasters,
-degen-x,
-henlo,
-thepod,
-btw,
-smiles,
-haiku,
-cryptosapiens,
-baltimore,
-trpplffct,
-dystocasts,
-jokerace,
-swaye,
-pinata,
-typography,
-dating,
-muse,
-payitforward,
-weknowdis,
-cis,
-schematics,
-indonesia,
-thecurioushermit,
-metal,
-channel-kit,
-growth,
-commitment,
-artist,
-user-steen,
-mech-kb,
-alphacrypto,
-pixelnouns,
-yon-experience,
-birthday,
-thegarage,
-bright-moments,
-nh,
-thewalkingclub,
-diaries,
-cryptonewson,
-degencommunism,
-commerce,
-curation,
-morpho,
-extracurriculars,
-guitar,
-bad-takes,
-lovejoy,
-poison-ivy,
-inktober,
-every-life,
-hottakes,
-uptober,
-grubhub,
-chinese,
-1,
-zerion,
-paperhand,
-songwriting,
-daos,
-big,
-insights-cartel,
-magiceden,
-justminted,
-tape,
-nude-art,
-gm8xx8,
-non,
-mindset,
-bogus,
-losi,
-fctrivia,
-opacity,
-devfc,
-deekay,
-jacob,
-nostalgia,
-replyooors,
-degenthailand,
-dankfrens,
-chinese-daily,
-x100,
-climatenetwork,
-actrackclub,
-banana,
-onchainmedia,
-polygon,
-switzerland,
-homelabs,
-degroleagues-gsn,
-jacque,
-depe,
-sound4sound,
-kaloh,
-basedevo,
-memecoins,
-spotlight,
-spotify,
-christianity,
-launchcaster,
-milo,
-aether-mirror,
-camp,
-ghouls,
-taco,
-artnames,
-frametrain,
-rileybeans,
-ethos,
-orange-dao,
-rugdotfun,
-obsidian,
-kia,
-farplanter,
-delulu,
-girl-friends,
-space-art,
-learninpublic,
-creators-support,
-stormchasers,
-shortstories,
-bullposting,
-study-this,
-sharetoearn,
-art-gallery,
-less,
-earlymorningcrew,
-film,
-austin,
-car,
-thomas,
-cryptoworld,
-cassettefuturism,
-hiddengems,
-gitgud,
-betting,
-j4ck,
-moms-holic-baby,
-skincare,
-bitcoinpuppets,
-movie,
-daily-art-mint,
-sprout,
-reality,
-pirates-bay,
-zeroweight,
-dance-music,
-degenzero,
-rubikscube,
-mismir,
-retrospect,
-trebro,
-physics,
-pikachu,
-criptobrasil,
-lisbon,
-tb,
-steve,
-health-hive,
-jihad,
-f1,
-kolyantrend,
-moxie-monday,
-compusophy,
-singapore,
-millennials,
-crpdaddy,
-base-thai,
-farcats,
-manansh,
-characters,
-apex777,
-vegetarian,
-daylight,
-cryptotwitter,
-gloom,
-cinema-stills,
-buttrfly,
-light,
-no-badge-fam,
-la,
-tvsuggestions,
-lilnouns,
-southpaws,
-praise,
-screenofdeath,
-fercaggiano,
-socialsummer,
-cryptography,
-trains,
-italy,
-mintedmerch,
-workspaces,
-higherfm,
-keccar,
-9dcc,
-greatbooks,
-happyhour,
-foodtasty,
-animation,
-base-kurd,
-etherschool,
-metamask,
-silhouette,
-rides,
-motivational,
-pods,
-jc,
-ticker,
-wordle,
-xmtp,
-variant,
-potato,
-justcuz,
-faust,
-goal-club,
-character-dao,
-degen-allowance,
-stories,
-cooked,
-basenigeria,
-miami,
-self-portrait,
-tdgem,
-homer,
-bera-terminal,
-zoz,
-punk,
-egg,
-frenly,
-cpg,
-debate,
-game,
-marketing,
-avie,
-phloxandliliacs,
-arch-aich,
-uspolitics,
-ethereumfilm,
-bangarangs,
-publicnouns,
-timesnewworld,
-papertoys,
-intothebytecode,
-farconic,
-herefortheart,
-onchainreapers,
-source,
-girlypop,
-wedoalittle,
-lotr,
-cryptodads,
-poster,
-postpunk,
-records,
-kevin,
-artcoin,
-moxie-army,
-musicaw3,
-kendama,
-allotment,
-crazyideas,
-wildcard,
-coven,
-covenclassics,
-base-canada,
-cryptopunks,
-shillr,
-superfluid,
-inquiry,
-stokefire,
-followme,
-speedball,
-freshmints,
-basewtf,
-vietnamese,
-gnosisdao,
-stolen,
-spaceart,
-slowcore-hq,
-w3t-dao,
-guild,
-nova,
-ferrybasic,
-book,
-farsicast,
-qteeairdrop,
-toronto,
-ephemeris,
-psytrance,
-torii-stories,
-cryptofx,
-chatgpt,
-cryptodropvn,
-howdy,
-frens,
-airdropdigger,
-art-es,
-onair,
-doginme,
-internetexplorer,
-proxyswap,
-mate,
-kieran,
-seekermagazine,
-all-in,
-datingadvice,
-booksuggestions,
-swatches,
-obaketengoku,
-nailed-it,
-college-bb,
-it,
-kudasaijp,
-tea,
-web3marketing,
-on-the-air,
-reown,
-airdrop-sharing,
-in-acc,
-techno,
-wallpapers,
-cal,
-poap,
-degendao,
-solidarity,
-dacc,
-spongebob,
-lazy,
-milady,
-turningpoint,
-remember,
-book-reader,
-dagcaster,
-gen-arch,
-swiftui,
-homie,
-web3magic,
-pool-together,
-rstlss,
-brnd,
-gettingstarted,
-uniswap,
-nfts2me,
-arteasydrop,
-puns,
-fashionweb3,
-lakzone,
-nounstown,
-palette,
-base-vietnamese,
-cryptoversal,
-skateboarding,
-1mp,
-hockey,
-style,
-adrienne,
-bootleg,
-musicguy,
-ccarella,
-rise-up,
-stickers,
-creator,
-bulgaria,
-chic,
-lostminers,
-updates,
-castmoney,
-forfun,
-mistressvn,
-korean,
-follow-friday,
-brand3,
-vividindia,
-base-espanol,
-hmm,
-robotics,
-ileigh,
-sunnysideup,
-stolenfromtwitte,
-geoblocks,
-onchain-charts,
-sop,
-devconnect,
-nerdery,
-catan,
-chiangmai,
-boston,
-ghostcasters,
-rap,
-fc-proto,
-charles,
-pizza,
-coecon,
-basedbits,
-0to1,
-recipes,
-warwatch,
-panorama,
-doodles,
-kiwi-news,
-dekodemodoor,
-annelisa,
-sleep,
-collectors,
-engineering,
-meat,
-aerospace,
-conspiracy,
-fineartmfers,
-moxiedaily,
-latinmusic,
-runescape,
-molesociety,
-follow,
-streamm,
-degenstats,
-everydayfun,
-drak-thedegen,
-ethglobal,
-together,
-backend,
-event-pass,
-reactnative,
-vision,
-ethcc,
-chiquita,
-farmcast,
-artworld,
-unfiltered,
-builder,
-noiseladder,
-transientlabs,
-ilove-vitalik,
-a16z,
-cypherpunk,
-clouds,
-yoyo-,
-corbin,
-carter,
-offmarket,
-studio2,
-the-library,
-alphamen,
-lobotomy-v1,
-all-things-veve,
-airdrop-games,
-gnars,
-memesoutside,
-vr,
-trending-casts,
-foods,
-film-photography,
-comma,
-cryptonewsvn,
-auri,
-gmfcnetwork,
-alexmack,
-blackdave,
-lucky,
-frame-token,
-runn3rr,
-foundrs,
-flourish,
-healthylife,
-foofees,
-argentina,
-collector-walls,
-base-meme,
-zoapp,
-airdrops,
-casino-royal,
-arweave,
-dailylearning,
-silly,
-beautifulmoments,
-purple-crypto,
-bolide,
-3:00 AM,
-farchance,
-biohacking,
-ethbushwick,
-cho,
-replyguys-es,
-depin,
-blueart,
-catholicism,
-shibuya,
-actors,
-galazio,
-weareone,
-channel,
-counter-strike,
-pokemongo,
-comic-sans,
-dolphin-zone,
-whatever,
-cs2,
-basevibe,
-abstractphoto,
-coimbatore,
-zinger,
-sakumonsters,
-cosmos,
-community,
-actions,
-desi,
-phil,
-dragverse,
-opensource,
-curatedbydilek,
-itapofmypet,
-artplanet,
-tmrrw,
-luo,
-gamephotography,
-fukurou-no-mori,
-sablier,
-physical,
-costco,
-jake,
-animocabrands,
-punch,
-parrot,
-mermaids,
-cryptodaddy,
-roman-empire,
-warpchat,
-chones,
-retrogaming,
-blockzone,
-wildlife,
-serendipity,
-frogfm,
-lifewithart,
-womenofweb3,
-channels,
-1g,
-gray,
-togethercrew,
-hydrate,
-itap,
-eth-staker,
+channel id,Seed Peers FIDs,channel Name,Channel Link
+,,,
+lp,"4482,564373,4482, 8433, 234616, 368422, 223277,223277, 234616, 243719, 4482, 8433",HAM 🍖,https://warpcast.com/~/channel/lp
+paidgroup,"343622,440220,343622, 368422, 5365,10144, 196041, 216282, 218142, 240847, 343622, 369769, 384929, 385126, 398596, 408777, 417915, 421924, 4715, 5365",paid group,https://warpcast.com/~/channel/paidgroup
+zora,"8,8, 3380, 2222, 3264, 5952, 17129, 1711",Zora,https://warpcast.com/~/channel/zora
+masks,"245017,245017, 368422,245017, 246840, 262383, 275757, 290116, 320219, 322682",$MASKS,https://warpcast.com/~/channel/masks
+superrare,"9480,9480, 190045, 12299, 346769, 374498, 513681, 270678, 368422,12299, 190045, 270678, 346769, 374498, 513681, 9480",SuperRare,https://warpcast.com/~/channel/superrare
+banmal-mode,"336963,336963, 368422,336963, 440220",반모 banmo,https://warpcast.com/~/channel/banmal-mode
+degen,"528,2904, 528, 15983, 2210, 14364, 16819, 368422",Degen,https://warpcast.com/~/channel/degen
+replyguys,"5034,5034, 368422, 269694, 7708, 292880, 18262,18262, 269694, 292880, 5034, 7708",reply guys,https://warpcast.com/~/channel/replyguys
+base,"12142,565060,99, 12144, 3895, 12142, 211241, 17318, 368422, 17106,12142, 12144, 17106, 17318, 211241, 3895, 99",Base,https://warpcast.com/~/channel/base
+design,"4923,4923, 20270, 1317, 5431, 431, 576, 557, 1355, 771, 7325, 368422,1317, 1355, 20270, 431, 4923, 5431, 557, 576, 7325, 771",Design,https://warpcast.com/~/channel/design
+regen,"17672,368422,17672, 17584, 3046, 10857, 10685, 498811,10685, 10857, 17584, 17672, 3046, 498811",Regen,https://warpcast.com/~/channel/regen
+founders,"3,3, 368422",Founders,https://warpcast.com/~/channel/founders
+farcaster,"3,3,3, 368422,3",Farcaster,https://warpcast.com/~/channel/farcaster
+build,"210930,210930, 8446, 531162",BUILD,https://warpcast.com/~/channel/build
+food,"378,18989, 378, 1887, 13495",Food,https://warpcast.com/~/channel/food
+degentokenbase,"15983,440220",$DEGEN,https://warpcast.com/~/channel/degentokenbase
+south-korea,"286046,286046, 504189",south-korea,https://warpcast.com/~/channel/south-korea
+memes,"576,368422,576, 368422,576",Memes,https://warpcast.com/~/channel/memes
+farcasther,"1137,565235,5818, 1137, 19858, 17822, 12021, 368422,1137, 12021, 17822, 19858, 5818",farcastHER,https://warpcast.com/~/channel/farcasther
+art,"9135,9135, 528, 195917, 248954, 368422,1287, 13833, 15275, 193930, 195917, 248954, 262475, 265506, 339017, 528, 9135",Art,https://warpcast.com/~/channel/art
+itookaphoto,"283056,283056, 296687",I Took a Photo!,https://warpcast.com/~/channel/itookaphoto
+omof,"281289,281289, 268571, 322313, 322622, 473086",$FOMO by @tocd,https://warpcast.com/~/channel/omof
+perl,"539,539,539, 577, 21417, 248216, 2252, 368422,21417, 2252, 248216, 539, 577",perl,https://warpcast.com/~/channel/perl
+replyke,"250874,250874, 2904, 368422,250874, 2904",replyke,https://warpcast.com/~/channel/replyke
+dev,"191,191, 1407, 6841, 2112, 16877,1407, 16877, 191, 2112, 6841",dev,https://warpcast.com/~/channel/dev
+replyors,"247143,440220,247143, 8152, 236581, 8942, 403090, 234796, 242661",replyors,https://warpcast.com/~/channel/replyors
+powerbadgecabal,"307736,368422,307736, 420201, 198629, 324029, 313583, 311387, 413025, 327374, 2904, 368422,198629, 2904, 307736, 311387, 313583, 324029, 324419, 327374, 413025",The Cabal,https://warpcast.com/~/channel/powerbadgecabal
+lifeisgood,"7251,7251,7251",life is good,https://warpcast.com/~/channel/lifeisgood
+wearesoearly,"7251,368422,7251, 4483, 269694, 18408, 368422, 297319, 390101, 343622, 323645, 544555",we are so early,https://warpcast.com/~/channel/wearesoearly
+co,"230147,230147, 396659",co,https://warpcast.com/~/channel/co
+powerfeed,"8481,2163,8481, 539940",powerfeed⚡️,https://warpcast.com/~/channel/powerfeed
+photography,"9055,9055, 6373",Photography,https://warpcast.com/~/channel/photography
+farcon,"1970,1970, 239, 1626, 20270, 4923, 617, 473, 312, 368422,1626, 1970, 20270, 239, 312, 473, 4923, 617",FarCon,https://warpcast.com/~/channel/farcon
+bros,"4483,4483, 7251, 269694, 263147, 368422,263147, 269694, 4483, 7251",bros,https://warpcast.com/~/channel/bros
+travel,"347,347",Travel,https://warpcast.com/~/channel/travel
+cryptoart,"4905,368422,4905, 4534, 3295, 14515,12738, 13874, 14447, 14515, 14937, 15351, 15431, 15821, 195847, 205525, 238243, 294100, 294164, 308337, 308730, 314176, 318213, 3295, 335222, 349545, 362226, 380185, 3828, 398596, 418544, 422213, 422910, 425400, 438085, 439657, 4534, 468120, 4905, 5179, 5583, 9218, 9353",Cryptoart,https://warpcast.com/~/channel/cryptoart
+83xdao,"292268,292268, 193084",83xdao,https://warpcast.com/~/channel/83xdao
+appreciation,"2211,2211",appreciation,https://warpcast.com/~/channel/appreciation
+drakula,"738,738, 343261",drakula.app,https://warpcast.com/~/channel/drakula
+alfafrens,"340305,340305, 4901, 289702, 9507",AlfaFrens,https://warpcast.com/~/channel/alfafrens
+checkin,"388302,388302, 4065, 9050",Check-In,https://warpcast.com/~/channel/checkin
+warpcast,"3,3, 368422",Warpcast,https://warpcast.com/~/channel/warpcast
+nature,"3,3",Nature,https://warpcast.com/~/channel/nature
+neged,"398355,398355",neged,https://warpcast.com/~/channel/neged
+nomadicframe,"309710,309710, 355110, 375831",$nom 🍔,https://warpcast.com/~/channel/nomadicframe
+ethereum,"3,7479, 56, 1766, 207, 17675, 5694, 10420, 193551, 4036, 5650, 3, 368422,10420, 1766, 17675, 193551, 207, 3, 4036, 56, 5650, 5694, 7479",Ethereum,https://warpcast.com/~/channel/ethereum
+coffee,"2251,2251, 5179, 3895",coffee,https://warpcast.com/~/channel/coffee
+fitness,"10259,368422,10259, 11040, 4085, 18145, 368422,10259, 11040, 18145, 4085",Fitness,https://warpcast.com/~/channel/fitness
+ventures,"7941,7941, 229878, 2231, 350587, 8217, 339655",f3,https://warpcast.com/~/channel/ventures
+degen-art,"307834,307834, 3372, 7418, 7637",Degen Art🎩🎨,https://warpcast.com/~/channel/degen-art
+yoyotoken,"311845,311845, 532744, 535021",yoyotoken,https://warpcast.com/~/channel/yoyotoken
+tickle,"242661,440220,242661, 496447,496447",tickle 😆,https://warpcast.com/~/channel/tickle
+beatvn,"324703,324703, 370622, 334971",Beatvn 🇻🇳,https://warpcast.com/~/channel/beatvn
+frames,"2,2, 368422",frames,https://warpcast.com/~/channel/frames
+gifart,"278239,278239, 307128, 318213, 304818, 312666",gifART,https://warpcast.com/~/channel/gifart
+gm,"3,3",GM,https://warpcast.com/~/channel/gm
+pill,"11896,11896, 412772",pill,https://warpcast.com/~/channel/pill
+competitionalert,"15776,15776, 375831, 307484",competitionalert,https://warpcast.com/~/channel/competitionalert
+bitcoin,"124,124,124, 2210, 5620",Bitcoin,https://warpcast.com/~/channel/bitcoin
+degensxregens,"10857,10857, 233254, 212703, 345467, 3046, 17672, 10685, 17584",degens🤝regens,https://warpcast.com/~/channel/degensxregens
+undrgrnd,"348539,348539, 320189, 438085",undrgrnd,https://warpcast.com/~/channel/undrgrnd
+sonata,"503116,503116, 368422, 206, 210648, 5197, 12871, 240247,12871, 206, 210648, 240247, 503116, 5197",sonata,https://warpcast.com/~/channel/sonata
+success,"403619,368422",The Success Syndicate,https://warpcast.com/~/channel/success
+degen-japan,"263309,263309",degen-japan,https://warpcast.com/~/channel/degen-japan
+artfrens,"360600,351531,360600, 367639, 351531, 362405, 381665",artfrens,https://warpcast.com/~/channel/artfrens
+chatbfg,"269694,269694, 387329, 297319, 7464, 346798, 344203, 248111, 280302, 333273, 2501",chatbfg,https://warpcast.com/~/channel/chatbfg
+ai-art,"195917,368422,195917, 18570, 364883,18570, 195917, 279394, 307899, 364883, 366213, 417374",AI art,https://warpcast.com/~/channel/ai-art
+art-share,"302556,302556,302556",art-share,https://warpcast.com/~/channel/art-share
+powermonday,"397815,397815, 417063, 311933, 414955, 332571, 327165,311933, 327165, 332571, 397815, 414955, 417063",powermonday,https://warpcast.com/~/channel/powermonday
+crypto-paradise,"286046,286046, 504189",Crypto paradise,https://warpcast.com/~/channel/crypto-paradise
+green-pill,"3,3",Green Pill,https://warpcast.com/~/channel/green-pill
+mfers,"18085,18085",mfers,https://warpcast.com/~/channel/mfers
+Football,"10703,10703, 10694, 2329, 426",Football,https://warpcast.com/~/channel/Football
+farcastles,"18661,18661, 230147, 329070, 292506",Farcastles,https://warpcast.com/~/channel/farcastles
+bestplaces,"223521,223521",bestplaces,https://warpcast.com/~/channel/bestplaces
+farcards,"8152,8152, 253127, 262938, 8942, 18085, 248216, 256829, 488436",farcards,https://warpcast.com/~/channel/farcards
+confessions,"3417,3417",confessions,https://warpcast.com/~/channel/confessions
+saebyuckbaan,"444040,444040",새벽반,https://warpcast.com/~/channel/saebyuckbaan
+music,"3115,368422,3115, 16066, 472, 18910, 4378, 3647, 11818, 3609, 1657,11818, 16066, 1657, 18910, 3609, 3647, 4378, 472",Music,https://warpcast.com/~/channel/music
+alphathailand,"271497,271497",Thai Community แชร์ข่าวสาร🇹🇭,https://warpcast.com/~/channel/alphathailand
+anuong,"405994,405994",Ăn uống,https://warpcast.com/~/channel/anuong
+enjoy,"368835,368422,368835,1136, 139, 19574, 3449, 528",enjoy,https://warpcast.com/~/channel/enjoy
+whoami,"274,274, 251",Who are you?,https://warpcast.com/~/channel/whoami
+rromd,"302926,292558,302926",R ROM D,https://warpcast.com/~/channel/rromd
+base-builds,"12142,368422,2433, 767, 12142, 17318, 17106, 12144,12142, 2433, 3895, 767, 99",base-builds,https://warpcast.com/~/channel/base-builds
+magyarok,"311936,311936, 307047",magyarok,https://warpcast.com/~/channel/magyarok
+photographers,"278406,278406, 302556, 408865, 309043, 357745, 326433, 352787",photographers,https://warpcast.com/~/channel/photographers
+cats,"617,617",Cats,https://warpcast.com/~/channel/cats
+meoww,"420772,420772",💕✨🌸 HOTGIRL 🌸 💋👑,https://warpcast.com/~/channel/meoww
+airstack,"602,440220,602, 2602, 11161, 15971,11161, 15971, 2602, 602",airstack,https://warpcast.com/~/channel/airstack
+gig,315256,gig,https://warpcast.com/~/channel/gig
+spanish,"3,3",Spanish,https://warpcast.com/~/channel/spanish
+gen-art,"604,604, 9816, 13833",Gen Art,https://warpcast.com/~/channel/gen-art
+farther,"429188,429188, 4378",F A R T H E R ✨,https://warpcast.com/~/channel/farther
+airdropmemo,"335925,339521,335925, 339521",airdropmemo,https://warpcast.com/~/channel/airdropmemo
+cryptogirls,"2163,2163, 18763, 13861, 19057",GIRLS 👒💅🦈,https://warpcast.com/~/channel/cryptogirls
+easypaid,"322602,322602",easypaid,https://warpcast.com/~/channel/easypaid
+greenpill,"10254,10254, 838",greenpill,https://warpcast.com/~/channel/greenpill
+publicgoods,"18507,18507, 195659",Public Goods,https://warpcast.com/~/channel/publicgoods
+vitamin-girl,"433550,433550",Vitamin Girl,https://warpcast.com/~/channel/vitamin-girl
+crypto,,,
+sevendao,,,
+japanese,,,
+fire-bonus,,,
+boostup,,,
+fomo,,,
+tocd,,,
+poetry,,,
+higher,,,
+nouns,,,
+gn,,,
+onrekt,,,
+tezos,,,
+onchaincoin,,,
+bleu,,,
+ogs,,,
+objkt,,,
+japan777iine,,,
+fcknclub,,,
+f4f,,,
+onchainsummer,,,
+foundation,,,
+pokemon,,,
+no-channel,,,
+thebanana,,,
+rewarded,,,
+korea-f4f,,,
+parenting,,,
+zeroorhero,,,
+books,,,
+tmi,,,
+flora,,,
+nippon-ham,,,
+mask,,,
+illustrations,,,
+dude,,,
+history,,,
+meme,,,
+farworld,,,
+long,,,
+gmers,,,
+builtdifferent,,,
+solana,,,
+architecture,,,
+phaver,,,
+jamfrens,,,
+cars,,,
+degen-punks,,,
+goat,,,
+am,,,
+anime-manga,,,
+socola,,,
+trasua,,,
+hug,,,
+gardening,,,
+reactive,,,
+nexus-infinitum,,,
+fabric,,,
+frontend,,,
+undefined,,,
+coolanimals,,,
+black,,,
+six,,,
+zibb,,,
+to,,,
+product,,,
+fairlaunch,,,
+thecryptomasks,,,
+bnw,,,
+atmospherics,,,
+likewen,,,
+lounge,,,
+doms,,,
+degenpad,,,
+300,,,
+69ism,,,
+welcome,,,
+spin2win,,,
+9to5,,,
+artreply,,,
+degencafe,,,
+wanderlust,,,
+ted,,,
+yup,,,
+layer3,,,
+onchain-blocks,,,
+airdrop,,,
+theblockexp,,,
+cryptomage,,,
+696,,,
+framedl,,,
+zk,,,
+geometric,,,
+positivevibes,,,
+fc-updates,,,
+strawberry,,,
+diet,,,
+sketches,,,
+diptychs,,,
+toc,,,
+fremen,,,
+thetaproom,,,
+enjoyart,,,
+foodmenu,,,
+dulich,,,
+onchain,,,
+imagine-infra,,,
+neynar,,,
+skip,,,
+love,,,
+metaliminal,,,
+vaas,,,
+wrt,,,
+funtv,,,
+lightchasers,,,
+fire-japan,,,
+nouns-draws,,,
+nba,,,
+degentlemen,,,
+ottodao,,,
+thehugxyz,,,
+cryptoart-school,,,
+animals,,,
+veg,,,
+running,,,
+gaming,,,
+movies,,,
+gratitude,,,
+animal-cutest,,,
+ton,,,
+degenartists,,,
+cute-animals,,,
+farquest,,,
+motivation,,,
+oldmasters,,,
+art-hive,,,
+goplaces,,,
+nice,,,
+dau,,,
+coop,,,
+spirituality,,,
+berlin,,,
+girthy,,,
+purple,,,
+cameron,,,
+airdropfind,,,
+quilibrium,,,
+allowance,,,
+fashion,,,
+dog,,,
+tiptoearn,,,
+keepushing,,,
+ai,,,
+cryptobarjos,,,
+trading,,,
+360,,,
+streamz,,,
+tiengviet,,,
+chicken,,,
+cryptohub,,,
+i-like-korea,,,
+pet,,,
+abstract,,,
+skininthegame,,,
+framedl-pro,,,
+golf,,,
+rainbow,,,
+flowers,,,
+castdrop,,,
+new-york,,,
+founder,,,
+chatcast,,,
+builders-brunch,,,
+animeoutcasts,,,
+optimism,,,
+replygals,,,
+neged-jp,,,
+gurumenavijp,,,
+behindthescenes,,,
+karak,,,
+nihonnofham,,,
+konkorat,,,
+treeplanting,,,
+norse-heathenry,,,
+morning-routine,,,
+purp,,,
+life,,,
+coop-recs,,,
+screens,,,
+louder,,,
+cryptoninjas,,,
+nouns-animators,,,
+apropos,,,
+hamsters,,,
+dogs,,,
+anime,,,
+justreadit,,,
+phi,,,
+art-studio,,,
+pixelart,,,
+steaktoken,,,
+kimchi,,,
+1337,,,
+tradelab,,,
+shower-thoughts,,,
+nippou-nippon,,,
+builderfi,,,
+sexyparty,,,
+fc-devs,,,
+s-cute,,,
+lebleuelefant,,,
+politics,,,
+boost,,,
+dont-do-this,,,
+news,,,
+free,,,
+decentral-perk,,,
+quote-art,,,
+tiptomint,,,
+beearly,,,
+consensus-2024,,,
+casualcast,,,
+fuckin-around,,,
+gmfarcaster,,,
+albumoftheday,,,
+ethereum-aa,,,
+nocontextmemes,,,
+northern-army,,,
+fans,,,
+bounties,,,
+nftartwithlauren,,,
+superrare-jp,,,
+dt,,,
+quotes,,,
+hangul,,,
+freemint-oe,,,
+cute-baby,,,
+fruit,,,
+poidh,,,
+nft,,,
+assclown,,,
+skillissue,,,
+finance,,,
+basefrens,,,
+likegroup,,,
+marijuana-family,,,
+beer,,,
+eth,,,
+gradients,,,
+zatsudan,,,
+payclub,,,
+yellow,,,
+caster,,,
+words,,,
+1sv-hidengem,,,
+iconanimals,,,
+groupies,,,
+wac,,,
+privacy,,,
+toby,,,
+ikare,,,
+build-nominate,,,
+trippy,,,
+senso,,,
+paidbulls,,,
+outcasts,,,
+bangers,,,
+rust,,,
+birds,,,
+morning,,,
+wagmigames,,,
+fotografia,,,
+white,,,
+lessoninthere,,,
+farhouse,,,
+fckn,,,
+gaycoinz,,,
+fight-the-power,,,
+weird,,,
+minimalism,,,
+howmuch,,,
+union-stong,,,
+sports,,,
+degenfarm,,,
+exchgart,,,
+quanpho,,,
+nerd,,,
+base-degen-korea,,,
+nook,,,
+toady,,,
+sf,,,
+crypto-news,,,
+empathy,,,
+odds,,,
+rare,,,
+cat,,,
+collage-art,,,
+space,,,
+design-everydays,,,
+nouns-retro,,,
+animalchannel,,,
+otakulabs,,,
+fries,,,
+mek,,,
+glitch-art,,,
+1-of-1,,,
+rock,,,
+itan-world,,,
+kawaii,,,
+openventures,,,
+geopolitics,,,
+cheesecoin,,,
+yoink,,,
+someone-build,,,
+old,,,
+newtroarts,,,
+streetart,,,
+wips,,,
+apesociety,,,
+minimalize,,,
+nightcrawlers,,,
+give-away,,,
+tech,,,
+like-cmt-dao,,,
+dailyaffirmation,,,
+arbitrum,,,
+prohibition,,,
+kani,,,
+nfc-summit,,,
+photo-cast,,,
+ham,,,
+generalisms,,,
+vip,,,
+science,,,
+fbi,,,
+streetphotos,,,
+degentimes,,,
+automod,,,
+europoooooor,,,
+festivals,,,
+supercast,,,
+jackpot,,,
+plants,,,
+banmo,,,
+setter,,,
+imf,,,
+cryptoplaza,,,
+nature-macro,,,
+tezos-tuesday,,,
+basepaint,,,
+conversations,,,
+ak,,,
+pichi,,,
+july,,,
+musicjp,,,
+courtyard,,,
+talent,,,
+airdrop4u,,,
+365photo,,,
+reployguys,,,
+ham-lotto,,,
+japan,,,
+thestreets,,,
+tocd-jp,,,
+degencast,,,
+noggles,,,
+toka,,,
+zksync,,,
+amaobanben10,,,
+photonam,,,
+foodie,,,
+degen-lotto,,,
+things,,,
+wufs,,,
+jobs,,,
+use-the-light,,,
+powerless,,,
+degenaissance,,,
+purps-packs,,,
+business,,,
+electronic,,,
+un,,,
+dopamine,,,
+degenfans,,,
+thebuilders,,,
+ooo,,,
+odegen,,,
+sigd,,,
+gloomtoken,,,
+brianjckim,,,
+littlehappyjp,,,
+frames-devs,,,
+japan-cashai,,,
+1818,,,
+1-bit,,,
+project,,,
+jpn,,,
+womenart,,,
+slime,,,
+surreal,,,
+tabletop,,,
+gaming,,,
+intelligent,,,
+wildcardclub,,,
+blockbeats,,,
+openrank,,,
+okbanger,,,
+latenightcrew,,,
+bracket,,,
