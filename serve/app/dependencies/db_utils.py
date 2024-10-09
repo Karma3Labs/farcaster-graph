@@ -1255,7 +1255,7 @@ async def get_top_casters(
         limit: int,
         pool: Pool
 ):
-    sql_query = f""" select cast_hash, i as fid, v as score from k3l_top_casters 
+    sql_query = """ select cast_hash, i as fid, v as score from k3l_top_casters 
                     where date_iso = (select max(date_iso) from k3l_top_casters)
                     order by v desc
                     OFFSET $1 LIMIT $2"""
@@ -1267,7 +1267,7 @@ async def get_top_spammers(
         limit: int,
         pool: Pool
 ):
-    sql_query = f""" select 
+    sql_query = """ select 
                     fid,
                     display_name,
                     total_outgoing,
@@ -1310,7 +1310,12 @@ async def get_top_channel_followers(
         klcr.rank as channel_rank,
         k3l_rank.rank as global_rank,
         fnames.fname as fname,
-        user_data.value as username
+        case user_data.type
+      		when 6 then user_data.value
+      	end username,
+        case user_data.type
+      		when 1 then user_data.value
+      	end pfp
     FROM distinct_warpcast_followers wf 
     LEFT JOIN k3l_channel_rank klcr 
     on wf.fid = klcr.fid 
@@ -1318,7 +1323,7 @@ async def get_top_channel_followers(
     LEFT JOIN k3l_rank
     on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
     LEFT JOIN fnames on (fnames.fid = wf.fid)
-    LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type=6)
+    LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
     )
     SELECT 
         fid,
@@ -1326,7 +1331,8 @@ async def get_top_channel_followers(
         channel_rank,
         global_rank,
         any_value(fname) as fname,
-        any_value(username) as username
+        any_value(username) as username,
+        any_value(pfp) as pfp
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
     ORDER BY channel_rank,global_rank NULLS LAST
