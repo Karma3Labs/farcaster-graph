@@ -51,7 +51,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
 
     utils.log_memusage(logger)
     try:
-        channel_interactions_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel.project_url)
+        channel_interactions_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'])
         channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
@@ -61,7 +61,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
         # return {cid: []}
 
     try:
-        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel.project_url)
+        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel['url'])
     except Exception as e:
         logger.error(f"Failed to fetch channel participants for channel {cid}: {e}")
         raise e
