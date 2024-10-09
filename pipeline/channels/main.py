@@ -2,7 +2,6 @@
 import sys
 import argparse
 import random
-import pandas as pd
 
 # local dependencies
 import utils
@@ -15,6 +14,7 @@ from . import compute_trust
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
+import pandas as pd
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -163,6 +163,7 @@ if __name__ == "__main__":
 
     if args.task == 'fetch':
         channel_ids = channel_utils.read_channel_ids_csv(args.csv)
+        random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
         if args.channel_ids:
