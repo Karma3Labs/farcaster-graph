@@ -43,7 +43,6 @@ def fetch_data_from_api():
     except Exception as e:
         logger.error(f"Failed to insert data into postgres: {e}")
         raise e
-    return None
 
 
 if __name__ == "__main__":
