@@ -42,12 +42,13 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
             lead_fid = channel['leadfid']
             host_fids.append(lead_fid)
             mod_fids = [int(fid) for fid in channel['moderatorfids']]
-            host_fids.append(mod_fids)
+            host_fids.extend(mod_fids)
     except Exception as e:
         logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
         raise e
 
     logger.info(f"Channel details: {channel}")
+    logger.info(f"Host fids: {set(host_fids)}")
 
     utils.log_memusage(logger)
     try:
