@@ -14,7 +14,21 @@ def fetch_data_from_api():
 
     df_warpcast_channels = pd.DataFrame(response.json()["result"]["channels"])
     df_warpcast_channels['createdAt'] = pd.to_datetime(df_warpcast_channels['createdAt'], unit='ms')
-
+    db_column_names = [
+        "id",
+        "url",
+        "name",
+        "description",
+        "imageurl",
+        "headerImageUrl",
+        "leadfid",
+        "moderatorFids",
+        "createdat",
+        "followercount",
+        "memberCount",
+        "pinnedCastHash",
+    ]
+    df_warpcast_channels = df_warpcast_channels[db_column_names]
     df_warpcast_channels.columns = df_warpcast_channels.columns.str.lower()
     logger.info(utils.df_info_to_string(df_warpcast_channels, with_sample=True))
 
@@ -22,10 +36,13 @@ def fetch_data_from_api():
         raise Exception("Failed to fetch data from warpcast. No data found.")
 
     postgres_engine = create_engine(settings.POSTGRES_URL.get_secret_value(), connect_args={"connect_timeout": 1000})
-    with postgres_engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE warpcast_channels_data_v2"))
-        df_warpcast_channels.to_sql('warpcast_channels_data_v2', con=conn, if_exists='append', index=False)
-
+    try:
+        with postgres_engine.begin() as conn:
+            conn.execute(text("TRUNCATE TABLE warpcast_channels_data_v2"))
+            df_warpcast_channels.to_sql('warpcast_channels_data_v2', con=conn, if_exists='append', index=False)
+    except Exception as e:
+        logger.error(f"Failed to insert data into postgres: {e}")
+        raise e
     return None
 
 
