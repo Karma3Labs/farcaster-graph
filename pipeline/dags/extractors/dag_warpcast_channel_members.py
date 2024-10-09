@@ -26,7 +26,7 @@ with DAG(
     task1 = BashOperator(
         task_id='extract_channel_followers',
         bash_command="cd /pipeline; extractors/extract_channel_fids.sh" 
-                        " -w . -v .venv -c channels/Top_Channels.csv -s top -j followers",
+                        " -w . -v .venv -c channels/Top_Channels.csv -s top -j members",
         dag=dag
     )
 
