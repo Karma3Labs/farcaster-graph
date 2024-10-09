@@ -148,6 +148,8 @@ def fetch_channel_details(pg_url: str, channel_id: str):
     sql_engine = create_engine(pg_url)
     tmp_sql = f"select * from warpcast_channels_data where id = '{channel_id}'"
     df = pd.read_sql_query(tmp_sql, sql_engine)
+    if len(df) == 0:
+        return None
     return df.to_dict(orient='records')[0]
 
 
