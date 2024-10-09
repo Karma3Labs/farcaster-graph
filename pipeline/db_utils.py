@@ -2,7 +2,6 @@ import tempfile
 from io import StringIO
 import csv
 
-from channels import channel_model
 from timer import Timer
 from config import settings
 from loguru import logger
