@@ -124,8 +124,8 @@ async def fetch_channel_members(
             logger.error(f"error {next_url} - {url}: {e}")
             raise e
     logger.info(
-        f"Fetching followers for channel '{channel_id}' took {time.perf_counter() - start_time} secs for {len(all_members)} fids")
-    logger.info(f"First 10 followers for channel '{channel_id}': {all_members[:10]}")
+        f"Fetching members for channel '{channel_id}' took {time.perf_counter() - start_time} secs for {len(all_members)} fids")
+    logger.info(f"First 10 members for channel '{channel_id}': {all_members[:10]}")
     return all_members
 
 
