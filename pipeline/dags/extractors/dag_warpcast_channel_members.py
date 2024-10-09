@@ -17,7 +17,7 @@ with DAG(
     "extract_warpcast_members",
     default_args=default_args,
     description="Fetch channel members from WARPCAST API and load into DB daily",
-    schedule_interval=timedelta(days=1),
+    schedule_interval=timedelta(hours=1),
     start_date=datetime(2024, 8, 1),
     is_paused_upon_creation=True,
     max_active_runs=1,
