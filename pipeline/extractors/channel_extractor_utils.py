@@ -140,47 +140,6 @@ async def process_channel(
     if job_type == 'fetch_followers':
         followers = await fetch_channel_followers(http_conn_pool, http_timeout, channel_id)
         rows = [tuple([follower['fid'], follower['followedAt'], job_time, channel_id]) for follower in followers]
-    else:
-        members = await fetch_channel_members(http_conn_pool, http_timeout, channel_id)
-        rows = [tuple([members['fid'], members['memberAt'], job_time, channel_id]) for members in members]
-    # WARNING: warpcast returns duplicates. So, I have dropped the unique constraint on db.
-    # logger.info(f"before de-dup {len(followers)} followers for channel '{channel_id}'")
-    # rows = list(set(rows))
-    # logger.info(f"after de-dup {len(followers)} followers for channel '{channel_id}'")
-    start_time = time.perf_counter()
-    # Take a connection from the pool.
-    async with db_pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                try:
-                    await connection.copy_records_to_table(
-                        "warpcast_followers",
-                        records=rows,
-                        columns=["fid", "followedat", "insert_ts", "channel_id"],
-                        timeout=settings.POSTGRES_TIMEOUT_SECS,
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to insert {len(followers)} followers for channel '{channel_id}'"
-                    )
-                    logger.error(f"{e}")
-                    return
-    logger.info(f"db took {time.perf_counter() - start_time} secs to insert {len(followers)} rows")
-    return channel_id
-
-
-async def process_channel(
-        job_type: str,
-        job_time: datetime.datetime,
-        db_pool: Pool,
-        http_conn_pool: aiohttp.ClientSession,
-        http_timeout: aiohttp.ClientTimeout,
-        channel_id: str,
-):
-    if job_type == 'fetch_followers':
-        followers = await fetch_channel_followers(http_conn_pool, http_timeout, channel_id)
-        rows = [tuple([follower['fid'], follower['followedAt'], job_time, channel_id]) for follower in followers]
         await push_to_db(db_pool, rows, job_type, len(followers), channel_id)
     else:
         members = await fetch_channel_members(http_conn_pool, http_timeout, channel_id)
