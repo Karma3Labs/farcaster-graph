@@ -14,22 +14,22 @@ def fetch_data_from_api():
 
     df_warpcast_channels = pd.DataFrame(response.json()["result"]["channels"])
     df_warpcast_channels['createdAt'] = pd.to_datetime(df_warpcast_channels['createdAt'], unit='ms')
+    df_warpcast_channels.columns = df_warpcast_channels.columns.str.lower()
     db_column_names = [
         "id",
         "url",
         "name",
         "description",
         "imageurl",
-        "headerImageUrl",
+        "headerimageurl",
         "leadfid",
-        "moderatorFids",
+        "moderatorfids",
         "createdat",
         "followercount",
-        "memberCount",
-        "pinnedCastHash",
+        "membercount",
+        "pinnedcasthash",
     ]
-    df_warpcast_channels = df_warpcast_channels[db_column_names]
-    df_warpcast_channels.columns = df_warpcast_channels.columns.str.lower()
+    df_warpcast_channels = df_warpcast_channels.filter(items=db_column_names, axis=1)
     logger.info(utils.df_info_to_string(df_warpcast_channels, with_sample=True))
 
     if len(df_warpcast_channels) == 0:

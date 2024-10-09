@@ -342,13 +342,13 @@ CREATE TABLE public.warpcast_channels_data (
 	name text NOT NULL,
 	description text NULL,
 	imageurl text NULL,
-    headerImageUrl text NULL,
+    headerimageurl text NULL,
 	leadfid int8 NULL,
-    moderatorFids int8[] NULL,
+    moderatorfids int8[] NULL,
 	createdat timestamp NULL,
 	followercount int4 NOT NULL,
-    memberCount int4 NOT NULL,
-    pinnedCastHash text NULL,
+    memberfount int4 NOT NULL,
+    pinnedfasthash text NULL,
 	insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX idx_warpcast_channels_data_ch_id_idx ON public.warpcast_channels_data USING btree (id);
