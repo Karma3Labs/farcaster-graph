@@ -48,7 +48,6 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
         raise e
 
     logger.info(f"Channel details: {channel}")
-    return
 
     utils.log_memusage(logger)
     try:
