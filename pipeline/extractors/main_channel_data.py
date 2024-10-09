@@ -38,8 +38,8 @@ def fetch_data_from_api():
     postgres_engine = create_engine(settings.POSTGRES_URL.get_secret_value(), connect_args={"connect_timeout": 1000})
     try:
         with postgres_engine.begin() as conn:
-            conn.execute(text("TRUNCATE TABLE warpcast_channels_data_v2"))
-            df_warpcast_channels.to_sql('warpcast_channels_data_v2', con=conn, if_exists='append', index=False)
+            conn.execute(text("TRUNCATE TABLE warpcast_channels_data"))
+            df_warpcast_channels.to_sql('warpcast_channels_data', con=conn, if_exists='append', index=False)
     except Exception as e:
         logger.error(f"Failed to insert data into postgres: {e}")
         raise e
