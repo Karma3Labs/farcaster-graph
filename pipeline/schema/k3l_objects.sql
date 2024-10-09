@@ -453,3 +453,16 @@ CREATE INDEX warpcast_followers_fid_idx ON public.warpcast_followers USING btree
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
 -------------------------------------------------
+CREATE TABLE public.warpcast_members (
+  fid int8 NOT NULL,
+  memberAt bigint NOT NULL,
+  insert_ts timestamp without time zone NOT NULL,
+  channel_id text NOT NULL
+ );
+
+CREATE INDEX warpcast_members_ts_ch_fid_idx ON public.warpcast_members USING btree (insert_ts, channel_id, fid);
+CREATE INDEX warpcast_members_ch_id_idx ON public.warpcast_members USING btree (channel_id);
+CREATE INDEX warpcast_members_fid_idx ON public.warpcast_members USING btree (fid);
+
+GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
+

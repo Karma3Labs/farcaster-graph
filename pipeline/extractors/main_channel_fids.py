@@ -11,6 +11,7 @@ from config import settings
 from extractors.channel_extractor_utils import (
     fetch_all_channels_warpcast,
     process_channel,
+    JobType
 )
 from timer import Timer
 from channels import channel_utils
@@ -39,20 +40,10 @@ logger.add(
 
 
 class Scope(Enum):
-  top = 1
-  all = 2
+  top = 'top'
+  all = 'all'
 
-  def __str__(self):
-    return self.name
-
-  @staticmethod
-  def from_string(s):
-    try:
-        return Scope[s]
-    except KeyError:
-        raise ValueError()
-
-async def main(daemon: bool, scope: Scope, csv_path: Path):
+async def main(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
     while True:
         try:
 
@@ -97,6 +88,7 @@ async def main(daemon: bool, scope: Scope, csv_path: Path):
                             tasks.append(
                                 asyncio.create_task(
                                     process_channel(
+                                        job_type=job_type,
                                         job_time=job_time,
                                         db_pool=db_pool, # type: ignore
                                         http_conn_pool=http_conn_pool,
@@ -136,7 +128,15 @@ if __name__ == "__main__":
         help="top or all",
         required=True,
         choices=list(Scope),
-        type=Scope.from_string,
+        type=Scope,
+    )
+    parser.add_argument(
+        "-j",
+        "--job_type",
+        help="followers or members",
+        required=True,
+        choices=list(JobType),
+        type=JobType.from_string,
     )
     parser.add_argument(
         "-d",
@@ -150,4 +150,4 @@ if __name__ == "__main__":
     print(args)
 
     logger.info("hello hello")
-    asyncio.run(main(args.daemon, args.scope, args.csv))
+    asyncio.run(main(args.daemon, args.scope, args.job_type, args.csv))
