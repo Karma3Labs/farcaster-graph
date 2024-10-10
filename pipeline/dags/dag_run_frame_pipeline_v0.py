@@ -44,15 +44,17 @@ with DAG(
     task4 = BashOperator(
         task_id='refresh_k3l_frame_interaction',
         bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_frame_interaction;"
+        REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_recent_frame_interaction;"
         '''
     )
 
-    task5 = BashOperator(
-        task_id='vacuum_k3l_frame_interaction',
-        bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        VACUUM ANALYZE k3l_frame_interaction;"
-        '''
-    )
+    # task5 = BashOperator(
+    #     task_id='vacuum_k3l_frame_interaction',
+    #     bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
+    #     VACUUM ANALYZE k3l_recent_frame_interaction;"
+    #     '''
+    # )
 
-    task1 >> task2 >> task3 >> task4 >> task5
+    # task1 >> task2 >> task3 >> task4 >> task5
+    task1 >> task2 >> task3 >> task4
+

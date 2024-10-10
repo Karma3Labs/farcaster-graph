@@ -154,7 +154,7 @@ ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
     ADD CONSTRAINT k3l_cast_embed_url_mapping_url_id_fkey FOREIGN KEY (url_id) REFERENCES public.k3l_url_labels(url_id);
 
 ------------------------------------------------------------------------------------
-CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
+CREATE MATERIALIZED VIEW public.k3l_recent_frame_interaction AS
  SELECT casts.fid,
     'cast'::text AS action_type,
     urls.url_id,
@@ -166,6 +166,7 @@ CREATE MATERIALIZED VIEW public.k3l_frame_interaction AS
    FROM ((public.casts
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((url_map.cast_id = casts.id) AND (casts.deleted_at IS NULL)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+  WHERE public.casts.timestamp BETWEEN now() - interval '30 days' AND now()
   GROUP BY casts.fid, 'cast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
         CASE
             WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
@@ -185,6 +186,7 @@ UNION
         ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+    WHERE public.casts.timestamp BETWEEN now() - interval '30 days'AND now()
   GROUP BY reactions.fid, 'recast'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
         CASE
             WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
@@ -204,6 +206,7 @@ UNION
         ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
+    WHERE public.casts.timestamp BETWEEN now() - interval '30 days' AND now()
   GROUP BY reactions.fid, 'like'::text, urls.url_id, ((((((urls.scheme || '://'::text) ||
         CASE
             WHEN (urls.subdomain <> ''::text) THEN (urls.subdomain || '.'::text)
@@ -211,15 +214,17 @@ UNION
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
   WITH NO DATA;
 
-CREATE UNIQUE INDEX k3l_frame_interaction_fid_action_type_url_idunique 
-ON public.k3l_frame_interaction 
+CREATE UNIQUE INDEX k3l_recent_frame_interaction_fid_type_url_unq 
+ON public.k3l_recent_frame_interaction 
 USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
 
-CREATE INDEX k3l_frame_interaction_url_id_index ON public.k3l_frame_interaction USING btree (url_id);
+CREATE INDEX k3l_recent_frame_interaction_url_id_idx ON public.k3l_recent_frame_interaction USING btree (url_id);
 
-CREATE INDEX k3l_frame_interaction_fid_index ON public.k3l_frame_interaction USING btree (fid)
+CREATE INDEX k3l_recent_frame_interaction_fid_idx ON public.k3l_recent_frame_interaction USING btree (fid);
 
-CREATE INDEX k3l_frame_interaction_url_index ON public.k3l_frame_interaction USING btree (url)
+CREATE INDEX k3l_recent_frame_interaction_url_idx ON public.k3l_recent_frame_interaction USING btree (url);
+
+REFRESH MATERIALIZED VIEW k3l_recent_frame_interaction WITH DATA;
 
 ------------------------------------------------------------------------------------
 CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
