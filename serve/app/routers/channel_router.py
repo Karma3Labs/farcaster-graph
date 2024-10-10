@@ -222,3 +222,25 @@ async def get_top_channel_followers(
         pool=pool)
     return {"result": followers}
 
+@router.get("/repliers/{channel}")
+async def get_top_channel_repliers(
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=500000)] = 100,
+        pool: Pool = Depends(db_pool.get_db)
+):
+    """
+  Get a list of fids who are followers of the channel
+  and their latest global rank channel rank and name
+  This API takes two optional parameters - offset and limit. \n
+  Parameter 'offset' is used to specify how many results to skip
+    and can be useful for paginating through results. \n
+  Parameter 'limit' is used to specify the number of results to return.
+  By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
+  """
+    followers = await db_utils.get_top_channel_repliers(
+        channel_id=channel,
+        offset=offset,
+        limit=limit,
+        pool=pool)
+    return {"result": followers}

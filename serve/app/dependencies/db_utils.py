@@ -527,7 +527,7 @@ async def get_top_frames(
                 else {weights.like}
                 end as weight,
             {decay_sql} as decay_factor
-        FROM k3l_frame_interaction as interactions
+        FROM k3l_recent_frame_interaction as interactions
         {time_filter_sql}
         INNER JOIN
             k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
@@ -592,7 +592,7 @@ async def get_top_frames_with_cast_details(
                 else {weights.like}
                 end as weight,
             {decay_sql} as decay_factor
-        FROM k3l_frame_interaction as interactions
+        FROM k3l_recent_frame_interaction as interactions
         {time_filter_sql}
         INNER JOIN
             k3l_rank on (k3l_rank.profile_id = interactions.fid and k3l_rank.strategy_id=3)
@@ -684,7 +684,7 @@ async def get_neighbors_frames(
             interactions.fid,
             {wt_score_sql} as score,
             {wt_weight_sql} as weight
-        FROM k3l_frame_interaction as interactions
+        FROM k3l_recent_frame_interaction as interactions
         {time_filter_sql}
         INNER JOIN json_to_recordset($1::json)
             AS trust(fid int, score numeric) ON (trust.fid = interactions.fid)
@@ -1315,15 +1315,15 @@ async def get_top_channel_followers(
       	end username,
         case user_data.type
       		when 1 then user_data.value
-      	end pfp
-    FROM distinct_warpcast_followers wf 
-    LEFT JOIN k3l_channel_rank klcr 
-    on wf.fid = klcr.fid 
-    and wf.channel_id  = klcr.channel_id 
-    LEFT JOIN k3l_rank
-    on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
-    LEFT JOIN fnames on (fnames.fid = wf.fid)
-    LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
+      	end pfp,
+        warpcast_members.memberat
+    FROM 
+        distinct_warpcast_followers wf 
+        LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
+        LEFT JOIN k3l_channel_rank klcr on wf.fid = klcr.fid and wf.channel_id  = klcr.channel_id 
+        LEFT JOIN fnames on (fnames.fid = wf.fid)
+        LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
+        LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
     )
     SELECT 
         fid,
@@ -1332,12 +1332,85 @@ async def get_top_channel_followers(
         global_rank,
         any_value(fname) as fname,
         any_value(username) as username,
-        any_value(pfp) as pfp
+        any_value(pfp) as pfp,
+        min(memberat) as memberat
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
     ORDER BY channel_rank,global_rank NULLS LAST
     OFFSET $2
     LIMIT $3
+    """
+
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_top_channel_repliers(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    sql_query = """
+        WITH 
+        followers as (
+        SELECT 
+            distinct wf.fid,
+            wf.channel_id,
+            ch.url as channel_url
+        FROM warpcast_followers as wf
+        INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
+        AND wf.insert_ts=(select max(insert_ts) 
+                FROM warpcast_followers where channel_id=$1)
+        ), 
+        followers_data as (
+            SELECT 
+                followers.fid,
+                followers.channel_id,
+                '0x' || encode(ci.cast_hash, 'hex') as cast_hash,
+                klcr.rank as channel_rank,
+                k3l_rank.rank as global_rank,
+                fnames.fname as fname,
+                case user_data.type
+                    when 6 then user_data.value
+                end username,
+                case user_data.type
+                    when 1 then user_data.value
+                end pfp
+            FROM
+                k3l_cast_action as ci
+                INNER JOIN followers
+                    ON (followers.fid = ci.fid)
+                INNER JOIN k3l_recent_parent_casts as casts
+                    ON (ci.cast_hash = casts.hash
+                        AND ci.action_ts 
+                        BETWEEN (CURRENT_TIMESTAMP - INTERVAL '1 day') 
+                            AND (CURRENT_TIMESTAMP - INTERVAL '10 minutes')
+                        AND casts.root_parent_url = followers.channel_url
+                        -- AND ci.replied > 0
+                    )
+                LEFT JOIN k3l_rank on (followers.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
+                    LEFT JOIN k3l_channel_rank klcr on (followers.fid = klcr.fid and followers.channel_id  = klcr.channel_id )
+                LEFT JOIN fnames on (fnames.fid = followers.fid)
+                LEFT JOIN user_data on (user_data.fid = followers.fid and user_data.type in (6,1))
+                LEFT JOIN warpcast_members AS members
+                    ON (followers.fid = members.fid AND members.channel_id=followers.channel_id)
+            WHERE 
+                members.fid IS NULL
+        )
+        SELECT 
+            fid,
+            channel_id,
+            channel_rank,
+            global_rank,
+            array_agg(distinct(cast_hash)) as cast_hash,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(pfp) as pfp
+        FROM followers_data
+        GROUP BY fid,channel_id,channel_rank,global_rank
+        ORDER BY channel_rank,global_rank NULLS LAST
+        OFFSET $2
+        limit $3
+   
     """
 
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
