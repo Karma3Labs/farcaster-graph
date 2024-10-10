@@ -226,6 +226,8 @@ CREATE INDEX k3l_recent_frame_interaction_url_idx ON public.k3l_recent_frame_int
 
 REFRESH MATERIALIZED VIEW k3l_recent_frame_interaction WITH DATA;
 
+GRANT SELECT,REFERENCES ON public.k3l_recent_frame_interaction TO k3l_readonly;
+
 ------------------------------------------------------------------------------------
 CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
 SELECT 
@@ -367,6 +369,7 @@ CREATE TABLE public.k3l_top_casters (
 	date_iso date NOT NULL,
 	cast_hash bytea NULL
 );
+GRANT SELECT,REFERENCES ON TABLE public.k3l_top_casters TO k3l_readonly;
 
 -----------------------------------------
 
@@ -382,6 +385,8 @@ CREATE TABLE public.k3l_top_spammers (
   total_global_rank_rows int8 NOT NULL,
   date_iso date NOT NULL
 );
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_top_spammers TO k3l_readonly;
 
 ----------------------------------------------------------
 CREATE UNLOGGED TABLE public.localtrust_stats_v2 (
