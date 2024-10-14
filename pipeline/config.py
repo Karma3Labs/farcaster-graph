@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     AIRFLOW_GID: int
     AIRFLOW__CORE__FERNET_KEY: str
     SSH_KEY_PATH: str = 'changeme'
+    SSH_LISTEN_PORT: int = 9599
+    SSH_LISTEN_HOST: str = '127.0.0.1'
 
     DUNE_API_KEY: str = 'changeme'
 

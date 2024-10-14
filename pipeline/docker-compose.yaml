@@ -91,7 +91,7 @@ services:
     container_name: sshtunnel
     restart: unless-stopped
     command: |
-      -N -L 9599:127.0.0.1:${SANDBOX_REMOTE_PORT}
+      -N -L ${SSH_LISTEN_PORT}:${SSH_LISTEN_HOST}:${SANDBOX_REMOTE_PORT}
       ${SANDBOX_REMOTE_USER}@${SANDBOX_REMOTE_HOST}
     volumes:
       - ${SSH_KEY_PATH}:/root/.ssh/id_rsa:ro
@@ -100,7 +100,7 @@ services:
     networks:
       - sshtunnel
     ports:
-      - 9599:9599
+      - ${SSH_LISTEN_PORT}:${SSH_LISTEN_PORT}
 
   pgbouncer:
     image: bitnami/pgbouncer:latest
@@ -111,7 +111,7 @@ services:
       - POSTGRESQL_PASSWORD=${SANDBOX_DB_PASSWORD}
       - POSTGRESQL_DATABASE=${SANDBOX_DB_NAME}
       - POSTGRESQL_HOST=172.17.0.1 # ssh tunnel is on localhost
-      - POSTGRESQL_PORT=9599 # ssh tunnnel listens on 9599
+      - POSTGRESQL_PORT=${SSH_LISTEN_PORT}
       - PGBOUNCER_POOL_MODE=transaction
       - PGBOUNCER_AUTH_TYPE=scram-sha-256 # remove/comment this line if using postgres:13 and lower
       - PGBOUNCER_ADMIN_USERS=postgres,dbuser
