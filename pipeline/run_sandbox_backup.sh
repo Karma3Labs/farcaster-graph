@@ -24,7 +24,7 @@ echo "Starting backup..."
 set +x  # Disable command echoing
 export PGPASSWORD="$SANDBOX_DB_PASSWORD"
 set -x  # Re-enable command echoing
-pg_dump -h $SSH_LISTEN_HOST -p $SSH_LISTEN_PORT -U $SANDBOX_DB_USER -d $SANDBOX_DB_NAME \
+pg_dump -h $SANDBOX_DB_HOST -p $SANDBOX_DB_PORT -U $SANDBOX_DB_USER -d $SANDBOX_DB_NAME \
   -j 1 \
   -Fd \
   -f "$BACKUP_DIR/$BACKUP_FILE"
