@@ -50,7 +50,7 @@ def create_dag():
         do_xcom_push=True
     )
 
-    @task(max_active_tis_per_dagrun=12)
+    @task(max_active_tis_per_dagrun=8)
     def process_channel_chunk(chunk: list):
         chunk_str = ','.join(chunk)
         bash_command = (
