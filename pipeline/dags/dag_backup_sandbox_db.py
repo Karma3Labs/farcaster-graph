@@ -4,6 +4,7 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.contrib.operators.ssh_operator import SSHOperator
 from airflow.contrib.hooks.ssh_hook import SSHHook
+from airflow.operators.bash import BashOperator
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -26,12 +27,19 @@ with DAG(
     schedule_interval='0 0 * * *', # backup everyday
     catchup=False,
 ) as dag:
-    ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
 
-    run_sandbox_backup = SSHOperator(
-        task_id="run_sandbox_backup_v0",
-        command=f"cd {sandbox_db_sync_path}; ./run-backup.sh ",
-        ssh_hook=ssh_hook,
-        dag=dag)
+
+    # ssh_hook = SSHHook(ssh_conn_id='eigen2', keepalive_interval=60, cmd_timeout=None)
+
+    # run_sandbox_backup = SSHOperator(
+    #     task_id="run_sandbox_backup_v0",
+    #     command=f"cd {sandbox_db_sync_path}; ./run-backup.sh ",
+    #     ssh_hook=ssh_hook,
+    #     dag=dag)
+
+    run_sandbox_backup = BashOperator(
+        task_id='run_sandbox_backup',
+        bash_command="cd /pipeline && ./run_sandbox_backup.sh "
+    )
 
     run_sandbox_backup
