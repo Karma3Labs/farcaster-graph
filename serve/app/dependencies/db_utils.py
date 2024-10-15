@@ -1407,7 +1407,7 @@ async def get_top_channel_repliers(
             channel_id,
             channel_rank,
             global_rank,
-            array_agg(distinct(cast_hash)) as cast_hash,
+            (array_agg(distinct(cast_hash)))[1:1] as cast_hash,
             any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp
