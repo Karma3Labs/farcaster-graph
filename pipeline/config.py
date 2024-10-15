@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     SANDBOX_DB_USER:str = 'postgres'
     SANDBOX_DB_PASSWORD:SecretStr = 'password'
     SANDBOX_DB_NAME:str = 'postgres'
-    SANDBOX_DB_HOST:str = '127.0.0.1'
+    SANDBOX_DB_HOST:str = '172.17.0.1' # docker tunnel binding ip
     SANDBOX_DB_PORT:int = 9541
     SANDBOX_REMOTE_HOST:str = 'changeme.elb.us-east-1.amazonaws.com'
     SANDBOX_REMOTE_PORT:int = 5432

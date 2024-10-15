@@ -18,7 +18,7 @@ S3_PREFIX='pg_dump/'
 DB_NAME=$SANDBOX_DB_NAME
 DB_USER=$SANDBOX_DB_USER
 DB_PASSWORD=$SANDBOX_DB_PASSWORD
-DB_HOST=$SSH_LISTEN_HOST
+DB_HOST=$SANDBOX_DB_HOST
 DB_PORT=$SSH_LISTEN_PORT
 
 rm -rf "$BACKUP_DIR"
@@ -49,6 +49,7 @@ if [ $? -eq 0 ]; then
 
     if [ $? -eq 0 ]; then
         echo "Backup successfully uploaded to S3"
+        rm -rf "$BACKUP_DIR"
     else
         echo "Failed to upload backup to S3"
         exit 1
@@ -58,5 +59,4 @@ else
     exit 1
 fi
 
-cleanup
 exit 0
