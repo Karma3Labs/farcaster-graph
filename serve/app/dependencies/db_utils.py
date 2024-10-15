@@ -1351,20 +1351,25 @@ async def get_top_channel_repliers(
 ):
     sql_query = """
         WITH 
-        followers as (
-        SELECT 
-            distinct wf.fid,
-            wf.channel_id,
-            ch.url as channel_url
-        FROM warpcast_followers as wf
-        INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
-        AND wf.insert_ts=(select max(insert_ts) 
-                FROM warpcast_followers where channel_id=$1)
+        non_member_followers as (
+          SELECT 
+              distinct wf.fid,
+              wf.channel_id,
+              ch.url as channel_url
+          FROM warpcast_followers as wf
+          LEFT JOIN warpcast_members as wm 
+            ON (wm.fid = wf.fid 
+                AND wm.channel_id = wf.channel_id 
+                AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)
+               )
+          INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
+          AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)
+          AND wm.fid IS NULL
         ), 
         followers_data as (
             SELECT 
-                followers.fid,
-                followers.channel_id,
+                nmf.fid,
+                nmf.channel_id,
                 '0x' || encode(ci.cast_hash, 'hex') as cast_hash,
                 klcr.rank as channel_rank,
                 k3l_rank.rank as global_rank,
@@ -1377,24 +1382,25 @@ async def get_top_channel_repliers(
                 end pfp
             FROM
                 k3l_cast_action as ci
-                INNER JOIN followers
-                    ON (followers.fid = ci.fid)
-                INNER JOIN k3l_recent_parent_casts as casts
+                INNER JOIN non_member_followers as nmf
+                    ON (nmf.fid = ci.fid)
+                INNER JOIN casts
                     ON (ci.cast_hash = casts.hash
                         AND ci.action_ts 
                         BETWEEN (CURRENT_TIMESTAMP - INTERVAL '1 day') 
                             AND (CURRENT_TIMESTAMP - INTERVAL '10 minutes')
-                        AND casts.root_parent_url = followers.channel_url
+                        AND casts.root_parent_url = nmf.channel_url
+                        AND casts.parent_hash IS NOT NULL
+                        AND casts.deleted_at IS NULL
+                        AND casts.timestamp 
+                              BETWEEN now() - interval '5 days'
+                                  AND now()
                         -- AND ci.replied > 0
                     )
-                LEFT JOIN k3l_rank on (followers.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
-                    LEFT JOIN k3l_channel_rank klcr on (followers.fid = klcr.fid and followers.channel_id  = klcr.channel_id )
-                LEFT JOIN fnames on (fnames.fid = followers.fid)
-                LEFT JOIN user_data on (user_data.fid = followers.fid and user_data.type in (6,1))
-                LEFT JOIN warpcast_members AS members
-                    ON (followers.fid = members.fid AND members.channel_id=followers.channel_id)
-            WHERE 
-                members.fid IS NULL
+                LEFT JOIN k3l_rank on (nmf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
+                    LEFT JOIN k3l_channel_rank klcr on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id )
+                LEFT JOIN fnames on (fnames.fid = nmf.fid)
+                LEFT JOIN user_data on (user_data.fid = nmf.fid and user_data.type in (6,1))
         )
         SELECT 
             fid,

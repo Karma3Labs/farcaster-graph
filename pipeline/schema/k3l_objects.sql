@@ -243,7 +243,11 @@ WITH NO DATA;
 CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts USING btree (hash);
 
 CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
+
+GRANT SELECT,REFERENCES ON public.k3l_recent_child_casts TO k3l_readonly;
+
 ------------------------------------------------------------------------------------
+
 CREATE TABLE public.k3l_channel_fids (
   channel_id text NOT NULL,
   fid bigint NOT NULL,
@@ -458,6 +462,7 @@ CREATE TABLE public.warpcast_followers (
  );
  
 CREATE INDEX warpcast_followers_ts_ch_fid_idx ON public.warpcast_followers USING btree (insert_ts, channel_id, fid);
+CREATE INDEX warpcast_followers_ch_fid_idx ON public.warpcast_followers USING btree (channel_id, fid);
 CREATE INDEX warpcast_followers_ch_id_idx ON public.warpcast_followers USING btree (channel_id);
 CREATE INDEX warpcast_followers_fid_idx ON public.warpcast_followers USING btree (fid);
 
@@ -471,6 +476,7 @@ CREATE TABLE public.warpcast_members (
  );
 
 CREATE INDEX warpcast_members_ts_ch_fid_idx ON public.warpcast_members USING btree (insert_ts, channel_id, fid);
+CREATE INDEX warpcast_members_ch_fid_idx ON public.warpcast_members USING btree (channel_id, fid);
 CREATE INDEX warpcast_members_ch_id_idx ON public.warpcast_members USING btree (channel_id);
 CREATE INDEX warpcast_members_fid_idx ON public.warpcast_members USING btree (fid);
 
