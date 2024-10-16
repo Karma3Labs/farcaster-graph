@@ -91,7 +91,6 @@ def process_channel(
         logger.info(f"Localtrust: {utils.df_info_to_string(channel_lt_df, with_sample=True)}")
     except Exception as e:
         logger.error(f"Failed to compute local trust for channel {cid}: {e}")
-        # return {cid: []}
         raise e
 
     pretrust_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
@@ -101,15 +100,12 @@ def process_channel(
 
     if len(channel_lt_df) == 0:
         logger.error(f"No local trust for channel {cid}")
-        # return {cid: absent_fids}
-
         raise Exception(f"No local trust for channel {cid}")
 
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
         logger.error(f"Failed to compute EigenTrust scores for channel {cid}: {e}")
-        # return {cid: absent_fids}
         raise e
 
     logger.info(f"go_eigentrust returned {len(scores)} entries")
@@ -177,7 +173,7 @@ if __name__ == "__main__":
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
-        if args.channel_ids and args.interval:
+        if hasattr(args, 'channel_ids') and hasattr(args, 'interval'):
             process_channels(args.csv, args.channel_ids, args.interval)
         else:
             logger.error("Channel IDs and interval are required for processing.")

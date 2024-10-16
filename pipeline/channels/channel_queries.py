@@ -10,48 +10,48 @@ from db_utils import SQL
 
 INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
     WITH
-        likes_neynar AS (
+        likes AS (
             SELECT
-                r.fid AS i,
-                r.target_fid AS j,
+                reactions.fid AS i,
+                reactions.target_fid AS j,
                 COUNT(1) AS likes_v
             FROM
-                reactions r
+                reactions
             INNER JOIN
-                casts c ON c.hash = r.target_hash
+                casts ON casts.hash = reactions.target_hash
             WHERE
-                r.reaction_type = 1
-                AND r.target_fid IS NOT NULL
-                AND r.deleted_at IS NULL
-                AND c.root_parent_url = '{channel_url}'
+                reactions.reaction_type = 1
+                AND reactions.target_fid IS NOT NULL
+                AND reactions.deleted_at IS NULL
+                AND casts.root_parent_url = '{channel_url}'
                 {r_condition}
             GROUP BY
-                r.fid, r.target_fid
+                reactions.fid, reactions.target_fid
         ),
         replies AS (
             SELECT
-                c.fid AS i,
-                c.parent_fid AS j,
+                casts.fid AS i,
+                casts.parent_fid AS j,
                 COUNT(1) AS replies_v
             FROM
-                casts c
+                casts
             WHERE
-                c.parent_hash IS NOT NULL
-                AND c.root_parent_url = '{channel_url}'
-                AND c.deleted_at IS NULL
+                casts.parent_hash IS NOT NULL
+                AND casts.root_parent_url = '{channel_url}'
+                AND casts.deleted_at IS NULL
                 {c_condition}
             GROUP BY
-                c.fid, c.parent_fid
+                casts.fid, casts.parent_fid
         ),
-        mentions_neynar AS (
+        mentions_rows AS (
             SELECT
-                c.fid AS author_fid,
-                unnest(c.mentions) AS mention_fid
+                casts.fid AS author_fid,
+                unnest(casts.mentions) AS mention_fid
             FROM
-                casts c
+                casts
             WHERE
-                c.root_parent_url = '{channel_url}'
-                AND c.deleted_at IS NULL
+                casts.root_parent_url = '{channel_url}'
+                AND casts.deleted_at IS NULL
                 {c_condition}
         ),
         mentions_agg AS (
@@ -60,41 +60,41 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
                 mention_fid AS j,
                 COUNT(1) AS mentions_v
             FROM
-                mentions_neynar
+                mentions_rows
             GROUP BY
                 author_fid, mention_fid
         ),
-        recasts_neynar AS (
+        recasts AS (
             SELECT
-                r.fid AS i,
-                r.target_fid AS j,
+                reactions.fid AS i,
+                reactions.target_fid AS j,
                 COUNT(1) AS recasts_v
             FROM
-                reactions r
+                reactions
             INNER JOIN
-                casts c ON r.target_hash = c.hash
+                casts ON reactions.target_hash = casts.hash
             WHERE
-                r.reaction_type = 2
-                AND r.target_fid IS NOT NULL
-                AND r.deleted_at IS NULL
-                AND c.root_parent_url = '{channel_url}'
+                reactions.reaction_type = 2
+                AND reactions.target_fid IS NOT NULL
+                AND reactions.deleted_at IS NULL
+                AND casts.root_parent_url = '{channel_url}'
                 {r_condition}
             GROUP BY
-                r.fid, r.target_fid
+                reactions.fid, reactions.target_fid
         ),
         unique_pairs AS (
             SELECT DISTINCT i, j
             FROM (
-                SELECT i, j FROM likes_neynar
+                SELECT i, j FROM likes
                 UNION
                 SELECT i, j FROM replies
                 UNION
                 SELECT i, j FROM mentions_agg
                 UNION
-                SELECT i, j FROM recasts_neynar
+                SELECT i, j FROM recasts
             ) AS combined_pairs
         ),
-        follows_neynar AS (
+        follows AS (
             SELECT
                 up.i,
                 up.j,
@@ -102,34 +102,34 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             FROM
                 unique_pairs up
             JOIN
-                links l ON up.i = l.fid AND up.j = l.target_fid
+                links ON up.i = links.fid AND up.j = links.target_fid
             WHERE
-                l.type = 'follow'
-                AND l.deleted_at IS NULL
+                links.type = 'follow'
+                AND links.deleted_at IS NULL
                 {l_condition}
             ORDER BY
                 up.i, up.j, follows_v DESC
         )
     SELECT
-        COALESCE(ln.i, r.i, ma.i, rn.i, fn.i) AS i,
-        COALESCE(ln.j, r.j, ma.j, rn.j, fn.j) AS j,
-        -- COALESCE(ln.likes_v, 0) AS likes_v,
-        -- COALESCE(r.replies_v, 0) AS replies_v,
+        COALESCE(likes.i, replies.i, ma.i, recasts.i, follows.i) AS i,
+        COALESCE(likes.j, replies.j, ma.j, recasts.j, follows.j) AS j,
+        -- COALESCE(likes.likes_v, 0) AS likes_v,
+        -- COALESCE(replies.replies_v, 0) AS replies_v,
         -- COALESCE(ma.mentions_v, 0) AS mentions_v,
-        -- COALESCE(rn.recasts_v, 0) AS recasts_v,
-        -- COALESCE(fn.follows_v, 0) AS follows_v,
-        -- COALESCE(ln.likes_v, 0) + COALESCE(r.replies_v, 0) + COALESCE(ma.mentions_v, 0) + COALESCE(rn.recasts_v, 0) + COALESCE(fn.follows_v, 0) AS l1rep1rec1m1,
-        COALESCE(ln.likes_v, 0) + (COALESCE(r.replies_v, 0) * 6.0) + (COALESCE(rn.recasts_v, 0) * 3.0) + (COALESCE(ma.mentions_v, 0) * 12.0) + COALESCE(fn.follows_v, 0) AS l1rep6rec3m12
+        -- COALESCE(recasts.recasts_v, 0) AS recasts_v,
+        -- COALESCE(follows.follows_v, 0) AS follows_v,
+        -- COALESCE(likes.likes_v, 0) + COALESCE(replies.replies_v, 0) + COALESCE(ma.mentions_v, 0) + COALESCE(recasts.recasts_v, 0) + COALESCE(follows.follows_v, 0) AS l1rep1rec1m1,
+        COALESCE(likes.likes_v, 0) + (COALESCE(replies.replies_v, 0) * 6.0) + (COALESCE(recasts.recasts_v, 0) * 3.0) + (COALESCE(ma.mentions_v, 0) * 12.0) + COALESCE(follows.follows_v, 0) AS l1rep6rec3m12
     FROM
-        likes_neynar ln
+        likes
     FULL OUTER JOIN
-        replies r ON ln.i = r.i AND ln.j = r.j
+        replies ON likes.i = replies.i AND likes.j = replies.j
     FULL OUTER JOIN
-        mentions_agg ma ON ln.i = ma.i AND ln.j = ma.j
+        mentions_agg ma ON likes.i = ma.i AND likes.j = ma.j
     FULL OUTER JOIN
-        recasts_neynar rn ON ln.i = rn.i AND ln.j = rn.j
+        recasts ON likes.i = recasts.i AND likes.j = recasts.j
     FULL OUTER JOIN
-        follows_neynar fn ON ln.i = fn.i AND ln.j = fn.j
+        follows ON likes.i = follows.i AND likes.j = follows.j
     """)
 
 
@@ -139,13 +139,12 @@ def fetch_interactions_df(
     channel_url: str,
     interval: int,
 ) -> pd.DataFrame:
-    query_args = {"channel_url": channel_url}
-    if interval > 0:
-        query_args = {
-            "r_condition": f"AND r.timestamp >= now() - interval '{interval} days'",
-            "c_condition": f"AND c.timestamp >= now() - interval '{interval} days'",
-            "l_condition": f"AND l.timestamp >= now() - interval '{interval} days'",
-        }
+    query_args = {
+        "r_condition": f" AND reactions.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
+        "c_condition": f" AND casts.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
+        "l_condition": f" AND links.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
+        "channel_url": channel_url,
+    }
     with Timer(name=f"fetch_interactions_{channel_url}"):
         channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(
             pg_dsn,

@@ -14,20 +14,25 @@ done
 shift $((OPTIND-1))
 CHANNEL_IDS="$1"
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] || [ -z "$INTERVAL" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -t fetch -c [csv_path] -n [interval] [channel_ids]"
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] ; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -c [csv_path] -n [interval] [channel_ids]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv -n 0 1,2,3"
-  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process -c channels/Top_Channels.csv -n 90 1,2,3"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv "
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process -c channels/Top_Channels.csv -n 90 openrank,lp"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
   echo "  [task] The task to perform: fetch or process."
   echo "  [csv_path] The path to the CSV file."
-  echo "  [interval] The number of days to fetch interactions. 0 means fetch lifetime interactions."
-  echo "  [channel_ids] Optional parameter for the channel IDs (used only for process task)."
+  echo "  [interval] Required parameter for process task indicating the number of days of channel interactions to process. 0 means process lifetime interactions."
+  echo "  [channel_ids] Required parameter for process task indicating the channel IDs to process."
   echo ""
+  exit 1
+fi
+
+if [ -z "$INTERVAL" ] || [ -z "$CHANNEL_IDS" ]; then
+  echo "Please specify both -n (interval) and (channel_ids) for the process task."
   exit 1
 fi
 
