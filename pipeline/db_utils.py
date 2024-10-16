@@ -146,17 +146,31 @@ def _psql_insert_copy(table, conn, keys, data_iter):
 
 @Timer(name="fetch_channel_details")
 def fetch_channel_details(pg_url: str, channel_id: str):
-    sql_engine = create_engine(pg_url)
-    tmp_sql = f"select * from warpcast_channels_data where id = '{channel_id}'"
-    df = pd.read_sql_query(tmp_sql, sql_engine)
-    if len(df) == 0:
-        return None
-    return df.to_dict(orient='records')[0]
+    engine = create_engine(pg_url)
+    try:
+        with engine.connect() as conn:
+            tmp_sql = f"select * from warpcast_channels_data where id = '{channel_id}'"
+            df = pd.read_sql_query(tmp_sql, conn)
+            if len(df) == 0:
+                return None
+            return df.to_dict(orient='records')[0]
+    except Exception as e:
+        logger.error(f"Failed to fetch_channel_details: {e}")
+        raise e
+    finally:
+        engine.dispose()
 
 
 @Timer(name="fetch_all_channel_details")
 def fetch_all_channel_details(pg_url: str):
     sql_engine = create_engine(pg_url)
-    tmp_sql = "select * from warpcast_channels_data"
-    df = pd.read_sql_query(tmp_sql, sql_engine)
-    return df
+    try:
+        with sql_engine.connect() as conn:
+            tmp_sql = "select * from warpcast_channels_data"
+            df = pd.read_sql_query(tmp_sql, conn)
+            return df
+    except Exception as e:
+        logger.error(f"Failed to fetch_all_channel_details: {e}")
+        raise e
+    finally:
+        sql_engine.dispose()

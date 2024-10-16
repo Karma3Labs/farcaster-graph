@@ -22,31 +22,37 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             WHERE
                 r.reaction_type = 1
                 AND r.target_fid IS NOT NULL
+                AND r.deleted_at IS NULL
                 AND c.root_parent_url = '{channel_url}'
+                {r_condition}
             GROUP BY
                 r.fid, r.target_fid
         ),
         replies AS (
             SELECT
-                fid AS i,
-                parent_fid AS j,
+                c.fid AS i,
+                c.parent_fid AS j,
                 COUNT(1) AS replies_v
             FROM
-                casts
+                casts c
             WHERE
-                parent_hash IS NOT NULL
-                AND root_parent_url = '{channel_url}'
+                c.parent_hash IS NOT NULL
+                AND c.root_parent_url = '{channel_url}'
+                AND c.deleted_at IS NULL
+                {c_condition}
             GROUP BY
-                fid, parent_fid
+                c.fid, c.parent_fid
         ),
         mentions_neynar AS (
             SELECT
-                fid AS author_fid,
-                unnest(casts.mentions) AS mention_fid
+                c.fid AS author_fid,
+                unnest(c.mentions) AS mention_fid
             FROM
-                casts
+                casts c
             WHERE
-                root_parent_url = '{channel_url}'
+                c.root_parent_url = '{channel_url}'
+                AND c.deleted_at IS NULL
+                {c_condition}
         ),
         mentions_agg AS (
             SELECT
@@ -70,7 +76,9 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             WHERE
                 r.reaction_type = 2
                 AND r.target_fid IS NOT NULL
+                AND r.deleted_at IS NULL
                 AND c.root_parent_url = '{channel_url}'
+                {r_condition}
             GROUP BY
                 r.fid, r.target_fid
         ),
@@ -97,6 +105,8 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
                 links l ON up.i = l.fid AND up.j = l.target_fid
             WHERE
                 l.type = 'follow'
+                AND l.deleted_at IS NULL
+                {l_condition}
             ORDER BY
                 up.i, up.j, follows_v DESC
         )
@@ -123,11 +133,25 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
     """)
 
 
-def fetch_interactions_df(logger: logging.Logger, pg_dsn: str, channel_url: str) -> pd.DataFrame:
-    channel_interactions_df: pd.DataFrame = None
-    with Timer(name="fetch_interactions_{channel_url}"):
-        channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, INTERACTIONS_SQL, channel_url=channel_url)
+def fetch_interactions_df(
+    logger: logging.Logger,
+    pg_dsn: str,
+    channel_url: str,
+    interval: int,
+) -> pd.DataFrame:
+    query_args = {"channel_url": channel_url}
+    if interval > 0:
+        query_args = {
+            "r_condition": f"AND r.timestamp >= now() - interval '{interval} days'",
+            "c_condition": f"AND c.timestamp >= now() - interval '{interval} days'",
+            "l_condition": f"AND l.timestamp >= now() - interval '{interval} days'",
+        }
+    with Timer(name=f"fetch_interactions_{channel_url}"):
+        channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(
+            pg_dsn,
+            INTERACTIONS_SQL,
+            **query_args,
+        )
     logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
-
     return channel_interactions_df

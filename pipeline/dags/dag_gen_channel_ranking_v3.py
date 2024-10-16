@@ -16,10 +16,6 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-PIPELINE_DIR = './'
-VENV_DIR = './.venv'
-SHELL_SCRIPT = f'{PIPELINE_DIR}/run_channel_scraper_v3.sh'
-CSV_PATH = f'{PIPELINE_DIR}/channels/Top_Channels.csv'
 N_CHUNKS = 100  # Define the number of chunks
 
 @task
@@ -46,7 +42,7 @@ def create_dag():
 
     fetch_data_task = BashOperator(
         task_id='fetch_channel_data',
-        bash_command=f'cd /pipeline && {SHELL_SCRIPT} -w {PIPELINE_DIR} -v {VENV_DIR} -t fetch -c {CSV_PATH}',
+        bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t fetch -c channels/Top_Channels.csv",
         do_xcom_push=True
     )
 
@@ -54,7 +50,7 @@ def create_dag():
     def process_channel_chunk(chunk: list):
         chunk_str = ','.join(chunk)
         bash_command = (
-            f'cd /pipeline && {SHELL_SCRIPT} -w {PIPELINE_DIR} -v {VENV_DIR} -t process -c {CSV_PATH} '
+            f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv'
             f'"{chunk_str}"'
         )
         process_task = BashOperator(
@@ -71,7 +67,7 @@ def create_dag():
 
     cleanup_db_task = BashOperator(
         task_id='cleanup_db',
-        bash_command=f'cd /pipeline && {SHELL_SCRIPT} -w {PIPELINE_DIR} -v {VENV_DIR} -t cleanup -c {CSV_PATH}',
+        bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t cleanup -c channels/Top_Channels.csv",
         trigger_rule=TriggerRule.ALL_SUCCESS
     )
 

@@ -34,8 +34,14 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def process_channel(cid, channel_data, pg_dsn, pg_url):
-    host_fids = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
+def process_channel(
+        cid: str,
+        channel_data: pd.DataFrame,
+        pg_dsn: str,
+        pg_url: str,
+        interval: int,
+) -> dict:
+    host_fids: list = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         if channel is None:
@@ -55,7 +61,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
 
     utils.log_memusage(logger)
     try:
-        channel_interactions_df = channel_queries.fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'])
+        channel_interactions_df = channel_queries.fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'], interval=interval)
         channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
@@ -130,7 +136,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
     return {cid: absent_fids}
 
 
-def process_channels(csv_path: str, channel_ids_str: str):
+def process_channels(csv_path: str, channel_ids_str: str, interval: int):
     # Setup connection pool for querying Warpcast API
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -142,7 +148,7 @@ def process_channels(csv_path: str, channel_ids_str: str):
 
     for cid in channel_ids:
         try:
-            result = process_channel(cid, channel_data, pg_dsn, pg_url)
+            result = process_channel(cid, channel_data, pg_dsn, pg_url, interval)
             missing_seed_fids.append(result)
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
@@ -158,7 +164,9 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--task", type=str, help="task to perform: fetch or process", required=True)
     parser.add_argument("-ids", "--channel_ids", type=str,
                         help="channel IDs for processing, only used for process task", required=False)
-
+    parser.add_argument("-int", "--interval", type=int,
+                        help="number of days to consider for processing, 0 means lifetime", required=False)
+    
     args = parser.parse_args()
     print(args)
 
@@ -169,10 +177,10 @@ if __name__ == "__main__":
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
-        if args.channel_ids:
-            process_channels(args.csv, args.channel_ids)
+        if args.channel_ids and args.interval:
+            process_channels(args.csv, args.channel_ids, args.interval)
         else:
-            logger.error("Channel IDs are required for processing.")
+            logger.error("Channel IDs and interval are required for processing.")
             sys.exit(1)
     else:
         logger.error("Invalid task specified. Use 'fetch' or 'process'.")
