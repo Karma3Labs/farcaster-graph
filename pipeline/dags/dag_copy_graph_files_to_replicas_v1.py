@@ -66,19 +66,19 @@ with DAG(
 
     @task_group(group_id="copy_graphs")
     def tg_copy_graphs():
-        eigen2_copy_all_pkl_files = SSHOperator(
-            task_id="eigen2_copy_all_pkl_files",
-            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
-            ssh_hook=ssh_hook,
-            dag=dag,
-        )
+        # eigen2_copy_all_pkl_files = SSHOperator(
+        #     task_id="eigen2_copy_all_pkl_files",
+        #     command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*.pkl ubuntu@{eigen2_ipv4}:~/serve_files/",
+        #     ssh_hook=ssh_hook,
+        #     dag=dag,
+        # )
 
-        eigen2_copy_success_pkl_files = SSHOperator(
-            task_id="eigen2_copy_success_pkl_files",
-            command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
-            ssh_hook=ssh_hook,
-            dag=dag,
-        )
+        # eigen2_copy_success_pkl_files = SSHOperator(
+        #     task_id="eigen2_copy_success_pkl_files",
+        #     command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_*_SUCCESS ubuntu@{eigen2_ipv4}:~/serve_files/",
+        #     ssh_hook=ssh_hook,
+        #     dag=dag,
+        # )
 
         eigen4_copy_all_pkl_files = SSHOperator(
             task_id="eigen4_copy_all_pkl_files",
@@ -123,7 +123,7 @@ with DAG(
             dag=dag,
         )
 
-        eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
+        # eigen2_copy_all_pkl_files >> eigen2_copy_success_pkl_files
         eigen4_copy_all_pkl_files >> eigen4_copy_success_pkl_files
         eigen5_copy_all_pkl_files >> eigen5_copy_success_pkl_files
         eigen7_copy_personal_pkl_files
