@@ -244,7 +244,7 @@ CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts 
 
 CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
 
-GRANT SELECT,REFERENCES ON public.k3l_recent_child_casts TO k3l_readonly;
+GRANT SELECT,REFERENCES ON public.k3l_recent_parent_casts TO k3l_readonly;
 
 ------------------------------------------------------------------------------------
 
