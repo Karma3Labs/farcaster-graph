@@ -122,7 +122,7 @@ def process_channel(
         ascending=False,
         method='first'
     ).astype(int)
-    scores_df['strategy_name'] = 'channel_engagement'
+    scores_df['strategy_name'] = '{interval}d_engagement' if interval > 0 else 'channel_engagement' 
     logger.info(utils.df_info_to_string(scores_df, with_sample=True))
     utils.log_memusage(logger)
 
