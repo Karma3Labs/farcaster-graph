@@ -50,7 +50,7 @@ def create_dag():
     def process_channel_chunk(chunk: list):
         chunk_str = ','.join(chunk)
         bash_command = (
-            f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv'
+            f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv -n 0'
             f'"{chunk_str}"'
         )
         process_task = BashOperator(
