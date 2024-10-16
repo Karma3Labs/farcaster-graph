@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
 
-    DB_CHANNEL_FIDS:str # Deprecated. Remove in future update.
+    DB_CHANNEL_FIDS:str = 'k3l_channel_fids'
 
     POSTGRES_POOL_SIZE: int = 10
     POSTGRES_TIMEOUT_SECS: int = 60

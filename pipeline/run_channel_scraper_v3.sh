@@ -1,28 +1,31 @@
 #!/bin/bash
 
-while getopts w:i:v:t:c: flag
+while getopts w:i:v:t:c:n: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
         t) TASK=${OPTARG};;
         c) CSV_PATH=${OPTARG};;
+        n) INTERVAL=${OPTARG};;
     esac
 done
 
 shift $((OPTIND-1))
 CHANNEL_IDS="$1"
 
-if [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -t fetch -c [csv_path] [channel_ids]"
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] || [ -z "$INTERVAL" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -t fetch -c [csv_path] -n [interval] [channel_ids]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv -n 0 1,2,3"
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process -c channels/Top_Channels.csv -n 90 1,2,3"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
   echo "  [task] The task to perform: fetch or process."
   echo "  [csv_path] The path to the CSV file."
+  echo "  [interval] The number of days to fetch interactions. 0 means fetch lifetime interactions."
   echo "  [channel_ids] Optional parameter for the channel IDs (used only for process task)."
   echo ""
   exit 1
@@ -32,7 +35,9 @@ log() {
   echo "`date` - $1"
 }
 
-log "Starting script with parameters: WORK_DIR=${WORK_DIR}, VENV=${VENV}, TASK=${TASK}, CSV_PATH=${CSV_PATH}, CHANNEL_IDS=${CHANNEL_IDS}"
+log "Starting script with parameters: WORK_DIR=${WORK_DIR},\
+  VENV=${VENV}, TASK=${TASK}, CSV_PATH=${CSV_PATH},\
+  INTERVAL=${INTERVAL}, CHANNEL_IDS=${CHANNEL_IDS}"
 
 source $WORK_DIR/.env
 
@@ -65,7 +70,7 @@ if [ "$TASK" = "fetch" ]; then
   deactivate
 elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main -c "$CSV_PATH" -t process --channel_ids "$CHANNEL_IDS"
+  python3 -m channels.main -c "$CSV_PATH" -t process --interval "$INTERVAL" --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "cleanup" ]; then
   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
