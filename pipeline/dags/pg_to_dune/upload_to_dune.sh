@@ -208,11 +208,17 @@ process_localtrust_v1() {
 }
 
 # Function to export and process k3l_channel_rank table
-process_channel_rank() {
+upload_channel_rank_to_s3() {
   filename="k3l_channel_rankings"
   csv_file="${WORK_DIR}/$filename.csv"
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
-  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_to_csv \
+  "k3l_channel_rank" \
+   "$csv_file" \
+   "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name\
+    FROM k3l_channel_rank\
+    WHERE strategy_name = 'channel_engagement')\
+    TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 20 "dataset_k3l_cast_channel_ranking"
   export_to_s3 "$csv_file" "$s3_bucket"
   #export_csv_to_bq "$csv_file"
@@ -258,7 +264,7 @@ insert_globaltrust_to_dune_v3() {
 }
 
 
-insert_channel_rank_to_dune_v3() {
+overwrite_channel_rank_in_dune_v3() {
   filename="k3l_channel_rankings_full"
   tmp_folder="tmp_insert_channelrank_to_dune_v3"
   csv_file="$tmp_folder/$filename.csv"
@@ -267,26 +273,12 @@ insert_channel_rank_to_dune_v3() {
   rm -f "$tmp_folder"/*
 
   rm -f $csv_file
-  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
-
-  dune_table_name="dataset_k3l_cast_channel_ranking"
-  _clear_dune_table "openrank" $dune_table_name
-  split_and_post_csv "$csv_file" 10 $dune_table_name
-  rm $csv_file
-  rm -rf $tmp_folder
-}
-
-insert_channel_rank_to_dune_v2() {
-  filename="k3l_channel_rankings_incremental_v2"
-  tmp_folder="tmp_insert_channelrank_to_dune_v2"
-  csv_file="$tmp_folder/$filename.csv"
-  mkdir -p $tmp_folder
-  shopt -s nullglob
-  rm -f "$tmp_folder"/*
-
-  rm -f $csv_file
-  export_to_csv "k3l_channel_rank" "$csv_file" "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name FROM k3l_channel_rank) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
-
+  export_to_csv \
+    "k3l_channel_rank" \
+    "$csv_file" \
+    "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts,\
+     strategy_name FROM k3l_channel_rank WHERE strategy_name = 'channel_engagement')\
+      TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   dune_table_name="dataset_k3l_cast_channel_ranking"
   _clear_dune_table "openrank" $dune_table_name
   split_and_post_csv "$csv_file" 10 $dune_table_name
@@ -361,7 +353,7 @@ _clear_dune_table() {
 
 # Main script execution
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank|insert_globaltrust_to_dune|insert_channel_rank_to_dune}"
+    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v3}"
     exit 1
 fi
 
@@ -378,26 +370,23 @@ case "$1" in
     localtrust_v1)
         process_localtrust_v1 $2
         ;;
-    channel_rank)
-        process_channel_rank
+    upload_channel_rank_to_s3)
+        upload_channel_rank_to_s3
         ;;
     insert_globaltrust_to_dune_v2)
         insert_globaltrust_to_dune_v2
         ;;
-    insert_channel_rank_to_dune_v2)
-        insert_channel_rank_to_dune_v2
-        ;;
     insert_globaltrust_to_dune_v3)
         insert_globaltrust_to_dune_v3
         ;;
-    insert_channel_rank_to_dune_v3)
-        insert_channel_rank_to_dune_v3
+    overwrite_channel_rank_in_dune_v3)
+        overwrite_channel_rank_in_dune_v3
         ;;
     create_dune_globaltrust_table)
         create_dune_globaltrust_table $2
         ;;
     *)
-        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|channel_rank|insert_globaltrust_to_dune|insert_channel_rank_to_dune}"
+        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v3}"
         exit 1
         ;;
 esac
