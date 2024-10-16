@@ -1370,7 +1370,7 @@ async def get_top_channel_repliers(
             SELECT 
                 nmf.fid,
                 nmf.channel_id,
-                '0x' || encode(ci.cast_hash, 'hex') as cast_hash,
+                '0x' || encode(casts.hash, 'hex') as cast_hash,
                 klcr.rank as channel_rank,
                 k3l_rank.rank as global_rank,
                 fnames.fname as fname,
@@ -1381,21 +1381,15 @@ async def get_top_channel_repliers(
                     when 1 then user_data.value
                 end pfp
             FROM
-                k3l_cast_action as ci
-                INNER JOIN non_member_followers as nmf
-                    ON (nmf.fid = ci.fid)
+                non_member_followers as nmf
                 INNER JOIN casts
-                    ON (ci.cast_hash = casts.hash
-                        AND ci.action_ts 
-                        BETWEEN (CURRENT_TIMESTAMP - INTERVAL '1 day') 
-                            AND (CURRENT_TIMESTAMP - INTERVAL '10 minutes')
+                    ON (casts.fid = nmf.fid
                         AND casts.root_parent_url = nmf.channel_url
                         AND casts.parent_hash IS NOT NULL
                         AND casts.deleted_at IS NULL
                         AND casts.timestamp 
-                              BETWEEN now() - interval '5 days'
+                              BETWEEN now() - interval '1 days'
                                   AND now()
-                        -- AND ci.replied > 0
                     )
                 LEFT JOIN k3l_rank on (nmf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
                     LEFT JOIN k3l_channel_rank klcr on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id )
