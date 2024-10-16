@@ -3,10 +3,6 @@ import logging
 from timer import Timer
 import time
 from config import settings
-from datetime import datetime
-
-import psycopg2
-import psycopg2.extras
 from asyncpg.pool import Pool
 import asyncpg
 

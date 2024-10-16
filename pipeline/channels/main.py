@@ -9,7 +9,7 @@ import db_utils
 import go_eigentrust
 from config import settings
 from . import channel_utils
-from . import compute_trust
+from . import channel_queries
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -55,7 +55,7 @@ def process_channel(cid, channel_data, pg_dsn, pg_url):
 
     utils.log_memusage(logger)
     try:
-        channel_interactions_df = compute_trust._fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'])
+        channel_interactions_df = channel_queries.fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'])
         channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
