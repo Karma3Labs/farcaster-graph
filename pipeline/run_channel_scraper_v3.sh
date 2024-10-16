@@ -31,9 +31,11 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
   exit 1
 fi
 
-if [ -z "$INTERVAL" ] || [ -z "$CHANNEL_IDS" ]; then
-  echo "Please specify both -n (interval) and (channel_ids) for the process task."
-  exit 1
+if [ "$TASK" = "process" ]; then
+  if [ -z "$INTERVAL" ] || [ -z "$CHANNEL_IDS" ]; then
+    echo "Please specify both -n (interval) and (channel_ids) for the process task."
+    exit 1
+  fi
 fi
 
 log() {
