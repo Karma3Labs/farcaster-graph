@@ -118,13 +118,13 @@ def process_channel(
         ascending=False,
         method='first'
     ).astype(int)
-    scores_df['strategy_name'] = '{interval}d_engagement' if interval > 0 else 'channel_engagement' 
+    scores_df['strategy_name'] = f'{interval}d_engagement' if interval > 0 else 'channel_engagement' 
     logger.info(utils.df_info_to_string(scores_df, with_sample=True))
     utils.log_memusage(logger)
 
     try:
         logger.info(f"Inserting data into the database for channel {cid}")
-        db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
+        # db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e

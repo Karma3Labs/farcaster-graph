@@ -140,9 +140,9 @@ def fetch_interactions_df(
     interval: int,
 ) -> pd.DataFrame:
     query_args = {
-        "r_condition": f" AND reactions.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
-        "c_condition": f" AND casts.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
-        "l_condition": f" AND links.timestamp >= now() - interval '{{{interval}}} days'" if interval > 0 else "",
+        "r_condition": f" AND reactions.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
+        "c_condition": f" AND casts.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
+        "l_condition": f" AND links.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
         "channel_url": channel_url,
     }
     with Timer(name=f"fetch_interactions_{channel_url}"):
