@@ -79,7 +79,7 @@ elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main -c "$CSV_PATH" -t process --interval "$INTERVAL" --channel_ids "$CHANNEL_IDS"
   deactivate
-elif [ "$TASK" = "cleanup" ]; then
+elif [ "$TASK" = "refresh" ]; then
   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
   PGPASSWORD=$DB_PASSWORD \
   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \

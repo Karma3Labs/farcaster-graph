@@ -71,7 +71,7 @@ def create_dag():
 
     cleanup_db_task = BashOperator(
         task_id='cleanup_db',
-        bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t cleanup -c channels/Top_Channels.csv",
+        bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t refresh -c channels/Top_Channels.csv",
         trigger_rule=TriggerRule.ALL_SUCCESS
     )
 
