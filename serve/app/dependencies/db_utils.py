@@ -296,6 +296,7 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
 
 async def get_top_channel_profiles(
         channel_id: str,
+        strategy_name: str,
         offset: int,
         limit: int,
         lite: bool,
@@ -306,21 +307,20 @@ async def get_top_channel_profiles(
         SELECT
             ch.fid,
             rank
-        FROM k3l_channel_fids as ch
+        FROM k3l_channel_rank as ch
         WHERE
             channel_id = $1
-            AND
-            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            AND strategy_name = $2
         ORDER BY rank ASC
-        OFFSET $2
-        LIMIT $3
+        OFFSET $3
+        LIMIT $4
         """
     else:
         sql_query = """
         WITH total AS (
-            SELECT count(*) as total from k3l_channel_fids
+            SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
-            AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            AND strategy_name = $2
         ),
         addresses as (
         SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
@@ -339,14 +339,14 @@ async def get_top_channel_profiles(
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
-        FROM k3l_channel_fids as ch
+        FROM k3l_channel_rank as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid)
         WHERE
-            channel_id = $1
+            ch.channel_id = $1
             AND
-            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            ch.strategy_name=$2
         ORDER BY rank ASC
         ),
         mapped_records as (
@@ -365,10 +365,10 @@ async def get_top_channel_profiles(
         FROM mapped_records
         GROUP BY fid
         ORDER by rank
-        OFFSET $2
-        LIMIT $3
+        OFFSET $3
+        LIMIT $4
         """
-    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
 
 async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite: bool):
@@ -419,6 +419,7 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
 
 async def get_channel_profile_ranks(
         channel_id: str,
+        strategy_name: str,
         fids: list[int],
         lite: bool,
         pool: Pool
@@ -428,21 +429,21 @@ async def get_channel_profile_ranks(
         SELECT
             ch.fid,
             rank
-        FROM k3l_channel_fids as ch
+        FROM k3l_channel_rank as ch
         WHERE
             channel_id = $1
             AND
-            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            strategy_name = $2
             AND
-            fid = ANY($2::integer[])
+            fid = ANY($3::integer[])
         ORDER BY rank
         """
     else:
         sql_query = """
         WITH total AS (
-            SELECT count(*) as total from k3l_channel_fids
+            SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
-            AND compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            AND strategy_name = $2
         ),
         addresses as (
         SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
@@ -459,16 +460,16 @@ async def get_channel_profile_ranks(
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
-        FROM k3l_channel_fids as ch
+        FROM k3l_channel_rank as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
         LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
         WHERE
             channel_id = $1
             AND
-            compute_ts=(select max(compute_ts) from k3l_channel_fids where channel_id=$1)
+            strategy_name = $2
             AND
-            ch.fid = ANY($2::integer[])
+            ch.fid = ANY($3::integer[])
         ORDER BY rank
         ),
         mapped_records as (
@@ -489,7 +490,7 @@ async def get_channel_profile_ranks(
         ORDER by rank
 
         """
-    return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, strategy_name, fids, sql_query=sql_query, pool=pool)
 
 
 async def get_top_frames(
@@ -949,6 +950,7 @@ async def get_popular_degen_casts(
 async def get_popular_channel_casts_lite(
         channel_id: str,
         channel_url: str,
+        strategy_name: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
@@ -993,7 +995,8 @@ async def get_popular_channel_casts_lite(
                     AND ci.action_ts BETWEEN now() - interval '30 days'
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
-            INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            INNER JOIN k3l_channel_rank as fids 
+                ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts DESC
@@ -1016,18 +1019,19 @@ async def get_popular_channel_casts_lite(
     FROM scores
     WHERE cast_score*100000000000>100
     {"ORDER BY cast_ts desc" if ordering else "ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC"}
-    OFFSET $3
-    LIMIT $4
+    OFFSET $4
+    LIMIT $5
     )
     select cast_hash, cast_hour, cast_ts from cast_details
 
     """
-    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
 
 async def get_popular_channel_casts_heavy(
         channel_id: str,
         channel_url: str,
+        strategy_name: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
@@ -1072,7 +1076,8 @@ async def get_popular_channel_casts_heavy(
                     AND ci.action_ts BETWEEN now() - interval '30 days'
   										AND now() - interval '10 minutes'
                     AND casts.root_parent_url = $2)
-            INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid )
+            INNER JOIN k3l_channel_rank as fids 
+                ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
@@ -1100,13 +1105,13 @@ async def get_popular_channel_casts_heavy(
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*100000000000>100
     {"ORDER BY casts.timestamp desc" if ordering else "ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC"}
-    OFFSET $3
-    LIMIT $4
+    OFFSET $4
+    LIMIT $5
     )
     select cast_hash, cast_hour, text, embeds, mentions, fid, timestamp, cast_score
     from cast_details
     """
-    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
 
 async def get_trending_casts_lite(
@@ -1298,6 +1303,7 @@ async def get_top_spammers(
 
 async def get_top_channel_followers(
         channel_id: str,
+        strategy_name: str,
         offset: int,
         limit: int,
         pool: Pool
@@ -1332,7 +1338,8 @@ async def get_top_channel_followers(
     FROM 
         distinct_warpcast_followers wf 
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
-        LEFT JOIN k3l_channel_rank klcr on wf.fid = klcr.fid and wf.channel_id  = klcr.channel_id 
+        LEFT JOIN k3l_channel_rank klcr 
+            on (wf.fid = klcr.fid and wf.channel_id = klcr.channel_id and klcr.strategy_name = $2)
         LEFT JOIN fnames on (fnames.fid = wf.fid)
         LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
         LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
@@ -1349,14 +1356,15 @@ async def get_top_channel_followers(
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
     ORDER BY channel_rank,global_rank NULLS LAST
-    OFFSET $2
-    LIMIT $3
+    OFFSET $3
+    LIMIT $4
     """
 
-    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
 async def get_top_channel_repliers(
         channel_id: str,
+        strategy_name: str,
         offset: int,
         limit: int,
         pool: Pool
@@ -1404,7 +1412,8 @@ async def get_top_channel_repliers(
                                   AND now()
                     )
                 LEFT JOIN k3l_rank on (nmf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
-                    LEFT JOIN k3l_channel_rank klcr on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id )
+                LEFT JOIN k3l_channel_rank klcr 
+                    on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id and klcr.strategy_name = $2)
                 LEFT JOIN fnames on (fnames.fid = nmf.fid)
                 LEFT JOIN user_data on (user_data.fid = nmf.fid and user_data.type in (6,1))
         )
@@ -1420,9 +1429,9 @@ async def get_top_channel_repliers(
         FROM followers_data
         GROUP BY fid,channel_id,channel_rank,global_rank
         ORDER BY channel_rank,global_rank NULLS LAST
-        OFFSET $2
-        limit $3
+        OFFSET $3
+        limit $4
    
     """
 
-    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
