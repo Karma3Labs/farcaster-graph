@@ -85,7 +85,7 @@ def create_dag():
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
     )
 
-    fetch_data_task >> extract_ids_task >> process_lifetime_tasks >> process_60d_tasks >> process_7d_tasks >> refresh_db_task >> push_to_dune_task >> push_to_s3_task
+    fetch_data_task >> extract_ids_task >> process_7d_tasks >> process_60d_tasks >> process_lifetime_tasks >> refresh_db_task >> push_to_dune_task >> push_to_s3_task
 
 
 dag = create_dag()
