@@ -1,7 +1,5 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 from airflow import DAG
-from airflow.models import DagRun
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.decorators import task, dag
@@ -12,7 +10,7 @@ from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
 default_args = {
-    'owner': 'coder2j',
+    'owner': 'karma3labs',
     'retries': 5,
     'retry_delay': timedelta(minutes=2),
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
@@ -29,17 +27,19 @@ def check_last_successful_run(**context) -> bool:
         return "start_task"
     dag: DAG = context["dag"]
     # Query the last successful DAG run
-    last_scheduled_run, last_manual_run = dag.get_last_dagrun(include_externally_triggered=True)
-    current_time = datetime.now()
+    last_run = dag.get_last_dagrun(include_externally_triggered=True)
+    print("Last run: ", last_run)
+    current_time = datetime.now(timezone.utc)
     delta = FREQUENCY_H
-    if last_scheduled_run and last_scheduled_run.end_date:
-        print("Last scheduled run: ", last_scheduled_run.end_date)
-        delta_scheduled = (current_time - last_scheduled_run.end_date).total_seconds() / 3600
-        delta = min(delta_scheduled, delta)
-    if last_manual_run and last_manual_run.end_date:
-        print("Last manual run: ", last_manual_run.end_date)
-        delta_manual = (current_time - last_manual_run.end_date).total_seconds() / 3600
-        delta = min(delta_manual, delta)
+    if last_run:
+        print("Last run end_date: ", last_run.end_date)
+        print("Last run start_date: ", last_run.start_date)
+        if last_run.end_date:
+            delta_last = (current_time - last_run.end_date).total_seconds() / 3600
+            delta = min(delta_last, delta)
+        if last_run.start_date:
+            delta_last = (current_time - last_run.start_date).total_seconds() / 3600
+            delta = min(delta_last, delta)
     print(f"Delta: {delta}")
     if delta >= FREQUENCY_H:
         # Last run was more than 6 hours ago, so we should run
@@ -61,7 +61,7 @@ def extract_channel_ids(channel_ids: str) -> list:
     dag_id='gen_channel_ranking_v3',
     default_args=default_args,
     description='This runs the channel ranking pipeline',
-    start_date=datetime(2024, 6, 21, 2),
+    start_date=datetime(2024, 10, 1),
     # schedule_interval='0 */6 * * *',
     schedule_interval='@hourly',  # Check every hour,
     is_paused_upon_creation=True,
