@@ -99,8 +99,12 @@ def process_channel(
     logger.info(f"Pretrust FIDs: {pretrust_fids}")
 
     if len(channel_lt_df) == 0:
-        logger.error(f"No local trust for channel {cid}")
-        raise Exception(f"No local trust for channel {cid}")
+        if interval > 0:
+            logger.info(f"No local trust for channel {cid} for interval {interval}")
+            return {cid: []}
+        else:
+            logger.error(f"No local trust for channel {cid} for lifetime engagement")
+            raise Exception(f"No local trust for channel {cid} for lifetime engagement")
 
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
@@ -124,7 +128,7 @@ def process_channel(
 
     try:
         logger.info(f"Inserting data into the database for channel {cid}")
-        # db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
+        db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
