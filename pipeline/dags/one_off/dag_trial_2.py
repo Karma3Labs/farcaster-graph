@@ -24,9 +24,9 @@ FREQUENCY_H = 6  # Define the frequency in hours
     catchup=False  # To avoid backfilling if not required
 )
 def create_trigger_dag():
-    skip_task = EmptyOperator(task_id="skip_task" , dag=dag)
+    skip_main_dag = EmptyOperator(task_id="skip_main_dag" , dag=dag)
 
-    trigger_task = TriggerDagRunOperator(
+    trigger_main_dag = TriggerDagRunOperator(
         task_id='trigger_main_dag',
         trigger_dag_id='one_off_dag_trial_2',
         execution_date='{{ macros.datetime.now() }}',
@@ -40,12 +40,12 @@ def create_trigger_dag():
         if context["dag_run"].external_trigger:
             # Manually triggered
             print("Manually triggered. Run now.")
-            return "trigger_task"
+            return "trigger_main_dag"
         dag_runs = DagRun.find(dag_id="one_off_dag_trial_2")
         if not dag_runs or len(dag_runs) == 0:
             # No previous runs
             print("No previous runs")
-            return "trigger_task"
+            return "trigger_main_dag"
         print(f"Found {len(dag_runs)} previous runs")
         dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
         print("Last run: ", dag_runs[0]) 
@@ -67,14 +67,14 @@ def create_trigger_dag():
         if delta >= FREQUENCY_H:
             # Last run was more than FREQUENCY_H hours ago, so we should run
             print(f"Last run was more than {FREQUENCY_H} hours ago, so we should run")
-            return "trigger_task"
-        return "skip_task"
+            return "trigger_main_dag"
+        return "skip_main_dag"
 
     check_last_successful_run = check_last_successful_run()
 
-    check_last_successful_run >> trigger_task
+    check_last_successful_run >> trigger_main_dag
 
-    check_last_successful_run >> skip_task
+    check_last_successful_run >> skip_main_dag
 
 trigger_dag = create_trigger_dag()
 
