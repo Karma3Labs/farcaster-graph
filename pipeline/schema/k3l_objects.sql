@@ -308,27 +308,29 @@ CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
 
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
  WITH latest_compute AS (
-   select max(compute_ts) as max_ts, channel_id 
-   from k3l_channel_fids 
-   group by channel_id
- )
+  SELECT compute.channel_id, compute.compute_ts, compute.strategy_name
+FROM warpcast_channels_data wpc
+INNER JOIN LATERAL (
+ SELECT * FROM k3l_channel_fids f WHERE f.channel_id=wpc.id
+ ORDER BY compute_ts DESC LIMIT 1) compute ON true
+)
 SELECT
  	row_number() OVER () AS pseudo_id,
  	cfids.* 
 FROM k3l_channel_fids as cfids
-INNER JOIN latest_compute ON (cfids.compute_ts = latest_compute.max_ts
-                              AND cfids.channel_id = latest_compute.channel_id)
+INNER JOIN latest_compute 
+	ON (cfids.compute_ts = latest_compute.compute_ts
+      AND cfids.channel_id = latest_compute.channel_id
+      AND cfids.strategy_name = latest_compute.strategy_name)
 WITH NO DATA;
 
-CREATE UNIQUE INDEX k3l_channel_rank_idx ON public.k3l_channel_rank USING btree (pseudo_id);
+CREATE UNIQUE INDEX k3l_channel_rank_unq_idx ON public.k3l_channel_rank_alt USING btree (pseudo_id);
+CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank_alt USING btree (rank);
+CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank_alt USING btree (fid);
+CREATE INDEX k3l_channel_rank_ch_strat_idx ON public.k3l_channel_rank_alt USING btree (channel_id, strategy_name);
+CREATE INDEX k3l_channel_rank_ch_strat_fid_idx ON public.k3l_channel_rank_alt USING btree (channel_id, strategy_name, fid);
 
-CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (rank);
-
-CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fid);
-
-CREATE INDEX k3l_channel_rank_ch_idx ON public.k3l_channel_rank USING btree (channel_id);
-
-CREATE INDEX k3l_channel_rank_ch_fid_idx ON public.k3l_channel_rank USING btree (channel_id, fid);
+GRANT SELECT,REFERENCES ON public.k3l_channel_rank TO k3l_readonly
 
 ------------------------------------------------------------------------------------
 CREATE TABLE public.automod_data (
