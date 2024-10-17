@@ -3,6 +3,7 @@ from typing import Optional
 from airflow import DAG
 from airflow.models import DagRun
 from airflow.operators.bash import BashOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.decorators import task, dag
 from airflow.utils.trigger_rule import TriggerRule
 
@@ -20,20 +21,31 @@ default_args = {
 N_CHUNKS = 100  # Define the number of chunks
 FREQUENCY = 6  # Define the frequency in hours
 
-@task
-def check_last_successful_run() -> bool:
+@task.branch(task_id="check_last_successful_run")
+def check_last_successful_run(**context) -> bool:
+    if context["dag_run"].external_trigger:
+        # Manually triggered
+        print("External trigger")
+        return "start_task"
     # Get the current DAG
     dag_id = dag.dag_id
     # Query the last successful DAG run
     last_successful_run: Optional[DagRun] = DAG.get_last_dagrun(dag_id=dag_id)
     if not last_successful_run:
         # No previous successful run, so we should run
-        return True
+        print("No previous successful run")
+        return "start_task"
     current_time = datetime.now()
     time_since_last_run = current_time - last_successful_run.end_date
     # Check if 6 hours have passed since last successful run
     should_run = time_since_last_run.total_seconds() >= FREQUENCY * 3600
-    return should_run
+    if should_run:
+        print(f"Last successful run: {last_successful_run.end_date}")
+        print(f"Current time: {current_time}")
+        print(f"Time since last run: {time_since_last_run}")
+        print(f"Should run: {should_run}")
+        return "start_task"
+    return "end_task"
 
 @task
 def extract_channel_ids(channel_ids: str) -> list:
@@ -98,8 +110,21 @@ def create_dag():
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
     )
 
+    start_task = EmptyOperator(task_id="start_task")
+    end_task = EmptyOperator(task_id="end_task")
+
     check_interval_task = check_last_successful_run()
 
-    check_interval_task >> fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
+    check_interval_task >> [
+        end_task,
+        start_task
+        >> fetch_data_task
+        >> extract_ids_task
+        >> process_tasks
+        >> cleanup_db_task
+        >> push_to_dune_task
+        >> push_to_s3_task,
+    ]
+
 
 dag = create_dag()
