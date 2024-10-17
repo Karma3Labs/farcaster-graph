@@ -117,16 +117,8 @@ def create_dag():
     check_interval_task = check_last_successful_run()
 
     check_interval_task >> end_task
-    (
-        check_interval_task
-        >> start_task
-        >> fetch_data_task
-        >> extract_ids_task
-        >> process_tasks
-        >> cleanup_db_task
-        >> push_to_dune_task
-        >> push_to_s3_task
-    )
+
+    check_interval_task >> start_task >> fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
 
 
 dag = create_dag()
