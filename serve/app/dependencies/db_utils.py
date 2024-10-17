@@ -178,7 +178,6 @@ async def get_all_handle_addresses_for_fids(
         SELECT
             verifications.claim->>'address' as address,
             fnames.fname as fname,
-            user_data.value as username,
             case when user_data.type = 6 then user_data.value end as username,
             case when user_data.type = 1 then user_data.value end as pfp,
             case when user_data.type = 3 then user_data.value end as bio,
