@@ -113,6 +113,15 @@ def process_channel(
         raise e
 
     logger.info(f"go_eigentrust returned {len(scores)} entries")
+
+    if len(scores) == 0:
+        if interval > 0:
+            logger.info(f"No globaltrust for channel {cid} for interval {interval}")
+            return {cid: []}
+        else:
+            logger.error(f"No globaltrust for channel {cid} for lifetime engagement")
+            raise Exception(f"No globaltrust for channel {cid} for lifetime engagement")
+
     logger.debug(f"Channel user scores: {scores}")
 
     scores_df = pd.DataFrame(data=scores)
