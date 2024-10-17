@@ -24,7 +24,7 @@ FREQUENCY_H = 6  # Define the frequency in hours
     catchup=False  # To avoid backfilling if not required
 )
 def create_trigger_dag():
-    skip_main_dag = EmptyOperator(task_id="skip_main_dag" , dag=dag)
+    skip_main_dag = EmptyOperator(task_id="skip_main_dag")
 
     trigger_main_dag = TriggerDagRunOperator(
         task_id='trigger_main_dag',
