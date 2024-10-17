@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
+from typing import Optional
 from airflow import DAG
+from airflow.models import DagRun
 from airflow.operators.bash import BashOperator
 from airflow.decorators import task, dag
-from airflow.operators.python import PythonOperator
 from airflow.utils.trigger_rule import TriggerRule
 
 import math
@@ -17,6 +18,22 @@ default_args = {
 }
 
 N_CHUNKS = 100  # Define the number of chunks
+FREQUENCY = 6  # Define the frequency in hours
+
+@task
+def check_last_successful_run() -> bool:
+    # Get the current DAG
+    dag_id = dag.dag_id
+    # Query the last successful DAG run
+    last_successful_run: Optional[DagRun] = DAG.get_last_dagrun(dag_id=dag_id)
+    if not last_successful_run:
+        # No previous successful run, so we should run
+        return True
+    current_time = datetime.now()
+    time_since_last_run = current_time - last_successful_run.end_date
+    # Check if 6 hours have passed since last successful run
+    should_run = time_since_last_run.total_seconds() >= FREQUENCY * 3600
+    return should_run
 
 @task
 def extract_channel_ids(channel_ids: str) -> list:
@@ -33,7 +50,7 @@ def extract_channel_ids(channel_ids: str) -> list:
     description='This runs the channel ranking pipeline',
     start_date=datetime(2024, 6, 21, 2),
     # schedule_interval='0 */6 * * *',
-    schedule_interval=timedelta(hours=6),
+    schedule_interval='@hourly',  # Check every hour,
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False  # To avoid backfilling if not required
@@ -81,6 +98,8 @@ def create_dag():
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
     )
 
-    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
+    check_interval_task = check_last_successful_run()
+
+    check_interval_task >> fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
 
 dag = create_dag()
