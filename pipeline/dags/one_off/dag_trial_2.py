@@ -3,7 +3,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.decorators import task, dag
 from airflow.models import DagRun
-
+from airflow.utils.state import DagRunState
 
 default_args = {
     'owner': 'karma3labs',
@@ -37,11 +37,7 @@ def create_trigger_dag():
 
     @task.branch(task_id="check_last_successful_run")
     def check_last_successful_run(**context) -> bool:
-        if context["dag_run"].external_trigger:
-            # Manually triggered
-            print("Manually triggered. Run now.")
-            return "trigger_main_dag"
-        dag_runs = DagRun.find(dag_id="one_off_dag_trial_2")
+        dag_runs = DagRun.find(dag_id="one_off_dag_trial_2", state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
             # No previous runs
             print("No previous runs")
