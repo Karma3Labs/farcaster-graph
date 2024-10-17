@@ -12,7 +12,7 @@ default_args = {
 }
 
 with DAG(
-    "one_off_try_airflow_features",
+    "one_off_dag_trial_1",
     default_args=default_args,
     description="One off dag to test new features",
     schedule_interval=None,
