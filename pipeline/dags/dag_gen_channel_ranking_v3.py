@@ -63,11 +63,9 @@ def create_dag():
     extract_ids_task = extract_channel_ids(fetch_data_task.output)
 
     # Create dynamic tasks
-    process_lifetime_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=0)
-
-    process_60d_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=60)
-
-    process_7d_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=7)
+    process_7d_tasks = process_channel_chunk.partial(interval=7).expand(chunk=extract_ids_task)
+    process_60d_tasks = process_channel_chunk.partial(interval=60).expand(chunk=extract_ids_task)
+    process_lifetime_tasks = process_channel_chunk.partial(interval=0).expand(chunk=extract_ids_task)
 
     refresh_db_task = BashOperator(
         task_id='refresh_db',
