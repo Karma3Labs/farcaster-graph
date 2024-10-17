@@ -165,11 +165,13 @@ async def get_all_handle_addresses_for_fids(
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
             fnames.fname as fname,
-            user_data.value as username,
+            case when user_data.type = 6 then user_data.value end as username,
+            case when user_data.type = 1 then user_data.value end as pfp,
+            case when user_data.type = 3 then user_data.value end as bio,
             fids.fid as fid
         FROM fids
         LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
+        LEFT JOIN user_data ON (user_data.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     UNION
@@ -177,11 +179,14 @@ async def get_all_handle_addresses_for_fids(
             verifications.claim->>'address' as address,
             fnames.fname as fname,
             user_data.value as username,
+            case when user_data.type = 6 then user_data.value end as username,
+            case when user_data.type = 1 then user_data.value end as pfp,
+            case when user_data.type = 3 then user_data.value end as bio,
             fids.fid as fid
         FROM fids
         INNER JOIN verifications ON (verifications.fid = fids.fid)
         LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
+        LEFT JOIN user_data ON (user_data.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     )
@@ -211,9 +216,12 @@ async def get_unique_handle_metadata_for_fids(
     )
     SELECT agg_addresses.*,
         ANY_VALUE(fnames.fname) as fname,
-        ANY_VALUE(user_data.value) as username from agg_addresses
+        ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
+        ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
+        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio 
+        from agg_addresses
     LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid and user_data.type=6)
+    LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid)
     GROUP BY agg_addresses.fid,agg_addresses.address
     LIMIT 1000 -- safety valve
     """
@@ -325,14 +333,16 @@ async def get_top_channel_profiles(
         SELECT
             ch.fid,
             fnames.fname as fname,
-            user_data.value as username,
+            case when user_data.type = 6 then user_data.value end as username,
+            case when user_data.type = 1 then user_data.value end as pfp,
+            case when user_data.type = 3 then user_data.value end as bio,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_channel_fids as ch
         CROSS JOIN total
         LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
+        LEFT JOIN user_data on (user_data.fid = ch.fid)
         WHERE
             channel_id = $1
             AND
@@ -347,6 +357,8 @@ async def get_top_channel_profiles(
         select fid,
         any_value(fname) as fname,
         any_value(username) as username,
+        any_value(pfp) as pfp,
+        any_value(bio) as bio,
         any_value(rank) as rank,
         any_value(score) as score,
         ARRAY_AGG(DISTINCT address) as addresses
