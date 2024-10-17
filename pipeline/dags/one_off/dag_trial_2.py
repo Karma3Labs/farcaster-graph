@@ -14,41 +14,6 @@ default_args = {
 N_CHUNKS = 100  # Define the number of chunks
 FREQUENCY_H = 6  # Define the frequency in hours
 
-@task.branch(task_id="check_last_successful_run")
-def check_last_successful_run(**context) -> bool:
-    if context["dag_run"].external_trigger:
-        # Manually triggered
-        print("Manually triggered. Run now.")
-        return "trigger_task"
-    dag_runs = DagRun.find(dag_id="one_off_dag_trial_2")
-    if not dag_runs or len(dag_runs) == 0:
-        # No previous runs
-        print("No previous runs")
-        return "trigger_task"
-    print(f"Found {len(dag_runs)} previous runs")
-    dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
-    print("Last run: ", dag_runs[0]) 
-    # Query the last successful DAG run
-    last_run = dag_runs[0]
-    print("Last run: ", last_run)
-    current_time = datetime.now(timezone.utc)
-    delta = FREQUENCY_H
-    if last_run:
-        print("Last run end_date: ", last_run.end_date)
-        print("Last run start_date: ", last_run.start_date)
-        if last_run.end_date:
-            delta_last = (current_time - last_run.end_date).total_seconds() / 3600
-            delta = min(delta_last, delta)
-        if last_run.start_date:
-            delta_last = (current_time - last_run.start_date).total_seconds() / 3600
-            delta = min(delta_last, delta)
-    print(f"Delta: {delta}")
-    if delta >= FREQUENCY_H:
-        # Last run was more than FREQUENCY_H hours ago, so we should run
-        print(f"Last run was more than {FREQUENCY_H} hours ago, so we should run")
-        return "trigger_task"
-    return "skip_task"
-
 @dag(
     dag_id='one_off_dag_trial_2_trigger',
     default_args=default_args,
@@ -69,6 +34,41 @@ def create_trigger_dag():
         poke_interval=60,
         conf={"trigger": "one_off_dag_trial_2_trigger"},
     )
+
+    @task.branch(task_id="check_last_successful_run")
+    def check_last_successful_run(**context) -> bool:
+        if context["dag_run"].external_trigger:
+            # Manually triggered
+            print("Manually triggered. Run now.")
+            return "trigger_task"
+        dag_runs = DagRun.find(dag_id="one_off_dag_trial_2")
+        if not dag_runs or len(dag_runs) == 0:
+            # No previous runs
+            print("No previous runs")
+            return "trigger_task"
+        print(f"Found {len(dag_runs)} previous runs")
+        dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
+        print("Last run: ", dag_runs[0]) 
+        # Query the last successful DAG run
+        last_run = dag_runs[0]
+        print("Last run: ", last_run)
+        current_time = datetime.now(timezone.utc)
+        delta = FREQUENCY_H
+        if last_run:
+            print("Last run end_date: ", last_run.end_date)
+            print("Last run start_date: ", last_run.start_date)
+            if last_run.end_date:
+                delta_last = (current_time - last_run.end_date).total_seconds() / 3600
+                delta = min(delta_last, delta)
+            if last_run.start_date:
+                delta_last = (current_time - last_run.start_date).total_seconds() / 3600
+                delta = min(delta_last, delta)
+        print(f"Delta: {delta}")
+        if delta >= FREQUENCY_H:
+            # Last run was more than FREQUENCY_H hours ago, so we should run
+            print(f"Last run was more than {FREQUENCY_H} hours ago, so we should run")
+            return "trigger_task"
+        return "skip_task"
 
     check_last_successful_run = check_last_successful_run()
 
