@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.decorators import task, dag
@@ -21,8 +21,8 @@ def check_last_successful_run(**context) -> bool:
     dag: DAG = context["dag"]
     # Query the last successful DAG run
     last_run = dag.get_last_dagrun(include_externally_triggered=True)
-    print(last_run)
-    current_time = datetime.now()
+    print("Last run: ", last_run)
+    current_time = datetime.now(timezone.utc)
     delta = FREQUENCY_H
     if last_run and last_run.end_date:
         print("Last run: ", last_run.end_date)
@@ -36,10 +36,10 @@ def check_last_successful_run(**context) -> bool:
     return "end_task"
 
 @dag(
-    dag_id='one_off_dag_trial_1',
+    dag_id='one_off_dag_trial_2',
     default_args=default_args,
     description='One off dag to test new features',
-    start_date=None,
+    start_date=datetime(2024, 10, 1),
     schedule_interval=timedelta(minutes=5),
     is_paused_upon_creation=True,
     max_active_runs=1,
