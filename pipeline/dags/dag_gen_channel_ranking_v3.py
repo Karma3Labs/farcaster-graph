@@ -46,10 +46,11 @@ def create_dag():
     )
 
     @task(max_active_tis_per_dagrun=8)
-    def process_channel_chunk(chunk: list):
+    def process_channel_chunk(chunk: list, interval: int):
         chunk_str = ','.join(chunk)
         bash_command = (
-            f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv -n 0'
+            f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv'
+            f' -n {interval}'
             f' "{chunk_str}"'
         )
         process_task = BashOperator(
@@ -62,7 +63,11 @@ def create_dag():
     extract_ids_task = extract_channel_ids(fetch_data_task.output)
 
     # Create dynamic tasks
-    process_tasks = process_channel_chunk.expand(chunk=extract_ids_task)
+    process_lifetime_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=0)
+
+    process_60d_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=60)
+
+    process_7d_tasks = process_channel_chunk.expand(chunk=extract_ids_task, interval=7)
 
     cleanup_db_task = BashOperator(
         task_id='cleanup_db',
@@ -80,7 +85,7 @@ def create_dag():
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
     )
 
-    fetch_data_task >> extract_ids_task >> process_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
+    fetch_data_task >> extract_ids_task >> process_lifetime_tasks >> process_60d_tasks >> process_7d_tasks >> cleanup_db_task >> push_to_dune_task >> push_to_s3_task
 
 
 dag = create_dag()
