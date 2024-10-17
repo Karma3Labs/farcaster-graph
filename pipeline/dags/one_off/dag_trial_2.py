@@ -24,10 +24,15 @@ def check_last_successful_run(**context) -> bool:
     print("Last run: ", last_run)
     current_time = datetime.now(timezone.utc)
     delta = FREQUENCY_H
-    if last_run and last_run.end_date:
-        print("Last run: ", last_run.end_date)
-        delta_last = (current_time - last_run.end_date).total_seconds() / 3600
-        delta = min(delta_last, delta)
+    if last_run:
+        print("Last run end_date: ", last_run.end_date)
+        print("Last run start_date: ", last_run.start_date)
+        if last_run.end_date:
+            delta_last = (current_time - last_run.end_date).total_seconds() / 3600
+            delta = min(delta_last, delta)
+        if last_run.start_date:
+            delta_last = (current_time - last_run.start_date).total_seconds() / 3600
+            delta = min(delta_last, delta)
     print(f"Delta: {delta}")
     if delta >= FREQUENCY_H:
         # Last run was more than 6 hours ago, so we should run
