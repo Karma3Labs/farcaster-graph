@@ -18,7 +18,7 @@ FREQUENCY_H = 6  # Define the frequency in hours
     dag_id='one_off_dag_trial_2_trigger',
     default_args=default_args,
     start_date=datetime(2024, 10, 1),
-    schedule_interval=timedelta(mintues=3),
+    schedule_interval=timedelta(minutes=3),
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False  # To avoid backfilling if not required
