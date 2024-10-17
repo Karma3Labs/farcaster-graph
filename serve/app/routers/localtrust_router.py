@@ -349,6 +349,8 @@ async def _get_personalized_scores_for_fids(
     return {'address': trusted_fid_addr_handle['address'], 
             'fname': trusted_fid_addr_handle['fname'],
             'username': trusted_fid_addr_handle['username'],
+            'pfp': trusted_fid_addr_handle['pfp'],
+            'bio': trusted_fid_addr_handle['bio'],
             'fid': trusted_fid_addr_handle['fid'],
             'score': score
             }
