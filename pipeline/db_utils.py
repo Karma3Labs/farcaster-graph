@@ -66,7 +66,6 @@ def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
 def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, **query_kwargs) -> pd.DataFrame:
     with Timer(name=query.name):
         sql_query = query.value.format(**query_kwargs)
-        logger.info(sql_query)
         with tempfile.TemporaryFile() as tmpfile:
             if settings.IS_TEST:
                 copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
