@@ -30,8 +30,6 @@ def create_trigger_dag():
         task_id='trigger_main_dag',
         trigger_dag_id='gen_channel_ranking_v3',
         execution_date='{{ macros.datetime.now() }}',
-        wait_for_completion=True,
-        poke_interval=60,
         conf={"trigger": "trigger_gen_channel_ranking_v3"},
     )
 
