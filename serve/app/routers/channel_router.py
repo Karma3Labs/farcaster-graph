@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Path
 from loguru import logger
 from asyncpg.pool import Pool
 from ..models.score_model import ScoreAgg, Weights, Sorting_Order
+from ..models.channel_model import ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES
 from ..dependencies import db_pool, db_utils
 from ..utils import fetch_channel
 
@@ -13,6 +14,7 @@ router = APIRouter(tags=["Channel OpenRank Scores"])
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
         channel: str,
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         lite: bool = True,
@@ -33,6 +35,7 @@ async def get_top_channel_profiles(
   """
     ranks = await db_utils.get_top_channel_profiles(
         channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         offset=offset,
         limit=limit,
         lite=lite,
@@ -45,6 +48,7 @@ async def get_channel_rank_for_fids(
         # Example: -d '[1, 2]'
         channel: str,
         fids: list[int],
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         lite: bool = True,
         pool: Pool = Depends(db_pool.get_db)
 ):
@@ -61,6 +65,7 @@ async def get_channel_rank_for_fids(
         raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
     ranks = await db_utils.get_channel_profile_ranks(
         channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         fids=fids,
         lite=lite,
         pool=pool)
@@ -72,6 +77,7 @@ async def get_channel_rank_for_handles(
         # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
         channel: str,
         handles: list[str],
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         pool: Pool = Depends(db_pool.get_db)
 ):
     """
@@ -90,6 +96,7 @@ async def get_channel_rank_for_handles(
 
     ranks = await db_utils.get_channel_profile_ranks(
         channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         fids=fids,
         lite=False,
         pool=pool)
@@ -99,6 +106,7 @@ async def get_channel_rank_for_handles(
 @router.get("/casts/popular/{channel}")
 async def get_popular_channel_casts(
         channel: str,
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
                                          " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
@@ -135,6 +143,7 @@ async def get_popular_channel_casts(
         casts = await db_utils.get_popular_channel_casts_lite(
             channel_id=channel,
             channel_url=fetch_channel(channel_id=channel),
+            strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
             agg=agg,
             weights=weights,
             offset=offset,
@@ -145,6 +154,7 @@ async def get_popular_channel_casts(
         casts = await db_utils.get_popular_channel_casts_heavy(
             channel_id=channel,
             channel_url=fetch_channel(channel_id=channel),
+            strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
             agg=agg,
             weights=weights,
             offset=offset,
@@ -202,6 +212,7 @@ async def get_popular_casts_from_degen_graph(
 @router.get("/followers/{channel}")
 async def get_top_channel_followers(
         channel: str,
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=500000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
@@ -217,6 +228,7 @@ async def get_top_channel_followers(
   """
     followers = await db_utils.get_top_channel_followers(
         channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         offset=offset,
         limit=limit,
         pool=pool)
@@ -225,6 +237,7 @@ async def get_top_channel_followers(
 @router.get("/repliers/{channel}")
 async def get_top_channel_repliers(
         channel: str,
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=500000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
@@ -240,6 +253,7 @@ async def get_top_channel_repliers(
   """
     followers = await db_utils.get_top_channel_repliers(
         channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         offset=offset,
         limit=limit,
         pool=pool)
