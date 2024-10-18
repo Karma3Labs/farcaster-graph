@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, HTTPException, Path
 from loguru import logger
 from asyncpg.pool import Pool
-from ..models.score_model import ScoreAgg, Weights, Sorting_Order
+from ..models.score_model import ScoreAgg, Weights, Sorting_Order, ChannelStrategy
 from ..models.channel_model import ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES
 from ..dependencies import db_pool, db_utils
 from ..utils import fetch_channel
@@ -234,6 +234,7 @@ async def get_top_channel_followers(
         pool=pool)
     return {"result": followers}
 
+
 @router.get("/repliers/{channel}")
 async def get_top_channel_repliers(
         channel: str,
@@ -258,3 +259,30 @@ async def get_top_channel_repliers(
         limit=limit,
         pool=pool)
     return {"result": followers}
+
+
+@router.get("/top-casts/{channel_id}")
+async def get_trending_casts(
+        channel: str,
+        channel_strategy: Annotated[ChannelStrategy | None,
+                                    Query(description="Define the channel engagement strategy" \
+                                                      "- `lifetime_engagement`, `60days_engagement`, "
+                                                      "`7days_engagement`")] = ChannelStrategy.CHANNEL_ALLTIME,
+        agg: Annotated[ScoreAgg | None,
+                       Query(description="Define the aggregation function" \
+                                         "`sumsquare`")] = ScoreAgg.SUMSQUARE,
+        offset: Annotated[int | None, Query(ge=0)] = 0,
+        limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
+        pool: Pool = Depends(db_pool.get_db)
+):
+    casts = await db_utils.get_trending_channel_casts(
+        channel_id=channel,
+        channel_url=fetch_channel(channel_id=channel),
+        channel_strategy=channel_strategy,
+        agg=agg,
+        offset=offset,
+        limit=limit,
+        pool=pool
+    )
+
+    return {"result": casts}

@@ -2,7 +2,7 @@ import time
 import json
 
 from ..config import settings
-from ..models.score_model import ScoreAgg, Weights, Voting
+from ..models.score_model import ScoreAgg, Weights, Voting, ChannelStrategy
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -1434,3 +1434,124 @@ async def get_top_channel_repliers(
     """
 
     return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+
+
+async def get_trending_channel_casts(
+        channel_id: str,
+        channel_url: str,
+        channel_strategy: ChannelStrategy,
+        agg: ScoreAgg,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.SUMSQUARE:
+            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
+
+    match channel_strategy:
+        case ChannelStrategy.CHANNEL_ALLTIME:
+            channel_strategy = 'channel_engagement'
+        case ChannelStrategy.CHANNEL_60D:
+            channel_strategy = '60d_engagement'
+        case ChannelStrategy.CHANNEL_7D:
+            channel_strategy = '7d_engagement'
+
+    sql_query = f"""
+    WITH
+    latest_global_rank as (
+            select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
+                and date in (select max(date) from k3l_rank)
+            ),
+    fid_cast_scores as (
+                SELECT
+                    hash as cast_hash,
+                    SUM(
+                        (
+                            (1 * fids.score * ci.replied)
+                            + (5 * fids.score * ci.recasted)
+                            + (1 * fids.score * ci.liked)
+                        )
+                        *
+                        power(
+                            1-(1/(365*24)::numeric),
+                            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+                        )
+                    ) as cast_score,
+                                ci.fid,
+                    MIN(ci.action_ts) as cast_ts
+                FROM k3l_recent_parent_casts as casts
+                INNER JOIN k3l_cast_action as ci
+                    ON (ci.cast_hash = casts.hash
+                        AND ci.action_ts BETWEEN now() - interval '1 day' AND now() - interval '10 minutes'
+                        AND casts.root_parent_url = $2)
+                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = '{channel_strategy}')
+                LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+                WHERE casts.created_at BETWEEN now() - interval '1 day' AND now()
+                        GROUP BY casts.hash, ci.fid
+                ORDER BY cast_ts DESC
+            ), 
+            scores AS (
+            SELECT
+                cast_hash,
+                {agg_sql} as cast_score,
+                MIN(cast_ts) as cast_ts,
+                    COUNT (*) - 1 as reaction_count
+            FROM fid_cast_scores
+            GROUP BY cast_hash
+            ),
+    cast_details AS (
+        SELECT
+            '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
+            DATE_TRUNC('hour', scores.cast_ts) AS cast_hour,
+            scores.cast_ts,
+            scores.cast_score,
+            scores.reaction_count as reaction_count,
+            ci.text,
+            ci.fid,
+            fids.channel_id,
+            fids.rank AS channel_rank,
+            latest_global_rank.global_rank
+        FROM scores
+        INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
+        INNER JOIN latest_global_rank ON ci.fid = latest_global_rank.fid
+        INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = '{channel_strategy}')
+            WHERE ci.timestamp BETWEEN now() - interval '1 day' AND now()
+        ORDER BY scores.cast_score DESC
+    )
+    SELECT
+        distinct
+        cast_details.fid,
+        cast_details.channel_id,
+        cast_details.channel_rank,
+        cast_details.global_rank,
+        cast_details.cast_hash,
+        ANY_VALUE(fnames.fname) as fname,
+        ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
+        ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
+        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
+        cast_details.cast_score,
+        cast_details.reaction_count,
+        cast_details.cast_hour,
+        cast_details.cast_ts,
+        cast_details.text
+    FROM cast_details
+    LEFT JOIN fnames ON (cast_details.fid = fnames.fid)
+    LEFT JOIN user_data ON (cast_details.fid = user_data.fid)
+    GROUP BY 
+        cast_details.fid,
+        cast_details.channel_id,
+        cast_details.channel_rank,
+        cast_details.global_rank,
+        cast_details.cast_hash,
+        cast_details.cast_score,
+        cast_details.reaction_count,
+        cast_details.cast_hour,
+        cast_details.cast_ts,
+        cast_details.text
+    ORDER BY cast_score DESC
+    OFFSET $3
+    LIMIT $4
+    """
+
+    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
