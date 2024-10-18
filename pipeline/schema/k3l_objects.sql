@@ -259,9 +259,17 @@ CREATE TABLE public.k3l_channel_fids (
 
 CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts, fid);
 
+-- TODO drop this index
 CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(channel_id, rank);
 
+-- TODO drop this index
 CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts);
+
+CREATE INDEX k3l_channel_fids_ch_strat_ts_idx ON public.k3l_channel_fids USING btree (channel_id, strategy_name, compute_ts)
+
+CREATE INDEX k3l_channel_fids_strat_ts_idx ON public.k3l_channel_fids USING btree (strategy_name, compute_ts)
+
+
 ------------------------------------------------------------------------------------
 
 CREATE TABLE k3l_cast_action (
@@ -307,12 +315,20 @@ CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
 ------------------------------------------------------------------------------------
 
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
- WITH latest_compute AS (
-  SELECT compute.channel_id, compute.compute_ts, compute.strategy_name
-FROM warpcast_channels_data wpc
-INNER JOIN LATERAL (
- SELECT * FROM k3l_channel_fids f WHERE f.channel_id=wpc.id
- ORDER BY compute_ts DESC LIMIT 1) compute ON true
+WITH latest_compute AS (
+  WITH RECURSIVE t AS (
+    (SELECT channel_id, strategy_name, compute_ts 
+     FROM k3l_channel_fids 
+     ORDER BY channel_id DESC, strategy_name DESC, compute_ts DESC LIMIT 1)
+    UNION ALL
+    SELECT s.channel_id, s.strategy_name, s.compute_ts FROM t,
+    LATERAL (
+        SELECT channel_id, strategy_name, compute_ts
+        FROM k3l_channel_fids
+        WHERE (k3l_channel_fids.channel_id, k3l_channel_fids.strategy_name) < (t.channel_id, t.strategy_name)
+        ORDER BY channel_id DESC, strategy_name DESC, compute_ts DESC LIMIT 1
+    ) s
+	) SELECT * FROM t
 )
 SELECT
  	row_number() OVER () AS pseudo_id,
