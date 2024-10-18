@@ -1435,7 +1435,6 @@ async def get_top_channel_repliers(
 
     return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
-
 async def get_trending_channel_casts(
         channel_id: str,
         channel_url: str,
@@ -1446,8 +1445,13 @@ async def get_trending_channel_casts(
         pool: Pool
 ):
     match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
         case ScoreAgg.SUMSQUARE:
             agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(fid_cast_scores.cast_score)'
+
 
     sql_query = f"""
     WITH
@@ -1508,7 +1512,7 @@ async def get_trending_channel_casts(
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN latest_global_rank ON ci.fid = latest_global_rank.fid
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
-            WHERE ci.timestamp BETWEEN now() - interval '1 day' AND now()
+        WHERE ci.timestamp BETWEEN now() - interval '1 day' AND now()
         ORDER BY scores.cast_score DESC
     )
     SELECT

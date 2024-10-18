@@ -165,6 +165,29 @@ async def get_popular_channel_casts(
     return {"result": casts}
 
 
+@router.get("/casts/daily/{channel}")
+async def get_trending_casts(
+        channel: str,
+        channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        agg: Annotated[ScoreAgg | None,
+                       Query(description="Define the aggregation function" \
+                                         " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
+        offset: Annotated[int | None, Query(ge=0)] = 0,
+        limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
+        pool: Pool = Depends(db_pool.get_db)
+):
+    casts = await db_utils.get_trending_channel_casts(
+        channel_id=channel,
+        channel_url=fetch_channel(channel_id=channel),
+        channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
+        agg=agg,
+        offset=offset,
+        limit=limit,
+        pool=pool
+    )
+
+    return {"result": casts}
+
 @router.get("/experiments/degen/casts")
 async def get_popular_casts_from_degen_graph(
         agg: Annotated[ScoreAgg | None,
@@ -260,26 +283,3 @@ async def get_top_channel_repliers(
         pool=pool)
     return {"result": followers}
 
-
-@router.get("/top-casts/{channel_id}")
-async def get_trending_casts(
-        channel: str,
-        channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
-        agg: Annotated[ScoreAgg | None,
-                       Query(description="Define the aggregation function" \
-                                         "`sumsquare`")] = ScoreAgg.SUMSQUARE,
-        offset: Annotated[int | None, Query(ge=0)] = 0,
-        limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
-        pool: Pool = Depends(db_pool.get_db)
-):
-    casts = await db_utils.get_trending_channel_casts(
-        channel_id=channel,
-        channel_url=fetch_channel(channel_id=channel),
-        channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
-        agg=agg,
-        offset=offset,
-        limit=limit,
-        pool=pool
-    )
-
-    return {"result": casts}
