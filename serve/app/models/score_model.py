@@ -8,13 +8,6 @@ class ScoreAgg(StrEnum):
     SUMSQUARE = 'sumsquare'
     SUM = 'sum'
 
-
-class ChannelStrategy(StrEnum):
-    CHANNEL_ALLTIME = 'lifetime_engagement'
-    CHANNEL_60D = '60days_engagement'
-    CHANNEL_7D = '7days_engagement'
-
-
 class Voting(StrEnum):
     SINGLE = 'single'
     MULTIPLE = 'multiple'
