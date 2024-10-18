@@ -2,7 +2,7 @@ import time
 import json
 
 from ..config import settings
-from ..models.score_model import ScoreAgg, Weights, Voting, ChannelStrategy
+from ..models.score_model import ScoreAgg, Weights, Voting
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -1439,7 +1439,7 @@ async def get_top_channel_repliers(
 async def get_trending_channel_casts(
         channel_id: str,
         channel_url: str,
-        channel_strategy: ChannelStrategy,
+        channel_strategy: str,
         agg: ScoreAgg,
         offset: int,
         limit: int,
@@ -1448,14 +1448,6 @@ async def get_trending_channel_casts(
     match agg:
         case ScoreAgg.SUMSQUARE:
             agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-
-    match channel_strategy:
-        case ChannelStrategy.CHANNEL_ALLTIME:
-            channel_strategy = 'channel_engagement'
-        case ChannelStrategy.CHANNEL_60D:
-            channel_strategy = '60d_engagement'
-        case ChannelStrategy.CHANNEL_7D:
-            channel_strategy = '7d_engagement'
 
     sql_query = f"""
     WITH
@@ -1485,7 +1477,7 @@ async def get_trending_channel_casts(
                     ON (ci.cast_hash = casts.hash
                         AND ci.action_ts BETWEEN now() - interval '1 day' AND now() - interval '10 minutes'
                         AND casts.root_parent_url = $2)
-                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = '{channel_strategy}')
+                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
                 LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
                 WHERE casts.created_at BETWEEN now() - interval '1 day' AND now()
                         GROUP BY casts.hash, ci.fid
@@ -1515,7 +1507,7 @@ async def get_trending_channel_casts(
         FROM scores
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN latest_global_rank ON ci.fid = latest_global_rank.fid
-        INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = '{channel_strategy}')
+        INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
             WHERE ci.timestamp BETWEEN now() - interval '1 day' AND now()
         ORDER BY scores.cast_score DESC
     )
@@ -1550,8 +1542,8 @@ async def get_trending_channel_casts(
         cast_details.cast_ts,
         cast_details.text
     ORDER BY cast_score DESC
-    OFFSET $3
-    LIMIT $4
+    OFFSET $4
+    LIMIT $5
     """
 
-    return await fetch_rows(channel_id, channel_url, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
