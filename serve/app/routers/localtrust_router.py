@@ -352,7 +352,8 @@ async def _get_personalized_scores_for_fids(
             'pfp': trusted_fid_addr_handle['pfp'],
             'bio': trusted_fid_addr_handle['bio'],
             'fid': trusted_fid_addr_handle['fid'],
-            'score': score
+            'score': score,
+            'global_rank': trusted_fid_addr_handle['global_rank']
             }
   # end of def fn_trust_score_with_handle_fid
 
