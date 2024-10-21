@@ -161,6 +161,11 @@ async def get_all_handle_addresses_for_fids(
         pool: Pool,
 ):
     sql_query = """
+    WITH latest_global_rank as (
+    select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
+                and date in (select max(date) from k3l_rank)
+    ),
+    fid_details as
     (
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
@@ -188,7 +193,11 @@ async def get_all_handle_addresses_for_fids(
         LEFT JOIN user_data ON (user_data.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
-    )
+    ),
+    SELECT fid_details.*,
+    latest_global_rank.global_rank
+    FROM fid_details 
+    LEFT JOIN latest_global_rank using(fid)
     ORDER BY username
     LIMIT 1000 -- safety valve
     """
@@ -200,7 +209,12 @@ async def get_unique_handle_metadata_for_fids(
         pool: Pool,
 ):
     sql_query = """
-    WITH addresses AS (
+    WITH 
+    latest_global_rank as (
+    select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
+                and date in (select max(date) from k3l_rank)
+    ),
+    addresses AS (
     SELECT fid,'0x' || encode(fids.custody_address, 'hex') as address
     FROM fids where fid=ANY($1::integer[])
     UNION ALL
@@ -214,6 +228,7 @@ async def get_unique_handle_metadata_for_fids(
     GROUP BY fid
     )
     SELECT agg_addresses.*,
+        latest_global_rank.global_rank,
         ANY_VALUE(fnames.fname) as fname,
         ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
         ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
@@ -221,7 +236,8 @@ async def get_unique_handle_metadata_for_fids(
         from agg_addresses
     LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
     LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid)
-    GROUP BY agg_addresses.fid,agg_addresses.address
+    LEFT JOIN latest_global_rank on (agg_addresses.fid = latest_global_rank.fid)
+    GROUP BY agg_addresses.fid,agg_addresses.address,latest_global_rank.global_rank
     LIMIT 1000 -- safety valve
     """
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
