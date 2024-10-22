@@ -259,12 +259,6 @@ CREATE TABLE public.k3l_channel_fids (
 
 CREATE INDEX k3l_channel_fids_id_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts, fid);
 
--- TODO drop this index
-CREATE INDEX k3l_channel_fids_rank_idx ON public.k3l_channel_fids USING btree(channel_id, rank);
-
--- TODO drop this index
-CREATE INDEX k3l_channel_fids_ts_idx ON public.k3l_channel_fids USING btree(channel_id, compute_ts);
-
 CREATE INDEX k3l_channel_fids_ch_strat_ts_idx ON public.k3l_channel_fids USING btree (channel_id, strategy_name, compute_ts)
 
 CREATE INDEX k3l_channel_fids_strat_ts_idx ON public.k3l_channel_fids USING btree (strategy_name, compute_ts)
