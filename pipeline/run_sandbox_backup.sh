@@ -11,7 +11,7 @@ set -o pipefail  # Ensure pipeline failures are propagated
 DATE_SUFFIX=$(date +"%Y%m%d" )
 BACKUP_DIR="/tmp/sandbox-backup-$DATE_SUFFIX"
 BACKUP_FILE="sandbox_pgdump"
-S3_BUCKET='k3l-openrank-farcaster'
+S3_BUCKET='k3l-farcaster-backups'
 S3_PREFIX='pg_dump/'  
 
 #DB details

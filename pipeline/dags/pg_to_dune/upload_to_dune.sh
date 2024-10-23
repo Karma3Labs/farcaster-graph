@@ -3,6 +3,7 @@
 source ./.env
 S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-cast-to-dune/constant"}
 S3_BUCKET_NAME_DAILY=${S3_BUCKET_NAME_DAILY:-"k3l-cast-to-dune"}
+S3_BUCKET_NAME_BACKUP=${S3_BUCKET_NAME_BACKUP:-"k3l-farcaster-backups"}
 if [[ $(uname) == "Darwin" ]]; then
   TIMESTAMP=$(date -j -v-1d +%Y-%m-%d)
 else
@@ -76,7 +77,7 @@ export_historical_to_s3_and_cleanup() {
   local csv_file="$1"
   local filename="$2"
 
-  local s3_bucket="s3://$S3_BUCKET_NAME_DAILY/historical/$TIMESTAMP/"
+  local s3_bucket="s3://$S3_BUCKET_NAME_BACKUP/historical/$TIMESTAMP/"
 
   TS_SECONDS=$(date +%s)
   local csv_gz_file="${WORK_DIR}/${filename}_${TS_SECONDS}.csv.gz"
