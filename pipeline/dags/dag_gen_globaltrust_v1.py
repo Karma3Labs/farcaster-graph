@@ -77,7 +77,7 @@ with DAG(
 
     trigger_sync_sandbox = TriggerDagRunOperator(
         task_id="trigger_sync_sandbox",
-        trigger_dag_id="sync_sandbox_db_ranks",
+        trigger_dag_id="sync_sandbox_globaltrust",
         conf={"trigger": "gen_globaltrust_v1"},
     )
     # TODO do we need to backup every 6 hours ? Revisit this later.

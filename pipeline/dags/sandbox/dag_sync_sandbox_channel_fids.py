@@ -16,12 +16,11 @@ default_args = {
 }
 
 sandbox_db_sync_path = Variable.get("sandbox_db_sync_path")
-dev_sandbox_db_sync_path = Variable.get("dev_sandbox_db_sync_path")
 
 with DAG(
-    dag_id='sync_sandbox_db_ranks',
+    dag_id='sync_sandbox_channel_fids',
     default_args=default_args,
-    description='sync ranks to the sandbox',
+    description='sync globaltrust to the sandbox',
     start_date=datetime(2024, 7, 10, 18),
     # schedule_interval='*/10 * * * *',
     schedule=None,
@@ -33,13 +32,13 @@ with DAG(
 
     run_append = SSHOperator(
         task_id="run_append_v1",
-        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh -c -g ",
+        command=f"cd {sandbox_db_sync_path}; ./1-run-append_v1.sh -c ",
         ssh_hook=ssh_hook,
         dag=dag)
 
     run_refresh = SSHOperator(
         task_id="run_refresh_v0",
-        command=f"cd {sandbox_db_sync_path}; ./4-run-refresh.sh ",
+        command=f"cd {sandbox_db_sync_path}; ./4-run-refresh.sh -c ",
         ssh_hook=ssh_hook,
         dag=dag)
 
