@@ -231,7 +231,7 @@ backup_all_channel_rank_to_private_s3() {
   "k3l_channel_rank" \
    "$csv_file" \
    "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name\
-    FROM k3l_channel_rank\
+    FROM k3l_channel_rank)\
     TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   export_historical_to_s3_and_cleanup "$csv_file" "$filename"
 }
