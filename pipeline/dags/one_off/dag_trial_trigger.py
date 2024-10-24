@@ -15,7 +15,7 @@ N_CHUNKS = 100  # Define the number of chunks
 FREQUENCY_H = 6  # Define the frequency in hours
 
 @dag(
-    dag_id='one_off_dag_trial_2_trigger',
+    dag_id='one_off_trial_trigger_src',
     default_args=default_args,
     start_date=datetime(2024, 10, 1),
     schedule_interval=timedelta(minutes=3),
@@ -28,16 +28,16 @@ def create_trigger_dag():
 
     trigger_main_dag = TriggerDagRunOperator(
         task_id='trigger_main_dag',
-        trigger_dag_id='one_off_dag_trial_2',
+        trigger_dag_id='one_off_trial_trigger_tgt',
         execution_date='{{ macros.datetime.now() }}',
         wait_for_completion=True,
         poke_interval=60,
-        conf={"trigger": "one_off_dag_trial_2_trigger"},
+        conf={"trigger": "one_off_trial_trigger_src"},
     )
 
     @task.branch(task_id="check_last_successful_run")
     def check_last_successful_run(**context) -> bool:
-        dag_runs = DagRun.find(dag_id="one_off_dag_trial_2", state=DagRunState.SUCCESS)
+        dag_runs = DagRun.find(dag_id="one_off_trial_trigger_tgt", state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
             # No previous runs
             print("No previous runs")
@@ -75,7 +75,7 @@ def create_trigger_dag():
 trigger_dag = create_trigger_dag()
 
 @dag(
-    dag_id='one_off_dag_trial_2',
+    dag_id='one_off_trial_trigger_tgt',
     default_args=default_args,
     description='One off dag to test new features',
     start_date=datetime(2024, 10, 1),

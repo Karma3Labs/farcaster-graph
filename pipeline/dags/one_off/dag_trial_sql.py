@@ -41,7 +41,7 @@ CHECK_QUERY = """
 """
 
 with DAG(
-    "one_off_dag_trial_sql",
+    "one_off_trial_sql",
     default_args=default_args,
     description="One off dag to test new features",
     schedule_interval=None,
