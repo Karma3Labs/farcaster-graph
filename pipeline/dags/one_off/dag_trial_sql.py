@@ -61,4 +61,4 @@ with DAG(
 
     end = EmptyOperator(task_id="end")
 
-    start >> end
+    start >> sql_check >> end
