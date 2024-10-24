@@ -61,19 +61,24 @@ export_to_csv() {
   log "Exported $table to $csv_file"
 }
 
-export_to_s3() {
+publish_to_s3() {
   local csv_file="$1"
-  local s3_bucket="$2"
+  local s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
 
   log "GZipping $csv_file"
   /usr/bin/gzip -f $csv_file
-
-  log "Uploading to S3 folder: $s3_bucket"
-  aws s3 cp "${csv_file}.gz" "$s3_bucket"
-  log "Uploaded ${csv_file}.gz to $s3_bucket"
+  
+  upload_gzip_to_s3 "$csv_file.gz" "$s3_bucket"
 }
 
-export_historical_to_s3_and_cleanup() {
+publish_to_s3_and_cleanup() {
+  local csv_file="$1"
+
+  publish_to_s3 "$csv_file"
+  rm "$csv_file.gz"
+}
+
+backup_to_s3_and_cleanup() {
   local csv_file="$1"
   local filename="$2"
 
@@ -82,17 +87,17 @@ export_historical_to_s3_and_cleanup() {
   TS_SECONDS=$(date +%s)
   local csv_gz_file="${WORK_DIR}/${filename}_${TS_SECONDS}.csv.gz"
   mv "$csv_file.gz" "$csv_gz_file"
-  export_gzip_to_s3 "$csv_gz_file" "$s3_bucket"
+  upload_gzip_to_s3 "$csv_gz_file" "$s3_bucket"
   rm $csv_gz_file
 }
 
-export_gzip_to_s3() {
-  local csv_file="$1"
+upload_gzip_to_s3() {
+  local csv_file_gz="$1"
   local s3_bucket="$2"
 
   log "Uploading to S3 folder: $s3_bucket"
-  aws s3 cp "${csv_file}" "$s3_bucket"
-  log "Uploaded ${csv_file} to $s3_bucket"
+  aws s3 cp "${csv_file_gz}" "$s3_bucket"
+  log "Uploaded ${csv_file_gz} to $s3_bucket"
 }
 
 export_csv_to_bq() {
@@ -171,24 +176,24 @@ split_and_post_csv() {
 process_globaltrust() {
   filename="k3l_cast_globaltrust"
   csv_file="${WORK_DIR}/$filename.csv"
-  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
-  export_to_s3 "$csv_file" "$s3_bucket"
+  publish_to_s3 "$csv_file"
   # export_csv_to_bq "$csv_file"
-  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
 # Function to export and process globaltrust_config table
 process_globaltrust_config() {
   filename="k3l_cast_globaltrust_config"
   csv_file="${WORK_DIR}/$filename.csv"
-  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+
   export_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 1 "dataset_k3l_cast_globaltrust_config_v2"
-  export_to_s3 "$csv_file" "$s3_bucket"
+  publish_to_s3 "$csv_file"
   #export_csv_to_bq "$csv_file"
-  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
 # Function to export and process localtrust table
@@ -197,22 +202,21 @@ process_localtrust_v1() {
 
   filename="k3l_cast_localtrust"
   csv_file="${WORK_DIR}/k3l_cast_localtrust.csv"
-  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
 
   cat $graph_folder/localtrust.engagement.csv > $csv_file
   tail -n+2 $graph_folder/localtrust.v3engagement.csv >> $csv_file
   tail -n+2 $graph_folder/localtrust.following.csv >> $csv_file
 
 
-  export_to_s3 "$csv_file" "$s3_bucket"
-  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+  publish_to_s3 "$csv_file"
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
 # Function to export and process k3l_channel_rank table
 upload_lifetime_channel_rank_to_public_s3() {
   filename="k3l_channel_rankings"
   csv_file="${WORK_DIR}/$filename.csv"
-  s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
+
   export_to_csv \
   "k3l_channel_rank" \
    "$csv_file" \
@@ -221,7 +225,7 @@ upload_lifetime_channel_rank_to_public_s3() {
     WHERE strategy_name = 'channel_engagement')\
     TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 20 "dataset_k3l_cast_channel_ranking"
-  export_to_s3 "$csv_file" "$s3_bucket"
+  publish_to_s3_and_cleanup "$csv_file"
 }
 
 backup_all_channel_rank_to_private_s3() {
@@ -236,7 +240,7 @@ backup_all_channel_rank_to_private_s3() {
 
   /usr/bin/gzip -f $csv_file
 
-  export_historical_to_s3_and_cleanup "$csv_file" "$filename"
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
 
