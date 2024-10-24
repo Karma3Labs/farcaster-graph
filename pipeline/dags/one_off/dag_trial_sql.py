@@ -6,11 +6,11 @@ from airflow.providers.common.sql.operators.sql import SQLCheckOperator
 
 default_args = {
     "owner": "karma3labs",
-    "retries": 1,
+    "retries": 0,
     "retry_delay": timedelta(minutes=5),
 }
 
-_CONN_ID = "eig2_postgres_user"
+_CONN_ID = "eig2_readonly_user"
 CHECK_QUERY = """
     WITH 
     channel_rank_stats AS (
