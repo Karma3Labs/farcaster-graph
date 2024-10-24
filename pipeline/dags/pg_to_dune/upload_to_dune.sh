@@ -209,7 +209,7 @@ process_localtrust_v1() {
 }
 
 # Function to export and process k3l_channel_rank table
-upload_channel_rank_to_s3() {
+upload_lifetime_channel_rank_to_public_s3() {
   filename="k3l_channel_rankings"
   csv_file="${WORK_DIR}/$filename.csv"
   s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
@@ -222,9 +222,20 @@ upload_channel_rank_to_s3() {
     TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 20 "dataset_k3l_cast_channel_ranking"
   export_to_s3 "$csv_file" "$s3_bucket"
-  #export_csv_to_bq "$csv_file"
+}
+
+backup_all_channel_rank_to_private_s3() {
+  filename="k3l_channel_rankings"
+  csv_file="${WORK_DIR}/$filename.csv"
+  export_to_csv \
+  "k3l_channel_rank" \
+   "$csv_file" \
+   "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name\
+    FROM k3l_channel_rank\
+    TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   export_historical_to_s3_and_cleanup "$csv_file" "$filename"
 }
+
 
 insert_globaltrust_to_dune_v2() {
   filename="k3l_cast_globaltrust_incremental"
@@ -372,7 +383,8 @@ case "$1" in
         process_localtrust_v1 $2
         ;;
     upload_channel_rank_to_s3)
-        upload_channel_rank_to_s3
+        upload_lifetime_channel_rank_to_public_s3
+        backup_all_channel_rank_to_private_s3
         ;;
     insert_globaltrust_to_dune_v2)
         insert_globaltrust_to_dune_v2
