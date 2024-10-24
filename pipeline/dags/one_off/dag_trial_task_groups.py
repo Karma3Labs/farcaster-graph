@@ -12,7 +12,7 @@ default_args = {
 }
 
 with DAG(
-    "one_off_dag_trial_1",
+    "one_off_dag_trial_task_groups",
     default_args=default_args,
     description="One off dag to test new features",
     schedule_interval=None,
