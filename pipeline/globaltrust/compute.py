@@ -290,7 +290,7 @@ def globaltrust_for_strategy(
       gc.collect()
       utils.log_memusage(logger)
 
-      with Timer(name="go_eigentrust_from_file"):
+      with Timer(name="go_eigentrust_inline"):
         globaltrust = go_eigentrust.go_eigentrust(pretrust,
                                                 max_pt_id,
                                                 localtrust,
