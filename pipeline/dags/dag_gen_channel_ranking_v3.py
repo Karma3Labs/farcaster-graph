@@ -34,8 +34,7 @@ CHECK_QUERY = """
             COUNT(*) AS tot_rows, 
             COUNT(DISTINCT channel_id) AS tot_channels,
             strategy_name
-        -- TODO change table name to k3l_channel_fids
-        FROM k3l_channel_rank
+        FROM k3l_channel_fids
         GROUP BY strategy_name
     )
     SELECT 
@@ -61,9 +60,32 @@ CHECK_QUERY = """
 )
 def create_dag():
 
+    @task_group(group_id='prep_db')
+    def tg_prep_db():
+
+        sanitycheck_before_truncate = SQLCheckOperator(
+            task_id='sanitycheck_before_truncate',
+            sql=CHECK_QUERY,
+            conn_id=_CONN_ID
+        )
+
+        truncate_ch_fids = BashOperator(
+            task_id='truncate_ch_fids',
+            bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
+            BEGIN;
+            DROP TABLE IF EXISTS k3l_channel_fids_old; 
+            ALTER TABLE k3l_channel_fids RENAME TO k3l_channel_fids_old;
+            CREATE UNLOGGED TABLE k3l_channel_fids (LIKE k3l_channel_fids_old INCLUDING ALL);
+            COMMIT;"
+            '''
+        )
+
+        sanitycheck_before_truncate >> truncate_ch_fids
+
     @task_group(group_id='compute_group')
     def tg_compute():
-        fetch_data_task = BashOperator(
+
+        fetch_data = BashOperator(
             task_id='fetch_channel_data',
             bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t fetch -c channels/Top_Channels.csv",
             do_xcom_push=True
@@ -93,16 +115,16 @@ def create_dag():
             )
             process_task.execute({})
 
-        extract_ids_task = extract_channel_ids(fetch_data_task.output)
+        extract_ids = extract_channel_ids(fetch_data.output)
 
         # Create dynamic tasks
-        process_7d_tasks = process_channel_chunk.partial(interval=7).expand(chunk=extract_ids_task)
-        process_60d_tasks = process_channel_chunk.partial(interval=60).expand(chunk=extract_ids_task)
-        process_lifetime_tasks = process_channel_chunk.partial(interval=0).expand(chunk=extract_ids_task)
+        process_7d_tasks = process_channel_chunk.partial(interval=7).expand(chunk=extract_ids)
+        process_60d_tasks = process_channel_chunk.partial(interval=60).expand(chunk=extract_ids)
+        process_lifetime_tasks = process_channel_chunk.partial(interval=0).expand(chunk=extract_ids)
 
-        fetch_data_task >> extract_ids_task >> process_7d_tasks >> process_60d_tasks >> process_lifetime_tasks
+        fetch_data >> extract_ids >> process_7d_tasks >> process_60d_tasks >> process_lifetime_tasks
 
-    @task_group(group_id='db_group')
+    @task_group(group_id='refesh_db')
     def tg_db():
         sanitycheck_before_refresh = SQLCheckOperator(
             task_id='sanitycheck_before_refresh',
@@ -110,23 +132,23 @@ def create_dag():
             conn_id=_CONN_ID
         )
 
-        refresh_db_task = BashOperator(
-            task_id='refresh_db',
+        refresh_db = BashOperator(
+            task_id='refresh_ch_rank',
             bash_command="cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t refresh -c channels/Top_Channels.csv",
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
 
-        sanitycheck_before_refresh >> refresh_db_task
+        sanitycheck_before_refresh >> refresh_db
 
-    @task_group(group_id='sync_group')
+    @task_group(group_id='sync_data')
     def tg_sync():
 
-        push_to_dune_task = BashOperator(
+        push_to_dune = BashOperator(
             task_id='overwrite_channel_rank_in_dune_v3',
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh overwrite_channel_rank_in_dune_v3"
         )
 
-        push_to_s3_task = BashOperator(
+        push_to_s3 = BashOperator(
             task_id='backup_channel_rank_s3',
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
         )
@@ -137,9 +159,9 @@ def create_dag():
             conf={"trigger": "gen_channel_ranking_v3"},
         )
 
-        push_to_dune_task >> push_to_s3_task >> trigger_sync_sandbox
+        push_to_dune >> push_to_s3 >> trigger_sync_sandbox
 
-    tg_compute() >> tg_db() >> tg_sync()
+    tg_prep_db() >> tg_compute() >> tg_db() >> tg_sync()
 
 
 dag = create_dag()
