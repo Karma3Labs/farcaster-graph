@@ -16,7 +16,7 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-_CONN_ID = "eig2_readonly_user"
+_CONN_ID = "eig2_k3l_user"
 N_CHUNKS = 100  # Define the number of chunks
 
 CHECK_QUERY = """
