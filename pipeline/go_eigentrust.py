@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import requests
 from typing import List, Dict
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]:
     start_time = time.perf_counter()
@@ -54,6 +55,11 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
     logger.info(f"get_scores took {time.perf_counter() - start_time} secs for {len(i_scores)} scores")
     return i_scores
 
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=5, max=60),
+)
 def go_eigentrust(
     pretrust: List[Dict[str, float]],
     max_pt_id: np.int32,
@@ -95,6 +101,11 @@ def go_eigentrust(
     logger.info(f"go_eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores")
     return trustscores
 
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=5, max=60),
+)
 def go_eigentrust_from_file(
     pretrust_path: Path,
     localtrust_path: Path,
