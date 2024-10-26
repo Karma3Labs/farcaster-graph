@@ -273,11 +273,13 @@ def globaltrust_for_strategy(
         # we could have used list(csv.DictReader) but we need the max id
         logger.info(f"reading localtrust from {lt_filepath}")
         lt_df = pd.read_csv(lt_filepath, usecols=['i','j','v'])
+        logger.info(f"LocalTrust: {utils.df_info_to_string(lt_df, with_sample=True)}")
         logger.info("converting localtrust dataframe to dict")
         localtrust = lt_df.to_dict(orient="records")
         max_lt_id = max(lt_df['i'].max(), lt_df['j'].max())
         logger.info(f"reading pretrust from {pt_filepath}")
         pt_df = pd.read_csv(pt_filepath, usecols=['i','v'])
+        logger.info(f"PreTrust: {utils.df_info_to_string(pt_df, with_sample=True)}")
         logger.info("converting pretrust dataframe to dict")
         pretrust = pt_df.to_dict(orient="records")
         max_pt_id = pt_df['i'].max()
