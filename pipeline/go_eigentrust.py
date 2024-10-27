@@ -43,7 +43,8 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
         pretrust=pretrust,
         max_pt_id=max_pt_id,
         localtrust=localtrust,
-        max_lt_id=max_lt_id
+        max_lt_id=max_lt_id,
+        url=settings.GO_EIGENTRUST_URL
     )
     logger.trace(f"scores: {scores}")
 
@@ -65,6 +66,7 @@ def go_eigentrust(
     max_pt_id: np.int32,
     localtrust: List[Dict[str, float]],
     max_lt_id: np.int32,
+    url: str = settings.GO_EIGENTRUST_URL
 ) -> List[Dict[str, float]]:
     start_time = time.perf_counter()
 
@@ -86,7 +88,7 @@ def go_eigentrust(
     }
 
     logger.info("calling go_eigentrust with inline scheme")
-    response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
+    response = requests.post(f"{url}/basic/v1/compute",
                              json=req,
                              headers={
                                  'Accept': 'application/json',

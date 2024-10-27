@@ -296,7 +296,8 @@ def globaltrust_for_strategy(
         globaltrust = go_eigentrust.go_eigentrust(pretrust,
                                                 max_pt_id,
                                                 localtrust,
-                                                max_lt_id
+                                                max_lt_id,
+                                                settings.GO_EIGENTRUST_URL_ALT
                                                 )      
       # manually call garbage collector to free up localtrust 
       utils.log_memusage(logger)
