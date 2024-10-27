@@ -128,7 +128,7 @@ def go_eigentrust_from_file(
     }
 
     logger.info(f"calling go_eigentrust with request: {req}")
-    response = requests.post(f"{settings.GO_EIGENTRUST_URL}/basic/v1/compute",
+    response = requests.post(f"{settings.GO_EIGENTRUST_URL_ALT}/basic/v1/compute",
                              json=req,
                              headers={
                                  'Accept': 'application/json',

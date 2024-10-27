@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     POSTGRES_POOL_SIZE: int = 10
     POSTGRES_TIMEOUT_SECS: int = 60
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
+    GO_EIGENTRUST_URL_ALT:str = 'http://localhost:9080'
     GO_EIGENTRUST_TIMEOUT_MS:int = 600_000 # 10 mins
     GO_EIGENTRUST_BIND_SRC:str = '/tmp'
     GO_EIGENTRUST_BIND_TARGET:str = '/tmp'
