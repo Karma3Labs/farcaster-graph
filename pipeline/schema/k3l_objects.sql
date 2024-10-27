@@ -309,38 +309,19 @@ CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
 ------------------------------------------------------------------------------------
 
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
-WITH latest_compute AS (
-  WITH RECURSIVE t AS (
-    (SELECT channel_id, strategy_name, compute_ts 
-     FROM k3l_channel_fids 
-     ORDER BY channel_id DESC, strategy_name DESC, compute_ts DESC LIMIT 1)
-    UNION ALL
-    SELECT s.channel_id, s.strategy_name, s.compute_ts FROM t,
-    LATERAL (
-        SELECT channel_id, strategy_name, compute_ts
-        FROM k3l_channel_fids
-        WHERE (k3l_channel_fids.channel_id, k3l_channel_fids.strategy_name) < (t.channel_id, t.strategy_name)
-        ORDER BY channel_id DESC, strategy_name DESC, compute_ts DESC LIMIT 1
-    ) s
-	) SELECT * FROM t
-)
 SELECT
  	row_number() OVER () AS pseudo_id,
  	cfids.* 
 FROM k3l_channel_fids as cfids
-INNER JOIN latest_compute 
-	ON (cfids.compute_ts = latest_compute.compute_ts
-      AND cfids.channel_id = latest_compute.channel_id
-      AND cfids.strategy_name = latest_compute.strategy_name)
 WITH NO DATA;
 
-CREATE UNIQUE INDEX k3l_channel_rank_unq_idx ON public.k3l_channel_rank_alt USING btree (pseudo_id);
-CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank_alt USING btree (rank);
-CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank_alt USING btree (fid);
-CREATE INDEX k3l_channel_rank_ch_strat_idx ON public.k3l_channel_rank_alt USING btree (channel_id, strategy_name);
-CREATE INDEX k3l_channel_rank_ch_strat_fid_idx ON public.k3l_channel_rank_alt USING btree (channel_id, strategy_name, fid);
+CREATE UNIQUE INDEX k3l_channel_rank_unq_idx ON public.k3l_channel_rank USING btree (pseudo_id);
+CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (rank);
+CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fid);
+CREATE INDEX k3l_channel_rank_ch_strat_idx ON public.k3l_channel_rank USING btree (channel_id, strategy_name);
+CREATE INDEX k3l_channel_rank_ch_strat_fid_idx ON public.k3l_channel_rank USING btree (channel_id, strategy_name, fid);
 
-GRANT SELECT,REFERENCES ON public.k3l_channel_rank TO k3l_readonly
+GRANT SELECT,REFERENCES ON public.k3l_channel_rank TO k3l_readonly;
 
 ------------------------------------------------------------------------------------
 CREATE TABLE public.automod_data (

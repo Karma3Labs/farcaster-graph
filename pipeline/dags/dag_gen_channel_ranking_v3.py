@@ -22,29 +22,43 @@ N_CHUNKS = 100  # Define the number of chunks
 CHECK_QUERY = """
     WITH 
     channel_rank_stats AS (
-        SELECT 
-            COUNT(*) AS tot_rows, 
-            COUNT(DISTINCT channel_id) AS tot_channels,
-            strategy_name
-        FROM k3l_channel_rank
-        GROUP BY strategy_name
+    SELECT
+        COUNT(*) as tot_rows,
+        COUNT(DISTINCT channel_id) AS tot_channels,
+        strategy_name
+    FROM k3l_channel_rank
+    GROUP BY strategy_name
     ),
-    channel_fids_stats as (
-        SELECT 
-            COUNT(*) AS tot_rows, 
+    channel_fids_stats AS (
+        SELECT
+            COUNT(*) as tot_rows,
             COUNT(DISTINCT channel_id) AS tot_channels,
-            strategy_name
+            strategy_name				
         FROM k3l_channel_fids
-        GROUP BY strategy_name
-    )
-    SELECT 
-        BOOL_AND(
-                t2.tot_rows >= t1.tot_rows 
+    GROUP BY strategy_name
+    ),
+    threshold_checks AS (
+    SELECT
+        CASE
+            WHEN t1.strategy_name = 'channel_engagement'
+            THEN BOOL_AND(
+                t2.tot_rows >= t1.tot_rows
                 AND t2.tot_channels >= t1.tot_channels
                 AND t2.strategy_name IS NOT NULL
                 )
+            ELSE BOOL_AND(
+                ABS(t2.tot_rows - t1.tot_rows)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
+                AND ABS(t2.tot_channels - t1.tot_channels)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
+                AND t2.strategy_name IS NOT NULL
+                )
+        END as strategy_check
     FROM channel_rank_stats as t1
     LEFT JOIN channel_fids_stats as t2 ON (t2.strategy_name = t1.strategy_name)
+    GROUP BY t1.strategy_name, t2.strategy_name
+    )
+    SELECT
+        BOOL_AND(strategy_check)
+    FROM threshold_checks
 """
 
 @dag(
@@ -73,9 +87,9 @@ def create_dag():
             task_id='truncate_ch_fids',
             bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
             BEGIN;
-            DROP TABLE IF EXISTS k3l_channel_fids_old; 
-            ALTER TABLE k3l_channel_fids RENAME TO k3l_channel_fids_old;
-            CREATE UNLOGGED TABLE k3l_channel_fids (LIKE k3l_channel_fids_old INCLUDING ALL);
+            DROP TABLE IF EXISTS k3l_channel_fids_old;
+            CREATE UNLOGGED TABLE k3l_channel_fids_old AS SELECT * FROM k3l_channel_fids;
+            TRUNCATE TABLE k3l_channel_fids;
             COMMIT;"
             '''
         )
