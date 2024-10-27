@@ -114,17 +114,7 @@ elif [ "$STEP" = "prep" ]; then
   python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION 
   deactivate
 
-elif [ "$STEP" = "compute" ]; then
-
-  if hash psql 2>/dev/null; then
-    echo "OK, you have psql in the path. We’ll use that."
-    PSQL=psql
-  else
-    echo "You don't have psql in the path. Let's try /usr/bin"
-    hash /usr/bin/psql
-    PSQL=/usr/bin/psql
-  fi
-
+elif [ "$STEP" = "compute_following" ]; then
   source $VENV/bin/activate
   pip install -r requirements.txt
 
@@ -145,6 +135,12 @@ elif [ "$STEP" = "compute" ]; then
     $DATE_OPTION
   #### END Globaltrust for FOLLOWING strategy
 
+  deactivate
+
+elif [ "$STEP" = "compute_engagement" ]; then
+  source $VENV/bin/activate
+  pip install -r requirements.txt
+
   #### START Globaltrust for ENGAGEMENT strategy
   # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   cp  ${TEMP_DIR}/pretrust.engagement${TARGET_DATE_SUFFIX}.csv ${GO_EIGENTRUST_BIND_SRC}/go_pretrust.csv
@@ -161,6 +157,12 @@ elif [ "$STEP" = "compute" ]; then
     -o $TEMP_DIR \
     $DATE_OPTION
   #### END Globaltrust for ENGAGEMENT strategy
+
+  deactivate
+
+elif [ "$STEP" = "compute_v3engagement" ]; then
+  source $VENV/bin/activate
+  pip install -r requirements.txt
 
   #### START Globaltrust for V3_ENGAGEMENT strategy
   # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
@@ -180,6 +182,17 @@ elif [ "$STEP" = "compute" ]; then
   #### END Globaltrust for V3_ENGAGEMENT strategy
 
   deactivate
+
+elif [ "$STEP" = "insert_db" ]; then
+
+  if hash psql 2>/dev/null; then
+    echo "OK, you have psql in the path. We’ll use that."
+    PSQL=psql
+  else
+    echo "You don't have psql in the path. Let's try /usr/bin"
+    hash /usr/bin/psql
+    PSQL=/usr/bin/psql
+  fi
 
   # create temp table for globaltrust csv import
   log "Inserting tmp_globaltrust_v2${OPT_DATE_SUFFIX}"
@@ -208,8 +221,6 @@ elif [ "$STEP" = "compute" ]; then
     -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
     (i,v,date,strategy_id)
     FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.v3engagement${TARGET_DATE_SUFFIX}.csv
-
-
 
   # copy globaltrust from temp table into main table
   log "Inserting globaltrust"

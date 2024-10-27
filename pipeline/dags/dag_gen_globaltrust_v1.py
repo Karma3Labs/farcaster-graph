@@ -46,12 +46,30 @@ with DAG(
         dag=dag,
     )
 
-    compute_globaltrust = BashOperator(
-        task_id="compute_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute"
+    compute_v3engagement = BashOperator(
+        task_id="compute_v3engagement",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_v3engagement"
                         " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
         dag=dag)
 
+    compute_engagement = BashOperator(
+        task_id="compute_engagement",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_engagement"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag)
+    
+    compute_following = BashOperator(
+        task_id="compute_following",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_following"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag)
+
+    insert_db = BashOperator(
+        task_id="insert_db",
+        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s insert_db"
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag)
+    
     upload_to_dune =  BashOperator(
         task_id="insert_globaltrust_to_dune_v3",
         bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
@@ -91,7 +109,10 @@ with DAG(
         mkdir_tmp
         >> prep_globaltrust
         >> gen_90day_graph
-        >> compute_globaltrust
+        >> compute_v3engagement
+        >> compute_engagement
+        >> compute_following
+        >> insert_db
         >> upload_to_dune
         >> trigger_refresh_views
         >> trigger_copy_to_replica
