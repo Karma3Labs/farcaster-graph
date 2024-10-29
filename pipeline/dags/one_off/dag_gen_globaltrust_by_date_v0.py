@@ -25,7 +25,7 @@ default_args = {
 # 2024-06-16 00:00
 # 960387
 with DAG(
-    dag_id='one_off_gen_globaltrust_by_date_v1',
+    dag_id='one_off_gen_globaltrust_by_date_v0',
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     schedule_interval=None,
