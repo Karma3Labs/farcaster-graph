@@ -25,6 +25,7 @@ class IJVSql:
 		SELECT 
 			author_fid as i, mention_fid as j, count(1) as mentions_v
 		FROM mention
+    INNER JOIN fids ON fids.fid = mention.mention_fid
     {condition}
 		GROUP BY i, j
     """)
