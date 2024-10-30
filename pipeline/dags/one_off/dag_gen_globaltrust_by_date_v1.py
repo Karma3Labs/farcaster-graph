@@ -35,20 +35,20 @@ with DAG(
     prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-27",
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-26",
         dag=dag)
 
     compute_engagement = BashOperator(
         task_id="compute_engagement",
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_engagement"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-27",
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-26",
         dag=dag)
     
 
     insert_db = BashOperator(
         task_id="insert_db",
         bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s insert_db"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-27",
+                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d 2024-10-26",
         dag=dag)
     
     upload_to_dune =  BashOperator(
