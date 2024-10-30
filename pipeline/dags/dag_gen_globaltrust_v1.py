@@ -117,5 +117,5 @@ with DAG(
         >> trigger_refresh_views
         >> trigger_copy_to_replica
         >> trigger_sync_sandbox
-        >> rmdir_tmp.as_teardown(setups=mkdir_tmp)
+        >> rmdir_tmp
     )
