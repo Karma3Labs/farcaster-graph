@@ -1455,6 +1455,7 @@ async def get_trending_channel_casts(
         channel_id: str,
         channel_url: str,
         channel_strategy: str,
+        max_cast_age: int,
         agg: ScoreAgg,
         offset: int,
         limit: int,
@@ -1495,11 +1496,11 @@ async def get_trending_channel_casts(
                 FROM k3l_recent_parent_casts as casts
                 INNER JOIN k3l_cast_action as ci
                     ON (ci.cast_hash = casts.hash
-                        AND ci.action_ts BETWEEN now() - interval '1 day' AND now() - interval '10 minutes'
+                        AND ci.action_ts BETWEEN now() - interval '{max_cast_age} day' AND now() - interval '10 minutes'
                         AND casts.root_parent_url = $2)
                 INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
                 LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-                WHERE casts.created_at BETWEEN now() - interval '1 day' AND now()
+                WHERE casts.created_at BETWEEN now() - interval '{max_cast_age} day' AND now()
                         GROUP BY casts.hash, ci.fid
                 ORDER BY cast_ts DESC
             ), 
@@ -1528,7 +1529,7 @@ async def get_trending_channel_casts(
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN latest_global_rank ON ci.fid = latest_global_rank.fid
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
-        WHERE ci.timestamp BETWEEN now() - interval '1 day' AND now()
+        WHERE ci.timestamp BETWEEN now() - interval '{max_cast_age} day' AND now()
         ORDER BY scores.cast_score DESC
     )
     SELECT

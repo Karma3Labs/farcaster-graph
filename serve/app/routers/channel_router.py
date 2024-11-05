@@ -169,6 +169,7 @@ async def get_popular_channel_casts(
 async def get_trending_casts(
         channel: str,
         channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        max_cast_age: Annotated[int | None, Query(ge=0, le=5)] = 1,
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
                                          " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
@@ -180,6 +181,7 @@ async def get_trending_casts(
         channel_id=channel,
         channel_url=fetch_channel(channel_id=channel),
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
+        max_cast_age=max_cast_age,
         agg=agg,
         offset=offset,
         limit=limit,
