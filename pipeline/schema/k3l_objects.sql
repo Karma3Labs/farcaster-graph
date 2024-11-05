@@ -236,7 +236,7 @@ FROM casts
   WHERE casts.parent_hash IS NULL
   AND casts.deleted_at IS NULL
   AND casts.timestamp 
-  	BETWEEN now() - interval '5 days'
+  	BETWEEN now() - interval '30 days'
     		AND now()
 WITH NO DATA;
 
