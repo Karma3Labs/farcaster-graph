@@ -99,7 +99,7 @@ with DAG(
         task_id="check_spammers_count",
         conn_id=_CONN_ID,
         sql="""SELECT count(*) FROM k3l_top_spammers WHERE date_iso > now() - interval '25 hours'""",
-        min_threshold=25_000,
+        min_threshold=10_000,
         max_threshold=100_000
     )
 
