@@ -1472,10 +1472,6 @@ async def get_trending_channel_casts(
 
     sql_query = f"""
     WITH
-    latest_global_rank as (
-            select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
-                and date in (select max(date) from k3l_rank)
-            ),
     fid_cast_scores as (
                 SELECT
                     hash as cast_hash,
@@ -1524,10 +1520,10 @@ async def get_trending_channel_casts(
             ci.fid,
             fids.channel_id,
             fids.rank AS channel_rank,
-            latest_global_rank.global_rank
+            k3l_rank.rank AS global_rank
         FROM scores
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
-        INNER JOIN latest_global_rank ON ci.fid = latest_global_rank.fid
+        INNER JOIN k3l_rank ON (ci.fid = k3l_rank.profile_id and k3l_rank.strategy_id=9)
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
         WHERE ci.timestamp BETWEEN now() - interval '{max_cast_age} day' AND now()
         ORDER BY scores.cast_score DESC
