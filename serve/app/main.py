@@ -36,9 +36,10 @@ from .telemetry import PrometheusMiddleware, metrics
 
 logger.remove()
 level_per_module = {
-   "": settings.LOG_LEVEL,
-   "app.dependencies": settings.LOG_LEVEL_CORE,
-   "uvicorn.access": False
+   "": logger.level(settings.LOG_LEVEL),
+   "app.dependencies.db_utils": logger.level(settings.LOG_LEVEL_CORE),
+   "app.graph_loader": logger.level(settings.LOG_LEVEL_CORE),
+   "uvicorn.access": None
 }
 
 def custom_log_filter(record):
@@ -48,9 +49,9 @@ def custom_log_filter(record):
     name = record["name"]
     if not name:
         return False
-    level = level_per_module.get(name, None)
+    level = level_per_module.get(name, level_per_module.get("", None))
     if level is not None:
-        if record["level"].no >= level:
+        if record["level"].no < level.no:
             return False
     return True
 
