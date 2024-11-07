@@ -14,7 +14,7 @@ default_args = {
     "owner": "coder2j",
     "retries": 5,
     "retry_delay": timedelta(minutes=2),
-    # "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
