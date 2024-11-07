@@ -335,10 +335,10 @@ CREATE TABLE public.automod_data (
     date_iso date
 );
 
-CREATE INDEX idx_automod_data_affected_userid ON public.automod_data USING btree (affected_userid);
+CREATE INDEX idx_automod_data_action_ch_userid 
+    ON public.automod_data USING btree (action, channel_id, affected_userid);
 
-CREATE INDEX idx_automod_data_ch_userid_idx ON public.automod_data USING btree (channel_id, affected_userid)
-
+GRANT SELECT,REFERENCES ON public.automod_data TO k3l_readonly;
 -------------------------------------------------------------------------------------
 CREATE TABLE public.warpcast_channels_data (
 	id text NOT NULL,
