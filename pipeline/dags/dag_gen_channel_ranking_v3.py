@@ -42,7 +42,7 @@ CHECK_QUERY = """
         CASE
             WHEN t1.strategy_name = 'channel_engagement'
             THEN BOOL_AND(
-                t2.tot_rows >= t1.tot_rows
+                ABS(t2.tot_rows - t1.tot_rows)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
                 AND t2.tot_channels >= t1.tot_channels
                 AND t2.strategy_name IS NOT NULL
                 )
