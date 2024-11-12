@@ -120,7 +120,10 @@ def write_openrank_trust_csv(
 
     pt_filename = f"pretrust.{cid}.{domain}.{interval}.csv"
     logger.info(f"Saving pretrust for channel {cid} to {pt_filename}")
-    channel_pt_df = pd.DataFrame(pretrust_fids, columns=["i"])
+
+    pt_len = len(pretrust_fids)
+    pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pretrust_fids]
+    channel_pt_df = pd.DataFrame(pretrust)
     channel_pt_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
 
     return
