@@ -2,6 +2,9 @@
 import sys
 import argparse
 import random
+from enum import Enum
+from pathlib import Path
+import os
 
 # local dependencies
 import utils
@@ -34,14 +37,14 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def process_channel(
-        cid: str,
-        channel_data: pd.DataFrame,
-        pg_dsn: str,
-        pg_url: str,
-        interval: int,
-) -> dict:
-    host_fids: list = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
+class Mode(Enum):
+    goserver = 'goserver'
+    openrank = 'openrank'
+
+def prep_trust_data(
+    cid: str, channel_seeds_df: pd.DataFrame, pg_dsn: str, pg_url: str, interval: int
+): 
+    host_fids: list = [int(fid) for fid in channel_seeds_df[channel_seeds_df["channel id"] == cid]["seed_fids_list"].values[0]]
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         if channel is None:
@@ -61,7 +64,9 @@ def process_channel(
 
     utils.log_memusage(logger)
     try:
-        channel_interactions_df = channel_queries.fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'], interval=interval)
+        channel_interactions_df = channel_queries.fetch_interactions_df(
+            logger, pg_dsn, channel_url=channel["url"], interval=interval
+        )
         channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
@@ -98,14 +103,35 @@ def process_channel(
     logger.info(f"Absent Host Fids for the channel: {absent_fids}")
     logger.info(f"Pretrust FIDs: {pretrust_fids}")
 
-    if len(channel_lt_df) == 0:
-        if interval > 0:
-            logger.info(f"No local trust for channel {cid} for interval {interval}")
-            return {cid: []}
-        else:
-            logger.error(f"No local trust for channel {cid} for lifetime engagement")
-            raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+    return channel_lt_df, pretrust_fids, absent_fids
 
+def write_openrank_trust_csv(
+    cid: str,
+    domain: str,
+    interval: int,
+    channel_lt_df: pd.DataFrame,
+    pretrust_fids: list[int],
+    out_dir: Path,
+): 
+
+    lt_filename = f"localtrust.{cid}.{domain}.{interval}.csv"
+    logger.info(f"Saving localtrust for channel {cid} to {lt_filename}")
+    channel_lt_df.to_csv(os.path.join(out_dir, lt_filename), index=False)
+
+    pt_filename = f"pretrust.{cid}.{domain}.{interval}.csv"
+    logger.info(f"Saving pretrust for channel {cid} to {pt_filename}")
+    channel_pt_df = pd.DataFrame(pretrust_fids, columns=["i"])
+    channel_pt_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
+
+    return
+
+def process_channel_goserver(
+        cid: str,
+        channel_lt_df: pd.DataFrame,
+        pretrust_fids: pd.DataFrame,
+        pg_url: str,
+        interval: int,
+) -> dict:
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
@@ -141,24 +167,69 @@ def process_channel(
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
+    return 
 
-    return {cid: absent_fids}
 
-
-def process_channels(csv_path: str, channel_ids_str: str, interval: int):
+def process_channels(
+    channel_seeds_csv: Path,
+    channel_ids_str: str,
+    interval: int = 0,
+    mode: Mode = Mode.goserver,
+    channel_domains_csv: Path = None,
+    out_dir: Path = None,
+):
     # Setup connection pool for querying Warpcast API
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    channel_data = channel_utils.read_channel_seed_fids_csv(csv_path)
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_ids = channel_ids_str.split(',')
+    if mode == Mode.openrank:
+        channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv)
+        if len(channel_domain_df[channel_domain_df['channel_id'].isin(channel_ids)]) != len(channel_ids):
+            raise Exception(f"Missing channel domains for {set(channel_ids) - set(channel_domain_df['channel_id'].values)}")
     missing_seed_fids = []
 
     for cid in channel_ids:
         try:
-            result = process_channel(cid, channel_data, pg_dsn, pg_url, interval)
-            missing_seed_fids.append(result)
+            if mode == Mode.openrank:
+                channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
+                if len(channel) == 0:
+                    raise Exception(f"Missing channel domain for {cid}")
+                interval = channel['interval_days'].values[0]
+                domain = channel['domain'].values[0]
+
+            channel_lt_df, pretrust_fids, absent_fids = prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
+
+            if len(channel_lt_df) == 0:
+                if interval > 0:
+                    logger.info(f"No local trust for channel {cid} for interval {interval}")
+                    return {cid: []}
+                else:
+                    logger.error(f"No local trust for channel {cid} for lifetime engagement")
+                    # this is unexpected because if a channel exists there must exist at least one ijv 
+                    raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+            # Future Feature: keep track and clean up seed fids that have had no engagement in channel
+            missing_seed_fids.append({cid: absent_fids})
+                
+            if mode == Mode.goserver:
+                process_channel_goserver(
+                    cid=cid,
+                    channel_lt_df=channel_lt_df,
+                    pretrust_fids=pretrust_fids,
+                    pg_url=pg_url,
+                    interval=interval,
+                )
+            elif mode == Mode.openrank:
+                write_openrank_trust_csv(
+                    cid=cid,
+                    domain=domain,
+                    interval=interval,
+                    channel_lt_df=channel_lt_df,
+                    pretrust_fids=pretrust_fids,
+                    out_dir=out_dir
+                )
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
             raise e
@@ -168,14 +239,49 @@ def process_channels(csv_path: str, channel_ids_str: str, interval: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--csv", type=str, help="path to the CSV file. For example, -c /path/to/file.csv",
-                        required=True)
-    parser.add_argument("-t", "--task", type=str, help="task to perform: fetch or process", required=True)
-    parser.add_argument("-ids", "--channel_ids", type=str,
-                        help="channel IDs for processing, only used for process task", required=False)
-    parser.add_argument("-int", "--interval", type=int,
-                        help="number of days to consider for processing, 0 means lifetime", required=False)
-    
+    parser.add_argument(
+        "-c",
+        "--csv",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
+        required=True,
+    )
+    parser.add_argument(
+        "-t",
+        "--task",
+        type=str,
+        help="task to perform: fetch or process",
+        required=True,
+    )
+    parser.add_argument(
+        "-ids",
+        "--channel_ids",
+        type=str,
+        help="channel IDs for processing, only used for process task",
+        required=False,
+    )
+    parser.add_argument(
+        "-int",
+        "--interval",
+        type=int,
+        help="number of days to consider for processing, 0 means lifetime",
+        required=False,
+    )
+    parser.add_argument(
+        "-d",
+        "--domain_mapping",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the channel id - domain CSV file. For example, -c /path/to/file.csv",
+        required=False,
+    )
+    parser.add_argument(
+        "-o",
+        "--outdir",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="output directory for process_domain task",
+        required=False,
+    )
+
     args = parser.parse_args()
     print(args)
 
@@ -185,11 +291,36 @@ if __name__ == "__main__":
         channel_ids = channel_utils.read_channel_ids_csv(args.csv)
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
-    elif args.task == 'process':
-        if hasattr(args, 'channel_ids') and hasattr(args, 'interval'):
-            process_channels(args.csv, args.channel_ids, args.interval)
-        else:
-            logger.error("Channel IDs and interval are required for processing.")
-            sys.exit(1)
+    elif args.task == 'fetch_domains':
+        df = channel_utils.read_channel_domain_csv(args.domain_mapping)
+        channel_ids = df["channel_id"].values.tolist()
+        random.shuffle(channel_ids) # in-place shuffle
+        print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     else:
-        logger.error("Invalid task specified. Use 'fetch' or 'process'.")
+        if not hasattr(args, 'channel_ids'):
+            logger.error("Channel IDs are required for processing.")
+            sys.exit(1)
+        if args.task == 'process_domains':
+            if not hasattr(args, 'outdir') or not hasattr(args, 'domain_mapping'):
+                logger.error("Domain mapping and output directory are required for process_domain task.")
+                sys.exit(1)
+            process_channels(
+                channel_seeds_csv=args.csv,
+                channel_ids_str=args.channel_ids,
+                mode=Mode.openrank,
+                channel_domains_csv=args.domain_mapping,
+                out_dir=args.outdir
+            )
+        elif args.task == 'process':
+            if not hasattr(args, 'interval'):
+                logger.error("Interval is required for processing.")
+                sys.exit(1)
+            process_channels(
+                channel_seeds_csv=args.csv,
+                channel_ids_str=args.channel_ids,
+                interval=args.interval,
+                mode=Mode.goserver,
+            )
+        else:
+            logger.error("Invalid task specified. Use 'fetch' or 'process'.")
+            sys.exit(1)

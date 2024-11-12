@@ -1,6 +1,6 @@
 #!/bin/bash
 
-while getopts w:i:v:t:c:n: flag
+while getopts w:i:v:t:c:n:d:o: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
@@ -8,6 +8,8 @@ do
         t) TASK=${OPTARG};;
         c) CSV_PATH=${OPTARG};;
         n) INTERVAL=${OPTARG};;
+        d) DOMAIN=${OPTARG};;
+        o) OUT_DIR=${OPTARG};;
     esac
 done
 
@@ -16,9 +18,12 @@ CHANNEL_IDS="$1"
 
 if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] ; then
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -c [csv_path] -n [interval] [channel_ids]"
+  echo "         $0 -w [work_dir] -v [venv] -t [task] -c [csv_path] -d [domain] -o [out_dir] [channel_ids] "
   echo ""
   echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv "
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch_domains -c channels/Top_Channels.csv -d channels/Channel_Domain.csv"
   echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process -c channels/Top_Channels.csv -n 90 openrank,lp"
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process_domains -c channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ openrank,lp"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
@@ -31,9 +36,23 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
   exit 1
 fi
 
+if [ "$TASK" = "fetch_domains" ]; then
+  if [ -z "$DOMAIN" ]; then
+    echo "Please specify -d (domain) for the fetch_domains task."
+    exit 1
+  fi
+fi
+
 if [ "$TASK" = "process" ]; then
   if [ -z "$INTERVAL" ] || [ -z "$CHANNEL_IDS" ]; then
     echo "Please specify both -n (interval) and (channel_ids) for the process task."
+    exit 1
+  fi
+fi
+
+if [ "$TASK" = "process_domains" ]; then
+  if [ -z "$OUT_DIR" ] || [ -z "$DOMAIN" ] || [ -z "$CHANNEL_IDS" ]; then
+    echo "Please specify -o (outdir), -d (domain) and (channel_ids) for the process_domains task."
     exit 1
   fi
 fi
@@ -75,9 +94,17 @@ log "Executing task: $TASK"
 if [ "$TASK" = "fetch" ]; then
   python3 -m channels.main -c "$CSV_PATH" -t fetch
   deactivate
+elif [ "$TASK" = "fetch_domains" ]; then
+  python3 -m channels.main -c "$CSV_PATH" --domain_mapping "$DOMAIN" -t fetch_domains
+  deactivate
 elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main -c "$CSV_PATH" -t process --interval "$INTERVAL" --channel_ids "$CHANNEL_IDS"
+  deactivate
+elif [ "$TASK" = "process_domains" ]; then
+  log "Received channel_ids: $CHANNEL_IDS"
+  python3 -m channels.main -c "$CSV_PATH" -t process_domains \
+    --domain_mapping "$DOMAIN" --outdir "$OUT_DIR" --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "refresh" ]; then
   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"

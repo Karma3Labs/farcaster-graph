@@ -1,10 +1,13 @@
+from pathlib import Path
 
 from loguru import logger
 import pandas as pd
 
-def read_channel_seed_fids_csv(csv_path) -> pd.DataFrame:
+def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
     try:
         seeds_df = pd.read_csv(csv_path)
+        # csv can have extra columns for comments or other info 
+        # ... but channel id should not be empty
         seeds_df = seeds_df.dropna(subset = ['channel id'])
         seeds_df.rename(columns={"Seed Peers FIDs": "seed_peers"}, inplace=True)
         seeds_df = seeds_df[["channel id", "seed_peers"]]
@@ -16,7 +19,21 @@ def read_channel_seed_fids_csv(csv_path) -> pd.DataFrame:
         logger.error(f"Failed to read channel data from CSV: {e}")
         raise e
 
-def read_channel_ids_csv(csv_path):
+def read_channel_domain_csv(csv_path:Path) -> pd.DataFrame:
+    try:
+        domains_df = pd.read_csv(csv_path)
+        # csv can have extra columns for comments or other info 
+        # ... but channel_id, interval_days and domain should not be empty
+        domains_df = domains_df.dropna(subset = ['channel_id', 'interval_days', 'domain'])
+        domains_df = domains_df[['channel_id', 'interval_days', 'domain']]
+        domains_df['channel_id'] = domains_df['channel_id'].str.lower()
+        domains_df['interval_days'] = domains_df['interval_days'].astype(int)
+        return domains_df
+    except Exception as e:
+        logger.error(f"Failed to read channel data from CSV: {e}")
+        raise e
+
+def read_channel_ids_csv(csv_path:Path) -> list:
     try:
         channels_df = pd.read_csv(csv_path)
         channels_df = channels_df.dropna(subset = ['channel id'])
