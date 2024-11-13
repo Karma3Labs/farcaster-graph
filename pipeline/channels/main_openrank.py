@@ -119,7 +119,7 @@ def process_prev_files(
     prev_lt_df = pd.read_csv(prev_lt_file)
     prev_pt_df = pd.read_csv(prev_pt_file)
 
-    
+    # TODO calculate delta
 
     return channel_lt_df, pretrust_fid_list
 
