@@ -45,7 +45,7 @@ def execute_query(pg_dsn: str, query: str):
             cursor.execute(query)
 
 
-def fetch_channel_participants(pg_dsn: str, channel_url: str) -> list[int]:
+def fetch_channel_casters(pg_dsn: str, channel_url: str) -> list[int]:
     query_sql = f"""
     SELECT
       DISTINCT(fid)

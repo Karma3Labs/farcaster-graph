@@ -18,6 +18,7 @@ from . import channel_queries
 from dotenv import load_dotenv
 from loguru import logger
 import pandas as pd
+import tomlkit as toml
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -76,17 +77,17 @@ def prep_trust_data(
         # return {cid: []}
 
     try:
-        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel['url'])
+        fids = db_utils.fetch_channel_casters(pg_dsn=pg_dsn, channel_url=channel['url'])
     except Exception as e:
-        logger.error(f"Failed to fetch channel participants for channel {cid}: {e}")
+        logger.error(f"Failed to fetch channel casters for channel {cid}: {e}")
         raise e
         # return {cid: []}
 
-    logger.info(f"Number of channel followers: {len(fids)}")
+    logger.info(f"Number of channel casters: {len(fids)}")
     if len(fids) > 5:
-        logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
+        logger.info(f"Sample of channel casters: {random.sample(fids, 5)}")
     else:
-        logger.info(f"All channel followers: {fids}")
+        logger.info(f"All channel casters: {fids}")
 
     fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
 
@@ -105,26 +106,52 @@ def prep_trust_data(
 
     return channel_lt_df, pretrust_fids, absent_fids
 
-def write_openrank_trust_csv(
+def gen_openrank_input(
     cid: str,
-    domain: str,
+    domain: int,
     interval: int,
     channel_lt_df: pd.DataFrame,
     pretrust_fids: list[int],
     out_dir: Path,
 ): 
 
-    lt_filename = f"localtrust.{cid}.{domain}.{interval}.csv"
+    lt_filename = f"localtrust.{cid}.{interval}.{domain}.csv"
     logger.info(f"Saving localtrust for channel {cid} to {lt_filename}")
+    # Filter out entries where i == j
+    channel_lt_df = channel_lt_df[channel_lt_df['i'] != channel_lt_df['j']]
     channel_lt_df.to_csv(os.path.join(out_dir, lt_filename), index=False)
 
-    pt_filename = f"pretrust.{cid}.{domain}.{interval}.csv"
+    pt_filename = f"pretrust.{cid}.{interval}.{domain}.csv"
     logger.info(f"Saving pretrust for channel {cid} to {pt_filename}")
-
-    pt_len = len(pretrust_fids)
-    pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pretrust_fids]
+    # Convert pretrust_fids list to a set to remove duplicates
+    pt_ids_set = set(pretrust_fids)
+    pt_len = len(pt_ids_set)
+    pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pt_ids_set]
     channel_pt_df = pd.DataFrame(pretrust)
     channel_pt_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
+
+    doc = toml.document()
+    doc.add(toml.comment(f"configuration for channel:{cid} interval:{interval}"))
+    doc.add(toml.nl())
+
+    domain_section = toml.table()
+    domain_section.add("algo_id", 0)
+    domain_section.add("trust_owner", settings.OPENRANK_REQ_ADDR)
+    domain_section.add("trust_id", domain)
+    domain_section.add("seed_owner", settings.OPENRANK_REQ_ADDR)
+    domain_section.add("seed_id", domain)
+    doc.add("domain", domain_section)
+    doc.add(toml.nl())
+
+    sequencer_section = toml.table()
+    sequencer_section.add("endpoint", settings.OPENRANK_URL)
+    max_result_size = len(set(channel_lt_df['i']) | set(channel_lt_df['j'])) # sub-optimal but good enough
+    sequencer_section.add("result_size", max_result_size)
+    doc.add("sequencer", sequencer_section)
+    doc.add(toml.nl())
+
+    with open(os.path.join(out_dir, f"config.{cid}.{interval}.{domain}.toml"), "w") as f:
+        f.write(toml.dumps(doc))
 
     return
 
@@ -201,7 +228,7 @@ def process_channels(
                 if len(channel) == 0:
                     raise Exception(f"Missing channel domain for {cid}")
                 interval = channel['interval_days'].values[0]
-                domain = channel['domain'].values[0]
+                domain = int(channel['domain'].values[0])
 
             channel_lt_df, pretrust_fids, absent_fids = prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
 
@@ -225,7 +252,7 @@ def process_channels(
                     interval=interval,
                 )
             elif mode == Mode.openrank:
-                write_openrank_trust_csv(
+                gen_openrank_input(
                     cid=cid,
                     domain=domain,
                     interval=interval,
@@ -303,9 +330,9 @@ if __name__ == "__main__":
         if not hasattr(args, 'channel_ids'):
             logger.error("Channel IDs are required for processing.")
             sys.exit(1)
-        if args.task == 'process_domains':
+        if args.task == 'gen_domain_files':
             if not hasattr(args, 'outdir') or not hasattr(args, 'domain_mapping'):
-                logger.error("Domain mapping and output directory are required for process_domain task.")
+                logger.error("Domain mapping and output directory are required for gen_domain_files task.")
                 sys.exit(1)
             process_channels(
                 channel_seeds_csv=args.csv,

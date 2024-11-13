@@ -23,7 +23,7 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
   echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch -c channels/Top_Channels.csv "
   echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch_domains -c channels/Top_Channels.csv -d channels/Channel_Domain.csv"
   echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process -c channels/Top_Channels.csv -n 90 openrank,lp"
-  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t process_domains -c channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ openrank,lp"
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t gen_domain_files -c channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ openrank,lp"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
@@ -50,9 +50,9 @@ if [ "$TASK" = "process" ]; then
   fi
 fi
 
-if [ "$TASK" = "process_domains" ]; then
+if [ "$TASK" = "gen_domain_files" ]; then
   if [ -z "$OUT_DIR" ] || [ -z "$DOMAIN" ] || [ -z "$CHANNEL_IDS" ]; then
-    echo "Please specify -o (outdir), -d (domain) and (channel_ids) for the process_domains task."
+    echo "Please specify -o (outdir), -d (domain) and (channel_ids) for the gen_domain_files task."
     exit 1
   fi
 fi
@@ -101,9 +101,9 @@ elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main -c "$CSV_PATH" -t process --interval "$INTERVAL" --channel_ids "$CHANNEL_IDS"
   deactivate
-elif [ "$TASK" = "process_domains" ]; then
+elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main -c "$CSV_PATH" -t process_domains \
+  python3 -m channels.main -c "$CSV_PATH" -t gen_domain_files \
     --domain_mapping "$DOMAIN" --outdir "$OUT_DIR" --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "refresh" ]; then
