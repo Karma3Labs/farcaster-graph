@@ -9,8 +9,6 @@ from typing import Tuple
 
 # local dependencies
 import utils
-import db_utils
-import go_eigentrust
 from config import settings
 from . import channel_utils
 
@@ -50,24 +48,19 @@ def write_openrank_files(
     cid: str,
     domain: int,
     interval: int,
-    channel_lt_df: pd.DataFrame,
-    pretrust_fid_list: list[int],
+    localtrust_df: pd.DataFrame,
+    pretrust_df: pd.DataFrame,
     out_dir: Path,
 ): 
     lt_filename = _LT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
     logger.info(f"Saving localtrust for channel {cid} to {lt_filename}")
-    # Filter out entries where i == j
-    channel_lt_df = channel_lt_df[channel_lt_df['i'] != channel_lt_df['j']]
-    channel_lt_df.to_csv(os.path.join(out_dir, lt_filename), index=False)
+    logger.info(f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}")
+    localtrust_df.to_csv(os.path.join(out_dir, lt_filename), index=False)
 
     pt_filename = _PT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
     logger.info(f"Saving pretrust for channel {cid} to {pt_filename}")
-    # Convert pretrust_fid_list list to a set to remove duplicates
-    pt_ids_set = set(pretrust_fid_list)
-    pt_len = len(pt_ids_set)
-    pretrust = [{'i': fid, 'v': 1/pt_len} for fid in pt_ids_set]
-    channel_pt_df = pd.DataFrame(pretrust)
-    channel_pt_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
+    logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
+    pretrust_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
 
     doc = toml.document()
     doc.add(toml.comment(f"configuration for channel:{cid} interval:{interval}"))
@@ -84,7 +77,7 @@ def write_openrank_files(
 
     sequencer_section = toml.table()
     sequencer_section.add("endpoint", settings.OPENRANK_URL)
-    max_result_size = len(set(channel_lt_df['i']) | set(channel_lt_df['j'])) # sub-optimal but good enough
+    max_result_size = len(set(localtrust_df['i']) | set(localtrust_df['j'])) # sub-optimal but good enough
     sequencer_section.add("result_size", max_result_size)
     doc.add("sequencer", sequencer_section)
     doc.add(toml.nl())
@@ -101,8 +94,8 @@ def process_prev_files(
     cid: str,
     domain: int,
     interval: int,
-    channel_lt_df: pd.DataFrame,
-    pretrust_fid_list: list[int],
+    current_lt_df: pd.DataFrame,
+    current_pt_df: pd.DataFrame,
     prev_dir: Path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     prev_lt_file = os.path.join(
@@ -112,16 +105,40 @@ def process_prev_files(
         prev_dir, _PT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
     )
 
-    if not (prev_lt_file.exists() and prev_lt_file.exists()):
+    if not (os.path.exists(prev_lt_file) and os.path.exists(prev_pt_file)):
         logger.warning(f"{prev_dir} is missing previous files for"
                         f" channel {cid} with domain {domain} and interval {interval}")
     
     prev_lt_df = pd.read_csv(prev_lt_file)
+    logger.info(f"Previous localtrust: {utils.df_info_to_string(prev_lt_df, with_sample=True)}")
+    logger.info(f"Current localtrust: {utils.df_info_to_string(current_lt_df, with_sample=True)}")
     prev_pt_df = pd.read_csv(prev_pt_file)
+    logger.info(f"Previous pretrust: {utils.df_info_to_string(prev_lt_df, with_sample=True)}")
+    logger.info(f"Current pretrust: {utils.df_info_to_string(current_pt_df, with_sample=True)}")
 
-    # TODO calculate delta
+    merged_lt_df = pd.merge(
+        current_lt_df,
+        prev_lt_df,
+        how="outer",
+        on=["i", "j"],
+        suffixes=(None, "_old"),
+        indicator=False,
+    ).drop(["v_old"], axis=1)
+    logger.info(f"Localtrust entries to be 0'd: {merged_lt_df["v"].isna().sum()}")
+    merged_lt_df = merged_lt_df.fillna(value={"v": 0.0})
 
-    return channel_lt_df, pretrust_fid_list
+    merged_pt_df = pd.merge(
+        current_pt_df,
+        prev_pt_df,
+        how="outer",
+        on=["i"],
+        suffixes=(None, "_old"),
+        indicator=False,
+    ).drop(["v_old"], axis=1)
+    logger.info(f"Pretrust entries to be 0'd: {merged_pt_df["v"].isna().sum()}")
+    merged_pt_df = merged_pt_df.fillna(value={"v": 0.0})
+
+    return merged_lt_df, merged_pt_df
 
 def process_channels(
     channel_seeds_csv: Path,
@@ -150,9 +167,14 @@ def process_channels(
             interval = channel['interval_days'].values[0]
             domain = int(channel['domain'].values[0])
 
-            channel_lt_df, pretrust_fid_list, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
+            localtrust_df, pretrust_fid_list, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
+            logger.info(f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}")
+            logger.info(f"Pretrust: {random.choices(pretrust_fid_list, k=10)}")
 
-            if len(channel_lt_df) == 0:
+            # Filter out entries where i == j
+            localtrust_df = localtrust_df[localtrust_df['i'] != localtrust_df['j']]
+
+            if len(localtrust_df) == 0:
                 if interval > 0:
                     logger.info(f"No local trust for channel {cid} for interval {interval}")
                     return {cid: []}
@@ -160,24 +182,29 @@ def process_channels(
                     logger.error(f"No local trust for channel {cid} for lifetime engagement")
                     # this is unexpected because if a channel exists there must exist at least one ijv 
                     raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+            
+            pretrust_df = channel_utils.pretrust_list_to_df(pretrust_fid_list)
+
             # Future Feature: keep track and clean up seed fids that have had no engagement in channel
             missing_seed_fids.append({cid: absent_fids})
 
-            channel_lt_df, pretrust_fid_list = process_prev_files(
-                cid=cid,
-                domain=domain,
-                interval=interval,
-                channel_lt_df=channel_lt_df,
-                pretrust_fid_list=pretrust_fid_list,
-                prev_dir=prev_dir
-            )
+            if prev_dir:
+                logger.info(f"Processing previous files for channel {cid} with domain {domain} and interval {interval}")
+                localtrust_df, pretrust_df = process_prev_files(
+                    cid=cid,
+                    domain=domain,
+                    interval=interval,
+                    current_lt_df=localtrust_df,
+                    current_pt_df=pretrust_df,
+                    prev_dir=prev_dir
+                )
                 
             write_openrank_files(
                 cid=cid,
                 domain=domain,
                 interval=interval,
-                channel_lt_df=channel_lt_df,
-                pretrust_fid_list=pretrust_fid_list,
+                localtrust_df=localtrust_df,
+                pretrust_df=pretrust_df,
                 out_dir=out_dir
             )
         except Exception as e:

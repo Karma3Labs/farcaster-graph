@@ -1,5 +1,5 @@
 channel_id,interval_days,domain,purpose
-openrank,0,990,test
+openrank,60,990,test
 books,60,991,test
 politics,7,992,test
 jamfrens,60,993,test

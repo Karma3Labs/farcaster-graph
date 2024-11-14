@@ -113,3 +113,10 @@ def prep_trust_data(
     logger.info(f"Pretrust FIDs: {pretrust_fids}")
 
     return channel_lt_df, pretrust_fids, absent_fids
+
+def pretrust_list_to_df(pretrust_fid_list: list[int]) -> pd.DataFrame:
+    # Convert pretrust_fid_list list to a set to remove duplicates
+    pt_ids_set = set(pretrust_fid_list)
+    pt_len = len(pt_ids_set)
+    pretrust_dict = [{'i': fid, 'v': 1/pt_len} for fid in pt_ids_set]
+    return pd.DataFrame(pretrust_dict)

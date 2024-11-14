@@ -90,6 +90,6 @@ elif [ "$TASK" = "refresh" ]; then
   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
     -c "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE;"
 else
-  echo "Invalid task specified. Use 'fetch' or 'process' or 'cleanup'."
+  echo "Invalid task specified. Use 'fetch' or 'process' or 'refresh'."
   exit 1
 fi
