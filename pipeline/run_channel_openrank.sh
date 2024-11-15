@@ -35,9 +35,9 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
   exit 1
 fi
 
-if [ "$TASK" = "gen_domain_files" ]; then
+if [ "$TASK" = "gen_domain_files" ] || [ "$TASK" = "process_domains" ]; then
   if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ]; then
-    echo "Please specify -o (outdir) and (channel_ids) for the gen_domain_files task."
+    echo "Please specify -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
     exit 1
   fi
 fi
@@ -78,6 +78,17 @@ else
   PSQL=/usr/bin/psql
 fi
 
+if ! hash openrank-sdk; then
+  log "You don't have openrank-sdk installed."
+  exit 1
+fi
+
+ver=$(openrank-sdk --version 2>&1 | sed 's/openrank-sdk 0.\([0-9]\).\([0-9]\)/\1\2/')
+if [ "$ver" -lt "14" ]; then
+    echo "openrank-sdk version must be 0.1.4 or greater"
+    exit 1
+fi
+
 log "Activating virtual environment"
 source $VENV/bin/activate
 pip install -r requirements.txt
@@ -90,6 +101,12 @@ elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -c "$CSV_PATH" -t gen_domain_files \
     --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" $PREV_DIR_OPTION \
+    --channel_ids "$CHANNEL_IDS"
+  deactivate
+elif [ "$TASK" = "process_domains" ]; then
+  log "Received channel_ids: $CHANNEL_IDS"
+  python3 -m channels.main_openrank -c "$CSV_PATH" -t process_domains \
+    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 else

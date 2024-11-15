@@ -11,6 +11,7 @@ from typing import Tuple
 import utils
 from config import settings
 from . import channel_utils
+from . import openrank_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -44,6 +45,45 @@ _LT_FILENAME_FORMAT = "localtrust.{cid}.{interval}.{domain}.csv"
 _PT_FILENAME_FORMAT = "pretrust.{cid}.{interval}.{domain}.csv"
 _TOML_FILENAME_FORMAT = "config.{cid}.{interval}.{domain}.toml"
 
+def process_domains(
+    channel_ids_str: str,
+    channel_domains_csv: Path,
+    out_dir: Path,
+):
+    channel_ids = channel_ids_str.split(',')
+    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv)
+    if len(channel_domain_df[channel_domain_df['channel_id'].isin(channel_ids)]) != len(channel_ids):
+        raise Exception(f"Missing channel domains for {set(channel_ids) - set(channel_domain_df['channel_id'].values)}")
+    for cid in channel_ids:
+        try:
+            channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
+            if len(channel) == 0:
+                raise Exception(f"Missing channel domain for {cid}")
+            interval = channel['interval_days'].values[0]
+            domain = int(channel['domain'].values[0])
+
+            lt_filename = _LT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
+            lt_file = os.path.join(out_dir, lt_filename)
+
+            pt_filename = _PT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
+            pt_file = os.path.join(out_dir, pt_filename)
+
+            toml_filename = _TOML_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
+            toml_file = os.path.join(out_dir, toml_filename)
+
+            if not os.path.exists(lt_file) or not os.path.exists(pt_file) or not os.path.exists(toml_file):
+                raise Exception(f"Missing files for {cid} with domain {domain}")
+                
+            req_id = openrank_utils.update_and_compute(
+                lt_file=lt_file, pt_file=pt_file, toml_file=toml_file
+            )
+
+        except Exception as e:
+            logger.error(f"failed to process a channel: {cid}: {e}")
+            raise e
+    return
+
+
 def write_openrank_files(
     cid: str,
     domain: int,
@@ -53,14 +93,16 @@ def write_openrank_files(
     out_dir: Path,
 ): 
     lt_filename = _LT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
-    logger.info(f"Saving localtrust for channel {cid} to {lt_filename}")
+    lt_file = os.path.join(out_dir, lt_filename)
+    logger.info(f"Saving localtrust for channel {cid} to {lt_file}")
     logger.info(f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}")
-    localtrust_df.to_csv(os.path.join(out_dir, lt_filename), index=False)
+    localtrust_df.to_csv(lt_file, index=False)
 
     pt_filename = _PT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
-    logger.info(f"Saving pretrust for channel {cid} to {pt_filename}")
+    pt_file = os.path.join(out_dir, pt_filename)
+    logger.info(f"Saving pretrust for channel {cid} to {pt_file}")
     logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
-    pretrust_df.to_csv(os.path.join(out_dir, pt_filename), index=False)
+    pretrust_df.to_csv(pt_file, index=False)
 
     doc = toml.document()
     doc.add(toml.comment(f"configuration for channel:{cid} interval:{interval}"))
@@ -90,7 +132,7 @@ def write_openrank_files(
 
     return
 
-def process_prev_files(
+def append_delta_prev(
     cid: str,
     domain: int,
     interval: int,
@@ -108,6 +150,7 @@ def process_prev_files(
     if not (os.path.exists(prev_lt_file) and os.path.exists(prev_pt_file)):
         logger.warning(f"{prev_dir} is missing previous files for"
                         f" channel {cid} with domain {domain} and interval {interval}")
+        return current_lt_df, current_pt_df
     
     prev_lt_df = pd.read_csv(prev_lt_file)
     logger.info(f"Previous localtrust: {utils.df_info_to_string(prev_lt_df, with_sample=True)}")
@@ -140,7 +183,7 @@ def process_prev_files(
 
     return merged_lt_df, merged_pt_df
 
-def process_channels(
+def gen_domain_files(
     channel_seeds_csv: Path,
     channel_ids_str: str,
     channel_domains_csv: Path,
@@ -190,7 +233,7 @@ def process_channels(
 
             if prev_dir:
                 logger.info(f"Processing previous files for channel {cid} with domain {domain} and interval {interval}")
-                localtrust_df, pretrust_df = process_prev_files(
+                localtrust_df, pretrust_df = append_delta_prev(
                     cid=cid,
                     domain=domain,
                     interval=interval,
@@ -198,15 +241,16 @@ def process_channels(
                     current_pt_df=pretrust_df,
                     prev_dir=prev_dir
                 )
-                
+
             write_openrank_files(
                 cid=cid,
                 domain=domain,
                 interval=interval,
                 localtrust_df=localtrust_df,
                 pretrust_df=pretrust_df,
-                out_dir=out_dir
+                out_dir=out_dir,
             )
+
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
             raise e
@@ -220,7 +264,7 @@ if __name__ == "__main__":
         "-c",
         "--csv",
         type=lambda f: Path(f).expanduser().resolve(),
-        help="path to the CSV file. For example, -c /path/to/file.csv",
+        help="path to the channel id - seed CSV file. For example, -c /path/to/file.csv",
         required=True,
     )
     parser.add_argument(
@@ -268,25 +312,36 @@ if __name__ == "__main__":
         channel_ids = df["channel_id"].values.tolist()
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
-    elif args.task == 'gen_domain_files':
+    else:
         if (
             not hasattr(args, "channel_ids")
             or not hasattr(args, "domain_mapping")
             or not hasattr(args, "outdir")
-            or not hasattr(args, "prevdir")
         ):
-            logger.error("Channel IDs, Domain mapping,"
-                            " output directory and previous directory"
-                            " are required for gen_domain_files task.")
+            logger.error("Channel IDs, Domain mapping, and output directory"
+                            " are required.")
             sys.exit(1)
 
-        process_channels(
-            channel_seeds_csv=args.csv,
-            channel_ids_str=args.channel_ids,
-            channel_domains_csv=args.domain_mapping,
-            out_dir=args.outdir,
-            prev_dir=args.prevdir
-        )
-    else:
-        logger.error("Invalid task specified. Use 'fetch_domains' or 'gen_domain_files'.")
-        sys.exit(1)
+        if args.task == 'gen_domain_files':
+            if (not hasattr(args, "prevdir")):
+                logger.error("Previous directory is required for gen_domain_files task.")
+                sys.exit(1)
+
+            gen_domain_files(
+                channel_seeds_csv=args.csv,
+                channel_ids_str=args.channel_ids,
+                channel_domains_csv=args.domain_mapping,
+                out_dir=args.outdir,
+                prev_dir=args.prevdir
+            )
+        elif args.task == 'process_domains':
+            process_domains(
+                channel_ids_str=args.channel_ids,
+                channel_domains_csv=args.domain_mapping,
+                out_dir=args.outdir
+            )
+        elif args.task == 'fetch_results':
+            ... 
+        else:
+            logger.error("Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'.")
+            sys.exit(1)
