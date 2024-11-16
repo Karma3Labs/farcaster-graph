@@ -24,15 +24,24 @@ def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
         logger.error(f"Failed to read channel data from CSV: {e}")
         raise e
 
-def read_channel_domain_csv(csv_path:Path) -> pd.DataFrame:
+def read_channel_domain_csv(csv_path:Path, channel_ids:list[str]=None) -> pd.DataFrame:
     try:
         domains_df = pd.read_csv(csv_path)
         # csv can have extra columns for comments or other info 
         # ... but channel_id, interval_days and domain should not be empty
         domains_df = domains_df.dropna(subset = ['channel_id', 'interval_days', 'domain'])
+        if any(domains_df['domain'].duplicated()):
+            raise Exception(f"Duplicate domains in {csv_path}")
+        if any(domains_df.duplicated(subset = ['channel_id', 'interval_days', 'domain'])):
+            raise Exception(f"Duplicate entries in {csv_path}")
         domains_df = domains_df[['channel_id', 'interval_days', 'domain']]
         domains_df['channel_id'] = domains_df['channel_id'].str.lower()
         domains_df['interval_days'] = domains_df['interval_days'].astype(int)
+        if channel_ids:
+            domains_df = domains_df[domains_df['channel_id'].isin(channel_ids)]
+            missing_channels = set(channel_ids) - set(domains_df['channel_id'].values)
+            if len(missing_channels) > 0:
+                raise Exception(f"Missing channel domains for {missing_channels}")
         return domains_df
     except Exception as e:
         logger.error(f"Failed to read channel data from CSV: {e}")

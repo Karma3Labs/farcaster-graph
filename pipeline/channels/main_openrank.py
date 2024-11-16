@@ -44,22 +44,48 @@ class Mode(Enum):
 
 _LT_FILENAME_FORMAT = "localtrust.{cid}.{interval}.{domain}.csv"
 _PT_FILENAME_FORMAT = "pretrust.{cid}.{interval}.{domain}.csv"
+_RANKING_FILENAME_FORMAT = "ranking.{cid}.{interval}.{domain}.csv"
 _TOML_FILENAME_FORMAT = "config.{cid}.{interval}.{domain}.toml"
 
+def fetch_results(
+    channel_ids_list: list[str],
+    out_dir: Path,
+):
+    file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME)
+    if not os.path.exists(file):
+        raise Exception(f"Missing file {file}")
+    req_ids_df = pd.read_csv(file, header=None, names=['cid', 'interval_days', 'domain', 'req_id'])
+    # duplicates possible if process_domains task was retried multiple times by Airflow dag
+    req_ids_df = req_ids_df.drop_duplicates(subset=['domain'], keep='last')
+
+    for _, row in req_ids_df.iterrows():
+        cid = row['cid']
+        interval = row['interval_days']
+        domain = row['domain']
+        req_id = row['req_id']
+
+        toml_filename = _TOML_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
+        toml_file = os.path.join(out_dir, toml_filename)
+        if not os.path.exists(toml_file):
+            raise Exception(f"Missing toml_file {toml_file}")
+        
+        out_filename = _RANKING_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
+        out_file = os.path.join(out_dir, out_filename)
+        if os.path.exists(out_file):
+            logger.warning(f"Output file {out_file} already exists. Overwriting")
+        
+        openrank_utils.download_results(req_id, toml_file, out_file)
+
+
 def process_domains(
-    channel_ids_str: str,
+    channel_ids_list: list[str],
     channel_domains_csv: Path,
     out_dir: Path,
 ):
-    channel_ids = channel_ids_str.split(',')
-    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv)
-    if len(channel_domain_df[channel_domain_df['channel_id'].isin(channel_ids)]) != len(channel_ids):
-        raise Exception(f"Missing channel domains for {set(channel_ids) - set(channel_domain_df['channel_id'].values)}")
-    for cid in channel_ids:
+    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv, channel_ids_list)
+    for cid in channel_ids_list:
         try:
             channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
-            if len(channel) == 0:
-                raise Exception(f"Missing channel domain for {cid}")
             interval = channel['interval_days'].values[0]
             domain = int(channel['domain'].values[0])
 
@@ -86,7 +112,7 @@ def process_domains(
                 newline="",
             ) as f:
                 write = csv.writer(f)
-                write.writerow([cid, domain, req_id])
+                write.writerow([cid, interval, domain, req_id])
 
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
@@ -195,7 +221,7 @@ def append_delta_prev(
 
 def gen_domain_files(
     channel_seeds_csv: Path,
-    channel_ids_str: str,
+    channel_ids_list: list[str],
     channel_domains_csv: Path,
     out_dir: Path,
     prev_dir: Path,
@@ -206,17 +232,12 @@ def gen_domain_files(
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
-    channel_ids = channel_ids_str.split(',')
-    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv)
-    if len(channel_domain_df[channel_domain_df['channel_id'].isin(channel_ids)]) != len(channel_ids):
-        raise Exception(f"Missing channel domains for {set(channel_ids) - set(channel_domain_df['channel_id'].values)}")
+    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv, channel_ids_list)
     missing_seed_fids = []
 
-    for cid in channel_ids:
+    for cid in channel_ids_list:
         try:
             channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
-            if len(channel) == 0:
-                raise Exception(f"Missing channel domain for {cid}")
             interval = channel['interval_days'].values[0]
             domain = int(channel['domain'].values[0])
 
@@ -271,11 +292,11 @@ def gen_domain_files(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c",
-        "--csv",
+        "-s",
+        "--seed",
         type=lambda f: Path(f).expanduser().resolve(),
-        help="path to the channel id - seed CSV file. For example, -c /path/to/file.csv",
-        required=True,
+        help="path to the channel id - seed CSV file. For example, -s /path/to/file.csv",
+        required=False,
     )
     parser.add_argument(
         "-t",
@@ -289,7 +310,7 @@ if __name__ == "__main__":
         "--domain_mapping",
         type=lambda f: Path(f).expanduser().resolve(),
         help="path to the channel id - domain CSV file. For example, -c /path/to/file.csv",
-        required=True,
+        required=False,
     )
     parser.add_argument(
         "-ids",
@@ -318,6 +339,9 @@ if __name__ == "__main__":
     logger.debug('hello main')
 
     if args.task == 'fetch_domains':
+        if not hasattr(args, "domain_mapping"):
+            logger.error("Domain mapping is required for fetch_domains task.")
+            sys.exit(1)
         df = channel_utils.read_channel_domain_csv(args.domain_mapping)
         channel_ids = df["channel_id"].values.tolist()
         random.shuffle(channel_ids) # in-place shuffle
@@ -325,33 +349,47 @@ if __name__ == "__main__":
     else:
         if (
             not hasattr(args, "channel_ids")
-            or not hasattr(args, "domain_mapping")
             or not hasattr(args, "outdir")
         ):
-            logger.error("Channel IDs, Domain mapping, and output directory"
+            logger.error("Channel IDs, and output directory"
                             " are required.")
             sys.exit(1)
+        
+        channel_ids_list = args.channel_ids.split(',')
+        if len(channel_ids_list) == 0:
+            logger.warning("No channel IDs specified.")
+            sys.exit(0)
 
         if args.task == 'gen_domain_files':
-            if (not hasattr(args, "prevdir")):
-                logger.error("Previous directory is required for gen_domain_files task.")
+            if (
+                not hasattr(args, "seed")
+                or not hasattr(args, "prevdir")
+                or not hasattr(args, "domain_mapping")
+            ):
+                logger.error("Seed csv file, previous directory and domain mapping are required for gen_domain_files task.")
                 sys.exit(1)
 
             gen_domain_files(
-                channel_seeds_csv=args.csv,
-                channel_ids_str=args.channel_ids,
+                channel_seeds_csv=args.seed,
+                channel_ids_list=channel_ids_list,
                 channel_domains_csv=args.domain_mapping,
                 out_dir=args.outdir,
                 prev_dir=args.prevdir
             )
         elif args.task == 'process_domains':
+            if not hasattr(args, "domain_mapping"):
+                logger.error("Domain mapping is required for process_domains task.")
+                sys.exit(1)
             process_domains(
-                channel_ids_str=args.channel_ids,
+                channel_ids_list=channel_ids_list,
                 channel_domains_csv=args.domain_mapping,
                 out_dir=args.outdir
             )
         elif args.task == 'fetch_results':
-            ... 
+            fetch_results(
+                channel_ids_list=channel_ids_list,
+                out_dir=args.outdir
+            )
         else:
             logger.error("Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'.")
             sys.exit(1)

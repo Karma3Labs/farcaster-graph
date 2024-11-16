@@ -1,12 +1,12 @@
 #!/bin/bash
 
-while getopts w:i:v:t:c:n:d:o:p: flag
+while getopts w:i:v:t:s:n:d:o:p: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
         t) TASK=${OPTARG};;
-        c) CSV_PATH=${OPTARG};;
+        s) SEED_CSV=${OPTARG};;
         d) DOMAIN_CSV=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         p) PREV_DIR=${OPTARG};;
@@ -16,17 +16,17 @@ done
 shift $((OPTIND-1))
 CHANNEL_IDS="$1"
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] || [ -z "$DOMAIN_CSV" ] ; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -c [csv_path] -d [domain_csv] -o [out_dir] -p [prev_dir] [channel_ids] "
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [seed_csv] -d [domain_csv] -o [out_dir] -p [prev_dir] [channel_ids] "
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch_domains -c channels/Top_Channels.csv -d channels/Channel_Domain.csv"
-  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t gen_domain_files -c channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev_run/ openrank,lp"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t fetch_domains -s channels/Top_Channels.csv -d channels/Channel_Domain.csv"
+  echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t gen_domain_files -s channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev_run/ openrank,lp"
   echo ""
   echo "Params:"
   echo "  [work_dir] The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created." 
   echo "  [task] The task to perform: fetch_domains or gen_domain_files."
-  echo "  [csv_path] The path to the CSV file."
+  echo "  [seed_csv] The path to the Seed CSV file."
   echo "  [domain_csv] The path to the CSV file with channel domain mapping."
   echo "  [out_dir] The directory to write localtrust, pretrust and openrank configs to."
   echo "  [prev_dir] The directory to read localtrust and pretrust of the previous run."
@@ -36,12 +36,18 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
 fi
 
 if [ "$TASK" = "gen_domain_files" ] || [ "$TASK" = "process_domains" ]; then
-  if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ]; then
-    echo "Please specify -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
+  if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ] || [ -z "$DOMAIN_CSV" ]; then
+    echo "Please specify -d (domain_csv), -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
     exit 1
   fi
 fi
 
+if [ "$TASK" = "gen_domain_files" ]; then
+  if [ -z "$SEED_CSV" ]; then
+    echo "Please specify -s (seed_csv) for the gen_domain_files task."
+    exit 1
+  fi
+fi
 
 if [ ! -z "$PREV_DIR" ]; then
   PREV_DIR_OPTION="--prevdir $PREV_DIR"
@@ -107,6 +113,12 @@ elif [ "$TASK" = "process_domains" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -c "$CSV_PATH" -t process_domains \
     --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" \
+    --channel_ids "$CHANNEL_IDS"
+  deactivate
+elif [ "$TASK" = "fetch_results" ]; then
+  log "Received channel_ids: $CHANNEL_IDS"
+  python3 -m channels.main_openrank -t fetch_results \
+    --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 else

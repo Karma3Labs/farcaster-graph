@@ -6,6 +6,24 @@ from config import settings
 
 from loguru import logger
 
+def download_results(req_id: str, toml_file: Path, out_file: Path):
+    new_env = os.environ.copy()
+    new_env['SECRET_KEY'] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
+
+    with open(out_file, 'w') as stdout_file:
+        get_cmd = subprocess.run(
+            ["openrank-sdk", "get-results", str(req_id), str(toml_file)],
+            stdout=stdout_file,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=settings.OPENRANK_TIMEOUT_SECS,
+            env=new_env,
+        )
+        logger.info(f"OpenRank get-results for {req_id} downloaded to: {stdout_file}")
+        if get_cmd.returncode != 0:
+            logger.error(f"OpenRank get-results failed: {get_cmd.stderr}")
+            raise Exception("OpenRank get-results failed")
+
 def update_and_compute(lt_file: Path, pt_file: Path, toml_file: Path) -> str:
     new_env = os.environ.copy()
     new_env['SECRET_KEY'] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
