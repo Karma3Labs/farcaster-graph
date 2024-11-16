@@ -74,7 +74,7 @@ def fetch_results(
         if os.path.exists(out_file):
             logger.warning(f"Output file {out_file} already exists. Overwriting")
         
-        openrank_utils.download_results(req_id, toml_file, out_file)
+        openrank_utils.download_results(req_id, toml_file, out_dir, out_file)
 
 
 def process_domains(
