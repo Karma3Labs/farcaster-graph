@@ -6,6 +6,7 @@ from enum import Enum
 from pathlib import Path
 import os
 from typing import Tuple
+import csv
 
 # local dependencies
 import utils
@@ -77,6 +78,15 @@ def process_domains(
             req_id = openrank_utils.update_and_compute(
                 lt_file=lt_file, pt_file=pt_file, toml_file=toml_file
             )
+
+            with open(
+                file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME),
+                mode="a", # Note - multiple processes within an airflow dag will write to the same file 
+                buffering=os.O_NONBLOCK, # Note - this setting is redundant on most OS
+                newline="",
+            ) as f:
+                write = csv.writer(f)
+                write.writerow([cid, domain, req_id])
 
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")

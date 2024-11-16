@@ -47,6 +47,6 @@ def update_and_compute(lt_file: Path, pt_file: Path, toml_file: Path) -> str:
     if compute_cmd.returncode != 0:
         logger.error(f"OpenRank compute failed: {compute_cmd.stdout}")
         raise Exception("OpenRank compute failed")
-    req_id = compute_cmd.stdout
+    req_id = compute_cmd.stdout.strip()
     logger.info(f"OpenRank request id: {req_id}")
     return req_id
