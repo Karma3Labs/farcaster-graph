@@ -23,7 +23,8 @@ def download_results(req_id: str, toml_file: Path, out_dir:Path, out_file: Path)
         if get_cmd.returncode != 0:   
             logger.error(f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}")
             raise Exception("OpenRank get-results failed")
-        os.remove(out_file)
+        if os.path.exists(out_file):
+            os.remove(out_file)
         os.link(temp_file.name, out_file) # hard link because temp file will get deleted
         logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
