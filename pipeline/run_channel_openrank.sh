@@ -106,7 +106,7 @@ if [ "$TASK" = "fetch_domains" ]; then
 elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -c "$CSV_PATH" -t gen_domain_files \
-    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" $PREV_DIR_OPTION \
+    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" --prevdir "$PREV_DIR_OPTION" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "process_domains" ]; then
