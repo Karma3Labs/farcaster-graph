@@ -155,6 +155,42 @@ async def get_unique_fid_metadata_for_handles(
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
+async def get_verified_addresses_for_fids(
+    fids: list[str],
+    pool: Pool,
+):
+    sql_query= """
+    WITH latest_global_rank as (
+        select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
+                and date in (select max(date) from k3l_rank)
+    ),
+    verified_addresses as (
+        SELECT 
+            verifications.claim->>'address' as address,
+            fids.fid as fid,
+            ROW_NUMBER() OVER(PARTITION BY verifications.fid 
+                                ORDER BY verifications.timestamp DESC) AS created_order
+        FROM fids
+        INNER JOIN verifications ON (verifications.fid = fids.fid)
+        WHERE
+            fids.fid = ANY($1::integer[])
+    )
+    SELECT	
+        vaddr.address as address,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(fnames.fname)), null) as fnames,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 6 then user_data.value end)), null) as usernames,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 1 then user_data.value end)), null) as pfp,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 3 then user_data.value end)),null) as bios,
+        vaddr.fid as fid
+    FROM verified_addresses as vaddr
+    LEFT JOIN fnames ON (vaddr.fid = fnames.fid)
+    LEFT JOIN user_data ON (user_data.fid = vaddr.fid)
+    LEFT JOIN latest_global_rank as grank ON (grank.fid = vaddr.fid)
+    WHERE created_order=1
+    GROUP BY vaddr.fid, address
+    LIMIT 1000 -- safety valve
+    """
+    return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 async def get_all_handle_addresses_for_fids(
         fids: list[str],
@@ -193,7 +229,7 @@ async def get_all_handle_addresses_for_fids(
         LEFT JOIN user_data ON (user_data.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
-    ),
+    )
     SELECT fid_details.*,
     latest_global_rank.global_rank
     FROM fid_details 
