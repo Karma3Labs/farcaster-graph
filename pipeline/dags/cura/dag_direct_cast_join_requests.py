@@ -22,7 +22,7 @@ with DAG(
     default_args=default_args,
     description="Direct cast join requests from curabot",
     start_date=datetime(2024, 11, 7),
-    schedule_interval='*/5 * * * *',
+    schedule_interval='0 * * * *',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
