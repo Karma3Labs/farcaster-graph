@@ -6,6 +6,7 @@ def read_channel_seed_fids_csv(csv_path) -> pd.DataFrame:
     try:
         seeds_df = pd.read_csv(csv_path)
         seeds_df = seeds_df.dropna(subset = ['channel id'])
+        seeds_df = seeds_df.drop_duplicates(subset=['channel id'], keep='last')
         seeds_df.rename(columns={"Seed Peers FIDs": "seed_peers"}, inplace=True)
         seeds_df = seeds_df[["channel id", "seed_peers"]]
         seeds_df["seed_peers"] = seeds_df["seed_peers"].astype(str)
@@ -20,6 +21,7 @@ def read_channel_ids_csv(csv_path):
     try:
         channels_df = pd.read_csv(csv_path)
         channels_df = channels_df.dropna(subset = ['channel id'])
+        channels_df = channels_df.drop_duplicates(subset=['channel id'], keep='last')
         channels_df = channels_df[["channel id"]]
         channels_df['channel id'] = channels_df['channel id'].str.lower()
         channel_ids = channels_df["channel id"].values.tolist()
