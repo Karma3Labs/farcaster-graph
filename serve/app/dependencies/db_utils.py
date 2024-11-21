@@ -344,6 +344,25 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
         """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_channel_stats(
+    channel_id: str,
+    strategy_name: str,
+    pool: Pool
+):
+    sql_query = """
+    SELECT 	
+    	MIN(score) min_score, 
+        MAX(score) max_score, 
+        PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
+	    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
+	    PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
+	    COUNT(*) AS num_fids_ranked
+    FROM k3l_channel_rank
+    WHERE channel_id = $1
+    AND strategy_name = $2
+    """
+    return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
 async def get_top_channel_profiles(
         channel_id: str,
