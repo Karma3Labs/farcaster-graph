@@ -475,3 +475,19 @@ CREATE INDEX warpcast_members_fid_idx ON public.warpcast_members USING btree (fi
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 
+-------------------------------------------------
+
+CREATE TABLE public.k3l_channel_points_bal (
+	fid int8 NOT NULL,
+    channel_id text NOT NULL,
+	balance numeric NOT NULL,
+    latest_earnings numeric NOT NULL,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX k3l_channel_points_bal_ch_fid_idx ON public.k3l_channel_points_bal USING btree (channel_id, fid);
+
+CREATE INDEX k3l_channel_points_bal_ch_bal_idx ON public.k3l_channel_points_bal USING btree (channel_id, balance);
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_bal TO k3l_readonly;
