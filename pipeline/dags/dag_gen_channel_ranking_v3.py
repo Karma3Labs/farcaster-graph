@@ -93,7 +93,10 @@ def create_dag():
             COMMIT;"
             '''
         )
-
+        # OK to truncate 'k3l_channel_fids' because there are no dependencies
+        # .. except for 'k3l_channel_rank' materialized view which 
+        # .. does not get refreshed until the very end and only 
+        # .. after an additional sanity check
         sanitycheck_before_truncate >> truncate_ch_fids
 
     @task_group(group_id='compute_group')
