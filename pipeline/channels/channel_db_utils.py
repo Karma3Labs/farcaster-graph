@@ -129,7 +129,7 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     NUM_NTILES = 10
     CUTOFF_NTILE = 9
     TOTAL_POINTS = 10_000
-    ALLOC_INTERVAL = '24 hours'
+    ALLOC_INTERVAL = '22 hours'
     # WARNING - EXTREME CAUTION
 
     create_sql = (
