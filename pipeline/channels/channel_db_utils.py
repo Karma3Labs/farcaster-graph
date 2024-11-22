@@ -168,7 +168,7 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
             GROUP BY channel_id
         )
         INSERT INTO k3l_channel_points_bal_new 
-            (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score)
+            (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)
             SELECT 
                 rk.fid,
                 rk.channel_id,
@@ -178,7 +178,12 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 -- new_score = old_score ( 1 + (1 - new_trust_budget))
                 (rk.score * (2-bt.new_trust_budget)::numeric) * {TOTAL_POINTS} as latest_earnings,
                 rk.score as latest_score,
-                (rk.score * (2-bt.new_trust_budget)::numeric) as latest_adj_score
+                (rk.score * (2-bt.new_trust_budget)::numeric) as latest_adj_score,
+                CASE 
+                    WHEN bal.insert_ts IS NULL THEN now()
+                    ELSE bal.insert_ts
+                END as insert_ts,
+                now() as update_ts
             FROM k3l_channel_rank as rk
             INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
             LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
@@ -192,7 +197,9 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 bal.balance as balance, 
                 bal.latest_earnings as latest_earnings,
                 bal.latest_score as latest_score, 
-                bal.latest_adj_score as latest_adj_score
+                bal.latest_adj_score as latest_adj_score,
+                bal.insert_ts,
+                bal.update_ts
             FROM k3l_channel_rank as rk
             INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
             LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
