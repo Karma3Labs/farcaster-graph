@@ -15,7 +15,6 @@ from loguru import logger
 logger.remove()
 level_per_module = {
     "": settings.LOG_LEVEL,
-    "db_utils": "DEBUG",
     "silentlib": False
 }
 logger.add(sys.stdout,
