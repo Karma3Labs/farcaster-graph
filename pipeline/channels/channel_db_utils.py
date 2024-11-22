@@ -185,27 +185,33 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 END as insert_ts,
                 now() as update_ts
             FROM k3l_channel_rank as rk
-            INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
-            LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
+            INNER JOIN points_budget AS bt  
+                ON (bt.channel_id = rk.channel_id 
+                    AND rk.rank <= bt.cutoff_rank
+                    AND rk.strategy_name='{STRATEGY}')
+            LEFT JOIN k3l_channel_points_bal AS bal 
+                ON (bal.channel_id = rk.channel_id 
+                    AND bal.fid = rk.fid
+                    AND rk.strategy_name='{STRATEGY}')
             WHERE
-                rk.strategy_name='{STRATEGY}'
-            AND (bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}')
+                bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}'
         UNION
             SELECT 
-                rk.fid,
-                rk.channel_id,
+                bal.fid,
+                bal.channel_id,
                 bal.balance as balance, 
                 bal.latest_earnings as latest_earnings,
                 bal.latest_score as latest_score, 
                 bal.latest_adj_score as latest_adj_score,
                 bal.insert_ts,
                 bal.update_ts
-            FROM k3l_channel_rank as rk
-            INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
-            LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
+            FROM k3l_channel_points_bal as bal
+            LEFT JOIN k3l_channel_rank AS rk 
+                ON (bal.channel_id = rk.channel_id 
+                    AND bal.fid = rk.fid
+                    AND rk.strategy_name='{STRATEGY}')
             WHERE
-            rk.strategy_name='{STRATEGY}'
-            AND (bal.update_ts IS NOT NULL AND bal.update_ts > now() - interval '{ALLOC_INTERVAL}')
+                rk.fid IS NULL OR bal.update_ts > now() - interval '{ALLOC_INTERVAL}'
     """
     start_time = time.perf_counter()
     try:
