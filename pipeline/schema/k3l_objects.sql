@@ -1,3 +1,7 @@
+SET ROLE k3l_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO k3l_readonly;
+----------------------------------------------------------------------------------------------------------------
+
 CREATE UNLOGGED TABLE public.localtrust (
     strategy_id integer,
     i character varying(255),
