@@ -28,7 +28,7 @@ with DAG(
 
     run_main = BashOperator(
         task_id="run_main",
-        bash_command="cd /pipeline && ./run_fetch_top_caster.sh -v .venv",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh -v .venv",
         dag=dag)
 
     # TODO backup to s3
