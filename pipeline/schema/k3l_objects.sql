@@ -1,5 +1,5 @@
 SET ROLE k3l_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO k3l_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,REFERENCES ON TABLES TO k3l_readonly;
 ----------------------------------------------------------------------------------------------------------------
 
 CREATE UNLOGGED TABLE public.localtrust (
