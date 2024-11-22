@@ -140,7 +140,6 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     replace_sql = (
         f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
         f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
-        f"GRANT SELECT,REFERENCES ON TABLE {LIVE_TBL} TO k3l_readonly;"
     )
 
     insert_sql = f"""
