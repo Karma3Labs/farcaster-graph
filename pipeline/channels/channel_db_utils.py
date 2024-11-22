@@ -5,6 +5,7 @@ import time
 from config import settings
 from asyncpg.pool import Pool
 import asyncpg
+import psycopg2
 
 
 async def fetch_rows(
@@ -117,3 +118,108 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         ORDER BY cast_score DESC;
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
+
+@Timer(name="update_points_balance")
+def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
+    # WARNING - EXTREME CAUTION - be very careful with these variables
+    OLD_TBL = "k3l_channel_points_bal_old"
+    LIVE_TBL = "k3l_channel_points_bal"
+    NEW_TBL = "k3l_channel_points_bal_new"
+    STRATEGY = "7d_engagement"
+    NUM_NTILES = 10
+    CUTOFF_NTILE = 9
+    TOTAL_POINTS = 10_000
+    ALLOC_INTERVAL = '24 hours'
+    # WARNING - EXTREME CAUTION
+
+    create_sql = (
+        f"DROP TABLE IF EXISTS {OLD_TBL};"
+        f"CREATE TABLE {NEW_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
+    )
+
+    replace_sql = (
+        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
+        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
+    )
+
+    insert_sql = f"""
+        WITH points_budget AS 
+        (
+            SELECT 
+                sum(score) as new_trust_budget,
+                max(rank) as cutoff_rank,
+                channel_id
+            FROM (
+                SELECT
+                fid,
+                score,
+                NTILE({NUM_NTILES}) OVER (
+                    PARTITION BY channel_id
+                        ORDER BY score DESC
+                ) as ptile,
+                    rank,
+                channel_id
+                FROM
+                    k3l_channel_rank
+                WHERE 
+                    strategy_name='{STRATEGY}'
+            )
+            WHERE ptile <= {CUTOFF_NTILE}
+            GROUP BY channel_id
+        )
+        INSERT INTO k3l_channel_points_bal_new 
+            (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score)
+            SELECT 
+                rk.fid,
+                rk.channel_id,
+                coalesce(bal.balance, 0) + ((rk.score * (2-bt.new_trust_budget)::numeric) * {TOTAL_POINTS}) as balance, 
+                -- new_score = old_score + ((old_trust_budget - new_trust_budget) * old_score)
+                -- new_score = old_score + ((1 - new_trust_budget) * old_score)
+                -- new_score = old_score ( 1 + (1 - new_trust_budget))
+                (rk.score * (2-bt.new_trust_budget)::numeric) * {TOTAL_POINTS} as latest_earnings,
+                rk.score as latest_score,
+                (rk.score * (2-bt.new_trust_budget)::numeric) as latest_adj_score
+            FROM k3l_channel_rank as rk
+            INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
+            LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
+            WHERE
+                rk.strategy_name='{STRATEGY}'
+            AND (bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}')
+        UNION
+            SELECT 
+                rk.fid,
+                rk.channel_id,
+                bal.balance as balance, 
+                bal.latest_earnings as latest_earnings,
+                bal.latest_score as latest_score, 
+                bal.latest_adj_score as latest_adj_score
+            FROM k3l_channel_rank as rk
+            INNER JOIN points_budget as bt on (bt.channel_id = rk.channel_id AND rk.rank <= bt.cutoff_rank)
+            LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = rk.channel_id AND bal.fid = rk.fid)
+            WHERE
+            rk.strategy_name='{STRATEGY}'
+            AND (bal.update_ts IS NOT NULL AND bal.update_ts > now() - interval '{ALLOC_INTERVAL}')
+    """
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {create_sql}")
+                cursor.execute(create_sql)
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Upserted rows: {cursor.rowcount}")
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {replace_sql}")
+                cursor.execute(replace_sql)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+            

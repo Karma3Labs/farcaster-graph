@@ -482,6 +482,8 @@ CREATE TABLE public.k3l_channel_points_bal (
     channel_id text NOT NULL,
 	balance numeric NOT NULL,
     latest_earnings numeric NOT NULL,
+    latest_score real NOT NULL,
+    latest_adj_score real NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     update_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
