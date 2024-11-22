@@ -31,8 +31,10 @@ with DAG(
         bash_command="cd /pipeline && ./run_update_channel_points.sh -v .venv",
         dag=dag)
 
-    # TODO backup to s3
-    bkup_to_s3 = EmptyOperator(task_id="bkup_to_s3")
+    backup_to_s3 = BashOperator(
+            task_id='backup_channel_points_bal',
+            bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal"
+        )
 
-    run_main >> bkup_to_s3
+    run_main >> backup_to_s3
 
