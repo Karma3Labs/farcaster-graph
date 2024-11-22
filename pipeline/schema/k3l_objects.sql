@@ -476,7 +476,6 @@ CREATE INDEX warpcast_members_fid_idx ON public.warpcast_members USING btree (fi
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 
 -------------------------------------------------
-
 CREATE TABLE public.k3l_channel_points_bal (
 	fid int8 NOT NULL,
     channel_id text NOT NULL,
@@ -493,3 +492,12 @@ CREATE INDEX k3l_channel_points_bal_ch_fid_idx ON public.k3l_channel_points_bal 
 CREATE INDEX k3l_channel_points_bal_ch_bal_idx ON public.k3l_channel_points_bal USING btree (channel_id, balance);
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_bal TO k3l_readonly;
+-------------------------------------------------
+CREATE TABLE public.k3l_channel_points_allowlist (
+    channel_id text NOT NULL,
+    is_allowed boolean NOT NULL DEFAULT true,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_allowlist TO k3l_readonly;
+-------------------------------------------------
