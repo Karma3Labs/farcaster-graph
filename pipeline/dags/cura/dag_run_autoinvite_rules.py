@@ -22,7 +22,7 @@ with DAG(
     default_args=default_args,
     description="Run all the autoinvite rules",
     start_date=datetime(2024, 11, 7),
-    schedule_interval='0 */2 * * *',
+    schedule_interval='0 */4 * * *',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
