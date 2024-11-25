@@ -22,7 +22,7 @@ with DAG(
     default_args=default_args,
     description="Direct cast join requests from curabot",
     start_date=datetime(2024, 11, 7),
-    schedule_interval='*/5 * * * *',
+    schedule_interval='0 * * * *',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
@@ -31,8 +31,8 @@ with DAG(
     ssh_hook = SSHHook(ssh_conn_id='eigen1', keepalive_interval=60, cmd_timeout=None)
 
     eigen1_install_dependencies = SSHOperator(
-        task_id="cura_eigen1_install_deps_jr",
-        command=f"cd cura-bot && git pull origin main && npm i",
+        task_id="cura_eigen1_install_deps",
+        command=f"cd cura-bot && git reset --hard HEAD && git pull origin main && pnpm i",
         ssh_hook=ssh_hook,
         dag=dag,
     )

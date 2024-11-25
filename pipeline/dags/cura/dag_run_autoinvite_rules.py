@@ -22,7 +22,7 @@ with DAG(
     default_args=default_args,
     description="Run all the autoinvite rules",
     start_date=datetime(2024, 11, 7),
-    schedule_interval='0 * * * *',
+    schedule_interval='0 */4 * * *',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
@@ -32,7 +32,7 @@ with DAG(
 
     eigen1_install_dependencies = SSHOperator(
         task_id="cura_eigen1_install_deps",
-        command=f"cd cura-bot && git pull origin main && npm i",
+        command=f"cd cura-bot && git reset --hard HEAD && git pull origin main && pnpm i",
         ssh_hook=ssh_hook,
         dag=dag,
     )

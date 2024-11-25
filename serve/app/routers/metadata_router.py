@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Query
 from typing import Annotated
 from loguru import logger
 from asyncpg.pool import Pool
@@ -60,6 +60,7 @@ async def get_addresses_for_fids(
       [1,2,3]
     ]
   )],
+  verified_only: Annotated[bool, Query()] = False,
   pool: Pool = Depends(db_pool.get_db)
 ):
   """
@@ -68,7 +69,10 @@ async def get_addresses_for_fids(
   """
   logger.debug(fids)
   start_time = time.perf_counter()
-  rows = await db_utils.get_all_handle_addresses_for_fids(fids, pool)
+  if verified_only:
+    rows = await db_utils.get_verified_addresses_for_fids(fids, pool)
+  else:
+    rows = await db_utils.get_all_handle_addresses_for_fids(fids, pool)
   logger.info(f"query took {time.perf_counter() - start_time} secs")
   return {"result": rows}
 

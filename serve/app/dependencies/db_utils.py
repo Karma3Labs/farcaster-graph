@@ -155,6 +155,42 @@ async def get_unique_fid_metadata_for_handles(
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
+async def get_verified_addresses_for_fids(
+    fids: list[str],
+    pool: Pool,
+):
+    sql_query= """
+    WITH latest_global_rank as (
+        select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
+                and date in (select max(date) from k3l_rank)
+    ),
+    verified_addresses as (
+        SELECT 
+            verifications.claim->>'address' as address,
+            fids.fid as fid,
+            ROW_NUMBER() OVER(PARTITION BY verifications.fid 
+                                ORDER BY verifications.timestamp DESC) AS created_order
+        FROM fids
+        INNER JOIN verifications ON (verifications.fid = fids.fid)
+        WHERE
+            fids.fid = ANY($1::integer[])
+    )
+    SELECT	
+        vaddr.address as address,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(fnames.fname)), null) as fnames,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 6 then user_data.value end)), null) as usernames,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 1 then user_data.value end)), null) as pfp,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 3 then user_data.value end)),null) as bios,
+        vaddr.fid as fid
+    FROM verified_addresses as vaddr
+    LEFT JOIN fnames ON (vaddr.fid = fnames.fid)
+    LEFT JOIN user_data ON (user_data.fid = vaddr.fid)
+    LEFT JOIN latest_global_rank as grank ON (grank.fid = vaddr.fid)
+    WHERE created_order=1
+    GROUP BY vaddr.fid, address
+    LIMIT 1000 -- safety valve
+    """
+    return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 async def get_all_handle_addresses_for_fids(
         fids: list[str],
@@ -193,7 +229,7 @@ async def get_all_handle_addresses_for_fids(
         LEFT JOIN user_data ON (user_data.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
-    ),
+    )
     SELECT fid_details.*,
     latest_global_rank.global_rank
     FROM fid_details 
@@ -308,6 +344,25 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
         """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_channel_stats(
+    channel_id: str,
+    strategy_name: str,
+    pool: Pool
+):
+    sql_query = """
+    SELECT 	
+    	MIN(score) min_score, 
+        MAX(score) max_score, 
+        PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
+	    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
+	    PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
+	    COUNT(*) AS num_fids_ranked
+    FROM k3l_channel_rank
+    WHERE channel_id = $1
+    AND strategy_name = $2
+    """
+    return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
 async def get_top_channel_profiles(
         channel_id: str,
@@ -338,45 +393,57 @@ async def get_top_channel_profiles(
             AND strategy_name = $2
         ),
         addresses as (
-        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
-        FROM fids
-        UNION ALL
-         SELECT v.claim->>'address' as address, fid
-         FROM verifications v
+            SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+            FROM fids
+            UNION ALL
+            SELECT v.claim->>'address' as address, fid
+            FROM verifications v
         ),
         top_records as (
-        SELECT
-            ch.fid,
-            fnames.fname as fname,
-            case when user_data.type = 6 then user_data.value end as username,
-            case when user_data.type = 1 then user_data.value end as pfp,
-            case when user_data.type = 3 then user_data.value end as bio,
-            rank,
-            score,
-            ((total.total - (rank - 1))*100 / total.total) as percentile
-        FROM k3l_channel_rank as ch
-        CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN user_data on (user_data.fid = ch.fid)
-        WHERE
-            ch.channel_id = $1
-            AND
-            ch.strategy_name=$2
-        ORDER BY rank ASC
+            SELECT
+                ch.fid,
+                fnames.fname as fname,
+                case when user_data.type = 6 then user_data.value end as username,
+                case when user_data.type = 1 then user_data.value end as pfp,
+                case when user_data.type = 3 then user_data.value end as bio,
+                rank,
+                score,
+                ((total.total - (rank - 1))*100 / total.total) as percentile,
+                bal.balance as balance, 
+                bal.latest_earnings as latest_earnings,
+                bal.update_ts as bal_update_ts
+            FROM k3l_channel_rank as ch
+            CROSS JOIN total
+            LEFT JOIN fnames on (fnames.fid = ch.fid)
+            LEFT JOIN user_data on (user_data.fid = ch.fid)
+            LEFT JOIN k3l_channel_points_allowlist as channelpts 
+                on (channelpts.channel_id=ch.channel_id and channelpts.is_allowed=true)
+            LEFT JOIN k3l_channel_points_bal as bal 
+                on (bal.channel_id=ch.channel_id and bal.fid=ch.fid 
+                    and bal.channel_id=channelpts.channel_id)
+            WHERE
+                ch.channel_id = $1
+                AND
+                ch.strategy_name=$2
+            ORDER BY rank ASC
         ),
         mapped_records as (
-        SELECT top_records.*,addresses.address
-        FROM top_records
-        LEFT JOIN addresses using (fid)
+            SELECT top_records.*,addresses.address
+            FROM top_records
+            LEFT JOIN addresses using (fid)
         )
-        select fid,
-        any_value(fname) as fname,
-        any_value(username) as username,
-        any_value(pfp) as pfp,
-        any_value(bio) as bio,
-        any_value(rank) as rank,
-        any_value(score) as score,
-        ARRAY_AGG(DISTINCT address) as addresses
+        SELECT 
+            fid,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(pfp) as pfp,
+            any_value(bio) as bio,
+            any_value(rank) as rank,
+            any_value(score) as score,
+            ARRAY_AGG(DISTINCT address) as addresses,
+            any_value(balance) as balance,
+            any_value(latest_earnings) as latest_earnings,
+            any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
         GROUP BY fid
         ORDER by rank
@@ -461,45 +528,56 @@ async def get_channel_profile_ranks(
             AND strategy_name = $2
         ),
         addresses as (
-        SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
-        FROM fids
-        union all
-         SELECT v.claim->>'address' as address, fid
-         FROM verifications v
+            SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+            FROM fids
+            union all
+            SELECT v.claim->>'address' as address, fid
+            FROM verifications v
         ),
         top_records as (
-        SELECT
-            ch.fid,
-            fnames.fname as fname,
-            user_data.value as username,
-            rank,
-            score,
-            ((total.total - (rank - 1))*100 / total.total) as percentile
-        FROM k3l_channel_rank as ch
-        CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = ch.fid)
-        LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
-        WHERE
-            channel_id = $1
-            AND
-            strategy_name = $2
-            AND
-            ch.fid = ANY($3::integer[])
-        ORDER BY rank
+            SELECT
+                ch.fid,
+                fnames.fname as fname,
+                user_data.value as username,
+                rank,
+                score,
+                ((total.total - (rank - 1))*100 / total.total) as percentile,
+                bal.balance as balance, 
+                bal.latest_earnings as latest_earnings,
+                bal.update_ts as bal_update_ts
+            FROM k3l_channel_rank as ch
+            CROSS JOIN total
+            LEFT JOIN fnames on (fnames.fid = ch.fid)
+            LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
+            LEFT JOIN k3l_channel_points_allowlist as channelpts 
+                on (channelpts.channel_id=ch.channel_id and channelpts.is_allowed=true)
+            LEFT JOIN k3l_channel_points_bal as bal 
+                on (bal.channel_id=ch.channel_id and bal.fid=ch.fid 
+                    and bal.channel_id=channelpts.channel_id)
+            WHERE
+                ch.channel_id = $1
+                AND
+                ch.strategy_name = $2
+                AND
+                ch.fid = ANY($3::integer[])
+            ORDER BY rank
         ),
         mapped_records as (
-        SELECT top_records.*,addresses.address
-        FROM top_records
-        LEFT JOIN addresses using (fid)
+            SELECT top_records.*,addresses.address
+            FROM top_records
+            LEFT JOIN addresses using (fid)
         )
         SELECT
-        fid,
-        any_value(fname) as fname,
-        any_value(username) as username,
-        any_value(rank) as rank,
-        any_value(score) as score,
-        any_value(percentile) as percentile,
-        ARRAY_AGG(DISTINCT address) as addresses
+            fid,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(rank) as rank,
+            any_value(score) as score,
+            any_value(percentile) as percentile,
+            ARRAY_AGG(DISTINCT address) as addresses,
+            any_value(balance) as balance,
+            any_value(latest_earnings) as latest_earnings,
+            any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
         GROUP BY fid
         ORDER by rank

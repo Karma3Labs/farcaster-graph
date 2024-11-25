@@ -243,6 +243,22 @@ backup_all_channel_rank_to_private_s3() {
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
+backup_channel_points_bal_to_private_s3() {
+  filename="k3l_channel_points_bal"
+  csv_file="${WORK_DIR}/$filename.csv"
+  export_to_csv \
+  "k3l_channel_points_bal" \
+   "$csv_file" \
+   "\COPY (SELECT fid, channel_id, balance, latest_earnings,\
+    latest_score, latest_adj_score, insert_ts, update_ts\
+    FROM k3l_channel_points_bal)\
+    TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
+  /usr/bin/gzip -f $csv_file
+
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
 backup_openchannelrank_to_private_s3() {
   # TODO 
 }
@@ -398,6 +414,9 @@ case "$1" in
     upload_channel_rank_to_s3)
         upload_lifetime_channel_rank_to_public_s3
         backup_all_channel_rank_to_private_s3
+        ;;
+    backup_channel_points_bal)
+        backup_channel_points_bal_to_private_s3
         ;;
     insert_globaltrust_to_dune_v2)
         insert_globaltrust_to_dune_v2

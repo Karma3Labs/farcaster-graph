@@ -14,6 +14,7 @@ def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
         # csv can have extra columns for comments or other info 
         # ... but channel id should not be empty
         seeds_df = seeds_df.dropna(subset = ['channel id'])
+        seeds_df = seeds_df.drop_duplicates(subset=['channel id'], keep='last')
         seeds_df.rename(columns={"Seed Peers FIDs": "seed_peers"}, inplace=True)
         seeds_df = seeds_df[["channel id", "seed_peers"]]
         seeds_df["seed_peers"] = seeds_df["seed_peers"].astype(str)
@@ -51,6 +52,7 @@ def read_channel_ids_csv(csv_path:Path) -> list:
     try:
         channels_df = pd.read_csv(csv_path)
         channels_df = channels_df.dropna(subset = ['channel id'])
+        channels_df = channels_df.drop_duplicates(subset=['channel id'], keep='last')
         channels_df = channels_df[["channel id"]]
         channels_df['channel id'] = channels_df['channel id'].str.lower()
         channel_ids = channels_df["channel id"].values.tolist()

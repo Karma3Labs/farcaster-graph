@@ -93,7 +93,10 @@ def create_dag():
             COMMIT;"
             '''
         )
-
+        # OK to truncate 'k3l_channel_fids' because there are no dependencies
+        # .. except for 'k3l_channel_rank' materialized view which 
+        # .. does not get refreshed until the very end and only 
+        # .. after an additional sanity check
         sanitycheck_before_truncate >> truncate_ch_fids
 
     @task_group(group_id='compute_group')
@@ -152,7 +155,14 @@ def create_dag():
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
 
-        sanitycheck_before_refresh >> refresh_db
+        trigger_update_channel_points = TriggerDagRunOperator(
+            task_id="trigger_update_channel_points",
+            trigger_dag_id="update_channel_points",
+            conf={"trigger": "gen_channel_ranking_v3"},
+            wait_for_completion=True,
+        )
+
+        sanitycheck_before_refresh >> refresh_db >> trigger_update_channel_points
 
     @task_group(group_id='sync_data')
     def tg_sync():
