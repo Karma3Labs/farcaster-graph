@@ -39,12 +39,12 @@ with DAG(
 
     @task_group(group_id='openrank_compute_group')
     def tg_openrank_compute():
-        fetch_data = BashOperator(
+        fetch_domains = BashOperator(
             task_id = "fetch_domains",
             bash_command = (
                 "cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t fetch_domains"
-                "  -c channels/Top_Channels.csv -d channels/Channel_Domain.csv"
+                "  -s channels/Top_Channels.csv -d channels/Channel_Domain.csv"
             ),
             do_xcom_push = True,
         )
@@ -66,7 +66,7 @@ with DAG(
                 bash_command=(
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t gen_domain_files'
-                    ' -c channels/Top_Channels.csv -d channels/Channel_Domain.csv'
+                    ' -s channels/Top_Channels.csv -d channels/Channel_Domain.csv'
                     ' -o tmp/{{ run_id }} -p previous_compute_input/'
                     f' "{chunk_str}"'
                 ),
@@ -82,20 +82,35 @@ with DAG(
                 bash_command=(
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t process_domains'
-                    ' -c channels/Top_Channels.csv -d channels/Channel_Domain.csv -o tmp/{{ run_id }}'
+                    ' -d channels/Channel_Domain.csv -o tmp/{{ run_id }}'
                     f' "{chunk_str}"'
                 ),
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             process_task.execute({})
-            
-        extract_ids = extract_channel_ids(fetch_data.output)
+
+        @task(max_active_tis_per_dagrun=8)
+        def fetch_results_chunk(chunk: list):
+            chunk_str = ','.join(chunk)
+            results_task = BashOperator(
+                task_id=f'process_domains_chunk_{hash(chunk_str)}',
+                bash_command=(
+                    'cd /pipeline && ./run_channel_openrank.sh'
+                    ' -w . -v .venv -t fetch_results'
+                    ' -o tmp/{{ run_id }}'
+                    f' "{chunk_str}"'
+                ),
+                env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
+            )
+            results_task.execute({})
 
         # Create dynamic tasks
+        extract_ids = extract_channel_ids(fetch_domains.output)
         gen_file_tasks = gen_domain_files_chunk.expand(chunk=extract_ids)
         process_tasks = process_domains_chunk.expand(chunk=extract_ids)
+        results_tasks = fetch_results_chunk.expand(chunk=extract_ids)
 
-        fetch_data >> extract_ids >> gen_file_tasks >> process_tasks
+        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> results_tasks
     
     push_to_s3 = BashOperator(
         task_id='backup_openchannelrank_s3',
