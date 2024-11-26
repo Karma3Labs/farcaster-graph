@@ -20,7 +20,7 @@ default_args = {
 N_CHUNKS = 100  # Define the number of chunks
 
 with DAG(
-    dag_id='gen_globaltrust_v1',
+    dag_id='gen_channel_openrank',
     default_args=default_args,
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     start_date=datetime(2024, 8, 16),
