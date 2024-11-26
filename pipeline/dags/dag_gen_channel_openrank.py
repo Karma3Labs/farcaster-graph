@@ -111,7 +111,7 @@ with DAG(
         process_tasks = process_domains_chunk.expand(chunk=extract_ids)
         results_tasks = fetch_results_chunk.expand(chunk=extract_ids)
 
-        sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=datetime.timedelta(seconds=60))
+        sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=timedelta(seconds=60))
 
         fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> results_tasks
     
