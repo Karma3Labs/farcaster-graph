@@ -132,12 +132,16 @@ def write_openrank_files(
     lt_file = os.path.join(out_dir, lt_filename)
     logger.info(f"Saving localtrust for channel {cid} to {lt_file}")
     logger.info(f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}")
+    if len(localtrust_df) == 0:
+        localtrust_df = pd.DataFrame(columns=['i', 'j', 'v'])
     localtrust_df.to_csv(lt_file, index=False)
 
     pt_filename = _PT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
     pt_file = os.path.join(out_dir, pt_filename)
     logger.info(f"Saving pretrust for channel {cid} to {pt_file}")
     logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
+    if len(pretrust_df) == 0:
+        pretrust_df = pd.DataFrame(columns=['i', 'v'])
     pretrust_df.to_csv(pt_file, index=False)
 
     doc = toml.document()
