@@ -206,6 +206,13 @@ def append_delta_prev(
     logger.info(f"Localtrust entries to be 0'd: {merged_lt_df["v"].isna().sum()}")
     merged_lt_df = merged_lt_df.fillna(value={"v": 0.0})
 
+    if len(current_pt_df) == 0:
+        logger.warning(f"Current pretrust is empty for channel {cid} with domain {domain} and interval {interval}")
+        prev_pt_df['v'] = 0.0
+        return merged_lt_df, prev_pt_df
+    if len(prev_pt_df) == 0:
+        logger.warning(f"Previous pretrust is empty for channel {cid} with domain {domain} and interval {interval}")
+        return merged_lt_df, current_pt_df
     merged_pt_df = pd.merge(
         current_pt_df,
         prev_pt_df,
@@ -243,7 +250,10 @@ def gen_domain_files(
 
             localtrust_df, pretrust_fid_list, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
             logger.info(f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}")
-            logger.info(f"Pretrust: {random.choices(pretrust_fid_list, k=10)}")
+            if len(pretrust_fid_list) > 0:
+                logger.info(f"Pretrust sample: {random.choices(pretrust_fid_list, k=10)}")
+            else :
+                logger.warning(f"No pretrust for channel {cid} for interval {interval}")
 
             # Filter out entries where i == j
             localtrust_df = localtrust_df[localtrust_df['i'] != localtrust_df['j']]
