@@ -61,16 +61,15 @@ with DAG(
         @task(max_active_tis_per_dagrun=8)
         def gen_domain_files_chunk(chunk: list):
             chunk_str = ','.join(chunk)
-            out_dir = "tmp/{{ run_id }}"
             gen_files_task = BashOperator(
                 task_id=f'gen_domain_files_chunk_{hash(chunk_str)}',
-                bash_command=(
+                bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t gen_domain_files'
                     ' -s channels/Top_Channels.csv -d channels/Channel_Domain.csv'
-                    f' -o {out_dir} -p previous_compute_input/'
+                    ' -o tmp/{{ run_id }} -p previous_compute_input/'
                     f' "{chunk_str}"'
-                ),
+                ,
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             gen_files_task.execute({})
@@ -78,15 +77,14 @@ with DAG(
         @task(max_active_tis_per_dagrun=8)
         def process_domains_chunk(chunk: list):
             chunk_str = ','.join(chunk)
-            out_dir = "tmp/{{ run_id }}"
             process_task = BashOperator(
                 task_id=f'process_domains_chunk_{hash(chunk_str)}',
-                bash_command=(
+                bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t process_domains'
-                    f' -d channels/Channel_Domain.csv -o {out_dir}'
+                    ' -d channels/Channel_Domain.csv -o tmp/{{ run_id }}'
                     f' "{chunk_str}"'
-                ),
+                ,
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             process_task.execute({})
@@ -94,15 +92,14 @@ with DAG(
         @task(max_active_tis_per_dagrun=8)
         def fetch_results_chunk(chunk: list):
             chunk_str = ','.join(chunk)
-            out_dir = "tmp/{{ run_id }}"
             results_task = BashOperator(
                 task_id=f'process_domains_chunk_{hash(chunk_str)}',
-                bash_command=(
+                bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t fetch_results'
-                    f' -o {out_dir}'
+                    ' -o tmp/{{ run_id }}'
                     f' "{chunk_str}"'
-                ),
+                ,
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             results_task.execute({})
