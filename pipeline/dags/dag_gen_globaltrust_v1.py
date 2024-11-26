@@ -22,7 +22,7 @@ with DAG(
     description='This runs run_globaltrust_pipeline.sh without any optimization',
     start_date=datetime(2024, 8, 16),
     # schedule_interval='0 */6 * * *',
-    schedule_interval=timedelta(hours=6),
+    schedule_interval=timedelta(hours=12),
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
