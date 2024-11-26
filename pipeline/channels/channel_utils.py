@@ -31,10 +31,11 @@ def read_channel_domain_csv(csv_path:Path, channel_ids:list[str]=None) -> pd.Dat
         # csv can have extra columns for comments or other info 
         # ... but channel_id, interval_days and domain should not be empty
         domains_df = domains_df.dropna(subset = ['channel_id', 'interval_days', 'domain'])
+
         if any(domains_df['domain'].duplicated()):
-            raise Exception(f"Duplicate domains in {csv_path}")
-        if any(domains_df.duplicated(subset = ['channel_id', 'interval_days', 'domain'])):
-            raise Exception(f"Duplicate entries in {csv_path}")
+            raise Exception(f"Duplicate domains in {csv_path}: {domains_df[domains_df['domain'].duplicated()]}")
+        if any(domains_df['channel_id'].duplicated()):
+            raise Exception(f"Duplicate channels in {csv_path}: {domains_df[domains_df['channel_id'].duplicated()]}")
         domains_df = domains_df[['channel_id', 'interval_days', 'domain']]
         domains_df['channel_id'] = domains_df['channel_id'].str.lower()
         domains_df['interval_days'] = domains_df['interval_days'].astype(int)
