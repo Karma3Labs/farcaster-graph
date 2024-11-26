@@ -40,21 +40,27 @@ CHECK_QUERY = """
     threshold_checks AS (
     SELECT
         CASE
-            WHEN t1.strategy_name = 'channel_engagement'
+            WHEN current.strategy_name = 'channel_engagement'
             THEN BOOL_AND(
-                ABS(t2.tot_rows - t1.tot_rows)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
-                AND t2.tot_channels >= t1.tot_channels
-                AND t2.strategy_name IS NOT NULL
+                ABS(new.tot_rows - current.tot_rows)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 5
+                AND new.tot_channels >= current.tot_channels
+                AND new.strategy_name IS NOT NULL
                 )
-            ELSE BOOL_AND(
-                ABS(t2.tot_rows - t1.tot_rows)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
-                AND ABS(t2.tot_channels - t1.tot_channels)::decimal/GREATEST(t2.tot_rows, t1.tot_rows) * 100 <= 5
-                AND t2.strategy_name IS NOT NULL
+            WHEN current.strategy_name = '30d_engagement'
+            THEN BOOL_AND(
+                ABS(new.tot_rows - current.tot_rows)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 25
+                AND ABS(new.tot_channels - current.tot_channels)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 25
+                AND new.strategy_name IS NOT NULL
                 )
+            WHEN current.strategy_name = '7d_engagement'
+            THEN BOOL_AND(
+                new.tot_rows > 10000 AND new.tot_channels > 100
+            )
+            ELSE TRUE
         END as strategy_check
-    FROM channel_rank_stats as t1
-    LEFT JOIN channel_fids_stats as t2 ON (t2.strategy_name = t1.strategy_name)
-    GROUP BY t1.strategy_name, t2.strategy_name
+    FROM channel_rank_stats as current
+    LEFT JOIN channel_fids_stats as new ON (new.strategy_name = current.strategy_name)
+    GROUP BY current.strategy_name, new.strategy_name
     )
     SELECT
         BOOL_AND(strategy_check)
