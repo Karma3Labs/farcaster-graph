@@ -58,7 +58,7 @@ log() {
 }
 
 log "Starting script with parameters: WORK_DIR=${WORK_DIR},\
-  VENV=${VENV}, TASK=${TASK}, CSV_PATH=${CSV_PATH},\
+  VENV=${VENV}, TASK=${TASK}, SEED_CSV=${SEED_CSV},\
   CHANNEL_IDS=${CHANNEL_IDS}, DOMAIN_CSV=${DOMAIN_CSV},\
   OUT_DIR=${OUT_DIR}, PREV_DIR_OPTION=${PREV_DIR_OPTION}"
 
@@ -101,17 +101,17 @@ pip install -r requirements.txt
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch_domains" ]; then
-  python3 -m channels.main_openrank -c "$CSV_PATH" --domain_mapping "$DOMAIN_CSV" -t fetch_domains
+  python3 -m channels.main_openrank -s "$SEED_CSV" --domain_mapping "$DOMAIN_CSV" -t fetch_domains
   deactivate
 elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_openrank -c "$CSV_PATH" -t gen_domain_files \
-    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" --prevdir "$PREV_DIR_OPTION" \
+  python3 -m channels.main_openrank -s "$SEED_CSV" -t gen_domain_files \
+    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" $PREV_DIR_OPTION \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "process_domains" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_openrank -c "$CSV_PATH" -t process_domains \
+  python3 -m channels.main_openrank -t process_domains \
     --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
