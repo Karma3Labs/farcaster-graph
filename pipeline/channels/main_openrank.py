@@ -44,7 +44,7 @@ class Mode(Enum):
 
 _LT_FILENAME_FORMAT = "localtrust.{cid}.{interval}.{domain}.csv"
 _PT_FILENAME_FORMAT = "pretrust.{cid}.{interval}.{domain}.csv"
-_RANKING_FILENAME_FORMAT = "ranking.{cid}.{interval}.{domain}.csv"
+_RANKING_FILENAME_FORMAT = "ranking.{cid}.{interval}.{domain}.json"
 _TOML_FILENAME_FORMAT = "config.{cid}.{interval}.{domain}.toml"
 
 def fetch_results(
