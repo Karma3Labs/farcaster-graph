@@ -5,6 +5,7 @@ from airflow import DAG
 from airflow.decorators import task, task_group
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.operators.bash import BashOperator
+from airflow.sensors.time_delta import TimeDeltaSensor
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -110,12 +111,17 @@ with DAG(
         process_tasks = process_domains_chunk.expand(chunk=extract_ids)
         results_tasks = fetch_results_chunk.expand(chunk=extract_ids)
 
-        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> results_tasks
+        sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=datetime.timedelta(seconds=60))
+
+        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> results_tasks
     
-    push_to_s3 = BashOperator(
-        task_id='backup_openchannelrank_s3',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_openchannelrank_to_s3 tmp/{{ run_id }}"
-    )
+    # TODO insert into DB
+    # save_to_db = BashOperator(
+    #     task_id='save_to_db',
+    #     bash_command="cd /pipeline && ./run_channel_openrank.sh tmp/{{ run_id }}"
+    #                     " -w . -v .venv -t save_to_db"
+    #                     " -o tmp/{{ run_id }} -d channels/Channel_Domain.csv"
+    # )
 
     rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
@@ -126,6 +132,6 @@ with DAG(
     (
         mkdir_tmp
         >> tg_openrank_compute()
-        >> push_to_s3
+        # >> save_to_db
         >> rmdir_tmp
     )
