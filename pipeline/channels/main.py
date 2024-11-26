@@ -2,6 +2,9 @@
 import sys
 import argparse
 import random
+from enum import Enum
+from pathlib import Path
+import os
 
 # local dependencies
 import utils
@@ -9,12 +12,12 @@ import db_utils
 import go_eigentrust
 from config import settings
 from . import channel_utils
-from . import channel_queries
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
 import pandas as pd
+import tomlkit as toml
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -34,78 +37,18 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def process_channel(
+class Mode(Enum):
+    goserver = 'goserver'
+    openrank = 'openrank'
+
+
+def process_channel_goserver(
         cid: str,
-        channel_data: pd.DataFrame,
-        pg_dsn: str,
+        channel_lt_df: pd.DataFrame,
+        pretrust_fids: pd.DataFrame,
         pg_url: str,
         interval: int,
 ) -> dict:
-    host_fids: list = [int(fid) for fid in channel_data[channel_data["channel id"] == cid]["seed_fids_list"].values[0]]
-    try:
-        channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
-        if channel is None:
-            logger.error(f"Failed to fetch channel details for channel {cid}: skipping")
-            return {cid: []}
-        if len(host_fids) == 0:
-            lead_fid = channel['leadfid']
-            host_fids.append(lead_fid)
-            mod_fids = [int(fid) for fid in channel['moderatorfids']]
-            host_fids.extend(mod_fids)
-    except Exception as e:
-        logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
-        raise e
-
-    logger.info(f"Channel details: {channel}")
-    logger.info(f"Host fids: {set(host_fids)}")
-
-    utils.log_memusage(logger)
-    try:
-        channel_interactions_df = channel_queries.fetch_interactions_df(logger, pg_dsn, channel_url=channel['url'], interval=interval)
-        channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
-        logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
-        utils.log_memusage(logger)
-    except Exception as e:
-        logger.error(f"Failed to fetch channel interactions DataFrame: {e}")
-        raise e
-        # return {cid: []}
-
-    try:
-        fids = db_utils.fetch_channel_participants(pg_dsn=pg_dsn, channel_url=channel['url'])
-    except Exception as e:
-        logger.error(f"Failed to fetch channel participants for channel {cid}: {e}")
-        raise e
-        # return {cid: []}
-
-    logger.info(f"Number of channel followers: {len(fids)}")
-    if len(fids) > 5:
-        logger.info(f"Sample of channel followers: {random.sample(fids, 5)}")
-    else:
-        logger.info(f"All channel followers: {fids}")
-
-    fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
-
-    try:
-        # filter channel interactions by those following the channel
-        channel_lt_df = channel_interactions_df[channel_interactions_df['i'].isin(fids) & channel_interactions_df['j'].isin(fids)]
-        logger.info(f"Localtrust: {utils.df_info_to_string(channel_lt_df, with_sample=True)}")
-    except Exception as e:
-        logger.error(f"Failed to compute local trust for channel {cid}: {e}")
-        raise e
-
-    pretrust_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
-    absent_fids = set(host_fids) - set(channel_lt_df['i'].values)
-    logger.info(f"Absent Host Fids for the channel: {absent_fids}")
-    logger.info(f"Pretrust FIDs: {pretrust_fids}")
-
-    if len(channel_lt_df) == 0:
-        if interval > 0:
-            logger.info(f"No local trust for channel {cid} for interval {interval}")
-            return {cid: []}
-        else:
-            logger.error(f"No local trust for channel {cid} for lifetime engagement")
-            raise Exception(f"No local trust for channel {cid} for lifetime engagement")
-
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
@@ -141,24 +84,45 @@ def process_channel(
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
+    return 
 
-    return {cid: absent_fids}
 
-
-def process_channels(csv_path: str, channel_ids_str: str, interval: int):
+def process_channels(
+    channel_seeds_csv: Path,
+    channel_ids_str: str,
+    interval: int = 0,
+):
     # Setup connection pool for querying Warpcast API
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    channel_data = channel_utils.read_channel_seed_fids_csv(csv_path)
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_ids = channel_ids_str.split(',')
     missing_seed_fids = []
 
     for cid in channel_ids:
         try:
-            result = process_channel(cid, channel_data, pg_dsn, pg_url, interval)
-            missing_seed_fids.append(result)
+            channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
+
+            if len(channel_lt_df) == 0:
+                if interval > 0:
+                    logger.info(f"No local trust for channel {cid} for interval {interval}")
+                    return {cid: []}
+                else:
+                    logger.error(f"No local trust for channel {cid} for lifetime engagement")
+                    # this is unexpected because if a channel exists there must exist at least one ijv 
+                    raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+            # Future Feature: keep track and clean up seed fids that have had no engagement in channel
+            missing_seed_fids.append({cid: absent_fids})
+                
+            process_channel_goserver(
+                cid=cid,
+                channel_lt_df=channel_lt_df,
+                pretrust_fids=pretrust_fids,
+                pg_url=pg_url,
+                interval=interval,
+            )
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
             raise e
@@ -168,14 +132,35 @@ def process_channels(csv_path: str, channel_ids_str: str, interval: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--csv", type=str, help="path to the CSV file. For example, -c /path/to/file.csv",
-                        required=True)
-    parser.add_argument("-t", "--task", type=str, help="task to perform: fetch or process", required=True)
-    parser.add_argument("-ids", "--channel_ids", type=str,
-                        help="channel IDs for processing, only used for process task", required=False)
-    parser.add_argument("-int", "--interval", type=int,
-                        help="number of days to consider for processing, 0 means lifetime", required=False)
-    
+    parser.add_argument(
+        "-c",
+        "--csv",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
+        required=True,
+    )
+    parser.add_argument(
+        "-t",
+        "--task",
+        type=str,
+        help="task to perform: fetch or process",
+        required=True,
+    )
+    parser.add_argument(
+        "-ids",
+        "--channel_ids",
+        type=str,
+        help="channel IDs for processing, only used for process task",
+        required=False,
+    )
+    parser.add_argument(
+        "-int",
+        "--interval",
+        type=int,
+        help="number of days to consider for processing, 0 means lifetime",
+        required=False,
+    )
+
     args = parser.parse_args()
     print(args)
 
@@ -186,10 +171,14 @@ if __name__ == "__main__":
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
-        if hasattr(args, 'channel_ids') and hasattr(args, 'interval'):
-            process_channels(args.csv, args.channel_ids, args.interval)
-        else:
-            logger.error("Channel IDs and interval are required for processing.")
-            sys.exit(1)
+        if not hasattr(args, 'channel_ids') or not hasattr(args, 'interval'):
+                logger.error("Channel IDs  and Interval are required for processing.")
+                sys.exit(1)
+        process_channels(
+            channel_seeds_csv=args.csv,
+            channel_ids_str=args.channel_ids,
+            interval=args.interval,
+        )
     else:
         logger.error("Invalid task specified. Use 'fetch' or 'process'.")
+        sys.exit(1)

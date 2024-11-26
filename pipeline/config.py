@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
+    OPENRANK_REQ_ADDR:str = 'CHANGEME'
+    OPENRANK_REQ_SECRET_KEY:SecretStr = 'CHANGEME'
+    OPENRANK_URL:str = 'https://CHANGEME'
+    OPENRANK_TIMEOUT_SECS:int = 300
+    OPENRANK_REQ_IDS_FILENAME: str = 'request_ids.csv'
+
     FRAMES_NAP_SECS: int = 10
     FRAMES_SLEEP_SECS: int = 300
     FRAMES_BATCH_SIZE: int = 1_000

@@ -259,6 +259,9 @@ backup_channel_points_bal_to_private_s3() {
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
+backup_openchannelrank_to_private_s3() {
+  # TODO 
+}
 
 insert_globaltrust_to_dune_v2() {
   filename="k3l_cast_globaltrust_incremental"
@@ -404,6 +407,9 @@ case "$1" in
         ;;
     localtrust_v1)
         process_localtrust_v1 $2
+        ;;
+    upload_openchannelrank_to_s3)
+        backup_openchannelrank_to_private_s3 $2
         ;;
     upload_channel_rank_to_s3)
         upload_lifetime_channel_rank_to_public_s3

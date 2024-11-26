@@ -1,6 +1,6 @@
 #!/bin/bash
 
-while getopts w:i:v:t:c:n: flag
+while getopts w:i:v:t:c:n:d:o: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
@@ -90,6 +90,6 @@ elif [ "$TASK" = "refresh" ]; then
   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
     -c "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE;"
 else
-  echo "Invalid task specified. Use 'fetch' or 'process' or 'cleanup'."
+  echo "Invalid task specified. Use 'fetch' or 'process' or 'refresh'."
   exit 1
 fi
