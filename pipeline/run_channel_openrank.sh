@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PATH=$PATH:tmp/bin
+
 while getopts w:i:v:t:s:n:d:o:p: flag
 do
     case "${flag}" in
@@ -78,16 +80,18 @@ DB_PASSWORD=${DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
 set -e
 set -o pipefail
 
-if hash psql 2>/dev/null; then
+if command -v psql 2>/dev/null; then
   log "OK, you have psql in the path. We’ll use that."
   PSQL=psql
 else
   log "You don't have psql in the path. Let's try /usr/bin"
-  hash /usr/bin/psql
+  command -v /usr/bin/psql
   PSQL=/usr/bin/psql
 fi
 
-if ! hash openrank-sdk; then
+if command -v openrank-sdk 2>/dev/null; then
+  log "Found openrank-sdk in the path."
+else
   log "You don't have openrank-sdk installed."
   exit 1
 fi
