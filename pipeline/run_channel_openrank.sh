@@ -104,7 +104,7 @@ fi
 
 log "Activating virtual environment"
 source $VENV/bin/activate
-pip install -r requirements.txt
+# pip install -r requirements.txt
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch_domains" ]; then
@@ -123,10 +123,8 @@ elif [ "$TASK" = "process_domains" ]; then
     --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "fetch_results" ]; then
-  log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -t fetch_results \
-    --outdir "$OUT_DIR" \
-    --channel_ids "$CHANNEL_IDS"
+    --outdir "$OUT_DIR" 
   deactivate
 else
   echo "Invalid task specified. Use 'fetch' or 'process' or 'cleanup'."

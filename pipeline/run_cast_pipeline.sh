@@ -30,6 +30,6 @@ function log() {
 DAEMON=${DAEMON:-false}
 
 source $VENV/bin/activate
-pip install -r requirements.txt
+# pip install -r requirements.txt
 python3 -m casts.main -d $DAEMON
 deactivate

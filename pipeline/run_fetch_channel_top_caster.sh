@@ -42,7 +42,7 @@ function log() {
 
 log "Activating virtual environment"
 source $VENV/bin/activate
-pip install -r requirements.txt
+# pip install -r requirements.txt
 log "Executing task"
 python3 -m channels.main_fetch_channel_top_casters -c "$CSV_PATH"
 deactivate

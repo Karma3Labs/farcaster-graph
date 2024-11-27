@@ -40,7 +40,7 @@ function log() {
 mkdir -p $OUT_DIR
 
 source $VENV/bin/activate
-pip install -r requirements.txt
+#pip install -r requirements.txt
 python3 -m graph.gen_igraph -i $IN_FILE -o $OUT_DIR -p $OUT_PREFIX
 touch $OUT_DIR/${OUT_PREFIX}_SUCCESS
 deactivate

@@ -103,20 +103,20 @@ echo "Executing step: $STEP"
 if [ "$STEP" = "graph" ]; then
 
   source $VENV/bin/activate
-  pip install -r requirements.txt
+  #pip install -r requirements.txt
   python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR
   deactivate
 
 elif [ "$STEP" = "prep" ]; then
 
   source $VENV/bin/activate
-  pip install -r requirements.txt
+  #pip install -r requirements.txt
   python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION 
   deactivate
 
 elif [ "$STEP" = "compute_following" ]; then
   source $VENV/bin/activate
-  pip install -r requirements.txt
+  #pip install -r requirements.txt
 
   #### START Globaltrust for FOLLOWING strategy
   # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
@@ -139,7 +139,7 @@ elif [ "$STEP" = "compute_following" ]; then
 
 elif [ "$STEP" = "compute_engagement" ]; then
   source $VENV/bin/activate
-  pip install -r requirements.txt
+  #pip install -r requirements.txt
 
   #### START Globaltrust for ENGAGEMENT strategy
   # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
@@ -162,7 +162,7 @@ elif [ "$STEP" = "compute_engagement" ]; then
 
 elif [ "$STEP" = "compute_v3engagement" ]; then
   source $VENV/bin/activate
-  pip install -r requirements.txt
+  #pip install -r requirements.txt
 
   #### START Globaltrust for V3_ENGAGEMENT strategy
   # copy pretrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api

@@ -28,7 +28,7 @@ set -e
 set -o pipefail
 
 source $VENV/bin/activate
-pip install -r requirements.txt
+# pip install -r requirements.txt
 
 echo "Executing task: $TASK"
 if [ "$TASK" = "extract" ]; then

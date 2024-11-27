@@ -69,7 +69,7 @@ fi
 
 log "Activating virtual environment"
 source $VENV/bin/activate
-pip install -r requirements.txt
+# pip install -r requirements.txt
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch" ]; then
