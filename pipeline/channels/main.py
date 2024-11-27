@@ -4,7 +4,6 @@ import argparse
 import random
 from enum import Enum
 from pathlib import Path
-import os
 
 # local dependencies
 import utils
@@ -17,7 +16,6 @@ from . import channel_utils
 from dotenv import load_dotenv
 from loguru import logger
 import pandas as pd
-import tomlkit as toml
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
