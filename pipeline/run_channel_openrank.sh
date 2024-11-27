@@ -25,7 +25,7 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
   echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev_run/ openrank,music"
   echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev/ openrank,music"
   echo "         $0 -w . -v .venv -t process_domains -d channels/Channel_Domain.csv -o /tmp/ openrank,music"
-  echo "         $0 -w . -v .venv -t fetch_results -o /tmp/ openrank,music"
+  echo "         $0 -w . -v .venv -t fetch_results -o /tmp/ "
   echo ""
   echo "Params:"
   echo "  [work_dir] The working directory to read .env file and execute scripts from."

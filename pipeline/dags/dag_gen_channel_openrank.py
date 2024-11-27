@@ -114,14 +114,6 @@ with DAG(
         sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=timedelta(seconds=60))
 
         fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> results_tasks
-    
-    # TODO insert into DB
-    # save_to_db = BashOperator(
-    #     task_id='save_to_db',
-    #     bash_command="cd /pipeline && ./run_channel_openrank.sh tmp/{{ run_id }}"
-    #                     " -w . -v .venv -t save_to_db"
-    #                     " -o tmp/{{ run_id }} -d channels/Channel_Domain.csv"
-    # )
 
     rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
@@ -132,6 +124,5 @@ with DAG(
     (
         mkdir_tmp
         >> tg_openrank_compute()
-        # >> save_to_db
         >> rmdir_tmp
     )

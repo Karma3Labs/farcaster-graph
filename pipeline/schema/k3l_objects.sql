@@ -505,3 +505,40 @@ CREATE TABLE public.k3l_channel_points_allowlist (
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_allowlist TO k3l_readonly;
 -------------------------------------------------
+CREATE TABLE public.k3l_channel_openrank_req_ids (
+    req_id text NOT NULL,
+    channel_id text NOT NULL,
+    interval_days smallint NOT NULL, -- constrain datatype to auto-fail on bad data
+    domain int NOT NULL,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT openrank_runs_pkey PRIMARY KEY (req_id, channel_id)
+);
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_req_ids TO k3l_readonly;
+-------------------------------------------------
+CREATE TABLE public.k3l_channel_openrank_results (
+    fid bigint NOT NULL,
+    channel_id text NOT NULL,
+    req_id text NOT NULL,
+    score real NOT NULL,
+    rank bigint NOT NULL,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT k3l_channel_openrank_results_fkey 
+        FOREIGN KEY (req_id, channel_id) 
+            REFERENCES public.k3l_channel_openrank_req_ids(req_id, channel_id)
+)
+PARTITION BY RANGE (insert_ts);
+
+CREATE INDEX k3l_ch_or_results_ch_idx ON public.k3l_channel_openrank_results USING btree (channel_id);
+
+CREATE INDEX k3l_ch_or_results_fid_idx ON public.k3l_channel_openrank_results USING btree (fid);
+
+CREATE TABLE k3l_channel_openrank_results_y2024m11 PARTITION OF k3l_channel_openrank_results
+    FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
+CREATE TABLE k3l_channel_openrank_results_y2024m12 PARTITION OF k3l_channel_openrank_results
+    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+CREATE TABLE k3l_channel_openrank_results_y2025m01 PARTITION OF k3l_channel_openrank_results
+    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
+-------------------------------------------------

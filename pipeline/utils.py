@@ -11,12 +11,16 @@ from config import settings
 import psutil
 import pandas as pd
 
-def df_info_to_string(df: pd.DataFrame, with_sample:bool = False):
+def df_info_to_string(df: pd.DataFrame, with_sample:bool = False, head:bool = False):
   buf = io.StringIO()
   df.info(verbose=True, buf=buf, memory_usage="deep", show_counts=True)
   if with_sample and len(df) > 0:
-    buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
-    df.sample(min(10, len(df)-1)).to_csv(buf, index=False)
+    if head:
+      buf.write(f"{'-' *15}\n| Head:\n{'-' *15}\n")
+      df.head().to_csv(buf, index=False)
+    else:
+      buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
+      df.sample(min(10, len(df)-1)).to_csv(buf, index=False)
   return buf.getvalue()
 
 def log_memusage(logger:logging.Logger, prefix: str = ''):

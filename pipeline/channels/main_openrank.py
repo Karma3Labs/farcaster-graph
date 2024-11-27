@@ -10,6 +10,7 @@ import csv
 
 # local dependencies
 import utils
+import db_utils
 from config import settings
 from . import channel_utils
 from . import openrank_utils
@@ -48,18 +49,27 @@ _RANKING_FILENAME_FORMAT = "ranking.{cid}.{interval}.{domain}.json"
 _TOML_FILENAME_FORMAT = "config.{cid}.{interval}.{domain}.toml"
 
 def fetch_results(
-    channel_ids_list: list[str],
     out_dir: Path,
 ):
     file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
-    req_ids_df = pd.read_csv(file, header=None, names=['cid', 'interval_days', 'domain', 'req_id'])
+    pg_url = settings.POSTGRES_URL.get_secret_value()
+
+    req_ids_df = pd.read_csv(file, header=None, names=['channel_id', 'interval_days', 'domain', 'req_id'])
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=['domain'], keep='last')
 
+    try:
+        logger.info("Inserting openrank request ids into the database")
+        logger.info(utils.df_info_to_string(req_ids_df, with_sample=True))
+        # db_utils.df_insert_copy(pg_url=pg_url, df=req_ids_df, dest_tablename='k3l_channel_openrank_req_ids')
+    except Exception as e:
+        logger.error(f"Failed to insert data into the database for req_ids in  {file}: {e}")
+        raise e
+
     for _, row in req_ids_df.iterrows():
-        cid = row['cid']
+        cid = row['channel_id']
         interval = row['interval_days']
         domain = row['domain']
         req_id = row['req_id']
@@ -76,6 +86,22 @@ def fetch_results(
         
         openrank_utils.download_results(req_id, toml_file, out_dir, out_file)
 
+        scores_df = pd.read_json(out_file)
+        scores_df['channel_id'] = cid
+        scores_df['req_id'] = req_id
+        scores_df.rename(columns={'i': 'fid', 'value': 'score'}, inplace=True)
+        scores_df = scores_df.sort_values(['score'], ascending=[False])
+        scores_df = scores_df.reset_index(drop=True)
+        scores_df['rank'] = scores_df.index + 1
+        try:
+            logger.info(f"Inserting data into the database for channel {cid}")
+            logger.info(utils.df_info_to_string(scores_df, with_sample=True, head=True))
+            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename='k3l_channel_openrank_results')
+        except Exception as e:
+            logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
+            raise e
+    # end of for loop
+    return
 
 def process_domains(
     channel_ids_list: list[str],
@@ -237,8 +263,7 @@ def gen_domain_files(
     out_dir: Path,
     prev_dir: Path,
 ):
-    # Setup connection pool for querying Warpcast API
-
+    # DSN used with Pandas to SQL, and URL with direct SQL queries
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
@@ -352,6 +377,7 @@ if __name__ == "__main__":
 
     logger.debug('hello main')
 
+    # TODO replace this nested if-else with argparse groups
     if args.task == 'fetch_domains':
         if not hasattr(args, "domain_mapping"):
             logger.error("Domain mapping is required for fetch_domains task.")
@@ -361,49 +387,49 @@ if __name__ == "__main__":
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     else:
-        if (
-            not hasattr(args, "channel_ids")
-            or not hasattr(args, "outdir")
-        ):
-            logger.error("Channel IDs, and output directory"
-                            " are required.")
+        if not hasattr(args, "outdir"):
+            logger.error("Output directory is required.")
             sys.exit(1)
         
-        channel_ids_list = args.channel_ids.split(',')
-        if len(channel_ids_list) == 0:
-            logger.warning("No channel IDs specified.")
-            sys.exit(0)
-
-        if args.task == 'gen_domain_files':
-            if (
-                not hasattr(args, "seed")
-                or not hasattr(args, "prevdir")
-                or not hasattr(args, "domain_mapping")
-            ):
-                logger.error("Seed csv file, previous directory and domain mapping are required for gen_domain_files task.")
-                sys.exit(1)
-
-            gen_domain_files(
-                channel_seeds_csv=args.seed,
-                channel_ids_list=channel_ids_list,
-                channel_domains_csv=args.domain_mapping,
-                out_dir=args.outdir,
-                prev_dir=args.prevdir
-            )
-        elif args.task == 'process_domains':
-            if not hasattr(args, "domain_mapping"):
-                logger.error("Domain mapping is required for process_domains task.")
-                sys.exit(1)
-            process_domains(
-                channel_ids_list=channel_ids_list,
-                channel_domains_csv=args.domain_mapping,
-                out_dir=args.outdir
-            )
-        elif args.task == 'fetch_results':
+        if args.task == 'fetch_results':
             fetch_results(
-                channel_ids_list=channel_ids_list,
                 out_dir=args.outdir
             )
-        else:
-            logger.error("Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'.")
-            sys.exit(1)
+        else: 
+            if not hasattr(args, "channel_ids"):
+                logger.error("Channel IDs are required.")
+                sys.exit(1)
+
+            channel_ids_list = args.channel_ids.split(',')
+            if len(channel_ids_list) == 0:
+                logger.warning("No channel IDs specified.")
+                sys.exit(0)
+
+            if args.task == 'gen_domain_files':
+                if (
+                    not hasattr(args, "seed")
+                    or not hasattr(args, "prevdir")
+                    or not hasattr(args, "domain_mapping")
+                ):
+                    logger.error("Seed csv file, previous directory and domain mapping are required for gen_domain_files task.")
+                    sys.exit(1)
+
+                gen_domain_files(
+                    channel_seeds_csv=args.seed,
+                    channel_ids_list=channel_ids_list,
+                    channel_domains_csv=args.domain_mapping,
+                    out_dir=args.outdir,
+                    prev_dir=args.prevdir
+                )
+            elif args.task == 'process_domains':
+                if not hasattr(args, "domain_mapping"):
+                    logger.error("Domain mapping is required for process_domains task.")
+                    sys.exit(1)
+                process_domains(
+                    channel_ids_list=channel_ids_list,
+                    channel_domains_csv=args.domain_mapping,
+                    out_dir=args.outdir
+                )
+            else:
+                logger.error("Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'.")
+                sys.exit(1)
