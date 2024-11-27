@@ -3,7 +3,7 @@ import random
 
 import utils
 import db_utils
-import channel_db_utils
+from . import channel_db_utils
 from . import channel_queries
 
 from loguru import logger
