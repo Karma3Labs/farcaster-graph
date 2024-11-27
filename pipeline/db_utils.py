@@ -84,11 +84,16 @@ def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_st
             cursor.execute(update_sql)
 
 
-def df_insert_not_exists(pg_dsn: str, df: pd.DataFrame, dest_tablename: str, constraint: str):
+def df_insert_not_exists(
+    pg_dsn: str,
+    df: pd.DataFrame,
+    dest_tablename: str,
+    constraint: str,
+):
     # WARNING - this code does not account for 
     # .... single quotes or double quotes in dataframe column values
     query = f""" 
-        INSERT INTO {dest_tablename} VALUES 
+        INSERT INTO {dest_tablename}({','.join(df.columns)}) VALUES 
         {','.join([str(i) for i in list(df.to_records(index=False))])} 
         ON CONFLICT ON CONSTRAINT {constraint} DO NOTHING
     """
