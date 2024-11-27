@@ -51,6 +51,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__PARALLELISM: 64
     AIRFLOW__CORE__DAG_CONCURRENCY: 30
   volumes:
+    # TODO mount bin files for openrank-sdk 
+    # TODO mount data files for previous_compute_input of openrank
     - ./dags:/opt/airflow/dags:z
     - ./logs:/opt/airflow/logs:z
     - ./plugins:/opt/airflow/plugins:z
