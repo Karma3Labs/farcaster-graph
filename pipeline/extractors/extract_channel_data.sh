@@ -30,7 +30,7 @@ source $VENV/bin/activate
 
 # Install
 echo "Installing requirements"
-pip install -r requirements.txt
+#pip install -r requirements.txt
 
 # Run
 echo "Running channel data import"

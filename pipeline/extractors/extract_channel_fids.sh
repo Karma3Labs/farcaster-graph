@@ -41,7 +41,7 @@ source $VENV/bin/activate
 
 # Install
 echo "Installing requirements"
-pip install -r requirements.txt
+#pip install -r requirements.txt
 
 # Run
 echo "Running channel followers import with flags $CSV_FILE $SCOPE $JOB_TYPE $DAEMON_FLAG"
