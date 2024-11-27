@@ -90,30 +90,20 @@ with DAG(
             )
             process_task.execute({})
 
-        @task(max_active_tis_per_dagrun=8)
-        def fetch_results_chunk(chunk: list, run_id):
-            chunk_str = ','.join(chunk)
-            results_task = BashOperator(
-                task_id=f'process_domains_chunk_{hash(chunk_str)}',
-                bash_command=
-                    'cd /pipeline && ./run_channel_openrank.sh'
-                    ' -w . -v .venv -t fetch_results'
-                    f' -o tmp/{run_id}'
-                    f' "{chunk_str}"'
-                ,
-                env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
-            )
-            results_task.execute({})
-
         # Create dynamic tasks
         extract_ids = extract_channel_ids(fetch_domains.output)
         gen_file_tasks = gen_domain_files_chunk.expand(chunk=extract_ids)
         process_tasks = process_domains_chunk.expand(chunk=extract_ids)
-        results_tasks = fetch_results_chunk.expand(chunk=extract_ids)
 
         sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=timedelta(seconds=60))
 
-        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> results_tasks
+        fetch_results = BashOperator(
+            task_id = "fetch_results",
+            bash_command = "cd /pipeline && ./run_channel_openrank.sh"
+                " -w . -v .venv -t fetch_results -o tmp/{{ run_id }} ",
+        )
+
+        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> fetch_results
 
     rmdir_tmp =  BashOperator(
         task_id="rmdir_tmp",
