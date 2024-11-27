@@ -46,17 +46,11 @@ CHECK_QUERY = """
                 AND new.tot_channels >= current.tot_channels
                 AND new.strategy_name IS NOT NULL
                 )
-            WHEN current.strategy_name = '30d_engagement'
-            THEN BOOL_AND(
+            ELSE BOOL_AND(
                 ABS(new.tot_rows - current.tot_rows)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 25
                 AND ABS(new.tot_channels - current.tot_channels)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 25
                 AND new.strategy_name IS NOT NULL
                 )
-            WHEN current.strategy_name = '7d_engagement'
-            THEN BOOL_AND(
-                new.tot_rows > 10000 AND new.tot_channels > 100
-            )
-            ELSE TRUE
         END as strategy_check
     FROM channel_rank_stats as current
     LEFT JOIN channel_fids_stats as new ON (new.strategy_name = current.strategy_name)
@@ -88,6 +82,7 @@ def create_dag():
             sql=CHECK_QUERY,
             conn_id=_CONN_ID
         )
+        # sanitycheck_before_truncate = EmptyOperator(task_id='sanitycheck_before_truncate')
 
         truncate_ch_fids = BashOperator(
             task_id='truncate_ch_fids',
