@@ -45,24 +45,6 @@ def execute_query(pg_dsn: str, query: str):
             cursor.execute(query)
 
 
-def fetch_channel_casters(pg_dsn: str, channel_url: str) -> list[int]:
-    query_sql = f"""
-    SELECT
-      DISTINCT(fid)
-    FROM casts
-    WHERE root_parent_url = '{channel_url}'
-  """
-    if settings.IS_TEST:
-        query_sql = f"{query_sql} LIMIT 10"
-    logger.debug(f"{query_sql}")
-    with psycopg2.connect(pg_dsn) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query_sql)
-            records = cursor.fetchall()
-            fids = [row[0] for row in records]
-            return fids
-
-
 def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, **query_kwargs) -> pd.DataFrame:
     with Timer(name=query.name):
         sql_query = query.value.format(**query_kwargs)
@@ -101,6 +83,21 @@ def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_st
             logger.info(f"Executing: {update_sql}")
             cursor.execute(update_sql)
 
+
+def df_insert_not_exists(pg_dsn: str, df: pd.DataFrame, dest_tablename: str, constraint: str):
+    # WARNING - this code does not account for 
+    # .... single quotes or double quotes in dataframe column values
+    query = f""" 
+        INSERT INTO {dest_tablename} VALUES 
+        {','.join([str(i) for i in list(df.to_records(index=False))])} 
+        ON CONFLICT ON CONSTRAINT {constraint} DO NOTHING
+    """
+    logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")
+    with psycopg2.connect(pg_dsn) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.rowcount
+            logger.info(f"Inserted {rows} rows into table {dest_tablename}")
 
 def df_insert_copy(pg_url: str, df: pd.DataFrame, dest_tablename: str):
     logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")

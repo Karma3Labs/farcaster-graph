@@ -55,6 +55,7 @@ def fetch_results(
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
     pg_url = settings.POSTGRES_URL.get_secret_value()
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
 
     req_ids_df = pd.read_csv(file, header=None, names=['channel_id', 'interval_days', 'domain', 'req_id'])
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
@@ -62,10 +63,17 @@ def fetch_results(
 
     try:
         logger.info("Inserting openrank request ids into the database")
-        logger.info(utils.df_info_to_string(req_ids_df, with_sample=True))
-        # db_utils.df_insert_copy(pg_url=pg_url, df=req_ids_df, dest_tablename='k3l_channel_openrank_req_ids')
+        logger.info(utils.df_info_to_string(req_ids_df, with_sample=True, head=True))
+        db_utils.df_insert_not_exists(
+            pg_dsn=pg_dsn,
+            df=req_ids_df,
+            dest_tablename="k3l_channel_openrank_req_ids",
+            constraint="openrank_reqs_pkey",
+        )
     except Exception as e:
-        logger.error(f"Failed to insert data into the database for req_ids in  {file}: {e}")
+        logger.error(
+            f"Failed to insert data into the database for req_ids in  {file}: {e}"
+        )
         raise e
 
     for _, row in req_ids_df.iterrows():

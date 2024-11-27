@@ -3,6 +3,7 @@ import random
 
 import utils
 import db_utils
+import channel_db_utils
 from . import channel_queries
 
 from loguru import logger
@@ -97,7 +98,7 @@ def prep_trust_data(
         # return {cid: []}
 
     try:
-        fids = db_utils.fetch_channel_casters(pg_dsn=pg_dsn, channel_url=channel['url'])
+        fids = channel_db_utils.fetch_channel_casters(logger=logger, pg_dsn=pg_dsn, channel_url=channel['url'])
     except Exception as e:
         logger.error(f"Failed to fetch channel casters for channel {cid}: {e}")
         raise e

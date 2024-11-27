@@ -511,7 +511,7 @@ CREATE TABLE public.k3l_channel_openrank_req_ids (
     interval_days smallint NOT NULL, -- constrain datatype to auto-fail on bad data
     domain int NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT openrank_runs_pkey PRIMARY KEY (req_id, channel_id)
+    CONSTRAINT openrank_reqs_pkey PRIMARY KEY (req_id, channel_id)
 );
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_req_ids TO k3l_readonly;

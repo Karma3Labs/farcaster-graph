@@ -36,6 +36,23 @@ async def fetch_rows(
     return rows
 
 
+def fetch_channel_casters(logger: logging.Logger, pg_dsn: str, channel_url: str) -> list[int]:
+    query_sql = f"""
+    SELECT
+      DISTINCT(fid)
+    FROM casts
+    WHERE root_parent_url = '{channel_url}'
+    """
+    if settings.IS_TEST:
+        query_sql = f"{query_sql} LIMIT 10"
+    logger.debug(f"{query_sql}")
+    with psycopg2.connect(pg_dsn) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query_sql)
+            records = cursor.fetchall()
+            fids = [row[0] for row in records]
+            return fids
+
 @Timer(name="fetch_top_casters")
 async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str, url: str):
     pool = await asyncpg.create_pool(pg_dsn,
