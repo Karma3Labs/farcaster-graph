@@ -108,7 +108,7 @@ def process_channels(
             if len(channel_lt_df) == 0:
                 if interval > 0:
                     logger.info(f"No local trust for channel {cid} for interval {interval}")
-                    return {cid: []}
+                    continue
                 else:
                     logger.error(f"No local trust for channel {cid} for lifetime engagement")
                     # this is unexpected because if a channel exists there must exist at least one ijv 
