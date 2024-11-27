@@ -89,7 +89,7 @@ def fetch_results(
         scores_df = pd.read_json(out_file)
         scores_df['channel_id'] = cid
         scores_df['req_id'] = req_id
-        scores_df.rename(columns={'i': 'fid', 'value': 'score'}, inplace=True)
+        scores_df.rename(columns={'id': 'fid', 'value': 'score'}, inplace=True)
         scores_df = scores_df.sort_values(['score'], ascending=[False])
         scores_df = scores_df.reset_index(drop=True)
         scores_df['rank'] = scores_df.index + 1
