@@ -9,9 +9,16 @@ from loguru import logger
 from niquests import Session
 from niquests.adapters import HTTPAdapter
 from niquests.exceptions import RequestException
+from urllib3.util import Retry
 
 # Create a session with a connection pool
-session = Session()
+retries = Retry(
+    total=5,
+    backoff_factor=10, # retry in 10s, 20s, 40s, 80s, 160s
+    status_forcelist=[502, 503, 504],
+    allowed_methods={'GET'},
+)
+session = Session(retries=retries)
 adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
