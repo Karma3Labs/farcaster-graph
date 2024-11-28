@@ -19,7 +19,8 @@ default_args = {
 }
 
 N_CHUNKS = 100  # Define the number of chunks
-CHANNEL_DOMAIN_CSV = "Channel_Domain.test.csv"
+# NOTE: Refer to the 'k3l_channel_domains' table to get the category 
+CATEGORY = 'test'
 
 with DAG(
     dag_id='gen_channel_openrank',
@@ -46,7 +47,7 @@ with DAG(
             bash_command = (
                 "cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t fetch_domains"
-                f" -s channels/Top_Channels.csv -d channels/{CHANNEL_DOMAIN_CSV}"
+                f" -s channels/Top_Channels.csv -c {CATEGORY} "
             ),
             do_xcom_push = True,
         )
@@ -68,10 +69,9 @@ with DAG(
                 bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t gen_domain_files'
-                    f' -s channels/Top_Channels.csv -d channels/{CHANNEL_DOMAIN_CSV}'
+                    f' -s channels/Top_Channels.csv -c {CATEGORY}'
                     f' -o tmp/{run_id} -p previous_compute_input/'
-                    f' "{chunk_str}"'
-                ,
+                    f' "{chunk_str}"',
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             gen_files_task.execute({})
@@ -84,9 +84,8 @@ with DAG(
                 bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t process_domains'
-                    f' -d channels/{CHANNEL_DOMAIN_CSV} -o tmp/{run_id}'
-                    f' "{chunk_str}"'
-                ,
+                    f' -c {CATEGORY} -o tmp/{run_id}'
+                    f' "{chunk_str}"',
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
             )
             process_task.execute({})
@@ -101,7 +100,8 @@ with DAG(
         fetch_results = BashOperator(
             task_id = "fetch_results",
             bash_command = "cd /pipeline && ./run_channel_openrank.sh"
-                " -w . -v .venv -t fetch_results -o tmp/{{ run_id }} ",
+                f" -w . -v .venv -t fetch_results -c {CATEGORY}"
+                " -o tmp/{{ run_id }} ",
         )
 
         fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> sleep_task >> fetch_results
