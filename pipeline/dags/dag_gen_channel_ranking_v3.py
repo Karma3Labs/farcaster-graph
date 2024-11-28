@@ -163,7 +163,14 @@ def create_dag():
             wait_for_completion=True,
         )
 
-        sanitycheck_before_refresh >> refresh_db >> trigger_update_channel_points
+        trigger_openrank = TriggerDagRunOperator(
+            task_id="trigger_openrank",
+            trigger_dag_id="gen_channel_openrank",
+            conf={"trigger": "gen_channel_ranking_v3"},
+            wait_for_completion=False,
+        )
+
+        sanitycheck_before_refresh >> refresh_db >> trigger_update_channel_points >> trigger_openrank
 
     @task_group(group_id='sync_data')
     def tg_sync():
