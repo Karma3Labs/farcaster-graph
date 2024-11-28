@@ -62,6 +62,8 @@ def fetch_results(
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=['domain'], keep='last')
 
+    failed_computes = []
+
     for _, row in req_ids_df.iterrows():
         cid = row['channel_id']
         interval = row['interval_days']
@@ -79,7 +81,12 @@ def fetch_results(
         if os.path.exists(out_file):
             logger.warning(f"Output file {out_file} already exists. Overwriting")
         
-        openrank_utils.download_results(req_id, toml_file, out_dir, out_file)
+        try:
+            openrank_utils.download_results(req_id, toml_file, out_dir, out_file)
+        except Exception as e:
+            failed_computes.append((cid, interval, domain, req_id))
+            logger.error(f"Failed to download results for channel {cid}, interval {interval}, domain {domain}, req_id {req_id}: {e}")
+            continue
 
         scores_df = pd.read_json(out_file)
         scores_df['channel_domain_id'] = channel_domain_id
@@ -97,6 +104,10 @@ def fetch_results(
             logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
             raise e
     # end of for loop
+    if len(failed_computes) > 0:
+        logger.error(f"Failed to download results for {len(failed_computes)} channels")
+        logger.error(failed_computes)
+        raise Exception(f"Failed to download results for {len(failed_computes)} channels")
     return
 
 def process_domains(
