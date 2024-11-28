@@ -11,3 +11,6 @@ CHANNEL_RANKING_STRATEGY_NAMES = {
     ChannelRankingsTimeframe.SEVEN_DAYS: '7d_engagement',
 }
 
+class OpenrankCategory(str, Enum):
+    TEST = 'test'
+    PROD = 'prod'

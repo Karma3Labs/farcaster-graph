@@ -4,12 +4,29 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Path
 from loguru import logger
 from asyncpg.pool import Pool
 from ..models.score_model import ScoreAgg, Weights, Sorting_Order
-from ..models.channel_model import ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES
+from ..models.channel_model import (
+  ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES, OpenrankCategory
+)
 from ..dependencies import db_pool, db_utils
 from ..utils import fetch_channel
 
 router = APIRouter(tags=["Channel OpenRank Scores"])
 
+@router.get("/openrank/{channel}")
+async def get_top_openrank_channel_profiles(
+  channel: str,
+  category: OpenrankCategory = Query(OpenrankCategory.PROD),
+  offset: Annotated[int | None, Query()] = 0,
+  limit: Annotated[int | None, Query(le=1000)] = 100,
+  pool: Pool = Depends(db_pool.get_db)
+):
+  ranks = await db_utils.get_top_openrank_channel_profiles(
+        channel_id=channel,
+        category=category.value,
+        offset=offset,
+        limit=limit,
+        pool=pool)
+  return {"result": ranks}
 
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
