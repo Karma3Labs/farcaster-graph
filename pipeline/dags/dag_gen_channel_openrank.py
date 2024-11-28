@@ -19,6 +19,7 @@ default_args = {
 }
 
 N_CHUNKS = 100  # Define the number of chunks
+CHANNEL_DOMAIN_CSV = "Channel_Domain.test.csv"
 
 with DAG(
     dag_id='gen_channel_openrank',
@@ -45,7 +46,7 @@ with DAG(
             bash_command = (
                 "cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t fetch_domains"
-                "  -s channels/Top_Channels.csv -d channels/Channel_Domain.csv"
+                f" -s channels/Top_Channels.csv -d channels/{CHANNEL_DOMAIN_CSV}"
             ),
             do_xcom_push = True,
         )
@@ -67,7 +68,7 @@ with DAG(
                 bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t gen_domain_files'
-                    ' -s channels/Top_Channels.csv -d channels/Channel_Domain.csv'
+                    f' -s channels/Top_Channels.csv -d channels/{CHANNEL_DOMAIN_CSV}'
                     f' -o tmp/{run_id} -p previous_compute_input/'
                     f' "{chunk_str}"'
                 ,
@@ -83,7 +84,7 @@ with DAG(
                 bash_command=
                     'cd /pipeline && ./run_channel_openrank.sh'
                     ' -w . -v .venv -t process_domains'
-                    f' -d channels/Channel_Domain.csv -o tmp/{run_id}'
+                    f' -d channels/{CHANNEL_DOMAIN_CSV} -o tmp/{run_id}'
                     f' "{chunk_str}"'
                 ,
                 env={'PYTHONUNBUFFERED': '1'}  # Ensures real-time logging
