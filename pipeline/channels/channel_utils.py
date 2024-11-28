@@ -31,6 +31,11 @@ def read_channel_domain_csv(csv_path:Path, channel_ids:list[str]=None) -> pd.Dat
         domains_df = pd.read_csv(csv_path)
         # csv can have extra columns for comments or other info 
         # ... but channel_id, interval_days and domain should not be empty
+        if any(domains_df[['channel_id', 'interval_days', 'domain']].isnull().any()):
+            raise Exception(
+                f"Missing values in {csv_path}: "
+                f"{domains_df[domains_df[['channel_id', 'interval_days', 'domain']].isnull().any(axis=1)]}"
+            )
         domains_df = domains_df.dropna(subset = ['channel_id', 'interval_days', 'domain'])
 
         if any(domains_df['domain'].duplicated()):
