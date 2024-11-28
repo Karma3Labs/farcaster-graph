@@ -505,18 +505,22 @@ CREATE TABLE public.k3l_channel_points_allowlist (
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_allowlist TO k3l_readonly;
 -------------------------------------------------
-CREATE TABLE public.k3l_channel_openrank_req_ids (
-    req_id text NOT NULL,
+CREATE TABLE public.k3l_channel_domains (
+    id int GENERATED ALWAYS AS IDENTITY, 
     channel_id text NOT NULL,
     interval_days smallint NOT NULL, -- constrain datatype to auto-fail on bad data
     domain int NOT NULL,
+    category text NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT openrank_reqs_pkey PRIMARY KEY (req_id, channel_id)
+    CONSTRAINT openrank_reqs_pkey PRIMARY KEY (id),
+    UNIQUE (channel_id, category),
+    UNIQUE ( domain )
 );
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_req_ids TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_openrank_results (
+    channel_domain_id int NOT NULL,
     fid bigint NOT NULL,
     channel_id text NOT NULL,
     req_id text NOT NULL,
@@ -524,8 +528,8 @@ CREATE TABLE public.k3l_channel_openrank_results (
     rank bigint NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT k3l_channel_openrank_results_fkey 
-        FOREIGN KEY (req_id, channel_id) 
-            REFERENCES public.k3l_channel_openrank_req_ids(req_id, channel_id)
+        FOREIGN KEY (channel_domain_id) 
+            REFERENCES public.k3l_channel_domains(id)
 )
 PARTITION BY RANGE (insert_ts);
 

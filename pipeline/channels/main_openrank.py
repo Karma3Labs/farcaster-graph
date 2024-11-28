@@ -39,9 +39,9 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-class Mode(Enum):
-    goserver = 'goserver'
-    openrank = 'openrank'
+class Category(Enum):
+    test = 'test'
+    prod = 'prod'
 
 _LT_FILENAME_FORMAT = "localtrust.{cid}.{interval}.{domain}.csv"
 _PT_FILENAME_FORMAT = "pretrust.{cid}.{interval}.{domain}.csv"
@@ -50,37 +50,24 @@ _TOML_FILENAME_FORMAT = "config.{cid}.{interval}.{domain}.toml"
 
 def fetch_results(
     out_dir: Path,
+    domains_category: str,
 ):
     file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
     pg_url = settings.POSTGRES_URL.get_secret_value()
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    channel_domain_df = channel_utils.fetch_channel_domain_df(pg_url, domains_category)
 
     req_ids_df = pd.read_csv(file, header=None, names=['channel_id', 'interval_days', 'domain', 'req_id'])
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=['domain'], keep='last')
-
-    try:
-        logger.info("Inserting openrank request ids into the database")
-        logger.info(utils.df_info_to_string(req_ids_df, with_sample=True, head=True))
-        db_utils.df_insert_not_exists(
-            pg_dsn=pg_dsn,
-            df=req_ids_df,
-            dest_tablename="k3l_channel_openrank_req_ids",
-            constraint="openrank_reqs_pkey",
-        )
-    except Exception as e:
-        logger.error(
-            f"Failed to insert data into the database for req_ids in  {file}: {e}"
-        )
-        raise e
 
     for _, row in req_ids_df.iterrows():
         cid = row['channel_id']
         interval = row['interval_days']
         domain = row['domain']
         req_id = row['req_id']
+        channel_domain_id = channel_domain_df[channel_domain_df['channel_id'] == cid]['id'].values[0]
 
         toml_filename = _TOML_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
         toml_file = os.path.join(out_dir, toml_filename)
@@ -95,6 +82,7 @@ def fetch_results(
         openrank_utils.download_results(req_id, toml_file, out_dir, out_file)
 
         scores_df = pd.read_json(out_file)
+        scores_df['channel_domain_id'] = channel_domain_id
         scores_df['channel_id'] = cid
         scores_df['req_id'] = req_id
         scores_df.rename(columns={'id': 'fid', 'value': 'score'}, inplace=True)
@@ -113,15 +101,16 @@ def fetch_results(
 
 def process_domains(
     channel_ids_list: list[str],
-    channel_domains_csv: Path,
+    domains_category: str,
     out_dir: Path,
 ):
-    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv, channel_ids_list)
+    pg_url = settings.POSTGRES_URL.get_secret_value()
+    channel_domain_df = channel_utils.fetch_channel_domain_df(pg_url, domains_category, channel_ids_list)
     for cid in channel_ids_list:
         try:
             channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
             interval = channel['interval_days'].values[0]
-            domain = int(channel['domain'].values[0])
+            domain = channel['domain'].values[0]
 
             lt_filename = _LT_FILENAME_FORMAT.format(cid=cid, interval=interval, domain=domain)
             lt_file = os.path.join(out_dir, lt_filename)
@@ -267,7 +256,7 @@ def append_delta_prev(
 def gen_domain_files(
     channel_seeds_csv: Path,
     channel_ids_list: list[str],
-    channel_domains_csv: Path,
+    domains_category: str,
     out_dir: Path,
     prev_dir: Path,
 ):
@@ -276,13 +265,13 @@ def gen_domain_files(
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
-    channel_domain_df = channel_utils.read_channel_domain_csv(channel_domains_csv, channel_ids_list)
+    channel_domain_df = channel_utils.fetch_channel_domain_df(pg_url, domains_category, channel_ids_list)
     missing_seed_fids = []
 
     for cid in channel_ids_list:
         try:
             channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
-            interval = channel['interval_days'].values[0]
+            interval = int(channel['interval_days'].values[0])
             domain = int(channel['domain'].values[0])
 
             localtrust_df, pretrust_fid_list, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
@@ -353,11 +342,11 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "-d",
-        "--domain_mapping",
-        type=lambda f: Path(f).expanduser().resolve(),
-        help="path to the channel id - domain CSV file. For example, -c /path/to/file.csv",
-        required=False,
+        "-c",
+        "--category",
+        choices=list(Category),
+        type=Category,
+        required=True,
     )
     parser.add_argument(
         "-ids",
@@ -385,12 +374,11 @@ if __name__ == "__main__":
 
     logger.debug('hello main')
 
+    domains_category = args.category.value
     # TODO replace this nested if-else with argparse groups
     if args.task == 'fetch_domains':
-        if not hasattr(args, "domain_mapping"):
-            logger.error("Domain mapping is required for fetch_domains task.")
-            sys.exit(1)
-        df = channel_utils.read_channel_domain_csv(args.domain_mapping)
+        pg_url = settings.POSTGRES_URL.get_secret_value()
+        df = channel_utils.fetch_channel_domain_df(pg_url, domains_category)
         channel_ids = df["channel_id"].values.tolist()
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
@@ -401,7 +389,8 @@ if __name__ == "__main__":
         
         if args.task == 'fetch_results':
             fetch_results(
-                out_dir=args.outdir
+                out_dir=args.outdir,
+                domains_category=domains_category
             )
         else: 
             if not hasattr(args, "channel_ids"):
@@ -417,7 +406,6 @@ if __name__ == "__main__":
                 if (
                     not hasattr(args, "seed")
                     or not hasattr(args, "prevdir")
-                    or not hasattr(args, "domain_mapping")
                 ):
                     logger.error("Seed csv file, previous directory and domain mapping are required for gen_domain_files task.")
                     sys.exit(1)
@@ -425,17 +413,14 @@ if __name__ == "__main__":
                 gen_domain_files(
                     channel_seeds_csv=args.seed,
                     channel_ids_list=channel_ids_list,
-                    channel_domains_csv=args.domain_mapping,
+                    domains_category=domains_category,
                     out_dir=args.outdir,
                     prev_dir=args.prevdir
                 )
             elif args.task == 'process_domains':
-                if not hasattr(args, "domain_mapping"):
-                    logger.error("Domain mapping is required for process_domains task.")
-                    sys.exit(1)
                 process_domains(
                     channel_ids_list=channel_ids_list,
-                    channel_domains_csv=args.domain_mapping,
+                    domains_category=domains_category,
                     out_dir=args.outdir
                 )
             else:

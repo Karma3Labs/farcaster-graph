@@ -26,25 +26,11 @@ def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
         logger.error(f"Failed to read channel data from CSV: {e}")
         raise e
 
-def read_channel_domain_csv(csv_path:Path, channel_ids:list[str]=None) -> pd.DataFrame:
+def fetch_channel_domain_df(pg_url: str, category: str, channel_ids:list[str]=None) -> pd.DataFrame:    
     try:
-        domains_df = pd.read_csv(csv_path)
-        # csv can have extra columns for comments or other info 
-        # ... but channel_id, interval_days and domain should not be empty
-        if any(domains_df[['channel_id', 'interval_days', 'domain']].isnull().any()):
-            raise Exception(
-                f"Missing values in {csv_path}: "
-                f"{domains_df[domains_df[['channel_id', 'interval_days', 'domain']].isnull().any(axis=1)]}"
-            )
-        domains_df = domains_df.dropna(subset = ['channel_id', 'interval_days', 'domain'])
-
-        if any(domains_df['domain'].duplicated()):
-            raise Exception(f"Duplicate domains in {csv_path}: {domains_df[domains_df['domain'].duplicated()]}")
-        if any(domains_df['channel_id'].duplicated()):
-            raise Exception(f"Duplicate channels in {csv_path}: {domains_df[domains_df['channel_id'].duplicated()]}")
-        domains_df = domains_df[['channel_id', 'interval_days', 'domain']]
-        domains_df['channel_id'] = domains_df['channel_id'].str.lower()
-        domains_df['interval_days'] = domains_df['interval_days'].astype(int)
+        domains_df = db_utils.fetch_channel_domains_for_category(pg_url, category)
+        if len(domains_df) == 0:
+            raise Exception(f"No channel domains found for category {category}")
         if channel_ids:
             domains_df = domains_df[domains_df['channel_id'].isin(channel_ids)]
             missing_channels = set(channel_ids) - set(domains_df['channel_id'].values)
@@ -52,7 +38,7 @@ def read_channel_domain_csv(csv_path:Path, channel_ids:list[str]=None) -> pd.Dat
                 raise Exception(f"Missing channel domains for {missing_channels}")
         return domains_df
     except Exception as e:
-        logger.error(f"Failed to read channel data from CSV: {e}")
+        logger.error(f"Failed to read channel data from DB: {e}")
         raise e
 
 def read_channel_ids_csv(csv_path:Path) -> list:

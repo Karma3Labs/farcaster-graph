@@ -2,14 +2,14 @@
 
 PATH=$PATH:tmp/bin
 
-while getopts w:i:v:t:s:n:d:o:p: flag
+while getopts w:v:t:s:c:o:p: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
         t) TASK=${OPTARG};;
         s) SEED_CSV=${OPTARG};;
-        d) DOMAIN_CSV=${OPTARG};;
+        c) CATEGORY=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         p) PREV_DIR=${OPTARG};;
     esac
@@ -18,13 +18,13 @@ done
 shift $((OPTIND-1))
 CHANNEL_IDS="$1"
 
-if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [seed_csv] -d [domain_csv] -o [out_dir] -p [prev_dir] [channel_ids] "
+if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CATEGORY" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [seed_csv] -c [category] -o [out_dir] -p [prev_dir] [channel_ids] "
   echo ""
-  echo "Example: $0 -w . -v .venv -t fetch_domains -s channels/Top_Channels.csv -d channels/Channel_Domain.csv"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev_run/ openrank,music"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -d channels/Channel_Domain.csv -o /tmp/ -p /tmp/prev/ openrank,music"
-  echo "         $0 -w . -v .venv -t process_domains -d channels/Channel_Domain.csv -o /tmp/ openrank,music"
+  echo "Example: $0 -w . -v .venv -t fetch_domains -s channels/Top_Channels.csv -c test"
+  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/ -p /tmp/prev_run/ openrank,music"
+  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/ -p /tmp/prev/ openrank,music"
+  echo "         $0 -w . -v .venv -t process_domains -c test -o /tmp/ openrank,music"
   echo "         $0 -w . -v .venv -t fetch_results -o /tmp/ "
   echo ""
   echo "Params:"
@@ -32,7 +32,7 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
   echo "  [venv] The path where a python3 virtualenv has been created." 
   echo "  [task] The task to perform: fetch_domains or gen_domain_files."
   echo "  [seed_csv] The path to the Seed CSV file."
-  echo "  [domain_csv] The path to the CSV file with channel domain mapping."
+  echo "  [category] Choice of 'test' or 'prod'."
   echo "  [out_dir] The directory to write localtrust, pretrust and openrank configs to."
   echo "  [prev_dir] The directory to read localtrust and pretrust of the previous run."
   echo "  [channel_ids] Required parameter for gen_domain_files task indicating the channel IDs to process."
@@ -41,8 +41,8 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
 fi
 
 if [ "$TASK" = "gen_domain_files" ] || [ "$TASK" = "process_domains" ]; then
-  if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ] || [ -z "$DOMAIN_CSV" ]; then
-    echo "Please specify -d (domain_csv), -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
+  if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ]; then
+    echo "Please specify -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
     exit 1
   fi
 fi
@@ -64,7 +64,7 @@ log() {
 
 log "Starting script with parameters: WORK_DIR=${WORK_DIR},\
   VENV=${VENV}, TASK=${TASK}, SEED_CSV=${SEED_CSV},\
-  CHANNEL_IDS=${CHANNEL_IDS}, DOMAIN_CSV=${DOMAIN_CSV},\
+  CHANNEL_IDS=${CHANNEL_IDS}, CATEGORY=${CATEGORY},\
   OUT_DIR=${OUT_DIR}, PREV_DIR_OPTION=${PREV_DIR_OPTION}"
 
 source $WORK_DIR/.env
@@ -108,23 +108,23 @@ source $VENV/bin/activate
 
 log "Executing task: $TASK"
 if [ "$TASK" = "fetch_domains" ]; then
-  python3 -m channels.main_openrank -s "$SEED_CSV" --domain_mapping "$DOMAIN_CSV" -t fetch_domains
+  python3 -m channels.main_openrank -s "$SEED_CSV" --category "$CATEGORY" -t fetch_domains
   deactivate
 elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -s "$SEED_CSV" -t gen_domain_files \
-    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" $PREV_DIR_OPTION \
+    --category "$CATEGORY" --outdir "$OUT_DIR" $PREV_DIR_OPTION \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "process_domains" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -t process_domains \
-    --domain_mapping "$DOMAIN_CSV" --outdir "$OUT_DIR" \
+    --category "$CATEGORY" --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
 elif [ "$TASK" = "fetch_results" ]; then
   python3 -m channels.main_openrank -t fetch_results \
-    --outdir "$OUT_DIR" 
+    --category "$CATEGORY" --outdir "$OUT_DIR" 
   deactivate
 else
   echo "Invalid task specified. Use 'fetch' or 'process' or 'cleanup'."
