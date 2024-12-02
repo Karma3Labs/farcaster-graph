@@ -142,7 +142,7 @@ def update_points_balance(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     OLD_TBL = "k3l_channel_points_bal_old"
     LIVE_TBL = "k3l_channel_points_bal"
     NEW_TBL = "k3l_channel_points_bal_new"
-    STRATEGY = "7d_engagement"
+    STRATEGY = "1d_engagement"
     NUM_NTILES = 10
     CUTOFF_NTILE = 9
     TOTAL_POINTS = 10_000
