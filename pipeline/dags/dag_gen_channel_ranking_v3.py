@@ -136,11 +136,12 @@ def create_dag():
         extract_ids = extract_channel_ids(fetch_data.output)
 
         # Create dynamic tasks
+        process_1d_tasks = process_channel_chunk.partial(interval=1).expand(chunk=extract_ids)
         process_7d_tasks = process_channel_chunk.partial(interval=7).expand(chunk=extract_ids)
         process_60d_tasks = process_channel_chunk.partial(interval=60).expand(chunk=extract_ids)
         process_lifetime_tasks = process_channel_chunk.partial(interval=0).expand(chunk=extract_ids)
 
-        fetch_data >> extract_ids >> process_7d_tasks >> process_60d_tasks >> process_lifetime_tasks
+        fetch_data >> extract_ids >> process_1d_tasks >> process_7d_tasks >> process_60d_tasks >> process_lifetime_tasks
 
     @task_group(group_id='refesh_db')
     def tg_db():
