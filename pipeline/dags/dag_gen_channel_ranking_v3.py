@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+# from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.common.sql.operators.sql import SQLCheckOperator
@@ -44,6 +45,12 @@ CHECK_QUERY = """
             THEN BOOL_AND(
                 ABS(new.tot_rows - current.tot_rows)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 5
                 AND new.tot_channels >= current.tot_channels
+                AND new.strategy_name IS NOT NULL
+                )
+            WHEN current.strategy_name = '1d_engagement'
+            THEN BOOL_AND(
+                ABS(new.tot_rows - current.tot_rows)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 50
+                AND ABS(new.tot_channels - current.tot_channels)::decimal/GREATEST(new.tot_rows, current.tot_rows) * 100 <= 50
                 AND new.strategy_name IS NOT NULL
                 )
             ELSE BOOL_AND(
