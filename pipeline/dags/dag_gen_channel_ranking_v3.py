@@ -166,7 +166,7 @@ def create_dag():
 
         trigger_update_channel_points = TriggerDagRunOperator(
             task_id="trigger_update_channel_points",
-            trigger_dag_id="update_channel_points",
+            trigger_dag_id="update_channel_points_v2",
             conf={"trigger": "gen_channel_ranking_v3"},
             wait_for_completion=True,
         )
