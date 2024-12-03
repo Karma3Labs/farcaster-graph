@@ -15,7 +15,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='update_channel_points',
+    dag_id='update_channel_points_v2',
     default_args=default_args,
     description='update channel points triggered by gen_channel_ranking',
     start_date=datetime(2024, 7, 10, 18),
