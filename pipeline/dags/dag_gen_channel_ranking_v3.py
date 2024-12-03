@@ -164,12 +164,12 @@ def create_dag():
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
 
-        trigger_update_channel_points = TriggerDagRunOperator(
-            task_id="trigger_update_channel_points",
-            trigger_dag_id="update_channel_points_v2",
-            conf={"trigger": "gen_channel_ranking_v3"},
-            wait_for_completion=True,
-        )
+        # trigger_update_channel_points = TriggerDagRunOperator(
+        #     task_id="trigger_update_channel_points",
+        #     trigger_dag_id="update_channel_points_v2",
+        #     conf={"trigger": "gen_channel_ranking_v3"},
+        #     wait_for_completion=True,
+        # )
 
         trigger_openrank = TriggerDagRunOperator(
             task_id="trigger_openrank",
@@ -178,7 +178,8 @@ def create_dag():
             wait_for_completion=False,
         )
 
-        sanitycheck_before_refresh >> refresh_db >> trigger_update_channel_points >> trigger_openrank
+        # sanitycheck_before_refresh >> refresh_db >> trigger_update_channel_points >> trigger_openrank
+        sanitycheck_before_refresh >> refresh_db  >> trigger_openrank
 
     @task_group(group_id='sync_data')
     def tg_sync():
