@@ -304,9 +304,11 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                 INNER JOIN warpcast_channels_data as channels -- to be able to join with channel rank
                     ON (channels.url=casts.root_parent_url)
                 INNER JOIN k3l_channel_rank as fids -- to get fid scores in a channel
-                ON (fids.fid = ci.fid 
-                    AND fids.channel_id = channels.id
-                    AND fids.strategy_name = '{STRATEGY}')
+                    ON (fids.fid = ci.fid 
+                        AND fids.channel_id = channels.id
+                        AND fids.strategy_name = '{STRATEGY}')
+                INNER JOIN k3l_channel_points_allowlist as allo
+                    ON (allo.channel_id = channels.id)
                 WHERE 
                         casts.timestamp BETWEEN now() - interval '{INTERVAL}' AND now()
                 GROUP BY casts.hash, ci.fid, channels.id

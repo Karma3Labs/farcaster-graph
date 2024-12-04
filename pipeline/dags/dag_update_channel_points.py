@@ -19,7 +19,7 @@ with DAG(
     default_args=default_args,
     description='update channel points triggered by gen_channel_ranking',
     start_date=datetime(2024, 7, 10, 18),
-    schedule_interval='0 20 * * *', # every day at 20:00 UTC / 12:00 PST
+    schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST
     # schedule=None,
     # schedule_interval=timedelta(days=1),
     is_paused_upon_creation=True,
