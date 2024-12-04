@@ -398,6 +398,89 @@ async def get_top_openrank_channel_profiles(
     """
     return await fetch_rows(channel_id, category, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_top_channel_balances(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        lite: bool,
+        pool: Pool
+):
+    if lite:
+        sql_query = """
+        SELECT
+            bal.fid,
+            bal.balance as balance, 
+            CASE 
+                WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                ELSE bal.latest_earnings
+            END as daily_earnings,
+            bal.latest_earnings as latest_earnings,
+            bal.update_ts as bal_update_ts
+        FROM k3l_channel_points_bal as bal
+        INNER JOIN k3l_channel_points_allowlist as allo 
+            ON (allo.channel_id=bal.channel_id AND allo.is_allowed=true AND allo.channel_id=$1)
+        ORDER BY bal.balance DESC
+        OFFSET $2
+        LIMIT $3
+        """
+    else:
+        sql_query = """
+        WITH addresses as (
+            SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
+            FROM fids
+            UNION ALL
+            SELECT v.claim->>'address' as address, fid
+            FROM verifications v
+        ),
+        top_records as (
+            SELECT
+                bal.fid,
+                fnames.fname as fname,
+                case when user_data.type = 6 then user_data.value end as username,
+                case when user_data.type = 1 then user_data.value end as pfp,
+                case when user_data.type = 3 then user_data.value end as bio,
+                bal.balance as balance, 
+                CASE 
+                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                    ELSE bal.latest_earnings
+                END as daily_earnings,
+                bal.latest_earnings as latest_earnings,
+                bal.update_ts as bal_update_ts
+            FROM k3l_channel_points_bal as bal
+            INNER JOIN k3l_channel_points_allowlist as allo 
+                on (allo.channel_id=bal.channel_id and allo.is_allowed=true)
+            LEFT JOIN fnames on (fnames.fid = bal.fid)
+            LEFT JOIN user_data on (user_data.fid = bal.fid)
+            WHERE
+                bal.channel_id = $1
+            ORDER BY balance DESC
+        ),
+        mapped_records as (
+            SELECT top_records.*,addresses.address
+            FROM top_records
+            LEFT JOIN addresses using (fid)
+        )
+        SELECT 
+            fid,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(pfp) as pfp,
+            any_value(bio) as bio,
+            ARRAY_AGG(DISTINCT address) as addresses,
+            any_value(balance) as balance,
+            any_value(daily_earnings) as daily_earnings,
+            any_value(latest_earnings) as latest_earnings,
+            any_value(bal_update_ts) as bal_update_ts
+        FROM mapped_records
+        GROUP BY fid
+        ORDER by balance DESC
+        OFFSET $2
+        LIMIT $3
+        """
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
 async def get_top_channel_profiles(
         channel_id: str,
         strategy_name: str,

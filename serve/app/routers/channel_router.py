@@ -28,6 +28,22 @@ async def get_top_openrank_channel_profiles(
         pool=pool)
   return {"result": ranks}
 
+@router.get("/points/{channel}")
+async def get_top_channel_balances(
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=1000)] = 100,
+        lite: bool = True,
+        pool: Pool = Depends(db_pool.get_db)
+):
+  balances = await db_utils.get_top_channel_balances(
+        channel_id=channel,
+        offset=offset,
+        limit=limit,
+        lite=lite,
+        pool=pool)
+  return {"result": balances}
+
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
         channel: str,
