@@ -527,6 +527,11 @@ async def get_top_channel_profiles(
                 score,
                 ((total.total - (rank - 1))*100 / total.total) as percentile,
                 bal.balance as balance, 
+                CASE 
+                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                    ELSE bal.latest_earnings
+                END as daily_earnings,
                 bal.latest_earnings as latest_earnings,
                 bal.update_ts as bal_update_ts
             FROM k3l_channel_rank as ch
@@ -559,6 +564,7 @@ async def get_top_channel_profiles(
             any_value(score) as score,
             ARRAY_AGG(DISTINCT address) as addresses,
             any_value(balance) as balance,
+            any_value(daily_earnings) as daily_earnings,
             any_value(latest_earnings) as latest_earnings,
             any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
@@ -660,6 +666,11 @@ async def get_channel_profile_ranks(
                 score,
                 ((total.total - (rank - 1))*100 / total.total) as percentile,
                 bal.balance as balance, 
+                CASE 
+                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                    ELSE bal.latest_earnings
+                END as daily_earnings,
                 bal.latest_earnings as latest_earnings,
                 bal.update_ts as bal_update_ts
             FROM k3l_channel_rank as ch
@@ -693,6 +704,7 @@ async def get_channel_profile_ranks(
             any_value(percentile) as percentile,
             ARRAY_AGG(DISTINCT address) as addresses,
             any_value(balance) as balance,
+            any_value(daily_earnings) as daily_earnings,
             any_value(latest_earnings) as latest_earnings,
             any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
