@@ -2,7 +2,9 @@ import time
 import json
 
 from ..config import settings
-from ..models.score_model import ScoreAgg, Weights, Voting
+from app.models.score_model import ScoreAgg, Weights, Voting
+from app.models.channel_model import ChannelPointsOrderBy
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
@@ -403,10 +405,16 @@ async def get_top_channel_balances(
         offset: int,
         limit: int,
         lite: bool,
+        orderby: ChannelPointsOrderBy,
         pool: Pool
 ):
+    orderby_clause = "ORDER BY balance DESC"
+    if orderby == ChannelPointsOrderBy.DAILY_POINTS:    
+        orderby_clause = "ORDER BY daily_earnings DESC" 
+
+
     if lite:
-        sql_query = """
+        sql_query = f"""
         SELECT
             bal.fid,
             bal.balance as balance, 
@@ -420,12 +428,12 @@ async def get_top_channel_balances(
         FROM k3l_channel_points_bal as bal
         INNER JOIN k3l_channel_points_allowlist as allo 
             ON (allo.channel_id=bal.channel_id AND allo.is_allowed=true AND allo.channel_id=$1)
-        ORDER BY bal.balance DESC
+        {orderby_clause}
         OFFSET $2
         LIMIT $3
         """
     else:
-        sql_query = """
+        sql_query = f"""
         WITH addresses as (
             SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
             FROM fids
@@ -455,7 +463,7 @@ async def get_top_channel_balances(
             LEFT JOIN user_data on (user_data.fid = bal.fid)
             WHERE
                 bal.channel_id = $1
-            ORDER BY balance DESC
+            {orderby_clause}
         ),
         mapped_records as (
             SELECT top_records.*,addresses.address
@@ -475,7 +483,7 @@ async def get_top_channel_balances(
             any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
         GROUP BY fid
-        ORDER by balance DESC
+        {orderby_clause}
         OFFSET $2
         LIMIT $3
         """

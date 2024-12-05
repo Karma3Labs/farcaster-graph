@@ -16,3 +16,7 @@ CHANNEL_RANKING_STRATEGY_NAMES = {
 class OpenrankCategory(str, Enum):
     TEST = 'test'
     PROD = 'prod'
+
+class ChannelPointsOrderBy(str, Enum):
+    TOTAL_POINTS = 'total_points'
+    DAILY_POINTS = 'daily_points'
