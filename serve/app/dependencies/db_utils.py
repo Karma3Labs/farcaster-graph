@@ -506,9 +506,8 @@ async def get_top_channel_profiles(
         WHERE
             channel_id = $1
             AND strategy_name = $2
+            AND rank > $3 AND rank <= ($3 + $4)
         ORDER BY rank ASC
-        OFFSET $3
-        LIMIT $4
         """
     else:
         sql_query = """
@@ -555,6 +554,7 @@ async def get_top_channel_profiles(
                 ch.channel_id = $1
                 AND
                 ch.strategy_name=$2
+                AND rank > $3 AND rank <= ($3 + $4)
             ORDER BY rank ASC
         ),
         mapped_records as (
@@ -577,9 +577,7 @@ async def get_top_channel_profiles(
             any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
         GROUP BY fid
-        ORDER by rank
-        OFFSET $3
-        LIMIT $4
+        ORDER by rank ASC
         """
     return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
