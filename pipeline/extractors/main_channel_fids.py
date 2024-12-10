@@ -100,6 +100,10 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                                 )
                             )
                         channel_followers = await asyncio.gather(*tasks, return_exceptions=True)
+                        exceptions = [t for t in channel_followers if isinstance(t, Exception)]
+                        if len(exceptions) > 0: 
+                            logger.error(f"Error processing channels: {exceptions}")
+                            raise Exception("Error processing channels")
                         logger.info(f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{len(channel_followers)} channels processed")
 
             if daemon:
