@@ -11,6 +11,7 @@ from config import settings
 from extractors.channel_extractor_utils import (
     fetch_all_channels_warpcast,
     process_channel,
+    cleanup_db,
     JobType
 )
 from timer import Timer
@@ -43,7 +44,7 @@ class Scope(Enum):
   top = 'top'
   all = 'all'
 
-async def main(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
+async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
     while True:
         try:
 
@@ -112,25 +113,25 @@ async def main(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 await db_pool.close()
     # end while loop
 
+def cleanup(job_type: JobType):
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    sql_timeout_secs = 180_000
+    cleanup_db(pg_dsn, sql_timeout_secs, job_type)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-c",
-        "--csv",
-        type=lambda f: Path(f).expanduser().resolve(),
-        help="path to the CSV file. For example, -c /path/to/file.csv",
+
+    subparsers = parser.add_subparsers(
+        dest="subcommand", 
+        title="subcommands", 
+        help="fetch or cleanup",
         required=True,
     )
-    parser.add_argument(
-        "-s",
-        "--scope",
-        help="top or all",
-        required=True,
-        choices=list(Scope),
-        type=Scope,
-    )
-    parser.add_argument(
+
+    fetch_parser = subparsers.add_parser("fetch", help="fetch data from warpcast")
+    cleanup_parser = subparsers.add_parser("cleanup", help="cleanup old data from db")
+
+    fetch_parser.add_argument(
         "-j",
         "--job_type",
         help="followers or members",
@@ -138,16 +139,43 @@ if __name__ == "__main__":
         choices=list(JobType),
         type=JobType.from_string,
     )
-    parser.add_argument(
+    fetch_parser.add_argument(
+        "-c",
+        "--csv",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
+        required=True,
+    )
+    fetch_parser.add_argument(
+        "-s",
+        "--scope",
+        help="top or all",
+        required=True,
+        choices=list(Scope),
+        type=Scope,
+    )
+    fetch_parser.add_argument(
         "-d",
         "--daemon",
         help="set or not",
         default=False,
         action="store_true"
     )
-
+    cleanup_parser.add_argument(
+        "-j",
+        "--job_type",
+        help="followers or members",
+        required=True,
+        choices=list(JobType),
+        type=JobType.from_string,
+    )
     args = parser.parse_args()
     print(args)
 
     logger.info("hello hello")
-    asyncio.run(main(args.daemon, args.scope, args.job_type, args.csv))
+    if args.subcommand == "cleanup":
+        cleanup(args.job_type)
+    elif args.subcommand == "fetch":
+        asyncio.run(fetch(args.daemon, args.scope, args.job_type, args.csv))
+    else: 
+        parser.print_help()

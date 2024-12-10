@@ -23,11 +23,18 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-    task1 = BashOperator(
-        task_id='extract_warpcast_members',
-        bash_command="cd /pipeline; extractors/extract_channel_fids.sh" 
+    fetch_task = BashOperator(
+        task_id='fetch_warpcast_members',
+        bash_command="cd /pipeline; extractors/extract_channel_fids.sh -t fetch" 
                         " -w . -v .venv -c channels/Top_Channels.csv -s top -j members",
         dag=dag
     )
 
-    task1
+    cleanup_task = BashOperator(
+        task_id='cleanup_warpcast_members',
+        bash_command="cd /pipeline; extractors/extract_channel_fids.sh -t cleanup" 
+                        " -w . -v .venv -j members",
+        dag=dag
+    )
+
+    fetch_task >> cleanup_task

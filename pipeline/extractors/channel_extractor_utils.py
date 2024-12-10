@@ -4,6 +4,7 @@ import time
 import asyncio
 from typing import Any
 import datetime
+import psycopg2
 
 from config import settings
 
@@ -158,3 +159,37 @@ async def insert_db(
                     logger.error(f"{e}")
                     raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs to insert {len(rows)} rows")
+
+def cleanup_db(
+        pg_dsn: str, 
+        timeout_ms: int,
+        job_type: JobType,
+):
+    table_name = job_type.value[1]
+    logger.info(f"Deleting previous rows for table '{table_name}'")
+    start_time = time.perf_counter()
+    delete_sql = f"""
+        WITH latest AS (
+        SELECT max(insert_ts) as max_ts, channel_id
+        FROM {table_name}
+        GROUP BY channel_id
+        )
+        DELETE FROM {table_name}
+        USING {table_name} AS tbl 
+        LEFT JOIN latest 
+            ON (latest.channel_id = tbl.channel_id AND latest.max_ts = tbl.insert_ts)
+        WHERE latest.channel_id IS NULL
+    """
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {delete_sql}")
+                cursor.execute(delete_sql)
+                logger.info(f"Deleted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
