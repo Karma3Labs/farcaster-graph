@@ -11,7 +11,8 @@ from config import settings
 from extractors.channel_extractor_utils import (
     fetch_all_channels_warpcast,
     process_channel,
-    cleanup_db,
+    backup_cleanup_db,
+    prepare_db,
     JobType
 )
 from timer import Timer
@@ -115,8 +116,13 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
 
 def cleanup(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    sql_timeout_secs = 180_000
-    cleanup_db(pg_dsn, sql_timeout_secs, job_type)
+    sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
+    backup_cleanup_db(pg_dsn, sql_timeout_milliseconds, job_type)
+
+def prepare(job_type: JobType):
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
+    prepare_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -128,6 +134,7 @@ if __name__ == "__main__":
         required=True,
     )
 
+    prep_parser = subparsers.add_parser("prep", help="prepare db")
     fetch_parser = subparsers.add_parser("fetch", help="fetch data from warpcast")
     cleanup_parser = subparsers.add_parser("cleanup", help="cleanup old data from db")
 
@@ -169,11 +176,21 @@ if __name__ == "__main__":
         choices=list(JobType),
         type=JobType.from_string,
     )
+    prep_parser.add_argument(
+        "-j",
+        "--job_type",
+        help="followers or members",
+        required=True,
+        choices=list(JobType),
+        type=JobType.from_string,
+    )
     args = parser.parse_args()
     print(args)
 
     logger.info("hello hello")
-    if args.subcommand == "cleanup":
+    if args.subcommand == "prep":
+        prepare(args.job_type)
+    elif args.subcommand == "cleanup":
         cleanup(args.job_type)
     elif args.subcommand == "fetch":
         asyncio.run(fetch(args.daemon, args.scope, args.job_type, args.csv))

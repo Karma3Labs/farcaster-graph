@@ -13,8 +13,16 @@ import aiohttp
 from asyncpg.pool import Pool
 
 class JobType(Enum):
-    followers = ('https://api.warpcast.com/v1/channel-followers','warpcast_followers')
-    members = ('https://api.warpcast.com/fc/channel-members','warpcast_members')
+    followers = {
+        "url": 'https://api.warpcast.com/v1/channel-followers',
+        "live_table": 'warpcast_followers',
+        "columns": ["fid", "followedat", "insert_ts", "channel_id"]
+    }
+    members = {
+        "url": 'https://api.warpcast.com/fc/channel-members',
+        "live_table": 'warpcast_members',
+        "columns": ["fid", "memberat", "insert_ts", "channel_id"]
+    }
 
     def __str__(self):
         return self.name
@@ -51,7 +59,7 @@ async def fetch_channel_fids(
 ) -> list[Any]:
     logger.info(f"Fetching {job_type} for channel '{channel_id}':")
     start_time = time.perf_counter()
-    url = f'{job_type.value[0]}?channelId={channel_id}'
+    url = f'{job_type.value['url']}?channelId={channel_id}'
     logger.info(url)
     all_fids = []
 
@@ -133,13 +141,9 @@ async def insert_db(
         channel_id: str,
 ):
     logger.info(f"Inserting {len(rows)} rows for channel '{channel_id}'")
-    table_name = job_type.value[1]
-    column_names = (
-        ["fid", "followedat", "insert_ts", "channel_id"] if job_type == JobType.followers
-        else ["fid", "memberat", "insert_ts", "channel_id"] if job_type == JobType.members
-        else []
-    )
-    logger.info(f"Inserting {len(rows)} rows for channel '{channel_id}' into {table_name} with columns {column_names}")
+    NEW_TBL = f"{job_type.value['live_table']}_new"
+    column_names = job_type.value['columns']
+    logger.info(f"Inserting {len(rows)} rows for channel '{channel_id}' into {NEW_TBL} with columns {column_names}")
     start_time = time.perf_counter()
 
     async with db_pool.acquire() as connection:
@@ -147,7 +151,7 @@ async def insert_db(
             with connection.query_logger(logger.trace):
                 try:
                     await connection.copy_records_to_table(
-                        table_name,
+                        NEW_TBL,
                         records=rows,
                         columns=column_names,
                         timeout=settings.POSTGRES_TIMEOUT_SECS,
@@ -160,35 +164,57 @@ async def insert_db(
                     raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs to insert {len(rows)} rows")
 
-def cleanup_db(
+def prepare_db(
         pg_dsn: str, 
         timeout_ms: int,
         job_type: JobType,
 ):
-    table_name = job_type.value[1]
-    logger.info(f"Deleting previous rows for table '{table_name}'")
+    LIVE_TBL = job_type.value['live_table']
+    NEW_TBL = f"{LIVE_TBL}_new"
+    logger.info(f"Prepping '{NEW_TBL}'")
     start_time = time.perf_counter()
-    delete_sql = f"""
-        WITH latest AS (
-        SELECT max(insert_ts) as max_ts, channel_id
-        FROM {table_name}
-        GROUP BY channel_id
-        )
-        DELETE FROM {table_name}
-        USING {table_name} AS tbl 
-        LEFT JOIN latest 
-            ON (latest.channel_id = tbl.channel_id AND latest.max_ts = tbl.insert_ts)
-        WHERE latest.channel_id IS NULL
-    """
+    create_sql = (
+        f"DROP TABLE IF EXISTS {NEW_TBL};"
+        f"CREATE TABLE {NEW_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
+    )
+    logger.debug(f"Executing: {create_sql}")
     try:
         with psycopg2.connect(
                 pg_dsn, 
                 options=f"-c statement_timeout={timeout_ms}"
             )  as conn: 
             with conn.cursor() as cursor:
-                logger.info(f"Executing: {delete_sql}")
-                cursor.execute(delete_sql)
-                logger.info(f"Deleted rows: {cursor.rowcount}")
+                logger.info(f"Executing: {create_sql}")
+                cursor.execute(create_sql)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+def backup_cleanup_db(
+        pg_dsn: str, 
+        timeout_ms: int,
+        job_type: JobType,
+):
+    LIVE_TBL = job_type.value['live_table']
+    NEW_TBL = f"{LIVE_TBL}_new"
+    OLD_TBL = f"{LIVE_TBL}_old"
+    logger.info(f"Swapping {LIVE_TBL} to {OLD_TBL} and {NEW_TBL} to {LIVE_TBL}")
+    start_time = time.perf_counter()
+    replace_sql = (
+        f"DROP TABLE IF EXISTS {OLD_TBL};"
+        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
+        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
+    )
+    logger.debug(f"Executing: {replace_sql}")
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {replace_sql}")
+                cursor.execute(replace_sql)
     except Exception as e:
         logger.error(e)
         raise e
