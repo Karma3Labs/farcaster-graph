@@ -5,6 +5,7 @@ import asyncio
 from typing import Any
 import datetime
 import psycopg2
+import json
 
 from config import settings
 
@@ -68,6 +69,7 @@ async def fetch_channel_fids(
         else "members" if job_type == JobType.members
         else None
     )
+    acceptable_types = ['application/json', 'text/javascript', 'text/plain']
     ctr = 1  # track number of API calls for a single channel
     next_url = url
     while True:
@@ -76,20 +78,25 @@ async def fetch_channel_fids(
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             }, timeout=http_timeout) as response:
-                body = await response.json()
-                all_fids.extend(body.get('result', {}).get(json_element, []))
-                if body.get('next', {}).get('cursor', None):
-                    cursor = body['next']['cursor']
-                    next_url = f"{url}&cursor={cursor}"
-                    ctr += 1
-                    if settings.IS_TEST and ctr > settings.TEST_CURSOR_LIMIT:
-                        logger.warning(f"Test Environment. Breaking out of loop after {ctr - 1} api calls.")
+                content_type = response.headers.get('Content-Type')
+                if any(atype in content_type for atype in acceptable_types):
+                    body = await response.json(content_type=None)
+                    # body = await response.json()
+                    all_fids.extend(body.get('result', {}).get(json_element, []))
+                    if body.get('next', {}).get('cursor', None):
+                        cursor = body['next']['cursor']
+                        next_url = f"{url}&cursor={cursor}"
+                        ctr += 1
+                        if settings.IS_TEST and ctr > settings.TEST_CURSOR_LIMIT:
+                            logger.warning(f"Test Environment. Breaking out of loop after {ctr - 1} api calls.")
+                            break
+                        logger.info(f"sleeping for {settings.WARPCAST_SLEEP_SECS}s")
+                        time.sleep(settings.WARPCAST_SLEEP_SECS)
+                        logger.info(f"{ctr}: {next_url}")
+                    else:
                         break
-                    logger.info(f"sleeping for {settings.WARPCAST_SLEEP_SECS}s")
-                    time.sleep(settings.WARPCAST_SLEEP_SECS)
-                    logger.info(f"{ctr}: {next_url}")
                 else:
-                    break
+                    raise ValueError('Content-Type for JSON response not acceptable')
         except asyncio.TimeoutError as e:
             logger.error(f"{next_url} - {url} timed out: {e}")
             raise e
