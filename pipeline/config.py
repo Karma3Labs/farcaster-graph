@@ -60,7 +60,9 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = '[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s'
-    LOGURU_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | {module}:{file}:{function}:{line} | {level} | <level>{message}</level>'
+    LOGURU_FORMAT: str = ("<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
+                            " | {name}:{function}:{line}"
+                            " | {level} | <level>{message}</level>" )
     LOG_PATH: str = '/tmp/'
 
     REMOTE_DB_USER:str = 'postgres'
