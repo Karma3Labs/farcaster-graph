@@ -71,6 +71,11 @@ else
   exit 1
 fi
 
+if [ $? -ne 0 ]; then
+  echo "Failed to run script"
+  exit 1
+fi
+
 # Teardown
 echo "Deactivating Python 3.12 environment"
 deactivate
