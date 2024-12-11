@@ -284,7 +284,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                 hash as cast_hash,
                 SUM(
                     (
-                    (10 * fids.score * ci.casted)
+                    -- (10 * fids.score * ci.casted)
                     + (1 * fids.score * ci.replied)
                     + (5 * fids.score * ci.recasted)
                     + (1 * fids.score * ci.liked)
