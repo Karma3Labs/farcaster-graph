@@ -1556,30 +1556,45 @@ async def get_top_channel_followers(
         klcr.rank as channel_rank,
         k3l_rank.rank as global_rank,
         fnames.fname as fname,
-        case user_data.type
-      		when 6 then user_data.value
-      	end username,
-        case user_data.type
-      		when 1 then user_data.value
-      	end pfp,
-        warpcast_members.memberat
+        case when user_data.type = 6 then user_data.value end as username,
+        case when user_data.type = 1 then user_data.value end as pfp,
+        case when user_data.type = 3 then user_data.value end as bio,
+        warpcast_members.memberat,
+      	bal.balance as balance, 
+        CASE 
+            WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+            WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+            ELSE bal.latest_earnings
+        END as daily_earnings,
+        bal.latest_earnings as latest_earnings,
+        bal.update_ts as bal_update_ts
     FROM 
         distinct_warpcast_followers wf 
-        LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
+        LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
         LEFT JOIN k3l_channel_rank klcr 
             on (wf.fid = klcr.fid and wf.channel_id = klcr.channel_id and klcr.strategy_name = $2)
         LEFT JOIN fnames on (fnames.fid = wf.fid)
         LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
         LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
+      	LEFT JOIN k3l_channel_points_allowlist as channelpts 
+            on (channelpts.channel_id=wf.channel_id and channelpts.is_allowed=true)
+        LEFT JOIN k3l_channel_points_bal as bal 
+            on (bal.channel_id=wf.channel_id and bal.fid=wf.fid 
+                and bal.channel_id=channelpts.channel_id)
     )
     SELECT 
         fid,
-        channel_id,
-        channel_rank,
-        global_rank,
-        any_value(fname) as fname,
+	    any_value(fname) as fname,
         any_value(username) as username,
         any_value(pfp) as pfp,
+        any_value(bio) as bio,
+		channel_id,
+        channel_rank as rank,
+        global_rank,
+        max(balance) as balance,
+        max(daily_earnings) as daily_earnings,
+        max(latest_earnings) as latest_earnings,
+        max(bal_update_ts) as bal_update_ts,
         min(memberat) as memberat
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
