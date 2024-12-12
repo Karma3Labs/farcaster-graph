@@ -319,6 +319,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                         channel_id,
                 sum(power(cast_score,2)) as cast_score
             FROM cast_scores_by_fid
+            WHERE cast_score > 0
             GROUP BY cast_hash, channel_id
             ),
             author_scores AS (
