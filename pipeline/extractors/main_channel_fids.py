@@ -120,19 +120,19 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 await db_pool.close()
     # end while loop
 
-def cleanup(job_type: JobType):
+def replace_old_data(job_type: JobType):
     if job_type == JobType.followers:
         # followers job allows for failures in fetching
         # don't cleanup the whole table
         raise Exception("DANGER: don't use cleanup for followers job")
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
-    channel_extractor_utils.backup_cleanup_db(pg_dsn, sql_timeout_milliseconds, job_type)
+    channel_extractor_utils.replace_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
-def delete_old_data(job_type: JobType):
+def merge_old_data(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
-    channel_extractor_utils.delete_old_data(pg_dsn, sql_timeout_milliseconds, job_type)
+    channel_extractor_utils.merge_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
 def prepare(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -207,9 +207,9 @@ if __name__ == "__main__":
         prepare(args.job_type)
     elif args.subcommand == "cleanup":
         if args.job_type == JobType.members:
-            cleanup(args.job_type)
+            replace_old_data(args.job_type)
         elif args.job_type == JobType.followers:
-            delete_old_data(args.job_type)
+            merge_old_data(args.job_type)
     elif args.subcommand == "fetch":
         asyncio.run(fetch(args.daemon, args.scope, args.job_type, args.csv))
     else: 

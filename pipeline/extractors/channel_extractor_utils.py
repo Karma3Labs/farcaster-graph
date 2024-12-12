@@ -207,7 +207,7 @@ def prepare_db(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
-def backup_cleanup_db(
+def replace_db(
         pg_dsn: str, 
         timeout_ms: int,
         job_type: JobType,
@@ -236,35 +236,44 @@ def backup_cleanup_db(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
-def delete_old_data(
+def merge_db(
         pg_dsn: str, 
         timeout_ms: int,
         job_type: JobType,
 ):
-    table_name = job_type.value['live_table']
-    logger.info(f"Deleting previous rows for table '{table_name}'")
+    LIVE_TBL = job_type.value['live_table']
+    NEW_TBL = f"{LIVE_TBL}_new"
+    OLD_TBL = f"{LIVE_TBL}_old"
+    logger.info(f"Deleting previous rows for table '{LIVE_TBL}'")
     start_time = time.perf_counter()
-    delete_sql = f"""
-        WITH latest AS (
-        SELECT max(insert_ts) as max_ts, channel_id
-        FROM {table_name}
-        GROUP BY channel_id
-        )
-        DELETE FROM {table_name}
-        USING {table_name} AS tbl 
-        LEFT JOIN latest 
-            ON (latest.channel_id = tbl.channel_id AND latest.max_ts = tbl.insert_ts)
-        WHERE latest.channel_id IS NULL
+    replace_sql = (
+        f"DROP TABLE IF EXISTS {OLD_TBL};"
+        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
+        f"CREATE TABLE {LIVE_TBL} (LIKE {OLD_TBL} INCLUDING ALL);"
+    )
+    insert_sql = f"""
+        INSERT INTO {LIVE_TBL}
+            SELECT {OLD_TBL}.* FROM {OLD_TBL}
+            LEFT JOIN {NEW_TBL} ON 
+                ({OLD_TBL}.channel_id = {NEW_TBL}.channel_id)
+            WHERE {NEW_TBL}.channel_id IS NULL
+            UNION 
+            SELECT {NEW_TBL}.* FROM {NEW_TBL}
     """
     try:
+        # transaction scope begins
         with psycopg2.connect(
                 pg_dsn, 
                 options=f"-c statement_timeout={timeout_ms}"
             )  as conn: 
             with conn.cursor() as cursor:
-                logger.info(f"Executing: {delete_sql}")
-                cursor.execute(delete_sql)
-                logger.info(f"Deleted rows: {cursor.rowcount}")
+                logger.info(f"Executing: {replace_sql}")
+                cursor.execute(replace_sql)
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Inserted rows: {cursor.rowcount}")
+        # transaction scope ends
     except Exception as e:
         logger.error(e)
         raise e
