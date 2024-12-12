@@ -131,8 +131,9 @@ def replace_old_data(job_type: JobType):
 
 def merge_old_data(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
-    channel_extractor_utils.merge_db(pg_dsn, sql_timeout_milliseconds, job_type)
+    short_timeout_ms = settings.POSTGRES_TIMEOUT_SECS * 1_000 # typically 60 secs
+    long_timeout_ms = 300_000 # 5 mins
+    channel_extractor_utils.merge_db(pg_dsn, short_timeout_ms, long_timeout_ms, job_type)
 
 def prepare(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()

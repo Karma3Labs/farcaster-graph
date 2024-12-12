@@ -238,41 +238,54 @@ def replace_db(
 
 def merge_db(
         pg_dsn: str, 
-        timeout_ms: int,
+        short_timeout_ms: int,
+        long_timeout_ms: int,
         job_type: JobType,
 ):
     LIVE_TBL = job_type.value['live_table']
     NEW_TBL = f"{LIVE_TBL}_new"
-    OLD_TBL = f"{LIVE_TBL}_old"
+    WIP_TBL = f"{LIVE_TBL}_wip"
     logger.info(f"Deleting previous rows for table '{LIVE_TBL}'")
     start_time = time.perf_counter()
-    replace_sql = (
-        f"DROP TABLE IF EXISTS {OLD_TBL};"
-        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
-        f"CREATE TABLE {LIVE_TBL} (LIKE {OLD_TBL} INCLUDING ALL);"
+    wip_sql = (
+        f"DROP TABLE IF EXISTS {WIP_TBL};"
+        f"CREATE TABLE {WIP_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
     )
     insert_sql = f"""
-        INSERT INTO {LIVE_TBL}
-            SELECT {OLD_TBL}.* FROM {OLD_TBL}
+        INSERT INTO {WIP_TBL}
+            SELECT {LIVE_TBL}.* FROM {LIVE_TBL}
             LEFT JOIN {NEW_TBL} ON 
-                ({OLD_TBL}.channel_id = {NEW_TBL}.channel_id)
+                ({LIVE_TBL}.channel_id = {NEW_TBL}.channel_id)
             WHERE {NEW_TBL}.channel_id IS NULL
             UNION 
             SELECT {NEW_TBL}.* FROM {NEW_TBL}
     """
+    replace_sql = (
+        f"DROP TABLE IF EXISTS {LIVE_TBL};"
+        f"ALTER TABLE {WIP_TBL} RENAME TO {LIVE_TBL};"
+    )
     try:
         # transaction scope begins
         with psycopg2.connect(
                 pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
+                options=f"-c statement_timeout={long_timeout_ms}"
             )  as conn: 
             with conn.cursor() as cursor:
-                logger.info(f"Executing: {replace_sql}")
-                cursor.execute(replace_sql)
+                logger.info(f"Executing: {wip_sql}")
+                cursor.execute(wip_sql)
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
                 logger.info(f"Inserted rows: {cursor.rowcount}")
+        # transaction scope ends
+        # transaction scope begins
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={short_timeout_ms}"
+            )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {replace_sql}")
+                cursor.execute(replace_sql)
         # transaction scope ends
     except Exception as e:
         logger.error(e)
