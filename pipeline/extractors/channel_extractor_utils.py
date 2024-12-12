@@ -71,6 +71,7 @@ async def fetch_channel_fids(
     )
     acceptable_types = ['application/json', 'text/javascript', 'text/plain']
     ctr = 1  # track number of API calls for a single channel
+    retries = 0
     next_url = url
     while True:
         try:
@@ -93,10 +94,18 @@ async def fetch_channel_fids(
                         logger.info(f"sleeping for {settings.WARPCAST_SLEEP_SECS}s")
                         time.sleep(settings.WARPCAST_SLEEP_SECS)
                         logger.info(f"{ctr}: {next_url}")
+                        continue
                     else:
                         break
                 else:
-                    raise ValueError('Content-Type for JSON response not acceptable')
+                    if retries < 3:
+                        retries += 1
+                        logger.info(f"sleeping for {settings.WARPCAST_SLEEP_SECS}s")
+                        time.sleep(settings.WARPCAST_SLEEP_SECS)
+                        logger.info(f"retry #{retries} for {ctr}: {next_url}")
+                        continue
+                    else:
+                        raise ValueError('Content-Type for JSON response not acceptable')
         except asyncio.TimeoutError as e:
             logger.error(f"{next_url} - {url} timed out: {e}")
             raise e
@@ -222,6 +231,40 @@ def backup_cleanup_db(
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {replace_sql}")
                 cursor.execute(replace_sql)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+def delete_old_data(
+        pg_dsn: str, 
+        timeout_ms: int,
+        job_type: JobType,
+):
+    table_name = job_type.value['live_table']
+    logger.info(f"Deleting previous rows for table '{table_name}'")
+    start_time = time.perf_counter()
+    delete_sql = f"""
+        WITH latest AS (
+        SELECT max(insert_ts) as max_ts, channel_id
+        FROM {table_name}
+        GROUP BY channel_id
+        )
+        DELETE FROM {table_name}
+        USING {table_name} AS tbl 
+        LEFT JOIN latest 
+            ON (latest.channel_id = tbl.channel_id AND latest.max_ts = tbl.insert_ts)
+        WHERE latest.channel_id IS NULL
+    """
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {delete_sql}")
+                cursor.execute(delete_sql)
+                logger.info(f"Deleted rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
         raise e

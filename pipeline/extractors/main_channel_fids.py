@@ -8,13 +8,8 @@ from pathlib import Path
 import asyncpg
 
 from config import settings
-from extractors.channel_extractor_utils import (
-    fetch_all_channels_warpcast,
-    process_channel,
-    backup_cleanup_db,
-    prepare_db,
-    JobType
-)
+from extractors import channel_extractor_utils
+from extractors.channel_extractor_utils import JobType
 from timer import Timer
 from channels import channel_utils
 
@@ -58,7 +53,7 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 channel_ids = top_channel_ids
             elif scope == Scope.all:
                 logger.info("Fetching all Warpcast channels:")
-                all_channel_ids = await fetch_all_channels_warpcast()
+                all_channel_ids = await channel_extractor_utils.fetch_all_channels_warpcast()
                 logger.info(f"Total number of channels: {len(all_channel_ids)}")
                 logger.info(f"First 10 channel ids: {all_channel_ids[:10]}")
                 channel_ids = list(set(all_channel_ids) - set(top_channel_ids))
@@ -89,7 +84,7 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                         for channel_id in batch:
                             tasks.append(
                                 asyncio.create_task(
-                                    process_channel(
+                                    channel_extractor_utils.process_channel(
                                         job_type=job_type,
                                         job_time=job_time,
                                         db_pool=db_pool, # type: ignore
@@ -103,7 +98,14 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                         exceptions = [t for t in channel_followers if isinstance(t, Exception)]
                         if len(exceptions) > 0: 
                             logger.error(f"Error processing channels: {exceptions}")
-                            raise Exception("Error processing channels")
+                            if job_type == JobType.members:
+                                # warpcast_members table is replaced with every run. 
+                                # so, fail the whole job even for 1 channel failure
+                                raise Exception("Error processing channels")
+                            else:
+                                # warpcast_followers table only deletes channels that have had new successful runs
+                                # don't fail the whole job
+                                pass
                         logger.info(f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{len(channel_followers)} channels processed")
 
             if daemon:
@@ -119,14 +121,23 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
     # end while loop
 
 def cleanup(job_type: JobType):
+    if job_type == JobType.followers:
+        # followers job allows for failures in fetching
+        # don't cleanup the whole table
+        raise Exception("DANGER: don't use cleanup for followers job")
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
-    backup_cleanup_db(pg_dsn, sql_timeout_milliseconds, job_type)
+    channel_extractor_utils.backup_cleanup_db(pg_dsn, sql_timeout_milliseconds, job_type)
+
+def delete_old_data(job_type: JobType):
+    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
+    channel_extractor_utils.delete_old_data(pg_dsn, sql_timeout_milliseconds, job_type)
 
 def prepare(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
-    prepare_db(pg_dsn, sql_timeout_milliseconds, job_type)
+    channel_extractor_utils.prepare_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -195,7 +206,10 @@ if __name__ == "__main__":
     if args.subcommand == "prep":
         prepare(args.job_type)
     elif args.subcommand == "cleanup":
-        cleanup(args.job_type)
+        if args.job_type == JobType.members:
+            cleanup(args.job_type)
+        elif args.job_type == JobType.followers:
+            delete_old_data(args.job_type)
     elif args.subcommand == "fetch":
         asyncio.run(fetch(args.daemon, args.scope, args.job_type, args.csv))
     else: 
