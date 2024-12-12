@@ -1554,11 +1554,13 @@ async def get_top_channel_followers(
         wf.fid,
         wf.channel_id,
         klcr.rank as channel_rank,
+        klcr.score as channel_score,
         k3l_rank.rank as global_rank,
         fnames.fname as fname,
         case when user_data.type = 6 then user_data.value end as username,
         case when user_data.type = 1 then user_data.value end as pfp,
         case when user_data.type = 3 then user_data.value end as bio,
+        v.claim->>'address' as address,
         warpcast_members.memberat,
       	bal.balance as balance, 
         CASE 
@@ -1575,6 +1577,7 @@ async def get_top_channel_followers(
             on (wf.fid = klcr.fid and wf.channel_id = klcr.channel_id and klcr.strategy_name = $2)
         LEFT JOIN fnames on (fnames.fid = wf.fid)
         LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1))
+        LEFT JOIN verifications v on (v.fid = wf.fid)
         LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
       	LEFT JOIN k3l_channel_points_allowlist as channelpts 
             on (channelpts.channel_id=wf.channel_id and channelpts.is_allowed=true)
@@ -1590,7 +1593,9 @@ async def get_top_channel_followers(
         any_value(bio) as bio,
 		channel_id,
         channel_rank as rank,
+        max(channel_score) as score,
         global_rank,
+        ARRAY_AGG(DISTINCT address) as addresses,
         max(balance) as balance,
         max(daily_earnings) as daily_earnings,
         max(latest_earnings) as latest_earnings,
