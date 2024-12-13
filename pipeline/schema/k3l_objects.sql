@@ -309,6 +309,18 @@ CREATE TABLE k3l_cast_action_y2024m08 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-08-01') TO ('2024-09-01');
 CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-09-01') TO ('2024-10-01'); 
+CREATE TABLE k3l_cast_action_y2024m10 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-10-01') TO ('2024-11-01');
+CREATE TABLE k3l_cast_action_y2024m11 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
+CREATE TABLE k3l_cast_action_y2024m12 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+CREATE TABLE k3l_cast_action_y2025m01 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE k3l_cast_action_y2025m02 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+CREATE TABLE k3l_cast_action_y2025m03 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 
 ------------------------------------------------------------------------------------
 
@@ -496,6 +508,63 @@ CREATE INDEX k3l_channel_points_bal_ch_fid_idx ON public.k3l_channel_points_bal 
 CREATE INDEX k3l_channel_points_bal_ch_bal_idx ON public.k3l_channel_points_bal USING btree (channel_id, balance);
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_bal TO k3l_readonly;
+
+-------------------------------------------------
+CREATE TABLE public.k3l_channel_tokens_bal (
+	fid int8 NOT NULL,
+    channel_id text NOT NULL,
+	balance bigint NOT NULL,
+    latest_earnings bigint NOT NULL,
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX k3l_channel_tokens_bal_ch_fid_idx ON public.k3l_channel_tokens_bal USING btree (channel_id, fid);
+
+CREATE INDEX k3l_channel_tokens_bal_ch_bal_idx ON public.k3l_channel_tokens_bal USING btree (channel_id, balance);
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
+
+-------------------------------------------------
+CREATE TYPE tokens_req_status AS ENUM ('submitted', 'success', 'failure');
+CREATE SEQUENCE tokens_req_seq;
+
+CREATE TABLE public.k3l_channel_tokens_log (
+	fid int8 NOT NULL,
+    channel_id text NOT NULL,
+	amt bigint NOT NULL,
+    latest_points real NOT NULL,
+    points_ts timestamp without time zone NOT NULL,
+    req_id int4 NULL, -- req_id per channel
+    txn_hash text NULL,
+    req_status tokens_req_status NULL,
+    insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+)
+PARTITION BY RANGE (points_ts);
+
+CREATE INDEX k3l_channel_tokens_log_req_idx ON public.k3l_channel_tokens_log USING btree (req_id);
+
+CREATE INDEX k3l_channel_tokens_log_ch_fid_idx ON public.k3l_channel_tokens_log USING btree (channel_id, fid);
+
+CREATE INDEX k3l_channel_tokens_log_pending_idx ON public.k3l_channel_tokens_log (req_status) 
+    WHERE req_status != 'success';
+
+CREATE INDEX k3l_channel_tokens_log_hash_idx ON public.k3l_channel_tokens_log USING HASH (txn_hash);
+
+CREATE TABLE k3l_channel_tokens_log_y2024m12 PARTITION OF k3l_channel_tokens_log
+    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+
+CREATE TABLE k3l_channel_tokens_log_y2025m01 PARTITION OF k3l_channel_tokens_log
+    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+
+CREATE TABLE k3l_channel_tokens_log_y2025m02 PARTITION OF k3l_channel_tokens_log
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+
+CREATE TABLE k3l_channel_tokens_log_y2025m03 PARTITION OF k3l_channel_tokens_log
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_log TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_points_allowlist (
     channel_id text NOT NULL,
@@ -543,6 +612,10 @@ CREATE TABLE k3l_channel_openrank_results_y2024m12 PARTITION OF k3l_channel_open
     FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
 CREATE TABLE k3l_channel_openrank_results_y2025m01 PARTITION OF k3l_channel_openrank_results
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE k3l_channel_openrank_results_y2025m02 PARTITION OF k3l_channel_openrank_results
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+CREATE TABLE k3l_channel_openrank_results_y2025m03 PARTITION OF k3l_channel_openrank_results
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
 -------------------------------------------------

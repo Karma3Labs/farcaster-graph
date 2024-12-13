@@ -357,7 +357,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             )
         INSERT INTO k3l_channel_points_bal_new 
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)
-            SELECT -- new fids with no previous balance and balances that were updated before time cutoff
+            SELECT -- new fids with no previous balance and balances that are older than cutoff period
                 authors.fid,
                 authors.channel_id,
                 COALESCE(bal.balance, 0) + ((authors.score / bt.budget::numeric) * {TOTAL_POINTS}) as balance, 
@@ -376,7 +376,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             WHERE
                 bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}'
             UNION
-            SELECT -- no new fids and existing balance that got recently updated
+            SELECT -- existing balances that are not getting updated or were updated within cutoff period
                 bal.fid,
                 bal.channel_id,
                 bal.balance as balance, 
@@ -409,6 +409,49 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {replace_sql}")
                 cursor.execute(replace_sql)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+@Timer(name="insert_tokens_log")
+def insert_tokens_log(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, is_airdrop: bool = False
+):
+    points_col = "balance" if is_airdrop else "latest_earnings"
+
+    insert_sql = f"""
+        WITH latest_log AS (
+            SELECT max(points_ts) as max_points_ts, channel_id, fid 
+                FROM k3l_channel_tokens_log
+            GROUP BY channel_id, fid
+        )
+        INSERT INTO k3l_channel_tokens_log
+            (fid, channel_id, amt, latest_points, points_ts)
+        SELECT 
+            bal.fid,
+            bal.channel_id,
+            round(bal.{points_col},0) as amt,
+            bal.{points_col} as latest_points,
+            bal.update_ts as points_ts
+        FROM k3l_channel_points_bal as bal
+        LEFT JOIN latest_log as tlog 
+            ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
+            AND tlog.max_points_ts = bal.update_ts)
+        WHERE tlog.channel_id IS NULL
+    """
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Inserted rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
         raise e
