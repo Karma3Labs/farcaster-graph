@@ -515,13 +515,11 @@ CREATE TABLE public.k3l_channel_tokens_bal (
     channel_id text NOT NULL,
 	balance bigint NOT NULL,
     latest_earnings bigint NOT NULL,
-    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    update_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX k3l_channel_tokens_bal_ch_fid_idx ON public.k3l_channel_tokens_bal USING btree (channel_id, fid);
-
-CREATE INDEX k3l_channel_tokens_bal_ch_bal_idx ON public.k3l_channel_tokens_bal USING btree (channel_id, balance);
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
 
@@ -535,7 +533,7 @@ CREATE TABLE public.k3l_channel_tokens_log (
 	amt bigint NOT NULL,
     latest_points real NOT NULL,
     points_ts timestamp without time zone NOT NULL,
-    req_id int4 NULL, -- req_id per channel
+    req_id int4 NULL, -- req_id per channel group
     txn_hash text NULL,
     req_status tokens_req_status NULL,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,

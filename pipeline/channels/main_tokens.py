@@ -44,7 +44,8 @@ def prepare_for_distribution(scope: Scope):
 def distribute_tokens():
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_ms = settings.POSTGRES_TIMEOUT_SECS * 1000
-    while True:
+    # while True:
+    if True:
         # todo maybe? - parallelize this ? dbpool, http pool ?
         channel_distributions = channel_db_utils.fetch_one_channel_distributions(
             logger=logger,
@@ -53,10 +54,17 @@ def distribute_tokens():
         )
         if channel_distributions is None:
             logger.info("No more channels to distribute.")
-            break
+            # break
+            return
         channel_id = channel_distributions[0]
         distributions = channel_distributions[1]
-        call_smartcontractmgr(channel_id, distributions)
+        req_id = channel_db_utils.get_nextval_sequence (
+            logger=logger,
+            pg_dsn=pg_dsn,
+            timeout_ms=sql_timeout_ms,
+            sequence_name='tokens_req_seq',
+        )
+        call_smartcontractmgr(req_id, channel_id, distributions)
         logger.info(f"Distributed tokens for channel '{channel_id}'")
         # WARNING: big assumption that no new inserts have happened in the meanwhile
         # ... todo maybe? - move to a select for update  2-phase commit model
@@ -64,17 +72,25 @@ def distribute_tokens():
             logger=logger,
             pg_dsn=pg_dsn,
             timeout_ms=sql_timeout_ms,
+            req_id=req_id,
+            channel_id=channel_id,
+        )
+        # TODO token balances should be updated only after verify 
+        channel_db_utils.update_token_bal(
+            logger=logger,
+            pg_dsn=pg_dsn,
+            timeout_ms=sql_timeout_ms,
+            req_id=req_id,
             channel_id=channel_id,
         )
 
-def call_smartcontractmgr(channel_id, distributions):
+def call_smartcontractmgr(req_id, channel_id, distributions):
     logger.info(
-        f"call smartcontractmgr for channel '{channel_id}'"
+        f"call smartcontractmgr {req_id} for channel '{channel_id}'"
         f" with distributions {distributions}"
     )
     headers = {'API-Key': settings.CURA_SCMGR_API_KEY.get_secret_value()}
-    # TODO generate req_id or distribution_id
-    payload = {'channel_id': channel_id, 'distributions': distributions}
+    payload = {'req_id': req_id, 'channel_id': channel_id, 'distributions': distributions}
     logger.info(f"payload: {payload}")
     try:
         response = niquests.post(settings.CURA_SCMGR_URL, headers=headers, json=payload)

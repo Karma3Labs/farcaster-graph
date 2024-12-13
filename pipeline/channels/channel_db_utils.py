@@ -498,6 +498,32 @@ def fetch_individual_amts(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
+@Timer(name="get_nextval_sequence")
+def get_nextval_sequence(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    sequence_name: str,
+) -> int:
+    select_sql = f"""
+        SELECT nextval('{sequence_name}')
+    """
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
 @Timer(name="fetch_one_channel_distributions")
 def fetch_one_channel_distributions(
     logger: logging.Logger,
@@ -535,6 +561,7 @@ def fetch_one_channel_distributions(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
+@Timer(name="update_distribution_status")
 def update_distribution_status(
     logger: logging.Logger,
     pg_dsn: str,
@@ -545,6 +572,53 @@ def update_distribution_status(
         UPDATE k3l_channel_tokens_log
         SET req_status = 'submitted'
         WHERE req_status is NULL AND channel_id = '{channel_id}'
+    """
+    logger.info(f"Executing: {update_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(update_sql)
+                    logger.info(f"Updated rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="update_token_bal")
+def update_token_bal(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    req_id: int,
+    channel_id: str,
+):
+    update_sql = f"""
+        WITH eligible_fids AS (
+        SELECT 
+                amt, channel_id, fid
+            FROM k3l_channel_tokens_log
+            WHERE req_status = 'submitted'
+                AND channel_id = '{channel_id}'
+            AND req_id = {req_id}
+        )
+        MERGE INTO k3l_channel_tokens_bal as bal
+        USING eligible_fids as fids 
+                    ON (bal.channel_id = fids.channel_id AND bal.fid = fids.fid)
+        WHEN MATCHED THEN
+            UPDATE SET 
+            balance = balance + fids.amt, 
+            latest_earnings = fids.amt, 
+            update_ts = DEFAULT
+        WHEN NOT MATCHED THEN
+            INSERT 
+            (fid, channel_id, balance, latest_earnings, insert_ts, update_ts)
+        VALUES 
+            (fids.fid, fids.channel_id, fids.amt, fids.amt, DEFAULT, DEFAULT);
     """
     logger.info(f"Executing: {update_sql}")
     start_time = time.perf_counter()
