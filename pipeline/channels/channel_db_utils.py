@@ -1,4 +1,5 @@
 import logging
+from typing import Callable
 
 from timer import Timer
 import time
@@ -456,3 +457,107 @@ def insert_tokens_log(
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+@Timer(name="fetch_individual_amts")
+def fetch_individual_amts(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    batch_size: int = 1000,
+    callbackFn: Callable[[tuple], None] = None,
+):
+    limit = 10 if settings.IS_TEST else 1_000_000
+    select_sql = f"""
+        SELECT 
+            channel_id, fid, amt 
+        FROM k3l_channel_tokens_log
+        WHERE req_status is NULL
+        ORDER BY channel_id, amt DESC
+        LIMIT {limit} -- safety valve
+    """
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    while True:
+                        rows = cursor.fetchmany(batch_size)
+                        if len(rows) == 0:
+                            logger.info("No more rows to process")
+                            break
+                        if callbackFn is not None:
+                            logger.info(f"Processing {len(rows)} rows")
+                            callbackFn(rows)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="fetch_one_channel_distributions")
+def fetch_one_channel_distributions(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int
+)-> tuple[str,list[dict]]:
+    select_sql = """
+        SELECT 
+            channel_id, 
+            json_agg(
+                json_build_object(
+                'fid', fid,
+                'amt', amt
+                )
+            ) as distributions 
+        FROM k3l_channel_tokens_log
+        WHERE req_status is NULL
+        GROUP BY channel_id
+        ORDER BY channel_id
+        LIMIT 1
+    """
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    return cursor.fetchone()
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+def update_distribution_status(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    channel_id: str,
+):
+    update_sql = f"""
+        UPDATE k3l_channel_tokens_log
+        SET req_status = 'submitted'
+        WHERE req_status is NULL AND channel_id = '{channel_id}'
+    """
+    logger.info(f"Executing: {update_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(update_sql)
+                    logger.info(f"Updated rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
