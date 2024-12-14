@@ -524,8 +524,8 @@ CREATE INDEX k3l_channel_tokens_bal_ch_fid_idx ON public.k3l_channel_tokens_bal 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
 
 -------------------------------------------------
-CREATE TYPE tokens_req_status AS ENUM ('submitted', 'success', 'failure');
-CREATE SEQUENCE tokens_req_seq;
+CREATE TYPE tokens_dist_seq AS ENUM ('submitted', 'success', 'failure');
+CREATE SEQUENCE tokens_dist_seq;
 
 CREATE TABLE public.k3l_channel_tokens_log (
 	fid int8 NOT NULL,
@@ -541,19 +541,20 @@ CREATE TABLE public.k3l_channel_tokens_log (
 	amt bigint NOT NULL,
     latest_points real NOT NULL,
     points_ts timestamp without time zone NOT NULL,
-    req_id int4 NULL, -- req_id per channel group
-    req_status tokens_req_status NULL,
+    dist_id int4 NULL, -- dist_id per channel group
+    dist_status tokens_dist_seq NULL,
+    dist_reason text NULL,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 )
 PARTITION BY RANGE (points_ts);
 
-CREATE INDEX k3l_channel_tokens_log_req_idx ON public.k3l_channel_tokens_log USING btree (req_id);
+CREATE INDEX k3l_channel_tokens_log_dist_idx ON public.k3l_channel_tokens_log USING btree (dist_id);
 
 CREATE INDEX k3l_channel_tokens_log_ch_fid_idx ON public.k3l_channel_tokens_log USING btree (channel_id, fid);
 
-CREATE INDEX k3l_channel_tokens_log_pending_idx ON public.k3l_channel_tokens_log (req_status) 
-    WHERE req_status != 'success';
+CREATE INDEX k3l_channel_tokens_log_pending_idx ON public.k3l_channel_tokens_log (dist_status) 
+    WHERE dist_status != 'success';
 
 CREATE INDEX k3l_channel_tokens_log_hash_idx ON public.k3l_channel_tokens_log USING HASH (txn_hash);
 

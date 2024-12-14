@@ -415,9 +415,44 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+@Timer(name="fetch_channel_tokens_status")
+def fetch_channels_tokens_status(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int
+) -> list[tuple[str, bool]]:
+    select_sql = """
+        WITH 
+        existing_token_channels AS (
+        SELECT DISTINCT channel_id
+            FROM k3l_channel_tokens_log
+        )
+        SELECT 
+            allo.channel_id,
+            CASE WHEN exch.channel_id IS NULL THEN false ELSE true END as is_status_known
+        FROM k3l_channel_points_allowlist AS allo
+        LEFT JOIN existing_token_channels AS exch
+            ON (exch.channel_id = allo.channel_id)
+        WHERE allo.is_allowed=true
+        ORDER BY channel_id
+    """
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {select_sql}")
+                cursor.execute(select_sql)
+                rows = cursor.fetchall()
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return rows
+
 @Timer(name="insert_tokens_log")
 def insert_tokens_log(
-    logger: logging.Logger, pg_dsn: str, timeout_ms: int, is_airdrop: bool = False
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, reason:str, is_airdrop: bool = False
 ):
     points_col = "balance" if is_airdrop else "latest_earnings"
 
@@ -425,6 +460,7 @@ def insert_tokens_log(
         WITH latest_log AS (
             SELECT max(points_ts) as max_points_ts, channel_id, fid 
             FROM k3l_channel_tokens_log
+            WHERE channel_id='{channel_id}'
             GROUP BY channel_id, fid
         ),
         latest_verified_address as (
@@ -433,12 +469,13 @@ def insert_tokens_log(
             GROUP BY fid
         )
         INSERT INTO k3l_channel_tokens_log
-            (fid, fid_address, channel_id, amt, latest_points, points_ts)
+            (fid, fid_address, channel_id, amt, dist_reason, latest_points, points_ts)
         SELECT 
             bal.fid,
             COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
             round(bal.{points_col},0) as amt,
+            '{reason}' as dist_reason,
             bal.{points_col} as latest_points,
             bal.update_ts as points_ts
         FROM k3l_channel_points_bal as bal
@@ -449,6 +486,7 @@ def insert_tokens_log(
         LEFT JOIN latest_verified_address as vaddr 
             ON (vaddr.fid=bal.fid)
         WHERE tlog.channel_id IS NULL
+        AND bal.channel_id = '{channel_id}'
         ORDER BY channel_id, amt DESC
     """
     start_time = time.perf_counter()
@@ -481,7 +519,7 @@ def fetch_all_distributions(
         SELECT 
             channel_id, fid, fid_address, amt 
         FROM k3l_channel_tokens_log
-        WHERE req_status is NULL
+        WHERE dist_status is NULL
         ORDER BY channel_id, amt DESC
         LIMIT {limit} -- safety valve
     """
@@ -508,16 +546,13 @@ def fetch_all_distributions(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
-@Timer(name="get_nextval_sequence")
-def get_nextval_sequence(
+@Timer(name="get_next_dist_sequence")
+def get_next_dist_sequence(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    sequence_name: str,
 ) -> int:
-    select_sql = f"""
-        SELECT nextval('{sequence_name}')
-    """
+    select_sql = "SELECT nextval('tokens_dist_seq')"
     logger.info(f"Executing: {select_sql}")
     start_time = time.perf_counter()
     try:
@@ -534,8 +569,8 @@ def get_nextval_sequence(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
-@Timer(name="fetch_one_channel_distributions")
-def fetch_one_channel_distributions(
+@Timer(name="fetch_distributions_for_channel")
+def fetch_distributions_for_channel(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int
@@ -550,7 +585,7 @@ def fetch_one_channel_distributions(
                 )
             ) as distributions 
         FROM k3l_channel_tokens_log
-        WHERE req_status is NULL
+        WHERE dist_status is NULL
         GROUP BY channel_id
         ORDER BY channel_id
         LIMIT 1
@@ -576,13 +611,13 @@ def update_distribution_status(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    req_id: int,
+    dist_id: int,
     channel_id: str,
 ):
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET req_status = 'submitted', req_id={req_id}
-        WHERE req_status is NULL AND channel_id = '{channel_id}'
+        SET dist_status = 'submitted', dist_id={dist_id}
+        WHERE dist_status is NULL AND channel_id = '{channel_id}'
     """
     logger.info(f"Executing: {update_sql}")
     start_time = time.perf_counter()
@@ -605,7 +640,7 @@ def update_token_bal(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    req_id: int,
+    dist_id: int,
     channel_id: str,
 ):
     update_sql = f"""
@@ -613,9 +648,9 @@ def update_token_bal(
         SELECT 
                 amt, channel_id, fid
             FROM k3l_channel_tokens_log
-            WHERE req_status = 'submitted'
+            WHERE dist_status = 'submitted'
                 AND channel_id = '{channel_id}'
-            AND req_id = {req_id}
+            AND dist_id = {dist_id}
         )
         MERGE INTO k3l_channel_tokens_bal as bal
         USING eligible_fids as fids 

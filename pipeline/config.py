@@ -90,7 +90,8 @@ class Settings(BaseSettings):
     DUNE_API_KEY: str = 'changeme'
 
     CURA_SCMGR_URL: str = 'changeme'
-    CURA_SCMGR_API_KEY: SecretStr = 'changeme'
+    CURA_SCMGR_USERNAME: str = 'changeme'
+    CURA_SCMGR_PASSWORD: SecretStr = 'changeme'
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
