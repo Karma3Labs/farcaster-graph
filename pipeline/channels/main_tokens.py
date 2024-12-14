@@ -109,12 +109,8 @@ def distribute_tokens():
                 # break
                 return
             channel_id = channel_distributions[0]
-            distributions = channel_distributions[1]
-            dist_id = channel_db_utils.get_next_dist_sequence (
-                logger=logger,
-                pg_dsn=pg_dsn,
-                timeout_ms=sql_timeout_ms,
-            )
+            dist_id = channel_distributions[1]
+            distributions = channel_distributions[2]
             scm_distribute(
                 http_session=s,
                 dist_id=dist_id,
@@ -158,7 +154,7 @@ def scm_distribute(http_session, dist_id, channel_id, distributions):
         response.raise_for_status()
     except Exception as e:
         logger.error(f"Failed to call smartcontractmgr: {e}")
-        # raise e 
+        raise e 
         
 
 def verify_distribution():

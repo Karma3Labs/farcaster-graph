@@ -541,7 +541,7 @@ CREATE TABLE public.k3l_channel_tokens_log (
 	amt bigint NOT NULL,
     latest_points real NOT NULL,
     points_ts timestamp without time zone NOT NULL,
-    dist_id int4 NULL, -- dist_id per channel group
+    dist_id int4 NOT NULL, -- dist_id per channel group
     dist_status tokens_dist_seq NULL,
     dist_reason text NULL,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,

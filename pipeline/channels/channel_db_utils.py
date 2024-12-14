@@ -454,6 +454,13 @@ def fetch_channels_tokens_status(
 def insert_tokens_log(
     logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, reason:str, is_airdrop: bool = False
 ):
+    # dist_id is fetched in separate transaction
+    # but risk of gaps is not an issue 
+    dist_id = get_next_dist_sequence (
+                logger=logger,
+                pg_dsn=pg_dsn,
+                timeout_ms=timeout_ms,
+    )
     points_col = "balance" if is_airdrop else "latest_earnings"
 
     insert_sql = f"""
@@ -469,12 +476,13 @@ def insert_tokens_log(
             GROUP BY fid
         )
         INSERT INTO k3l_channel_tokens_log
-            (fid, fid_address, channel_id, amt, dist_reason, latest_points, points_ts)
+            (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
         SELECT 
             bal.fid,
             COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
             round(bal.{points_col},0) as amt,
+            {dist_id} as dist_id,
             '{reason}' as dist_reason,
             bal.{points_col} as latest_points,
             bal.update_ts as points_ts
@@ -578,6 +586,7 @@ def fetch_distributions_for_channel(
     select_sql = """
         SELECT 
             channel_id, 
+            dist_id,
             json_agg(
                 json_build_object(
                 'address', fid_address,
@@ -586,8 +595,8 @@ def fetch_distributions_for_channel(
             ) as distributions 
         FROM k3l_channel_tokens_log
         WHERE dist_status is NULL
-        GROUP BY channel_id
-        ORDER BY channel_id
+        GROUP BY channel_id, dist_id
+        ORDER BY channel_id, dist_id
         LIMIT 1
     """
     logger.info(f"Executing: {select_sql}")
@@ -616,8 +625,10 @@ def update_distribution_status(
 ):
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET dist_status = 'submitted', dist_id={dist_id}
-        WHERE dist_status is NULL AND channel_id = '{channel_id}'
+        SET dist_status = 'submitted' 
+        WHERE dist_status is NULL 
+        AND channel_id = '{channel_id}'
+        AND dist_id = {dist_id}
     """
     logger.info(f"Executing: {update_sql}")
     start_time = time.perf_counter()
