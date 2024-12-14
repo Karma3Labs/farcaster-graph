@@ -158,9 +158,14 @@ def scm_distribute(http_session, dist_id, channel_id, distributions):
         
 
 def verify_distribution():
-    # TODO fetch 'submitted' distributions from db
-    # TODO call smartcontractmgr for status of distributions
-    # TODO update k3l_channel_tokens_bal
+    logger.warning(
+        """
+        NOT IMPLEMENT YET
+        # TODO fetch 'submitted' distributions from db
+        # TODO call smartcontractmgr for status of distributions
+        # TODO update k3l_channel_tokens_bal
+        """
+    )
     pass
 
 if __name__ == "__main__":
