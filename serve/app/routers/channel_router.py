@@ -6,7 +6,7 @@ from asyncpg.pool import Pool
 from ..models.score_model import ScoreAgg, Weights, Sorting_Order
 from ..models.channel_model import (
   ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES, OpenrankCategory,
-  ChannelPointsOrderBy
+  ChannelPointsOrderBy, ChannelEarningsOrderBy, ChannelEarningsType,
 )
 from ..dependencies import db_pool, db_utils
 from ..utils import fetch_channel
@@ -43,6 +43,25 @@ async def get_top_channel_balances(
         offset=offset,
         limit=limit,
         lite=lite,
+        orderby=orderby,
+        pool=pool)
+  return {"result": balances}
+
+@router.get("/tokens/{channel}")
+async def get_top_token_balances(
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=1000)] = 100,
+        lite: bool = True,
+        orderby: ChannelEarningsOrderBy = Query(ChannelEarningsOrderBy.TOTAL),
+        pool: Pool = Depends(db_pool.get_db)
+):
+  balances = await db_utils.get_top_channel_earnings(
+        channel_id=channel,
+        offset=offset,
+        limit=limit,
+        lite=lite,
+        earnings_type=ChannelEarningsType.TOKENS,
         orderby=orderby,
         pool=pool)
   return {"result": balances}
