@@ -424,13 +424,19 @@ def insert_tokens_log(
     insert_sql = f"""
         WITH latest_log AS (
             SELECT max(points_ts) as max_points_ts, channel_id, fid 
-                FROM k3l_channel_tokens_log
+            FROM k3l_channel_tokens_log
             GROUP BY channel_id, fid
+        ),
+        latest_verified_address as (
+            SELECT (array_agg(v.claim->>'address' order by timestamp))[1] as address, fid
+            FROM verifications v
+            GROUP BY fid
         )
         INSERT INTO k3l_channel_tokens_log
-            (fid, channel_id, amt, latest_points, points_ts)
+            (fid, fid_address, channel_id, amt, latest_points, points_ts)
         SELECT 
             bal.fid,
+            COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
             round(bal.{points_col},0) as amt,
             bal.{points_col} as latest_points,
@@ -439,7 +445,11 @@ def insert_tokens_log(
         LEFT JOIN latest_log as tlog 
             ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
             AND tlog.max_points_ts = bal.update_ts)
+        INNER JOIN fids ON (fids.fid = bal.fid) 
+        LEFT JOIN latest_verified_address as vaddr 
+            ON (vaddr.fid=bal.fid)
         WHERE tlog.channel_id IS NULL
+        ORDER BY channel_id, amt DESC
     """
     start_time = time.perf_counter()
     try:
@@ -458,8 +468,8 @@ def insert_tokens_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
-@Timer(name="fetch_individual_amts")
-def fetch_individual_amts(
+@Timer(name="fetch_all_distributions")
+def fetch_all_distributions(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
@@ -469,7 +479,7 @@ def fetch_individual_amts(
     limit = 10 if settings.IS_TEST else 1_000_000
     select_sql = f"""
         SELECT 
-            channel_id, fid, amt 
+            channel_id, fid, fid_address, amt 
         FROM k3l_channel_tokens_log
         WHERE req_status is NULL
         ORDER BY channel_id, amt DESC
@@ -535,8 +545,8 @@ def fetch_one_channel_distributions(
             channel_id, 
             json_agg(
                 json_build_object(
-                'fid', fid,
-                'amt', amt
+                'address', fid_address,
+                'amount', amt
                 )
             ) as distributions 
         FROM k3l_channel_tokens_log
@@ -566,11 +576,12 @@ def update_distribution_status(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
+    req_id: int,
     channel_id: str,
 ):
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET req_status = 'submitted'
+        SET req_status = 'submitted', req_id={req_id}
         WHERE req_status is NULL AND channel_id = '{channel_id}'
     """
     logger.info(f"Executing: {update_sql}")

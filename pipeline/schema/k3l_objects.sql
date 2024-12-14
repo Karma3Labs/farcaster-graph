@@ -529,12 +529,19 @@ CREATE SEQUENCE tokens_req_seq;
 
 CREATE TABLE public.k3l_channel_tokens_log (
 	fid int8 NOT NULL,
+    -- fid_addess is NULL because
+    -- .....custody address is nullable in fids table 
+    -- .....and not all fids have verified addresses
+    -- fid_addess is TYPE TEXT because
+    -- .....verfications address is a string in a jsonb column
+    -- .....custoday address is bytea but assuming verified address will be used more
+    -- .....also viem and other javascript libraries use strings
+    fid_address text NULL, 
     channel_id text NOT NULL,
 	amt bigint NOT NULL,
     latest_points real NOT NULL,
     points_ts timestamp without time zone NOT NULL,
     req_id int4 NULL, -- req_id per channel group
-    txn_hash text NULL,
     req_status tokens_req_status NULL,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
