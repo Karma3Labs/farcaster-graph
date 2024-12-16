@@ -356,17 +356,88 @@ async def get_channel_stats(
     pool: Pool
 ):
     sql_query = """
+    WITH 
+    follower_stats AS (
+    SELECT 
+        channel_id,
+            count(*) as num_followers
+    FROM warpcast_followers
+    WHERE channel_id = $1
+    GROUP BY channel_id
+    ),
+    rank_stats AS (
     SELECT 	
-    	MIN(score) min_score, 
-        MAX(score) max_score, 
-        PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
-        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
-	    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
-	    PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
-	    COUNT(*) AS num_fids_ranked
+        channel_id AS ranked_cid,
+        COUNT(*) AS num_fids_ranked,
+    --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
+    --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
+    --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
+    --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
+        MIN(score) as min_score, 
+        MAX(score) as max_score
     FROM k3l_channel_rank
     WHERE channel_id = $1
     AND strategy_name = $2
+    GROUP BY channel_id
+    ),
+    member_stats AS (
+    SELECT 
+        channel_id as member_cid,
+            count(*) as num_members
+    FROM warpcast_members
+    WHERE channel_id = $1
+    GROUP BY channel_id
+    ),
+    points_stats AS (
+    SELECT
+        channel_id as points_cid,
+        count(fid) as num_holders,
+    --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY balance) AS p25_balance,
+    --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS p50_balance,
+    --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS p75_balance,
+    --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS p90_balance,  	
+        MIN(balance) as min_balance, 
+        MAX(balance) as max_balance
+    FROM k3l_channel_points_bal
+        WHERE channel_id = $1
+    GROUP BY channel_id
+    ),
+    tokens_stats AS (
+        SELECT
+            channel_id as tokens_cid,
+        count(fid) as token_num_holders,
+    --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY balance) AS token_p25_balance,
+    --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS token_p50_balance,
+    --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS token_p75_balance,
+    --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS token_p90_balance,
+        MIN(balance) as token_min_balance, 
+        MAX(balance) as token_max_balance
+    FROM k3l_channel_tokens_bal
+    WHERE channel_id = $1
+    GROUP BY channel_id
+    )
+    SELECT 
+    channel_id,
+    num_followers,
+    num_fids_ranked,
+    --   p25_score,p50_score,p75_score,p90_score,
+        min_score,max_score,
+    num_members,
+    num_holders,
+    --   p25_balance,p50_balance,p75_balance,p90_balance,
+        min_balance,max_balance,
+    token_num_holders,
+    --   token_p25_balance,token_p50_balance,token_p75_balance,token_p90_balance,
+    token_min_balance,token_max_balance
+    FROM follower_stats as fids
+    LEFT JOIN rank_stats as rs
+        ON (rs.ranked_cid = fids.channel_id)
+    LEFT JOIN member_stats as ms
+        ON (ms.member_cid = fids.channel_id)
+    LEFT JOIN points_stats as ps
+        ON (ps.points_cid = fids.channel_id)
+    LEFT JOIN tokens_stats as ts
+        ON (ts.tokens_cid = fids.channel_id)
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
