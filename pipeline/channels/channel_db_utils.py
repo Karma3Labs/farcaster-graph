@@ -1,4 +1,5 @@
 import logging
+from typing import Callable
 
 from timer import Timer
 import time
@@ -362,7 +363,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             )
         INSERT INTO k3l_channel_points_bal_new 
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)
-            SELECT -- new fids with no previous balance and balances that were updated before time cutoff
+            SELECT -- new fids with no previous balance and balances that are older than cutoff period
                 authors.fid,
                 authors.channel_id,
                 COALESCE(bal.balance, 0) + ((authors.score / bt.budget::numeric) * {TOTAL_POINTS}) as balance, 
@@ -381,7 +382,7 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             WHERE
                 bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}'
             UNION
-            SELECT -- no new fids and existing balance that got recently updated
+            SELECT -- existing balances that are not getting updated or were updated within cutoff period
                 bal.fid,
                 bal.channel_id,
                 bal.balance as balance, 
@@ -418,3 +419,281 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+@Timer(name="fetch_channel_tokens_status")
+def fetch_channels_tokens_status(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int
+) -> list[tuple[str, bool]]:
+    select_sql = """
+        WITH 
+        existing_token_channels AS (
+        SELECT DISTINCT channel_id
+            FROM k3l_channel_tokens_log
+        )
+        SELECT 
+            allo.channel_id,
+            CASE WHEN exch.channel_id IS NULL THEN false ELSE true END as is_status_known
+        FROM k3l_channel_points_allowlist AS allo
+        LEFT JOIN existing_token_channels AS exch
+            ON (exch.channel_id = allo.channel_id)
+        WHERE allo.is_allowed=true
+        ORDER BY channel_id
+    """
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {select_sql}")
+                cursor.execute(select_sql)
+                rows = cursor.fetchall()
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return rows
+
+@Timer(name="insert_tokens_log")
+def insert_tokens_log(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, reason:str, is_airdrop: bool = False
+):
+    # dist_id is fetched in separate transaction
+    # but risk of gaps is not an issue 
+    dist_id = get_next_dist_sequence (
+                logger=logger,
+                pg_dsn=pg_dsn,
+                timeout_ms=timeout_ms,
+    )
+    points_col = "balance" if is_airdrop else "latest_earnings"
+
+    insert_sql = f"""
+        WITH latest_log AS (
+            SELECT max(points_ts) as max_points_ts, channel_id, fid 
+            FROM k3l_channel_tokens_log
+            WHERE channel_id='{channel_id}'
+            GROUP BY channel_id, fid
+        ),
+        latest_verified_address as (
+            SELECT (array_agg(v.claim->>'address' order by timestamp))[1] as address, fid
+            FROM verifications v
+            GROUP BY fid
+        )
+        INSERT INTO k3l_channel_tokens_log
+            (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
+        SELECT 
+            bal.fid,
+            COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
+            bal.channel_id,
+            round(bal.{points_col},0) as amt,
+            {dist_id} as dist_id,
+            '{reason}' as dist_reason,
+            bal.{points_col} as latest_points,
+            bal.update_ts as points_ts
+        FROM k3l_channel_points_bal as bal
+        LEFT JOIN latest_log as tlog 
+            ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
+            AND tlog.max_points_ts = bal.update_ts)
+        INNER JOIN fids ON (fids.fid = bal.fid) 
+        LEFT JOIN latest_verified_address as vaddr 
+            ON (vaddr.fid=bal.fid)
+        WHERE tlog.channel_id IS NULL
+        AND bal.channel_id = '{channel_id}'
+        ORDER BY channel_id, amt DESC
+    """
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Inserted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+@Timer(name="fetch_all_distributions")
+def fetch_all_distributions(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    batch_size: int = 1000,
+    callbackFn: Callable[[tuple], None] = None,
+):
+    limit = 10 if settings.IS_TEST else 1_000_000
+    select_sql = f"""
+        SELECT 
+            channel_id, fid, fid_address, amt 
+        FROM k3l_channel_tokens_log
+        WHERE dist_status is NULL
+        ORDER BY channel_id, amt DESC
+        LIMIT {limit} -- safety valve
+    """
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    while True:
+                        rows = cursor.fetchmany(batch_size)
+                        if len(rows) == 0:
+                            logger.info("No more rows to process")
+                            break
+                        if callbackFn is not None:
+                            logger.info(f"Processing {len(rows)} rows")
+                            callbackFn(rows)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="get_next_dist_sequence")
+def get_next_dist_sequence(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+) -> int:
+    select_sql = "SELECT nextval('tokens_dist_seq')"
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="fetch_distributions_for_channel")
+def fetch_distributions_for_channel(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int
+)-> tuple[str,list[dict]]:
+    select_sql = """
+        SELECT 
+            channel_id, 
+            dist_id,
+            json_agg(
+                json_build_object(
+                'address', fid_address,
+                'amount', amt
+                )
+            ) as distributions 
+        FROM k3l_channel_tokens_log
+        WHERE dist_status is NULL
+        GROUP BY channel_id, dist_id
+        ORDER BY channel_id, dist_id
+        LIMIT 1
+    """
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    return cursor.fetchone()
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="update_distribution_status")
+def update_distribution_status(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    dist_id: int,
+    channel_id: str,
+):
+    update_sql = f"""
+        UPDATE k3l_channel_tokens_log
+        SET dist_status = 'submitted' 
+        WHERE dist_status is NULL 
+        AND channel_id = '{channel_id}'
+        AND dist_id = {dist_id}
+    """
+    logger.info(f"Executing: {update_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(update_sql)
+                    logger.info(f"Updated rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
+@Timer(name="update_token_bal")
+def update_token_bal(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    dist_id: int,
+    channel_id: str,
+):
+    update_sql = f"""
+        WITH eligible_fids AS (
+        SELECT 
+                amt, channel_id, fid
+            FROM k3l_channel_tokens_log
+            WHERE dist_status = 'submitted'
+                AND channel_id = '{channel_id}'
+            AND dist_id = {dist_id}
+        )
+        MERGE INTO k3l_channel_tokens_bal as bal
+        USING eligible_fids as fids 
+                    ON (bal.channel_id = fids.channel_id AND bal.fid = fids.fid)
+        WHEN MATCHED THEN
+            UPDATE SET 
+            balance = balance + fids.amt, 
+            latest_earnings = fids.amt, 
+            update_ts = DEFAULT
+        WHEN NOT MATCHED THEN
+            INSERT 
+            (fid, channel_id, balance, latest_earnings, insert_ts, update_ts)
+        VALUES 
+            (fids.fid, fids.channel_id, fids.amt, fids.amt, DEFAULT, DEFAULT);
+    """
+    logger.info(f"Executing: {update_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(update_sql)
+                    logger.info(f"Updated rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return

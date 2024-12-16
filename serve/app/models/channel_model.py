@@ -20,3 +20,11 @@ class OpenrankCategory(str, Enum):
 class ChannelPointsOrderBy(str, Enum):
     TOTAL_POINTS = 'total_points'
     DAILY_POINTS = 'daily_points'
+
+class ChannelEarningsOrderBy(str, Enum):
+    TOTAL = 'total'
+    DAILY = 'daily'
+
+class ChannelEarningsType(str, Enum):
+    POINTS = 'points'
+    TOKENS = 'tokens'

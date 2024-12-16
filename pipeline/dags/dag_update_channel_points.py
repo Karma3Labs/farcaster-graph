@@ -19,9 +19,9 @@ with DAG(
     default_args=default_args,
     description='update channel points triggered by gen_channel_ranking',
     start_date=datetime(2024, 7, 10, 18),
-    schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST 
-    # schedule=None,
+    # schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST 
     # schedule_interval=timedelta(days=1),
+    schedule=None, # this dag is triggered by dag update_channel_tokens
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
@@ -29,12 +29,12 @@ with DAG(
 
     run_main = BashOperator(
         task_id="run_main",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh -v .venv",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv ",
         dag=dag)
 
     backup_to_s3 = BashOperator(
             task_id='backup_channel_points_bal',
-            bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal"
+            bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal "
         )
 
     run_main >> backup_to_s3

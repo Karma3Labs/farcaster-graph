@@ -3,7 +3,11 @@ import json
 
 from ..config import settings
 from app.models.score_model import ScoreAgg, Weights, Voting
-from app.models.channel_model import ChannelPointsOrderBy
+from app.models.channel_model import (
+    ChannelPointsOrderBy,
+    ChannelEarningsOrderBy,
+    ChannelEarningsType,
+)
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -408,10 +412,37 @@ async def get_top_channel_balances(
         orderby: ChannelPointsOrderBy,
         pool: Pool
 ):
-    orderby_clause = "ORDER BY balance DESC"
-    if orderby == ChannelPointsOrderBy.DAILY_POINTS:    
-        orderby_clause = "ORDER BY daily_earnings DESC" 
+    if orderby == ChannelPointsOrderBy.DAILY_POINTS:
+        orderby = ChannelEarningsOrderBy.DAILY
+    else:
+        orderby = ChannelEarningsOrderBy.TOTAL
+    return get_top_channel_earnings(
+        channel_id=channel_id, 
+        offset=offset, 
+        limit=limit, 
+        lite=lite, 
+        earnings_type=ChannelEarningsType.POINTS, 
+        orderby=orderby, 
+        pool=pool,
+    )
 
+
+async def get_top_channel_earnings(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        lite: bool,
+        earnings_type: ChannelEarningsType,
+        orderby: ChannelEarningsOrderBy,
+        pool: Pool
+):
+    orderby_clause = "ORDER BY balance DESC, daily_earnings DESC"
+    if orderby == ChannelEarningsOrderBy.DAILY :    
+        orderby_clause = "ORDER BY daily_earnings DESC, balance DESC" 
+    
+    table_name = 'k3l_channel_points_bal'
+    if earnings_type == ChannelEarningsType.TOKENS:
+        table_name = 'k3l_channel_tokens_bal'
 
     if lite:
         sql_query = f"""
@@ -425,7 +456,7 @@ async def get_top_channel_balances(
             END as daily_earnings,
             bal.latest_earnings as latest_earnings,
             bal.update_ts as bal_update_ts
-        FROM k3l_channel_points_bal as bal
+        FROM {table_name} as bal
         INNER JOIN k3l_channel_points_allowlist as allo 
             ON (allo.channel_id=bal.channel_id AND allo.is_allowed=true AND allo.channel_id=$1)
         {orderby_clause}
@@ -456,7 +487,7 @@ async def get_top_channel_balances(
                 END as daily_earnings,
                 bal.latest_earnings as latest_earnings,
                 bal.update_ts as bal_update_ts
-            FROM k3l_channel_points_bal as bal
+            FROM {table_name} as bal
             INNER JOIN k3l_channel_points_allowlist as allo 
                 on (allo.channel_id=bal.channel_id and allo.is_allowed=true)
             LEFT JOIN fnames on (fnames.fid = bal.fid)
@@ -1537,10 +1568,16 @@ async def get_top_channel_followers(
         pool: Pool
 ):
     sql_query = """
-    
     WITH 
+    tokens_launched as (
+    SELECT
+        channel_id
+    FROM k3l_channel_tokens_bal
+    WHERE channel_id = $1
+    LIMIT 1
+    ),
     distinct_warpcast_followers as (
-     SELECT 
+    SELECT 
     	distinct
         fid,
         channel_id
@@ -1562,14 +1599,30 @@ async def get_top_channel_followers(
         case when user_data.type = 3 then user_data.value end as bio,
         v.claim->>'address' as address,
         warpcast_members.memberat,
-      	bal.balance as balance, 
         CASE 
-            WHEN (bal.update_ts < now() - interval '1 days') THEN 0
-            WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
-            ELSE bal.latest_earnings
+            WHEN tokens_launched IS NOT NULL THEN tok.balance
+            ELSE bal.balance
+        END as balance,
+        CASE 
+            WHEN tokens_launched IS NOT NULL THEN 
+                CASE
+                    WHEN (tok.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
+                    ELSE tok.latest_earnings
+                END
+            ELSE
+                CASE
+                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                    ELSE bal.latest_earnings
+                END
         END as daily_earnings,
         bal.latest_earnings as latest_earnings,
-        bal.update_ts as bal_update_ts
+        bal.update_ts as bal_update_ts,
+        CASE 
+      		WHEN tokens_launched IS NOT NULL THEN 'tokens'
+      		WHEN channelpts.channel_id IS NOT NULL THEN 'points'
+      	END as earnings_type
     FROM 
         distinct_warpcast_followers wf 
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
@@ -1584,6 +1637,11 @@ async def get_top_channel_followers(
         LEFT JOIN k3l_channel_points_bal as bal 
             on (bal.channel_id=wf.channel_id and bal.fid=wf.fid 
                 and bal.channel_id=channelpts.channel_id)
+        LEFT JOIN k3l_channel_tokens_bal as tok 
+            on (tok.channel_id=wf.channel_id and tok.fid=wf.fid 
+                and tok.channel_id=channelpts.channel_id)
+        LEFT JOIN tokens_launched 
+            on (tokens_launched.channel_id = wf.channel_id)
     )
     SELECT 
         fid,
@@ -1600,6 +1658,7 @@ async def get_top_channel_followers(
         max(daily_earnings) as daily_earnings,
         max(latest_earnings) as latest_earnings,
         max(bal_update_ts) as bal_update_ts,
+        any_value(earnings_type) as earnings_type,
         min(memberat) as memberat
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
