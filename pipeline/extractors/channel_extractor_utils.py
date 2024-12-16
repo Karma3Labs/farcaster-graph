@@ -252,17 +252,30 @@ def merge_db(
         f"CREATE TABLE {WIP_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
     )
     insert_sql = f"""
-        INSERT INTO {WIP_TBL}
-            SELECT {LIVE_TBL}.* FROM {LIVE_TBL}
-            LEFT JOIN {NEW_TBL} ON 
-                ({LIVE_TBL}.channel_id = {NEW_TBL}.channel_id)
-            WHERE {NEW_TBL}.channel_id IS NULL
-            UNION 
-            SELECT {NEW_TBL}.* FROM {NEW_TBL}
+        WITH live_channels AS (
+            SELECT distinct channel_id
+            FROM {LIVE_TBL}
+        ),
+        new_channels AS (
+            SELECT distinct channel_id
+            FROM {NEW_TBL}
+        ),
+        missing_live_channels AS (
+            SELECT live_channels.channel_id
+            FROM live_channels
+            LEFT JOIN new_channels
+                ON (live_channels.channel_id = new_channels.channel_id)
+            WHERE new_channels.channel_id is NULL
+        )
+        INSERT INTO {NEW_TBL}
+        SELECT fid, followedat, insert_ts, live.channel_id as channel_id
+        FROM {LIVE_TBL} as live
+        INNER JOIN missing_live_channels ON
+        (missing_live_channels.channel_id = live.channel_id)
     """
     replace_sql = (
         f"DROP TABLE IF EXISTS {LIVE_TBL};"
-        f"ALTER TABLE {WIP_TBL} RENAME TO {LIVE_TBL};"
+        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
     )
     try:
         # transaction scope begins
