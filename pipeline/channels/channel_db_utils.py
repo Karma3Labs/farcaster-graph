@@ -278,82 +278,87 @@ def update_points_balance_v2(logger: logging.Logger, pg_dsn: str, timeout_ms: in
     )
 
     insert_sql = f"""
-        WITH
-            cast_scores_by_fid as (
+        WITH 
+            eligible_casts AS (
                 SELECT
-                hash as cast_hash,
-                SUM(
-                    (
-                    -- (10 * fids.score * ci.casted)
-                    + (1 * fids.score * ci.replied)
-                    + (5 * fids.score * ci.recasted)
-                    + (1 * fids.score * ci.liked)
-                    )
-                    *
+                    casts.hash as cast_hash,
+                    ci.replied,
+                    ci.casted,
+                    ci.liked,
+                    ci.recasted,
                     power(
-                    1-(1/(365*24)::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
-                ) as cast_score,
+                        1-(1/(365*24)::numeric),
+                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+                    ) as decay_factor,
+                    casts.fid,
                     channels.id as channel_id
-                FROM k3l_recent_parent_casts as casts -- find original casts
-                INNER JOIN k3l_cast_action as ci -- find all authors and engager fids
-                ON (ci.cast_hash = casts.hash
-                    AND casts.timestamp BETWEEN now() - interval '{INTERVAL}' AND now()
-                        )
-                INNER JOIN warpcast_channels_data as channels -- to be able to join with channel rank
-                    ON (channels.url=casts.root_parent_url)
-                INNER JOIN k3l_channel_rank as fids -- to get fid scores in a channel
-                    ON (fids.fid = ci.fid 
-                        AND fids.channel_id = channels.id
-                        AND fids.strategy_name = '{STRATEGY}')
+                FROM k3l_recent_parent_casts as casts
+                    INNER JOIN k3l_cast_action as ci -- find all authors and engager fids
+                    ON (ci.cast_hash = casts.hash
+                        AND casts.timestamp BETWEEN now() - interval '{INTERVAL}' AND now()
+                            )
+                INNER JOIN warpcast_channels_data as channels
+                        ON (channels.url = casts.root_parent_url)
                 INNER JOIN k3l_channel_points_allowlist as allo
-                    ON (allo.channel_id = channels.id)
-                WHERE 
-                        casts.timestamp BETWEEN now() - interval '{INTERVAL}' AND now()
-                GROUP BY casts.hash, ci.fid, channels.id
-            ), 
+                        ON (allo.channel_id = channels.id)
+            ),
+            cast_scores_by_channel_fid AS (
+                SELECT
+                    casts.cast_hash,
+                    SUM(
+                        (
+                            + (1 * fids.score * casts.replied)
+                            + (5 * fids.score * casts.recasted)
+                            + (1 * fids.score * casts.liked)
+                        )
+                        *
+                        casts.decay_factor
+                        ) as cast_score,
+                    casts.channel_id as channel_id
+                FROM eligible_casts as casts
+                INNER JOIN k3l_channel_rank as fids
+                    ON (fids.fid = casts.fid 
+                        AND fids.channel_id=casts.channel_id 
+                        AND fids.strategy_name='{STRATEGY}')
+                GROUP BY casts.channel_id, casts.cast_hash, fids.fid
+            ),
             cast_scores AS (
-            SELECT
-                cast_hash,
-                        channel_id,
-                sum(power(cast_score,2)) as cast_score
-            FROM cast_scores_by_fid
-            WHERE cast_score > 0
-            GROUP BY cast_hash, channel_id
+                SELECT
+                    cast_hash,
+                            channel_id,
+                    sum(power(cast_score,2)) as cast_score
+                FROM cast_scores_by_channel_fid
+                WHERE cast_score > 0
+                GROUP BY cast_hash, channel_id
             ),
             author_scores AS (
                 SELECT
                     SUM(cast_scores.cast_score) as score,
-                        fids.fid,
-                    fids.channel_id
+                        casts.fid,
+                    cast_scores.channel_id
                 FROM cast_scores
                 INNER JOIN k3l_recent_parent_casts AS casts 
                     ON casts.hash = cast_scores.cast_hash
-                INNER JOIN k3l_channel_rank AS fids 
-                ON (casts.fid = fids.fid 
-                    AND fids.channel_id=cast_scores.channel_id
-                    AND fids.strategy_name = '{STRATEGY}')
-                GROUP BY fids.fid, fids.channel_id
+                GROUP BY casts.fid, cast_scores.channel_id
             ),
             points_budget AS (
-            SELECT 
-                sum(score) as budget,
-                channel_id
-            FROM (
-                SELECT
-                fid,
-                score,
-                NTILE({NUM_NTILES}) OVER (
-                    PARTITION BY channel_id
-                        ORDER BY score DESC
-                ) as ptile,
-                channel_id
-                FROM
-                    author_scores
-            )
-            WHERE ptile <= {CUTOFF_NTILE}
-            GROUP BY channel_id
+                SELECT 
+                    sum(score) as budget,
+                    channel_id
+                FROM (
+                    SELECT
+                    fid,
+                    score,
+                    NTILE({NUM_NTILES}) OVER (
+                        PARTITION BY channel_id
+                            ORDER BY score DESC
+                    ) as ptile,
+                    channel_id
+                    FROM
+                        author_scores
+                )
+                WHERE ptile <= {CUTOFF_NTILE}
+                GROUP BY channel_id
             )
         INSERT INTO k3l_channel_points_bal_new 
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)

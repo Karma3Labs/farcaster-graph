@@ -324,6 +324,7 @@ CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (r
 CREATE INDEX k3l_channel_rank_fid_idx ON public.k3l_channel_rank USING btree (fid);
 CREATE INDEX k3l_channel_rank_ch_strat_idx ON public.k3l_channel_rank USING btree (channel_id, strategy_name);
 CREATE INDEX k3l_channel_rank_ch_strat_fid_idx ON public.k3l_channel_rank USING btree (channel_id, strategy_name, fid);
+CREATE INDEX k3l_channel_rank_ch_fid_idx ON public.k3l_channel_rank USING btree (channel_id, fid);
 
 GRANT SELECT,REFERENCES ON public.k3l_channel_rank TO k3l_readonly;
 
