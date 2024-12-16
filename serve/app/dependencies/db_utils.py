@@ -1599,30 +1599,29 @@ async def get_top_channel_followers(
         case when user_data.type = 3 then user_data.value end as bio,
         v.claim->>'address' as address,
         warpcast_members.memberat,
-        CASE 
-            WHEN tokens_launched IS NOT NULL THEN tok.balance
-            ELSE bal.balance
-        END as balance,
-        CASE 
-            WHEN tokens_launched IS NOT NULL THEN 
-                CASE
-                    WHEN (tok.update_ts < now() - interval '1 days') THEN 0
-                    WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
-                    ELSE tok.latest_earnings
-                END
-            ELSE
-                CASE
-                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
-                    WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
-                    ELSE bal.latest_earnings
-                END
+        bal.balance as balance,
+        tok.balance as token_balance,
+        CASE
+            WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+            WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+            ELSE bal.latest_earnings
         END as daily_earnings,
+        CASE
+            WHEN (tok.update_ts < now() - interval '1 days') THEN 0
+            WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
+            ELSE tok.latest_earnings
+        END as token_daily_earnings,
         bal.latest_earnings as latest_earnings,
+        tok.latest_earnings as token_latest_earnings,
         bal.update_ts as bal_update_ts,
         CASE 
-      		WHEN tokens_launched IS NOT NULL THEN 'tokens'
-      		WHEN channelpts.channel_id IS NOT NULL THEN 'points'
-      	END as earnings_type
+            WHEN channelpts.channel_id IS NOT NULL THEN true
+            ELSE false
+        END as is_points_launched,
+        CASE 
+      		WHEN tokens_launched IS NOT NULL THEN true
+            ELSE false
+      	END as is_tokens_launched
     FROM 
         distinct_warpcast_followers wf 
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
@@ -1656,9 +1655,12 @@ async def get_top_channel_followers(
         ARRAY_AGG(DISTINCT address) as addresses,
         max(balance) as balance,
         max(daily_earnings) as daily_earnings,
+        max(token_daily_earnings) as token_daily_earnings,
         max(latest_earnings) as latest_earnings,
+        max(latest_earnings) as token_latest_earnings,
         max(bal_update_ts) as bal_update_ts,
-        any_value(earnings_type) as earnings_type,
+        bool_or(is_points_launched) as is_points_launched,
+        bool_or(is_tokens_launched) as is_tokens_launched,
         min(memberat) as memberat
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
