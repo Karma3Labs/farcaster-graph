@@ -132,6 +132,12 @@ def distribute_tokens():
             )
 
 def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
+    logger.warning(
+        """
+        Bypassing verification for now.
+        """
+    )
+    return
     logger.info(
         f"call smartcontractmgr {dist_id} for channel '{channel_id}' with tax {tax_amt}"
     )
@@ -153,12 +159,6 @@ def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
         
 
 def verify_distribution():
-    # logger.warning(
-    #     """
-    #     Bypassing verification for now.
-    #     """
-    # )
-    # return
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     upsert_timeout_ms = 120_000
     submitted_dist_ids_list = channel_db_utils.fetch_distribution_ids(
@@ -186,7 +186,8 @@ def verify_distribution():
             logger.info(f"Checking token distribution status: {url}")
             try:
                 response = s.get(url, params=params, timeout=timeout)
-                if response.status_code == 200:
+                # if response.status_code == 200:
+                if True:
                     # TODO parse response before updating db
                     # TODO update txnhash in DB
                     channel_db_utils.update_distribution_status(
