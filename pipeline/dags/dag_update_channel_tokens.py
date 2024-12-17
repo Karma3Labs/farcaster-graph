@@ -44,12 +44,6 @@ with DAG(
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
         dag=dag)
 
-    trigger_update_channel_points = TriggerDagRunOperator(
-            task_id="trigger_update_channel_points",
-            trigger_dag_id="update_channel_points_v2",
-            conf={"trigger": "update_channel_tokens"},
-            wait_for_completion=True,
-        )
 
-    prepare >> distribute >> verify >> trigger_update_channel_points
+    prepare >> distribute >> verify
 

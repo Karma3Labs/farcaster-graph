@@ -29,18 +29,26 @@ FREQUENCY_H = 23  # Define the frequency in hours
     catchup=False,
 ) 
 def create_trigger_dag():
-    skip_main_dag = EmptyOperator(task_id="skip_main_dag")
+    
+    trigger_update_channel_tokens = TriggerDagRunOperator(
+            task_id="trigger_update_channel_tokens",
+            trigger_dag_id="update_channel_tokens",
+            conf={"trigger": "trigger_channel_points_tokens"},
+            wait_for_completion=True,
+        )
 
-    trigger_main_dag = TriggerDagRunOperator(
-        task_id='trigger_main_dag',
-        trigger_dag_id='update_channel_tokens',
+    skip_points_dag = EmptyOperator(task_id="skip_points_dag")
+
+    trigger_points_dag = TriggerDagRunOperator(
+        task_id='trigger_points_dag',
+        trigger_dag_id='update_channel_points_v2',
         execution_date='{{ macros.datetime.now() }}',
         conf={"trigger": "trigger_channel_points_tokens"},
     )
 
-    @task.branch(task_id="check_last_successful_run")
-    def check_last_successful_run(**context) -> bool:
-        dag_runs = DagRun.find(dag_id="update_channel_tokens", state=DagRunState.SUCCESS)
+    @task.branch(task_id="check_last_successful_points")
+    def check_last_successful_points(**context) -> bool:
+        dag_runs = DagRun.find(dag_id="update_channel_points_v2", state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
             # No previous runs
             print("No previous runs")
@@ -66,13 +74,13 @@ def create_trigger_dag():
         if delta >= FREQUENCY_H:
             # Last run was more than FREQUENCY_H hours ago, so we should run
             print(f"Last run was more than {FREQUENCY_H} hours ago, so we should run")
-            return "trigger_main_dag"
-        return "skip_main_dag"
+            return "trigger_points_dag"
+        return "skip_points_dag"
 
-    check_last_successful_run = check_last_successful_run()
+    check_last_successful_points = check_last_successful_points()
 
-    check_last_successful_run >> trigger_main_dag
+    trigger_update_channel_tokens >> check_last_successful_points >> trigger_points_dag
 
-    check_last_successful_run >> skip_main_dag
+    trigger_update_channel_tokens >> check_last_successful_points >> skip_points_dag
 
 trigger_dag = create_trigger_dag()
