@@ -1725,6 +1725,7 @@ async def get_top_channel_followers(
         global_rank,
         ARRAY_AGG(DISTINCT address) as addresses,
         max(balance) as balance,
+        max(token_balance) as token_balance,
         max(daily_earnings) as daily_earnings,
         max(token_daily_earnings) as token_daily_earnings,
         max(latest_earnings) as latest_earnings,
