@@ -40,7 +40,7 @@ with DAG(
         dag=dag)
     
     verify = BashOperator(
-        task_id="distribute",
+        task_id="verify",
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
         dag=dag)
 
