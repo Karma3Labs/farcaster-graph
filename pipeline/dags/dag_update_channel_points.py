@@ -17,7 +17,7 @@ default_args = {
 with DAG(
     dag_id='update_channel_points_v2',
     default_args=default_args,
-    description='update channel points triggered by gen_channel_ranking',
+    description='update channel points triggered by update_channel_tokens dag',
     start_date=datetime(2024, 7, 10, 18),
     # schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST 
     # schedule_interval=timedelta(days=1),
