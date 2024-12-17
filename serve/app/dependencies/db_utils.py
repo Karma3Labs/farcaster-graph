@@ -487,7 +487,7 @@ async def get_top_channel_balances(
         orderby = ChannelEarningsOrderBy.DAILY
     else:
         orderby = ChannelEarningsOrderBy.TOTAL
-    return get_top_channel_earnings(
+    return await get_top_channel_earnings(
         channel_id=channel_id, 
         offset=offset, 
         limit=limit, 
