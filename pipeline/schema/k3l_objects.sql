@@ -525,7 +525,7 @@ CREATE INDEX k3l_channel_tokens_bal_ch_fid_idx ON public.k3l_channel_tokens_bal 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
 
 -------------------------------------------------
-CREATE TYPE tokens_dist_seq AS ENUM ('submitted', 'success', 'failure');
+CREATE TYPE tokens_dist_status AS ENUM ('submitted', 'success', 'failure');
 CREATE SEQUENCE tokens_dist_seq;
 
 CREATE TABLE public.k3l_channel_tokens_log (
@@ -543,8 +543,9 @@ CREATE TABLE public.k3l_channel_tokens_log (
     latest_points real NOT NULL,
     points_ts timestamp without time zone NOT NULL,
     dist_id int4 NOT NULL, -- dist_id per channel group
-    dist_status tokens_dist_seq NULL,
+    dist_status tokens_dist_status NULL,
     dist_reason text NULL,
+    txn_hash text NULL,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 )
