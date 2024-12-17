@@ -23,6 +23,13 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
+    
+    prep_task = BashOperator(
+        task_id='prep_warpcast_members',
+        bash_command="cd /pipeline; extractors/extract_channel_fids.sh -t prep" 
+                        " -w . -v .venv -j followers",
+        dag=dag
+    )
 
     fetch_task = BashOperator(
         task_id='extract_channel_followers',
@@ -38,4 +45,4 @@ with DAG(
         dag=dag
     )
 
-    fetch_task >> cleanup_task
+    prep_task >> fetch_task >> cleanup_task
