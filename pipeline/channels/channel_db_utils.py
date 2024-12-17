@@ -1,5 +1,6 @@
 import logging
 from typing import Callable
+from enum import StrEnum
 
 from timer import Timer
 import time
@@ -7,6 +8,13 @@ from config import settings
 from asyncpg.pool import Pool
 import asyncpg
 import psycopg2
+
+class TokenDistStatus(StrEnum):
+    NULL = 'NULL'
+    SUBMITTED = 'submitted'
+    SUCCESS = 'success'
+    FAILURE = 'failure'
+
 
 
 async def fetch_rows(
@@ -455,6 +463,29 @@ def fetch_channels_tokens_status(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return rows
 
+@Timer(name="get_next_dist_sequence")
+def get_next_dist_sequence(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+) -> int:
+    select_sql = "SELECT nextval('tokens_dist_seq')"
+    logger.info(f"Executing: {select_sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn, 
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn: 
+                with conn.cursor() as cursor:
+                    cursor.execute(select_sql)
+                    return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
+
 @Timer(name="insert_tokens_log")
 def insert_tokens_log(
     logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, reason:str, is_airdrop: bool = False
@@ -467,7 +498,7 @@ def insert_tokens_log(
                 timeout_ms=timeout_ms,
     )
     points_col = "balance" if is_airdrop else "latest_earnings"
-
+    # TODO deduct tax amount from budget
     insert_sql = f"""
         WITH latest_log AS (
             SELECT max(points_ts) as max_points_ts, channel_id, fid 
@@ -519,8 +550,8 @@ def insert_tokens_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
-@Timer(name="fetch_all_distributions")
-def fetch_all_distributions(
+@Timer(name="fetch_distribution_entries")
+def fetch_distribution_entries(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
@@ -559,13 +590,27 @@ def fetch_all_distributions(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
-@Timer(name="get_next_dist_sequence")
-def get_next_dist_sequence(
+@Timer(name="fetch_distribution_ids")
+def fetch_distribution_ids(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-) -> int:
-    select_sql = "SELECT nextval('tokens_dist_seq')"
+    status: TokenDistStatus,
+):
+    limit = 10 if settings.IS_TEST else 1_000_000
+    match status:
+        case TokenDistStatus.NULL:
+            status_condn = " is NULL "
+        case _:
+            status_condn = f" = '{status}' " 
+    select_sql = f"""
+        SELECT 
+            distinct channel_id, dist_id 
+        FROM k3l_channel_tokens_log
+        WHERE dist_status {status_condn}
+        ORDER BY channel_id, dist_id
+        LIMIT {limit} -- safety valve
+    """
     logger.info(f"Executing: {select_sql}")
     start_time = time.perf_counter()
     try:
@@ -575,15 +620,15 @@ def get_next_dist_sequence(
             )  as conn: 
                 with conn.cursor() as cursor:
                     cursor.execute(select_sql)
-                    return cursor.fetchone()[0]
+                    rows = cursor.fetchall()
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
-    return
+    return rows
 
-@Timer(name="fetch_distributions_for_channel")
-def fetch_distributions_for_channel(
+@Timer(name="fetch_distributions_one_channel")
+def fetch_distributions_one_channel(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int
@@ -620,6 +665,7 @@ def fetch_distributions_for_channel(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
+
 @Timer(name="update_distribution_status")
 def update_distribution_status(
     logger: logging.Logger,
@@ -627,11 +673,24 @@ def update_distribution_status(
     timeout_ms: int,
     dist_id: int,
     channel_id: str,
+    old_status:TokenDistStatus,
+    new_status:TokenDistStatus,
 ):
+    match old_status:
+        case TokenDistStatus.NULL:
+            status_condn = " is NULL "
+        case _:
+            status_condn = f" = '{old_status}' " 
+    match new_status:
+        case TokenDistStatus.NULL:
+            status_to = " NULL "
+        case _:
+            status_to = f"'{new_status}'"
+
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET dist_status = 'submitted' 
-        WHERE dist_status is NULL 
+        SET dist_status = {status_to} 
+        WHERE dist_status {status_condn} 
         AND channel_id = '{channel_id}'
         AND dist_id = {dist_id}
     """
