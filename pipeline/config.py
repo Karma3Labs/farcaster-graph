@@ -100,6 +100,11 @@ class Settings(BaseSettings):
 
     @computed_field
     @cached_property
+    def POSTGRES_TIMEOUT_MS(self) -> int:
+       return self.POSTGRES_TIMEOUT_SECS * 1000
+
+    @computed_field
+    @cached_property
     def PERSONAL_IGRAPH_URLPATH(self) -> str:
        return f"{self.PERSONAL_IGRAPH_URL}/graph"
 

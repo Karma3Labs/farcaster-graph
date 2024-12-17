@@ -4,6 +4,7 @@ import sys
 import asyncio
 from enum import Enum
 from pathlib import Path
+import random
 
 import asyncpg
 
@@ -46,6 +47,7 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
 
             logger.info(f"Reading all top channels from CSV:{csv_path}")
             top_channel_ids = channel_utils.read_channel_ids_csv(csv_path)
+            random.shuffle(top_channel_ids)
             logger.info(f"Total number of top channels: {len(top_channel_ids)}")
             logger.info(f"First 10 top channel ids: {top_channel_ids[:10]}")
 

@@ -244,13 +244,8 @@ def merge_db(
 ):
     LIVE_TBL = job_type.value['live_table']
     NEW_TBL = f"{LIVE_TBL}_new"
-    WIP_TBL = f"{LIVE_TBL}_wip"
     logger.info(f"Deleting previous rows for table '{LIVE_TBL}'")
     start_time = time.perf_counter()
-    wip_sql = (
-        f"DROP TABLE IF EXISTS {WIP_TBL};"
-        f"CREATE TABLE {WIP_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
-    )
     insert_sql = f"""
         WITH live_channels AS (
             SELECT distinct channel_id
@@ -283,9 +278,6 @@ def merge_db(
                 pg_dsn, 
                 options=f"-c statement_timeout={long_timeout_ms}"
             )  as conn: 
-            with conn.cursor() as cursor:
-                logger.info(f"Executing: {wip_sql}")
-                cursor.execute(wip_sql)
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
