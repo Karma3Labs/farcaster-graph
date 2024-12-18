@@ -10,6 +10,7 @@ from ..models.channel_model import (
   ChannelEarningsScope
 )
 from ..dependencies import db_pool, db_utils
+from .. import utils
 from ..utils import fetch_channel
 
 router = APIRouter(tags=["Channel OpenRank Scores"])
@@ -66,6 +67,31 @@ async def get_top_token_balances(
         orderby=orderby,
         pool=pool)
   return {"result": balances}
+
+@router.get("/tokens/{channel}/claim")
+async def get_token_claim(
+        channel: str,
+        fid: int,
+        pool: Pool = Depends(db_pool.get_db)
+):
+    # check local pg database first before calling smart contract manager
+    balance = await db_utils.get_fid_channel_token_balance(
+        channel_id=channel, fid=fid, pool=pool
+    )
+    if not balance:
+        logger.error(f"No entry in token balance table for {channel} {fid}")
+        raise HTTPException(status_code=404, detail="No tokens to claim.")
+    channel_token = await utils.fetch_channel_token(channel_id=channel)
+    if not channel_token:
+        logger.error(
+            f"Weird! Balance for {channel} {fid} exists."
+            f" But, no tokens deployed."
+            f" Channel {channel} is probably used for testing."
+        )
+        # TODO uncomment this once ready for e2e integration 
+        # raise HTTPException(status_code=404, detail="No tokens to claim.")
+        channel_token = {}
+    return {"result": {**balance, **channel_token}}
 
 @router.get("/distribution/preview/{channel}")
 async def get_tokens_distrib_preview(

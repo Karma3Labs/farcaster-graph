@@ -671,6 +671,32 @@ async def get_tokens_distrib_overview(
     """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_fid_channel_token_balance(
+        channel_id: str,
+        fid: int,
+        pool: Pool
+):  
+    sql_query="""
+        SELECT
+		    fid,
+            channel_id,
+            balance,
+            CASE 
+                WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                ELSE bal.latest_earnings
+            END as earnings_today,
+            bal.latest_earnings as last_earnings,
+            update_ts as last_earnings_ts
+        FROM k3l_channel_tokens_bal as bal
+        WHERE channel_id = $1
+        AND fid = $2
+    """
+    res = await fetch_rows(channel_id, fid, sql_query=sql_query, pool=pool)
+    if len(res) > 0:
+        return res[0]
+    return None
+
 async def get_tokens_distrib_preview(
         channel_id: str,
         offset: int,

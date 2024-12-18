@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
+    CURA_SCMGR_URL: str = 'changeme'
+    CURA_SCMGR_USERNAME: str = 'changeme'
+    CURA_SCMGR_PASSWORD: SecretStr = 'changeme'
+
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
     LOG_LEVEL_CORE: str = 'DEBUG'
