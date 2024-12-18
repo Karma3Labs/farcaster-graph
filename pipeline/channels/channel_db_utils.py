@@ -645,6 +645,7 @@ def fetch_distributions_one_channel(
             ) as distributions 
         FROM k3l_channel_tokens_log
         WHERE dist_status is NULL
+        AND amt > 0
         GROUP BY channel_id, dist_id
         ORDER BY channel_id, dist_id
         LIMIT 1
