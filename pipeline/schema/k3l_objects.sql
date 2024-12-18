@@ -520,7 +520,8 @@ CREATE TABLE public.k3l_channel_tokens_bal (
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX k3l_channel_tokens_bal_ch_fid_idx ON public.k3l_channel_tokens_bal USING btree (channel_id, fid);
+CREATE UNIQUE INDEX k3l_channel_tokens_bal_ch_fid_idx 
+    ON public.k3l_channel_tokens_bal USING btree (channel_id, fid);
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
 

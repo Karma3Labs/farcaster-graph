@@ -673,6 +673,7 @@ def update_distribution_status(
     timeout_ms: int,
     dist_id: int,
     channel_id: str,
+    txn_hash: str,
     old_status:TokenDistStatus,
     new_status:TokenDistStatus,
 ):
@@ -689,7 +690,8 @@ def update_distribution_status(
 
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET dist_status = {status_to} 
+        SET dist_status = {status_to}, 
+            txn_hash = {"'"+txn_hash+"'" if txn_hash else "NULL"}
         WHERE dist_status {status_condn} 
         AND channel_id = '{channel_id}'
         AND dist_id = {dist_id}

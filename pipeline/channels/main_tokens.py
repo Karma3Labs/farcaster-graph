@@ -61,10 +61,10 @@ def prepare_for_distribution(scope: Scope, reason: str):
             if not token_status:
                 logger.info(f"Channel '{channel_id}' has no distributions. Checking token launch status.")
                 try:
-                    params = {'channelId': channel_id}
+                    path = f"/token/lookupTokenForChannel/{channel_id}"
                     response = s.get(
-                        urllib.parse.urljoin(settings.CURA_SCMGR_URL,"/token/getTokenByChannel",),
-                        params=params,
+                        urllib.parse.urljoin(settings.CURA_SCMGR_URL,path),
+                        headers={"Accept": "application/json", "Content-Type": "application/json"},
                         timeout=(connect_timeout_s, read_timeout_s),
                     )
                     if response.status_code == 200:
@@ -127,6 +127,7 @@ def distribute_tokens():
                 timeout_ms=upsert_timeout_ms,
                 dist_id=dist_id,
                 channel_id=channel_id,
+                txn_hash=None,
                 old_status=TokenDistStatus.NULL,
                 new_status=TokenDistStatus.SUBMITTED
             )
@@ -176,26 +177,31 @@ def verify_distribution():
     with niquests.Session(retries=retries) as s:
         # reuse TCP connection for multiple scm requests
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
-        url = urllib.parse.urljoin(
-            settings.CURA_SCMGR_URL, "/distribution/",
-        )
         timeout=(connect_timeout_s, read_timeout_s)
         for channel_id, dist_id in submitted_dist_ids_list:
-            params = {'channelId': channel_id,'distributionId': dist_id}
-
+            url = urllib.parse.urljoin(
+                settings.CURA_SCMGR_URL, f"/distribution/{dist_id}",
+            )
             logger.info(f"Checking token distribution status: {url}")
             try:
-                response = s.get(url, params=params, timeout=timeout)
+                response = s.get(
+                    url, 
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    timeout=timeout
+                )
+                logger.info(f"{response.status_code}: {response.reason}")
+                # TODO uncomment this once ready for e2e integration
                 # if response.status_code == 200:
+                    # data = response.json()
                 if True:
-                    # TODO parse response before updating db
-                    # TODO update txnhash in DB
+                    data = {}
                     channel_db_utils.update_distribution_status(
                         logger=logger,
                         pg_dsn=pg_dsn,
                         timeout_ms=upsert_timeout_ms,
                         dist_id=dist_id,
                         channel_id=channel_id,
+                        txn_hash=data.get('tx'),
                         old_status=TokenDistStatus.SUBMITTED,
                         new_status=TokenDistStatus.SUCCESS,
                     )
