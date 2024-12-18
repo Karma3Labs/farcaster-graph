@@ -599,24 +599,37 @@ async def get_tokens_distrib_details(
         limit: int,
         pool: Pool
 ): 
-    sql_query = """
-    WITH distrib_rows AS (
+    # asyncpg does not support named parameters
+    # ... so optional params is not pretty
+    # ... sanitize int input and just use pyformat
+    dist_filter = f' AND dist_id = {int(dist_id)} ' if dist_id else ' ORDER BY insert_ts DESC'
+
+    sql_query = f"""
+    WITH 
+    dist_id AS (
         SELECT
-            channel_id,
-            dist_id,
+            channel_id, dist_id
+        FROM k3l_channel_tokens_log
+        WHERE channel_id=$1
+        {dist_filter} 
+        LIMIT 1
+    ),
+    distrib_rows AS (
+        SELECT
+            tlog.channel_id,
+            tlog.dist_id,
             tlog.fid,
             fid_address,
             fnames.fname as fname,
             case when user_data.type = 6 then user_data.value end as username,
             case when user_data.type = 1 then user_data.value end as pfp,
             case when user_data.type = 3 then user_data.value end as bio,
-            amt,
-            txn_hash
+            tlog.amt,
+            tlog.txn_hash
         FROM k3l_channel_tokens_log AS tlog
+        INNER JOIN dist_id ON (tlog.channel_id = dist_id.channel_id AND dist_id.dist_id = tlog.dist_id)
         LEFT JOIN fnames on (fnames.fid = tlog.fid)
         LEFT JOIN user_data on (user_data.fid = tlog.fid)
-        WHERE channel_id = $1
-        AND dist_id=$2
     )
     SELECT 
         fid,
@@ -632,10 +645,11 @@ async def get_tokens_distrib_details(
     FROM distrib_rows
     GROUP BY fid
     ORDER BY amt DESC
-    OFFSET $3
-    LIMIT $4
+    OFFSET $2
+    LIMIT $3
     """
-    return await fetch_rows(channel_id, dist_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
 
 async def get_tokens_distrib_overview(
     channel_id: str,

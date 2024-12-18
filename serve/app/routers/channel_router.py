@@ -146,7 +146,7 @@ async def get_tokens_distrib_overview(
 @router.get("/distribution/details/{channel}")
 async def get_tokens_distrib_details(
         channel: str,
-        dist_id: int,
+        dist_id: Annotated[int | None, Query()] = None,
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
