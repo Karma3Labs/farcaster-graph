@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
 class ChannelRankingsTimeframe(str, Enum):
     LIFETIME = 'lifetime'
@@ -13,18 +13,22 @@ CHANNEL_RANKING_STRATEGY_NAMES = {
     ChannelRankingsTimeframe.ONE_DAY: '1d_engagement'
 }
 
-class OpenrankCategory(str, Enum):
+class OpenrankCategory(StrEnum):
     TEST = 'test'
     PROD = 'prod'
 
-class ChannelPointsOrderBy(str, Enum):
+class ChannelPointsOrderBy(StrEnum):
     TOTAL_POINTS = 'total_points'
     DAILY_POINTS = 'daily_points'
 
-class ChannelEarningsOrderBy(str, Enum):
+class ChannelEarningsOrderBy(StrEnum):
     TOTAL = 'total'
     DAILY = 'daily'
 
-class ChannelEarningsType(str, Enum):
+class ChannelEarningsScope(StrEnum):
+    AIRDROP = 'airdrop'
+    DAILY = 'daily'
+
+class ChannelEarningsType(StrEnum):
     POINTS = 'points'
     TOKENS = 'tokens'

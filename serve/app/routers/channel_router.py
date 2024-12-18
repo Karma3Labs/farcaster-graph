@@ -7,6 +7,7 @@ from ..models.score_model import ScoreAgg, Weights, Sorting_Order
 from ..models.channel_model import (
   ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES, OpenrankCategory,
   ChannelPointsOrderBy, ChannelEarningsOrderBy, ChannelEarningsType,
+  ChannelEarningsScope
 )
 from ..dependencies import db_pool, db_utils
 from ..utils import fetch_channel
@@ -63,6 +64,22 @@ async def get_top_token_balances(
         lite=lite,
         earnings_type=ChannelEarningsType.TOKENS,
         orderby=orderby,
+        pool=pool)
+  return {"result": balances}
+
+@router.get("/tokens/{channel}/preview")
+async def get_channel_tokens_preview(
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=1000)] = 100,
+        scope: ChannelEarningsScope = Query(ChannelEarningsScope.AIRDROP),
+        pool: Pool = Depends(db_pool.get_db)
+):
+  balances = await db_utils.get_channel_tokens_preview(
+        channel_id=channel,
+        offset=offset,
+        limit=limit,
+        scope=scope,
         pool=pool)
   return {"result": balances}
 

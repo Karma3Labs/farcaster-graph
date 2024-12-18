@@ -7,6 +7,7 @@ from app.models.channel_model import (
     ChannelPointsOrderBy,
     ChannelEarningsOrderBy,
     ChannelEarningsType,
+    ChannelEarningsScope,
 )
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -586,6 +587,76 @@ async def get_top_channel_earnings(
         FROM mapped_records
         GROUP BY fid
         {orderby_clause}
+        OFFSET $2
+        LIMIT $3
+        """
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_channel_tokens_preview(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        scope: ChannelEarningsScope,
+        pool: Pool
+):
+    if scope==ChannelEarningsScope.AIRDROP:
+        points_col = "balance"
+        interval_condn = ""
+    else: 
+        points_col = "latest_earnings"
+        interval_condn = " AND bal.update_ts > now() - interval '23 hours'"
+
+    sql_query = f"""
+        WITH latest_log AS (
+            SELECT max(points_ts) as max_points_ts, channel_id, fid 
+            FROM k3l_channel_tokens_log
+            WHERE channel_id = $1
+            GROUP BY channel_id, fid
+        ),
+        latest_verified_address AS (
+            SELECT (array_agg(v.claim->>'address' order by timestamp))[1] as address, fid
+            FROM verifications v
+            GROUP BY fid
+        ),
+        eligible AS (
+            SELECT 
+                bal.fid as fid,
+                COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
+                fnames.fname as fname,
+                case when user_data.type = 6 then user_data.value end as username,
+                case when user_data.type = 1 then user_data.value end as pfp,
+                case when user_data.type = 3 then user_data.value end as bio,
+                bal.channel_id as channel_id,
+                round(bal.{points_col},0) as amt
+            FROM k3l_channel_points_bal as bal
+            INNER JOIN k3l_channel_points_allowlist as allo 
+                ON (allo.channel_id = bal.channel_id AND allo.is_allowed=true 
+                    AND allo.channel_id = $1)
+            LEFT JOIN latest_log as tlog 
+                ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
+                    AND tlog.max_points_ts = bal.update_ts)
+            INNER JOIN fids ON (fids.fid = bal.fid) 
+            LEFT JOIN latest_verified_address as vaddr 
+                ON (vaddr.fid=bal.fid)
+            LEFT JOIN fnames on (fnames.fid = bal.fid)
+            LEFT JOIN user_data on (user_data.fid = bal.fid)
+            WHERE 
+                tlog.channel_id IS NULL
+                AND bal.channel_id = $1
+                {interval_condn} 
+        )
+        SELECT
+            fid,
+            any_value(fid_address) as fid_address,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(pfp) as pfp,
+            any_value(bio) as bio,
+            any_value(channel_id) as channel_id,
+            max(amt) as amt
+        FROM eligible
+        GROUP BY fid
+        ORDER BY amt DESC
         OFFSET $2
         LIMIT $3
         """
