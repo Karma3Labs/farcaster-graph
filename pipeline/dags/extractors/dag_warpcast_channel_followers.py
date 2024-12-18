@@ -25,7 +25,7 @@ with DAG(
 ) as dag:
     
     prep_task = BashOperator(
-        task_id='prep_warpcast_members',
+        task_id='prep_warpcast_followers',
         bash_command="cd /pipeline; extractors/extract_channel_fids.sh -t prep" 
                         " -w . -v .venv -j followers",
         dag=dag
