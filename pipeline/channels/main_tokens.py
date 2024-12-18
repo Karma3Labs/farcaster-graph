@@ -185,10 +185,10 @@ def verify_distribution():
                 )
                 logger.info(f"{response.status_code}: {response.reason}")
                 # TODO uncomment this once ready for e2e integration
-                # if response.status_code == 200:
-                    # data = response.json()
-                if True:
-                    data = {}
+                if response.status_code == 200:
+                    data = response.json()
+                # if True:
+                    # data = {}
                     channel_db_utils.update_distribution_status(
                         logger=logger,
                         pg_dsn=pg_dsn,
