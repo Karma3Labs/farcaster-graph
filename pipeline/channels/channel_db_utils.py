@@ -726,7 +726,7 @@ def update_token_bal(
         SELECT 
                 amt, channel_id, fid
             FROM k3l_channel_tokens_log
-            WHERE dist_status = 'submitted'
+            WHERE dist_status = 'success' 
                 AND channel_id = '{channel_id}'
             AND dist_id = {dist_id}
         )
