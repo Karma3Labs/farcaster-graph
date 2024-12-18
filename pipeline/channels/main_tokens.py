@@ -134,7 +134,7 @@ def distribute_tokens():
 
 def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
     logger.info(
-        f"call smartcontractmgr {dist_id} for channel '{channel_id}' with tax {tax_amt}"
+        f"call smartcontractmgr for distributionId: {dist_id} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
     )
     logger.info(f"sample of distributions: {random.sample(distributions, min(10, len(distributions)))}")
     payload = {'distributionId': dist_id, 'taxAmount': tax_amt, 'channelId': channel_id, 'distributions': distributions}
