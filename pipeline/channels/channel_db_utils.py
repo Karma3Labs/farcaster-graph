@@ -531,6 +531,7 @@ def insert_tokens_log(
             ON (vaddr.fid=bal.fid)
         WHERE tlog.channel_id IS NULL
         AND bal.channel_id = '{channel_id}'
+        AND bal.{points_col} > 0
         ORDER BY channel_id, amt DESC
     """
     start_time = time.perf_counter()
