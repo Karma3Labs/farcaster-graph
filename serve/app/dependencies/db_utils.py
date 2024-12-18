@@ -592,7 +592,86 @@ async def get_top_channel_earnings(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_channel_tokens_preview(
+async def get_tokens_distrib_details(
+        channel_id: str,
+        dist_id: int,
+        offset: int,
+        limit: int,
+        pool: Pool
+): 
+    sql_query = """
+    WITH distrib_rows AS (
+        SELECT
+            channel_id,
+            dist_id,
+            tlog.fid,
+            fid_address,
+            fnames.fname as fname,
+            case when user_data.type = 6 then user_data.value end as username,
+            case when user_data.type = 1 then user_data.value end as pfp,
+            case when user_data.type = 3 then user_data.value end as bio,
+            amt,
+            txn_hash
+        FROM k3l_channel_tokens_log AS tlog
+        LEFT JOIN fnames on (fnames.fid = tlog.fid)
+        LEFT JOIN user_data on (user_data.fid = tlog.fid)
+        WHERE channel_id = $1
+        AND dist_id=$2
+    )
+    SELECT 
+        fid,
+        any_value(channel_id) as channel_id,
+        any_value(dist_id) as dist_id,
+        any_value(fid_address) as fid_address,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(pfp) as pfp,
+        any_value(bio) as bio,
+        max(amt) as amt,
+        any_value(txn_hash) as txn_hash
+    FROM distrib_rows
+    GROUP BY fid
+    ORDER BY amt DESC
+    OFFSET $3
+    LIMIT $4
+    """
+    return await fetch_rows(channel_id, dist_id, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_tokens_distrib_overview(
+    channel_id: str,
+    offset: int,
+    limit: int,
+    pool: Pool
+):
+    sql_query = """
+    SELECT 
+        channel_id,
+    dist_id,
+        count(distinct fid) as num_fids,
+    any_value(txn_hash) as txn_hash,
+    case
+        when any_value(dist_status) is NULL THEN 'Pending'
+        when any_value(dist_status) = 'submitted' THEN 'In Progress'
+        when any_value(dist_status) = 'success' THEN 'Completed'
+        when any_value(dist_status) ='failure' THEN 'Failed'
+        else 'Unknown'
+    END as dist_status,
+    any_value(dist_reason) as dist_reason,
+    max(update_ts) as update_ts,
+        sum(amt) as total_amt,
+        max(amt) as max_amt,
+    min(amt) as min_amt,
+    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY amt) AS median_amt
+    FROM k3l_channel_tokens_log 
+    WHERE channel_id = $1
+    GROUP BY channel_id, dist_id
+    ORDER BY dist_id DESC
+    OFFSET $2
+    LIMIT $3
+    """
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_tokens_distrib_preview(
         channel_id: str,
         offset: int,
         limit: int,

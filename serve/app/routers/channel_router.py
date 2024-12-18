@@ -67,21 +67,51 @@ async def get_top_token_balances(
         pool=pool)
   return {"result": balances}
 
-@router.get("/tokens/{channel}/preview")
-async def get_channel_tokens_preview(
+@router.get("/distribution/preview/{channel}")
+async def get_tokens_distrib_preview(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         scope: ChannelEarningsScope = Query(ChannelEarningsScope.AIRDROP),
         pool: Pool = Depends(db_pool.get_db)
 ):
-  balances = await db_utils.get_channel_tokens_preview(
+  distribributions = await db_utils.get_tokens_distrib_preview(
         channel_id=channel,
         offset=offset,
         limit=limit,
         scope=scope,
         pool=pool)
-  return {"result": balances}
+  return {"result": distribributions}
+
+@router.get("/distribution/overview/{channel}")
+async def get_tokens_distrib_overview(
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=1000)] = 100,
+        pool: Pool = Depends(db_pool.get_db)
+):
+  distribribution_stats = await db_utils.get_tokens_distrib_overview(
+        channel_id=channel,
+        offset=offset,
+        limit=limit,
+        pool=pool)
+  return {"result": distribribution_stats}
+
+@router.get("/distribution/details/{channel}")
+async def get_tokens_distrib_details(
+        channel: str,
+        dist_id: int,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=1000)] = 100,
+        pool: Pool = Depends(db_pool.get_db)
+):
+  details = await db_utils.get_tokens_distrib_details(
+        channel_id=channel,
+        dist_id=dist_id,
+        offset=offset,
+        limit=limit,
+        pool=pool)
+  return {"result": details}
 
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
