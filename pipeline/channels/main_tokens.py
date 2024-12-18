@@ -187,6 +187,7 @@ def verify_distribution():
                 # TODO uncomment this once ready for e2e integration
                 if response.status_code == 200:
                     data = response.json()
+                    logger.info(f"Token distribution status: {data}")
                 # if True:
                     # data = {}
                     channel_db_utils.update_distribution_status(
