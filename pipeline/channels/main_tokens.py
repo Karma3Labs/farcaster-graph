@@ -59,9 +59,9 @@ def prepare_for_distribution(scope: Scope, reason: str):
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
         for channel_id, token_status in channels_list:
             if not token_status:
-                logger.info(f"Channel '{channel_id}' has no distributions. Checking token launch status.")
                 try:
                     path = f"/token/lookupTokenForChannel/{channel_id}"
+                    logger.info(f"Channel '{channel_id}' has no distributions. Checking :{path}")
                     response = s.get(
                         urllib.parse.urljoin(settings.CURA_SCMGR_URL,path),
                         headers={"Accept": "application/json", "Content-Type": "application/json"},
