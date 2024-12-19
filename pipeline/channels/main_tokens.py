@@ -150,7 +150,9 @@ def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
         response.raise_for_status()
     except Exception as e:
         logger.error(f"Failed to call smartcontractmgr: {e}")
-        raise e 
+        # TODO FIX this once scm is deployed
+        # raise e 
+        logger.warning("Consuming Exception for now.")
         
 
 def verify_distribution():
@@ -185,11 +187,11 @@ def verify_distribution():
                 )
                 logger.info(f"{response.status_code}: {response.reason}")
                 # TODO uncomment this once ready for e2e integration
-                if response.status_code == 200:
-                    data = response.json()
-                    logger.info(f"Token distribution status: {data}")
-                # if True:
-                    # data = {}
+                # if response.status_code == 200:
+                #     data = response.json()
+                #     logger.info(f"Token distribution status: {data}")
+                if True:
+                    data = {}
                     channel_db_utils.update_distribution_status(
                         logger=logger,
                         pg_dsn=pg_dsn,
