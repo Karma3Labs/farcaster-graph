@@ -68,7 +68,11 @@ def prepare_for_distribution(scope: Scope, reason: str):
                         timeout=(connect_timeout_s, read_timeout_s),
                     )
                     if response.status_code == 200:
-                        logger.info(f"Channel '{channel_id}' has token. Prepping distribution.")
+                        channel_token = response.json()
+                        if hasattr(channel_token, 'tokenAddress') and channel_token['tokenAddress']:
+                            logger.info(f"Channel '{channel_id}' has token {channel_token}. Prepping distribution.")
+                        else:
+                            logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
                     elif response.status_code == 404:
                         logger.warning(f"404 Error: Skipping channel {channel_id} :{response.reason}")
                         continue
