@@ -1,10 +1,12 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
-# from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-
+from airflow.operators.empty import EmptyOperator
+from airflow.models import DagRun
+from airflow.decorators import task
+from airflow.utils.state import DagRunState
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -15,6 +17,9 @@ default_args = {
     'retry_delay': timedelta(minutes=2),
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
+
+POINTS_FREQUENCY_H = 23  # Define the frequency in hours
+POINTS_DAG_NAME = 'update_channel_points_v2'
 
 with DAG(
     dag_id='update_channel_tokens',
@@ -44,6 +49,49 @@ with DAG(
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
         dag=dag)
 
+    skip_points_dag = EmptyOperator(task_id="skip_points_dag")
 
-    prepare >> distribute >> verify
+    trigger_points_dag = TriggerDagRunOperator(
+        task_id='trigger_points_dag',
+        trigger_dag_id=POINTS_DAG_NAME,
+        execution_date='{{ macros.datetime.now() }}',
+        conf={"trigger": "trigger_channel_points_tokens"},
+    )
+
+    @task.branch(task_id="check_last_successful_points")
+    def check_last_successful_points(**context) -> bool:
+        dag_runs = DagRun.find(dag_id=POINTS_DAG_NAME, state=DagRunState.SUCCESS)
+        if not dag_runs or len(dag_runs) == 0:
+            # No previous runs
+            print(f"No previous runs of {POINTS_DAG_NAME}")
+            return "trigger_main_dag"
+        print(f"Found {len(dag_runs)} previous runs of {POINTS_DAG_NAME}")
+        dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
+        print("Last run: ", dag_runs[0]) 
+        # Query the last successful DAG run
+        last_run = dag_runs[0]
+        print("Last run: ", last_run)
+        current_time = datetime.now(timezone.utc)
+        delta = POINTS_FREQUENCY_H
+        if last_run:
+            print("Last run end_date: ", last_run.end_date)
+            print("Last run start_date: ", last_run.start_date)
+            if last_run.end_date:
+                delta_last = (current_time - last_run.end_date).total_seconds() / 3600
+                delta = min(delta_last, delta)
+            if last_run.start_date:
+                delta_last = (current_time - last_run.start_date).total_seconds() / 3600
+                delta = min(delta_last, delta)
+        print(f"Delta: {delta}")
+        if delta >= POINTS_FREQUENCY_H:
+            # Last run was more than FREQUENCY_H hours ago, so we should run
+            print(f"Last run of {POINTS_DAG_NAME} was more than {POINTS_FREQUENCY_H} hours ago, so we should run")
+            return "trigger_points_dag"
+        return "skip_points_dag"
+
+    check_last_successful_points = check_last_successful_points()
+
+    prepare >> distribute >> verify >> check_last_successful_points >> trigger_points_dag
+
+    prepare >> distribute >> verify >> check_last_successful_points >> skip_points_dag
 
