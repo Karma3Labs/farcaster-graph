@@ -28,7 +28,7 @@ load_dotenv()
 def main():
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_ms = 120_000
-    channel_db_utils.update_points_balance_v2(logger, pg_dsn, sql_timeout_ms)
+    channel_db_utils.update_points_balance_v3(logger, pg_dsn, sql_timeout_ms)
 
 
 if __name__ == "__main__":
