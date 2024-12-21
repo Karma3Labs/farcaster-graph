@@ -69,7 +69,8 @@ def prepare_for_distribution(scope: Scope, reason: str):
                     )
                     if response.status_code == 200:
                         channel_token = response.json()
-                        if hasattr(channel_token, 'tokenAddress') and channel_token['tokenAddress']:
+                        token_address = channel_token.get('tokenAddress')
+                        if token_address:
                             logger.info(f"Channel '{channel_id}' has token {channel_token}. Prepping distribution.")
                         else:
                             logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
