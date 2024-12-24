@@ -727,12 +727,15 @@ async def get_points_distrib_preview(
         )
         SELECT 
             l.channel_id, l.fid, 
-        any_value(case when l.model_name = 'default' then earnings end) as default_earnings,
-        any_value(case when l.model_name = 'log_weighted' then earnings end) as log_earnings,
-            any_value(case when l.model_name = 'logeps_weighted' then earnings end) as logeps_earnings,
-        any_value(case when l.model_name = 'sqrt_weighted' then earnings end) as sqrt_earnings,
-        any_value(case when l.model_name = 'cbrt_weighted' then earnings end) as cbrt_earnings,
-        any_value(case when l.model_name = 'reddit' then earnings end) as reddit_earnings
+            any_value(fnames.fname) as fname,
+            any_value(case when user_data.type = 6 then user_data.value end) as username,
+            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
+            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            any_value(case when l.model_name = 'default' then earnings end) as default_earnings,
+            any_value(case when l.model_name = 'sqrt_weighted' then earnings end) as sqrt_earnings,
+            any_value(case when l.model_name = 'cbrt_weighted' then earnings end) as cbrt_earnings,
+            any_value(case when l.model_name = 'reddit_default' then earnings end) as reddit_earnings,
+            any_value(case when l.model_name = 'reddit_cast_weighted' then earnings end) as reddit_cast_weighted_earnings
         FROM k3l_channel_points_log as l
         INNER JOIN latest 
             on (
@@ -740,6 +743,8 @@ async def get_points_distrib_preview(
             and latest.model_name = l.model_name 
             and latest.insert_ts <= l.insert_ts
             )
+        LEFT JOIN fnames on (fnames.fid = l.fid)
+        LEFT JOIN user_data on (user_data.fid = l.fid)
         GROUP BY l.channel_id, l.fid
         ORDER BY default_earnings desc NULLS LAST
         OFFSET $2

@@ -239,17 +239,37 @@ def insert_reddit_points_log(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
+    model_name: str,
     reply_wt: int,
     recast_wt: int,
     like_wt: int,
     cast_wt: int,
 ):
+    CHANNEL_RANK_STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
+    CHANNEL_RANK_CUTOFF_RATIO = 2
+    MAX_GLOBAL_RANK = 20_000
+    GLOBAL_RANK_STRATEGY_ID = 9
     NUM_NTILES = 10
     CUTOFF_NTILE = 9
 
     insert_sql = f"""
-    WITH cast_scores AS (
+    WITH 
+    eligible_channel_rank AS (
+        SELECT ROUND(max(rank)/{CHANNEL_RANK_CUTOFF_RATIO},0) as max_rank, strategy_name, channel_id 
+        FROM k3l_channel_rank
+        WHERE strategy_name = '{CHANNEL_RANK_STRATEGY}'
+        GROUP BY channel_id, strategy_name
+        ),
+    eligible_channel_actors AS (
+        SELECT fid, eligible_channel_rank.channel_id 
+        FROM k3l_channel_rank
+        INNER JOIN eligible_channel_rank 
+            ON (eligible_channel_rank.channel_id=k3l_channel_rank.channel_id
+                AND eligible_channel_rank.max_rank > k3l_channel_rank.rank
+            AND eligible_channel_rank.strategy_name = k3l_channel_rank.strategy_name)
+        ),
+    cast_scores AS (
         SELECT
             casts.hash as cast_hash,
                 SUM(
@@ -268,44 +288,52 @@ def insert_reddit_points_log(
                 ON (channels.url = casts.root_parent_url)
         INNER JOIN k3l_channel_points_allowlist as allo	
                 ON (allo.channel_id = channels.id)
+            LEFT JOIN k3l_rank 
+                ON (k3l_rank.profile_id = actions.fid 
+                AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID} 
+                AND k3l_rank.rank <= {MAX_GLOBAL_RANK})
+        LEFT JOIN eligible_channel_actors 
+                ON (eligible_channel_actors.fid = actions.fid 
+                AND eligible_channel_actors.channel_id=channels.id)   
+        WHERE k3l_rank.profile_id IS NOT NULL OR eligible_channel_actors.fid IS NOT NULL
         GROUP BY channels.id, casts.hash
-    ),
-    author_scores AS (
+        ),
+        author_scores AS (
         SELECT
-            SUM(cast_scores.cast_score) as score,
-                casts.fid,
-            cast_scores.channel_id
-        FROM cast_scores
-        INNER JOIN k3l_recent_parent_casts AS casts 
-            ON casts.hash = cast_scores.cast_hash
-        GROUP BY casts.fid, cast_scores.channel_id
-    ),
-    top_ntile_authors AS (
+                SUM(cast_scores.cast_score) as score,
+                    casts.fid,
+                cast_scores.channel_id
+            FROM cast_scores
+            INNER JOIN k3l_recent_parent_casts AS casts 
+                ON casts.hash = cast_scores.cast_hash
+            GROUP BY casts.fid, cast_scores.channel_id
+        ),
+        top_ntile_authors AS (
         SELECT
             * 
         FROM (
             SELECT
-                fid,
-                score,
-                NTILE({NUM_NTILES}) OVER (
-                    PARTITION BY channel_id
-                        ORDER BY score DESC
-                ) as ptile,
-                channel_id
+            fid,
+            score,
+            NTILE({NUM_NTILES}) OVER (
+                PARTITION BY channel_id
+                    ORDER BY score DESC
+            ) as ptile,
+            channel_id
             FROM author_scores
-            WHERE score > 0
+                WHERE score > 0
         )
         WHERE ptile <= {CUTOFF_NTILE}
-    )
+        )
     INSERT INTO k3l_channel_points_log (fid, channel_id, earnings, model_name, insert_ts)
-        SELECT 
-            authors.fid,
-            authors.channel_id,
-            authors.score as earnings,
-                'reddit' as model_name,
-            now() as insert_ts
-        FROM author_scores as authors
-        INNER JOIN top_ntile_authors as nt on (nt.channel_id = authors.channel_id and nt.fid = authors.fid)
+    SELECT 
+        authors.fid,
+        authors.channel_id,
+        authors.score as earnings,
+        '{model_name}' as model_name,
+        now() as insert_ts
+    FROM author_scores as authors
+    INNER JOIN top_ntile_authors as nt on (nt.channel_id = authors.channel_id and nt.fid = authors.fid)
     """
     start_time = time.perf_counter()
     try:

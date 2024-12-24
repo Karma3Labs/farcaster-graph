@@ -1,7 +1,7 @@
 # standard dependencies
 import sys
 import argparse
-from enum import Enum
+from enum import StrEnum
 
 
 # local dependencies
@@ -33,19 +33,20 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-class Model(Enum):
+class Model(StrEnum):
     weighted = "weighted"
     reddit = "reddit"
 
-class WeightedModel(Enum):
+class WeightedModel(StrEnum):
     default = "default"
-    logeps_weighted = "logeps_weighted"
-    log_weighted = "log_weighted"
     sqrt_weighted = "sqrt_weighted"
     cbrt_weighted = "cbrt_weighted"
 
+class RedditModel(StrEnum):
+    reddit_default = "reddit_default"
+    reddit_cast_weighted = "reddit_cast_weighted"
 
-class Task(Enum):
+class Task(StrEnum):
     sim = "sim"
     distrib = "distrib"
 
@@ -60,15 +61,25 @@ def main(task: Task):
             logger.info("Updating points balances with default weighted model")
             channel_db_utils.update_points_balance_v3(logger, pg_dsn, sql_timeout_ms)
     elif task == Task.sim:
-        channel_db_utils.insert_reddit_points_log(
-            logger,
-            pg_dsn,
-            sql_timeout_ms,
-            reply_wt=1,
-            recast_wt=5,
-            like_wt=1,
-            cast_wt=0,
-        )
+
+        # Reddit-style Karma Points
+        for model in RedditModel:
+            if model == RedditModel.reddit_cast_weighted:
+                cast_wt = 2
+            else:
+                cast_wt = 0
+            channel_db_utils.insert_reddit_points_log(
+                logger,
+                pg_dsn,
+                sql_timeout_ms,
+                model_name=model.value,
+                reply_wt=1,
+                recast_wt=5,
+                like_wt=1,
+                cast_wt=cast_wt,
+            )
+
+        # Score Weighted Model
         df = channel_db_utils.fetch_weighted_fid_scores_df(
             logger=logger,
             pg_dsn=pg_dsn,
@@ -85,19 +96,17 @@ def main(task: Task):
         df = df[df['percent_rank'] > PERCENTILE_CUTOFF] # drop bottom 10%
 
         for model in WeightedModel:
-            if model == WeightedModel.logeps_weighted:
-                epsilon = 1e-10
-                transformed = np.log(df['score'] + epsilon)
-                # Shift to make all values positive
-                transformed = transformed - transformed.min() + epsilon
-            elif model == WeightedModel.log_weighted:
-                transformed = np.log(df['score'])
-            elif model == WeightedModel.sqrt_weighted:
+            if model == WeightedModel.sqrt_weighted:
                 transformed = np.sqrt(df['score'])
             elif model == WeightedModel.cbrt_weighted:
                 transformed = np.cbrt(df['score'])
             elif model == WeightedModel.default: 
                 transformed = df['score']
+            # elif model == WeightedModel.logeps_weighted:
+            #     epsilon = 1e-10
+            #     transformed = np.log(df['score'] + epsilon)
+            #     # Shift to make all values positive
+            #     transformed = transformed - transformed.min() + epsilon
             # end if
             df['transformed'] = transformed
             df['weights'] = df.groupby('channel_id')['transformed'].transform(lambda x: x / x.sum())
