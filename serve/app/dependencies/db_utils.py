@@ -711,6 +711,42 @@ async def get_fid_channel_token_balance(
         return res[0]
     return None
 
+async def get_points_distrib_preview(
+        channel_id: str,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+
+    sql_query = """
+        WITH latest as (
+            SELECT channel_id, model_name, max(insert_ts) as insert_ts
+            FROM k3l_channel_points_log
+            WHERE channel_id = $1 
+            GROUP BY channel_id, model_name
+        )
+        SELECT 
+            l.channel_id, l.fid, 
+        any_value(case when l.model_name = 'default' then earnings end) as default_earnings,
+        any_value(case when l.model_name = 'log_weighted' then earnings end) as log_earnings,
+            any_value(case when l.model_name = 'logeps_weighted' then earnings end) as logeps_earnings,
+        any_value(case when l.model_name = 'sqrt_weighted' then earnings end) as sqrt_earnings,
+        any_value(case when l.model_name = 'cbrt_weighted' then earnings end) as cbrt_earnings,
+        any_value(case when l.model_name = 'reddit' then earnings end) as reddit_earnings
+        FROM k3l_channel_points_log as l
+        INNER JOIN latest 
+            on (
+                latest.channel_id = l.channel_id 
+            and latest.model_name = l.model_name 
+            and latest.insert_ts <= l.insert_ts
+            )
+        GROUP BY l.channel_id, l.fid
+        ORDER BY default_earnings desc NULLS LAST
+        OFFSET $2
+        LIMIT $3
+        """
+    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+
 async def get_tokens_distrib_preview(
         channel_id: str,
         offset: int,

@@ -88,29 +88,28 @@ async def get_token_claim(
             f" But, no tokens deployed."
             f" Channel {channel} is probably used for testing."
         )
-        # TODO uncomment this once ready for e2e integration 
-        # raise HTTPException(status_code=404, detail="No tokens to claim.")
-        logger.warning("using hardcoded token details until we deploy new srevice")
-        channel_token = {
-            "id": "3487e020-2090-4d4a-a316-37824093f1a1",
-            "channelId": "openrank",
-            "walletAddress": "0xD5Fda8AeA42347D9ab4dEA6eF06D283B24CdD5FB",
-            "tokenAddress": "0x31353b81D4C66953A232e080E1c792e7f7B4fc9F",
-            "claimContractAddress": "0xd12b4c4550fab025fae9f503309b986bdcd95416",
-            "deployTokenTx": "0x9e80a4064bfa80e1350bc79667e5cdeb28585b72db16b122ed47bea0df440457",
-            "deployContractTx": "0x4d2f907bcef9e8111ad0463bfda2ac171bf3c84133331429c18d4b20d1c0aa71",
-            "createdAt": "2024-12-18T19:00:05.533472+00:00",
-            "tokenMetadata": {
-              "name": "test openrank",
-              "supply": "1000000000000000000000000000",
-              "symbol": "TOR",
-              "chainId": "84532",
-              "imageHash": None,
-              "creatorCut": "500",
-              "initialTick": "-207400",
-              "feeBasisPoints": "10000"
-            }
-        }
+        raise HTTPException(status_code=404, detail="No tokens to claim.")
+        # logger.warning("using hardcoded token details until we deploy smart contract manager")
+        # channel_token = {
+        #     "id": "3487e020-2090-4d4a-a316-37824093f1a1",
+        #     "channelId": "openrank",
+        #     "walletAddress": "0xD5Fda8AeA42347D9ab4dEA6eF06D283B24CdD5FB",
+        #     "tokenAddress": "0x31353b81D4C66953A232e080E1c792e7f7B4fc9F",
+        #     "claimContractAddress": "0xd12b4c4550fab025fae9f503309b986bdcd95416",
+        #     "deployTokenTx": "0x9e80a4064bfa80e1350bc79667e5cdeb28585b72db16b122ed47bea0df440457",
+        #     "deployContractTx": "0x4d2f907bcef9e8111ad0463bfda2ac171bf3c84133331429c18d4b20d1c0aa71",
+        #     "createdAt": "2024-12-18T19:00:05.533472+00:00",
+        #     "tokenMetadata": {
+        #       "name": "test openrank",
+        #       "supply": "1000000000000000000000000000",
+        #       "symbol": "TOR",
+        #       "chainId": "84532",
+        #       "imageHash": None,
+        #       "creatorCut": "500",
+        #       "initialTick": "-207400",
+        #       "feeBasisPoints": "10000"
+        #     }
+        # }
     return {"result": {**balance, **channel_token}}
 
 @router.get("/distribution/preview/{channel}")
@@ -119,15 +118,25 @@ async def get_tokens_distrib_preview(
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         scope: ChannelEarningsScope = Query(ChannelEarningsScope.AIRDROP),
+        type: ChannelEarningsType = Query(ChannelEarningsType.TOKENS),
         pool: Pool = Depends(db_pool.get_db)
 ):
-  distribributions = await db_utils.get_tokens_distrib_preview(
-        channel_id=channel,
-        offset=offset,
-        limit=limit,
-        scope=scope,
-        pool=pool)
-  return {"result": distribributions}
+  if type == ChannelEarningsType.TOKENS:
+    distributions = await db_utils.get_tokens_distrib_preview(
+          channel_id=channel,
+          offset=offset,
+          limit=limit,
+          scope=scope,
+          pool=pool)
+  elif type == ChannelEarningsType.POINTS:
+    if scope == ChannelEarningsScope.AIRDROP:
+        raise HTTPException(status_code=400, detail="Points distribution preview not available for airdrop")
+    distributions = await db_utils.get_points_distrib_preview(
+          channel_id=channel,
+          offset=offset,
+          limit=limit,
+          pool=pool)
+  return {"result": distributions}
 
 @router.get("/distribution/overview/{channel}")
 async def get_tokens_distrib_overview(
