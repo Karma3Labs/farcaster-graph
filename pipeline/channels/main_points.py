@@ -61,9 +61,17 @@ def main(task: Task, model: Model):
             channel_db_utils.update_points_balance_v3(logger, pg_dsn, sql_timeout_ms)
     else:
         if model == Model.reddit:
-            raise ValueError(f"Unsupported task: {task} for model: {model}")
+            channel_db_utils.insert_reddit_points_log(
+                logger,
+                pg_dsn,
+                sql_timeout_ms,
+                reply_wt=1,
+                recast_wt=5,
+                like_wt=1,
+                cast_wt=0,
+            )
         else:
-            df = channel_db_utils.fetch_author_scores_df(
+            df = channel_db_utils.fetch_weighted_fid_scores_df(
                 logger=logger,
                 pg_dsn=pg_dsn,
                 timeout_ms=sql_timeout_ms,

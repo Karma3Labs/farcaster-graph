@@ -147,8 +147,8 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
    
-@Timer(name="fetch_author_scores")
-def fetch_author_scores_df(
+@Timer(name="fetch_weighted_fid_scores_df")
+def fetch_weighted_fid_scores_df(
     logger: logging.Logger, 
     pg_dsn: str, 
     timeout_ms: int,
@@ -157,6 +157,7 @@ def fetch_author_scores_df(
     like_wt:int,
     cast_wt:int
 ) -> pd.DataFrame:
+    
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
 
@@ -232,6 +233,96 @@ def fetch_author_scores_df(
                     dtype={"fid": "Int32", "channel_id": "str", "score": "Float64"},
                 )
                 return df
+
+@Timer(name="insert_reddit_points_log")
+def insert_reddit_points_log(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    reply_wt: int,
+    recast_wt: int,
+    like_wt: int,
+    cast_wt: int,
+):
+    INTERVAL = "1 day"
+    NUM_NTILES = 10
+    CUTOFF_NTILE = 9
+
+    insert_sql = f"""
+    WITH cast_scores AS (
+        SELECT
+            casts.hash as cast_hash,
+                SUM(
+                    + ({cast_wt} * actions.casted)
+                    + ({reply_wt} * actions.replied)
+                    + ({recast_wt} * actions.recasted)
+                    + ({like_wt} * actions.liked)
+                ) as cast_score,
+                channels.id as channel_id
+        FROM k3l_cast_action as actions 
+            INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
+            ON (actions.cast_hash = casts.hash
+                AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
+                    )
+        INNER JOIN warpcast_channels_data as channels
+                ON (channels.url = casts.root_parent_url)
+        INNER JOIN k3l_channel_points_allowlist as allo	
+                ON (allo.channel_id = channels.id)
+        GROUP BY channels.id, casts.hash
+    ),
+    author_scores AS (
+        SELECT
+            SUM(cast_scores.cast_score) as score,
+                casts.fid,
+            cast_scores.channel_id
+        FROM cast_scores
+        INNER JOIN k3l_recent_parent_casts AS casts 
+            ON casts.hash = cast_scores.cast_hash
+        GROUP BY casts.fid, cast_scores.channel_id
+    ),
+    top_ntile_authors AS (
+        SELECT
+            * 
+        FROM (
+            SELECT
+                fid,
+                score,
+                NTILE({NUM_NTILES}) OVER (
+                    PARTITION BY channel_id
+                        ORDER BY score DESC
+                ) as ptile,
+                channel_id
+            FROM author_scores
+            WHERE score > 0
+        )
+        WHERE ptile <= {CUTOFF_NTILE}
+    )
+    INSERT INTO k3l_channel_points_log (fid, channel_id, earnings, model_name, insert_ts)
+        SELECT 
+            authors.fid,
+            authors.channel_id,
+            authors.score as earnings,
+                'reddit' as model_name,
+            now() as insert_ts
+        FROM author_scores as authors
+        INNER JOIN top_ntile_authors as nt on (nt.channel_id = authors.channel_id and nt.fid = authors.fid)
+    """
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Upserted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
 
 @Timer(name="update_points_balance_v3")
 def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
