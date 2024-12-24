@@ -1,6 +1,7 @@
 import logging
 from typing import Callable
 from enum import StrEnum
+import tempfile
 
 from timer import Timer
 import time
@@ -8,6 +9,7 @@ from config import settings
 from asyncpg.pool import Pool
 import asyncpg
 import psycopg2
+import pandas as pd
 
 class TokenDistStatus(StrEnum):
     NULL = 'NULL'
@@ -145,6 +147,92 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
    
+@Timer(name="fetch_author_scores")
+def fetch_author_scores_df(
+    logger: logging.Logger, 
+    pg_dsn: str, 
+    timeout_ms: int,
+    reply_wt: int,
+    recast_wt: int,
+    like_wt:int,
+    cast_wt:int
+) -> pd.DataFrame:
+    STRATEGY = "60d_engagement"
+    INTERVAL = "1 day"
+
+    sql_query = f"""
+    WITH eligible_casts AS (
+        SELECT
+            casts.hash as cast_hash,
+                actions.replied,
+                actions.casted,
+                actions.liked,
+                actions.recasted,
+                actions.fid,
+                channels.id as channel_id
+        FROM k3l_cast_action as actions 
+            INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
+            ON (actions.cast_hash = casts.hash
+                AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
+                    )
+        INNER JOIN warpcast_channels_data as channels
+                ON (channels.url = casts.root_parent_url)
+        INNER JOIN k3l_channel_points_allowlist as allo
+                ON (allo.channel_id = channels.id)
+    ),
+    cast_scores_by_channel_fid AS (
+        SELECT
+            actions.cast_hash,
+            SUM(
+                    + ({cast_wt} * ranks.score * actions.casted)
+                    + ({reply_wt} * ranks.score * actions.replied)
+                    + ({recast_wt} * ranks.score * actions.recasted)
+                    + ({like_wt} * ranks.score * actions.liked)
+                ) as cast_score,
+            actions.channel_id as channel_id
+        FROM eligible_casts as actions
+        INNER JOIN k3l_channel_rank as ranks
+            ON (ranks.fid = actions.fid 
+                AND ranks.channel_id=actions.channel_id 
+                AND ranks.strategy_name='{STRATEGY}')
+        GROUP BY actions.channel_id, actions.cast_hash, ranks.fid
+    ),
+    cast_scores AS (
+        SELECT
+            cast_hash,
+            channel_id,
+            sum(cast_score) as cast_score
+        FROM cast_scores_by_channel_fid
+        WHERE cast_score > 0
+        GROUP BY cast_hash, channel_id
+    )
+    SELECT
+        casts.fid as fid,
+        cast_scores.channel_id as channel_id,
+        SUM(cast_scores.cast_score) as score
+    FROM cast_scores
+    INNER JOIN k3l_recent_parent_casts AS casts 
+        ON casts.hash = cast_scores.cast_hash
+    GROUP BY casts.fid, cast_scores.channel_id
+    """
+    with tempfile.TemporaryFile() as tmpfile:
+        if settings.IS_TEST:
+            copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
+        else:
+            copy_sql = f"COPY ({sql_query}) TO STDOUT WITH CSV HEADER"
+        logger.debug(f"{copy_sql}")
+        with psycopg2.connect(
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.copy_expert(copy_sql, tmpfile)
+                tmpfile.seek(0)
+                df = pd.read_csv(
+                    tmpfile,
+                    dtype={"fid": "Int32", "channel_id": "str", "score": "Float64"},
+                )
+                return df
+
 @Timer(name="update_points_balance_v3")
 def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     # WARNING - EXTREME CAUTION - be very careful with these variables

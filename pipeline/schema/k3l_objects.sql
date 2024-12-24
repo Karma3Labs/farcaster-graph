@@ -511,6 +511,32 @@ CREATE INDEX k3l_channel_points_bal_ch_bal_idx ON public.k3l_channel_points_bal 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_bal TO k3l_readonly;
 
 -------------------------------------------------
+CREATE TABLE public.k3l_channel_points_log (
+	fid int8 NOT NULL,
+  channel_id text NOT NULL,
+ 	earnings numeric NOT NULL,
+  model_name text NOT NULL,
+  insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+) PARTITION BY RANGE (insert_ts);
+
+CREATE INDEX k3l_channel_points_log_ch_fid_idx ON public.k3l_channel_points_log USING btree (channel_id, fid);
+
+CREATE INDEX k3l_channel_points_log_ch_mdl_idx ON public.k3l_channel_points_log USING btree (channel_id, model_name);
+
+CREATE INDEX k3l_channel_points_log_ch_mdl_fid_idx ON public.k3l_channel_points_log USING btree (channel_id, model_name, fid);
+
+CREATE TABLE k3l_channel_points_log_y2024m12 PARTITION OF k3l_channel_points_log
+    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+
+CREATE TABLE k3l_channel_points_log_y2025m01 PARTITION OF k3l_channel_points_log
+    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+
+CREATE TABLE k3l_channel_points_log_y2025m02 PARTITION OF k3l_channel_points_log
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+
+CREATE TABLE k3l_channel_points_log_y2025m03 PARTITION OF k3l_channel_points_log
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+-------------------------------------------------
 CREATE TABLE public.k3l_channel_tokens_bal (
 	fid int8 NOT NULL,
     channel_id text NOT NULL,

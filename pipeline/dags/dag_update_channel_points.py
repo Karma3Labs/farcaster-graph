@@ -29,7 +29,7 @@ with DAG(
 
     run_main = BashOperator(
         task_id="run_main",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv ",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t distrib -m weighted ",
         dag=dag)
 
     backup_to_s3 = BashOperator(
