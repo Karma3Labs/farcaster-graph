@@ -29,7 +29,7 @@ with DAG(
 
     run_main = BashOperator(
         task_id="run_main",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t distrib -m weighted ",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t distrib",
         dag=dag)
 
     backup_to_s3 = BashOperator(
@@ -37,5 +37,10 @@ with DAG(
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal "
         )
 
-    run_main >> backup_to_s3
+    run_simulation = BashOperator(
+        task_id="run_simulation",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t sim",
+        dag=dag)
+
+    run_main >> backup_to_s3 >> run_simulation
 
