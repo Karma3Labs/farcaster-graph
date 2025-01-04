@@ -32,7 +32,7 @@ with DAG(
 
     eigen1_install_dependencies = SSHOperator(
         task_id="cura_eigen1_install_deps",
-        command=f"cd cura-bot && git reset --hard HEAD && git pull origin main && pnpm i",
+        command=f"cd cura-bot && flock . git reset --hard HEAD && flock . git pull origin main && flock . pnpm i",
         ssh_hook=ssh_hook,
         dag=dag,
     )
