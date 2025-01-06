@@ -32,14 +32,14 @@ with DAG(
 
     eigen1_install_dependencies = SSHOperator(
         task_id="cura_eigen1_install_deps",
-        command=f"cd cura-bot && flock . git reset --hard HEAD && flock . git pull origin main && flock . pnpm i",
+        command="cd cura-bot && flock . git reset --hard HEAD && flock . git pull origin main && flock . pnpm i",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen1_run_autoinvite = SSHOperator(
         task_id="cura_eigen1_run_autoinvite",
-        command=f"cd cura-bot && npm run script:autoinvite",
+        command="cd cura-bot && npm run script:autoinvite",
         ssh_hook=ssh_hook,
         dag=dag,
     )
