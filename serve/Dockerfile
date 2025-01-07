@@ -31,7 +31,7 @@ COPY .env.docker ./.env
 # install app code, this is the last image layer and has to be rebuilt
 # uncomment the next line if we start using dev/test specific dependencies
 # RUN poetry install --without dev,test
-RUN poetry install
+RUN poetry install --no-root
 
 EXPOSE 8000
 
