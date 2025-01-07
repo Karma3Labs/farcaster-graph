@@ -1949,6 +1949,8 @@ async def get_top_channel_followers(
         END as token_daily_earnings,
         bal.latest_earnings as latest_earnings,
         tok.latest_earnings as token_latest_earnings,
+        bal.latest_earnings as weekly_earnings,
+        tok.latest_earnings as token_weekly_earnings,
         bal.update_ts as bal_update_ts,
         CASE 
             WHEN channelpts.channel_id IS NOT NULL THEN true
@@ -1995,6 +1997,8 @@ async def get_top_channel_followers(
         max(token_daily_earnings) as token_daily_earnings,
         max(latest_earnings) as latest_earnings,
         max(latest_earnings) as token_latest_earnings,
+        max(weekly_earnings) as weekly_earnings,
+        max(token_weekly_earnings) as token_weekly_earnings,
         max(bal_update_ts) as bal_update_ts,
         bool_or(is_points_launched) as is_points_launched,
         bool_or(is_tokens_launched) as is_tokens_launched,
