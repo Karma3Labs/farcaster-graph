@@ -984,72 +984,106 @@ async def get_channel_profile_ranks(
         """
     else:
         sql_query = """
-        WITH total AS (
+        WITH 
+        tokens_launched as (
+            SELECT
+                channel_id
+            FROM k3l_channel_tokens_bal
+            WHERE channel_id = $1
+            LIMIT 1
+	    ),
+        total AS (
             SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
             AND strategy_name = $2
         ),
-        addresses as (
-            SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
-            FROM fids
-            union all
-            SELECT v.claim->>'address' as address, fid
-            FROM verifications v
-        ),
         top_records as (
             SELECT
                 ch.fid,
+                ch.channel_id,
+                ch.rank as channel_rank,
+                ch.score as channel_score,
+                k3l_rank.rank as global_rank,
+                ((total.total - (ch.rank - 1))*100 / total.total) as percentile,
                 fnames.fname as fname,
-                user_data.value as username,
-                rank,
-                score,
-                ((total.total - (rank - 1))*100 / total.total) as percentile,
+                case when user_data.type = 6 then user_data.value end as username,
+                case when user_data.type = 1 then user_data.value end as pfp,
+                case when user_data.type = 3 then user_data.value end as bio,
+                v.claim->>'address' as address,
                 bal.balance as balance, 
+          			tok.balance as token_balance,
                 CASE 
                     WHEN (bal.update_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                     ELSE bal.latest_earnings
                 END as daily_earnings,
+								CASE
+                    WHEN (tok.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
+                    ELSE tok.latest_earnings
+                END as token_daily_earnings,
                 bal.latest_earnings as latest_earnings,
-                bal.update_ts as bal_update_ts
+                tok.latest_earnings as token_latest_earnings,
+                bal.latest_earnings as weekly_earnings,
+                tok.latest_earnings as token_weekly_earnings,
+                bal.update_ts as bal_update_ts,
+          			CASE 
+                    WHEN channelpts.channel_id IS NOT NULL THEN true
+                    ELSE false
+                END as is_points_launched,
+                CASE 
+                  WHEN tokens_launched IS NOT NULL THEN true
+                    ELSE false
+                END as is_tokens_launched
             FROM k3l_channel_rank as ch
             CROSS JOIN total
+            LEFT JOIN k3l_rank on (ch.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
             LEFT JOIN fnames on (fnames.fid = ch.fid)
-            LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type=6)
+            LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type in (6,1,3))
+            LEFT JOIN verifications v on (v.fid = ch.fid)
             LEFT JOIN k3l_channel_points_allowlist as channelpts 
                 on (channelpts.channel_id=ch.channel_id and channelpts.is_allowed=true)
             LEFT JOIN k3l_channel_points_bal as bal 
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid 
                     and bal.channel_id=channelpts.channel_id)
+            LEFT JOIN k3l_channel_tokens_bal as tok 
+            		on (tok.channel_id=ch.channel_id and tok.fid=ch.fid 
+                		and tok.channel_id=channelpts.channel_id)
+            LEFT JOIN tokens_launched 
+                on (tokens_launched.channel_id = ch.channel_id)
             WHERE
                 ch.channel_id = $1
                 AND
                 ch.strategy_name = $2
                 AND
                 ch.fid = ANY($3::integer[])
-            ORDER BY rank
-        ),
-        mapped_records as (
-            SELECT top_records.*,addresses.address
-            FROM top_records
-            LEFT JOIN addresses using (fid)
         )
         SELECT
             fid,
+            channel_id,
             any_value(fname) as fname,
             any_value(username) as username,
-            any_value(rank) as rank,
-            any_value(score) as score,
+            any_value(pfp) as pfp,
+            any_value(bio) as bio,
+            channel_rank as rank,
+            max(channel_score) as score,
+            global_rank,
             any_value(percentile) as percentile,
             ARRAY_AGG(DISTINCT address) as addresses,
-            any_value(balance) as balance,
-            any_value(daily_earnings) as daily_earnings,
-            any_value(latest_earnings) as latest_earnings,
-            any_value(bal_update_ts) as bal_update_ts
-        FROM mapped_records
-        GROUP BY fid
-        ORDER by rank
-
+            max(balance) as balance,
+            max(token_balance) as token_balance,
+            max(daily_earnings) as daily_earnings,
+            max(token_daily_earnings) as token_daily_earnings,
+            max(latest_earnings) as latest_earnings,
+            max(latest_earnings) as token_latest_earnings,
+            max(weekly_earnings) as weekly_earnings,
+            max(token_weekly_earnings) as token_weekly_earnings,
+            any_value(bal_update_ts) as bal_update_ts,
+            bool_or(is_points_launched) as is_points_launched,
+            bool_or(is_tokens_launched) as is_tokens_launched
+        FROM top_records
+        GROUP BY fid, channel_id, channel_rank, global_rank
+        ORDER by channel_rank,global_rank NULLS LAST
         """
     return await fetch_rows(channel_id, strategy_name, fids, sql_query=sql_query, pool=pool)
 
