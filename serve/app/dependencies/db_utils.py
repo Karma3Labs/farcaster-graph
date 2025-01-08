@@ -1012,11 +1012,6 @@ async def get_channel_profile_ranks(
                 ch.score as channel_score,
                 k3l_rank.rank as global_rank,
                 ((total.total - (ch.rank - 1))*100 / total.total) as percentile,
-                fnames.fname as fname,
-                case when user_data.type = 6 then user_data.value end as username,
-                case when user_data.type = 1 then user_data.value end as pfp,
-                case when user_data.type = 3 then user_data.value end as bio,
-                v.claim->>'address' as address,
                 bal.balance as balance, 
           			tok.balance as token_balance,
                 CASE 
@@ -1041,9 +1036,6 @@ async def get_channel_profile_ranks(
             FROM k3l_channel_rank as ch
             CROSS JOIN total
             LEFT JOIN k3l_rank on (ch.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
-            LEFT JOIN fnames on (fnames.fid = ch.fid)
-            LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type in (6,1,3))
-            LEFT JOIN verifications v on (v.fid = ch.fid)
             LEFT JOIN k3l_channel_points_bal as bal 
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
             LEFT JOIN k3l_channel_tokens_bal as tok 
@@ -1062,9 +1054,23 @@ async def get_channel_profile_ranks(
                 ch.strategy_name = $2
                 AND
                 ch.fid = ANY($3::integer[])
+        ),
+        bio_data AS (
+          SELECT
+          			top_records.fid,
+          			any_value(fnames.fname) as fname,
+                any_value(case when user_data.type = 6 then user_data.value end) as username,
+                any_value(case when user_data.type = 1 then user_data.value end) as pfp,
+                any_value(case when user_data.type = 3 then user_data.value end) as bio,
+                ARRAY_AGG(DISTINCT v.claim->>'address') as address
+          FROM top_records
+          LEFT JOIN fnames on (fnames.fid = top_records.fid)
+          LEFT JOIN user_data on (user_data.fid = top_records.fid and user_data.type in (6,1,3))
+          LEFT JOIN verifications v on (v.fid = top_records.fid)
+          GROUP BY top_records.fid
         )
         SELECT
-            fid,
+            top_records.fid,
             channel_id,
             any_value(fname) as fname,
             any_value(username) as username,
@@ -1081,13 +1087,14 @@ async def get_channel_profile_ranks(
             max(token_daily_earnings) as token_daily_earnings,
             max(latest_earnings) as latest_earnings,
             max(latest_earnings) as token_latest_earnings,
-            max(plog_earnings) as weekly_earnings,
+            sum(plog_earnings) as weekly_earnings,
             max(token_weekly_earnings) as token_weekly_earnings,
             any_value(bal_update_ts) as bal_update_ts,
             bool_or(is_points_launched) as is_points_launched,
             bool_or(is_tokens_launched) as is_tokens_launched
         FROM top_records
-        GROUP BY fid, channel_id, channel_rank, global_rank
+        LEFT JOIN bio_data ON (bio_data.fid=top_records.fid)
+        GROUP BY top_records.fid, channel_id, channel_rank, global_rank
         ORDER by channel_rank,global_rank NULLS LAST
         """
     return await fetch_rows(channel_id, strategy_name, fids, sql_query=sql_query, pool=pool)
@@ -1911,18 +1918,18 @@ async def get_top_channel_followers(
     sql_query = """
     WITH 
     channel_points AS (
-    SELECT 
-        channel_id, max(update_ts) as update_ts
-    FROM k3l_channel_points_bal
-    WHERE channel_id = $1
-    GROUP BY channel_id
+        SELECT 
+            channel_id, max(update_ts) as update_ts
+        FROM k3l_channel_points_bal
+        WHERE channel_id = $1
+        GROUP BY channel_id
     ),
     channel_tokens as (
-    SELECT 
-        channel_id, max(update_ts) as update_ts
-    FROM k3l_channel_tokens_bal
-    WHERE channel_id = $1
-    GROUP BY channel_id
+        SELECT 
+            channel_id, max(update_ts) as update_ts
+        FROM k3l_channel_tokens_bal
+        WHERE channel_id = $1
+        GROUP BY channel_id
     ),
     distinct_warpcast_followers as (
     SELECT 
@@ -1941,11 +1948,6 @@ async def get_top_channel_followers(
         klcr.rank as channel_rank,
         klcr.score as channel_score,
         k3l_rank.rank as global_rank,
-        fnames.fname as fname,
-        case when user_data.type = 6 then user_data.value end as username,
-        case when user_data.type = 1 then user_data.value end as pfp,
-        case when user_data.type = 3 then user_data.value end as bio,
-        v.claim->>'address' as address,
         warpcast_members.memberat,
         bal.balance as balance,
         tok.balance as token_balance,
@@ -1973,9 +1975,6 @@ async def get_top_channel_followers(
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
         LEFT JOIN k3l_channel_rank klcr 
             on (wf.fid = klcr.fid and wf.channel_id = klcr.channel_id and klcr.strategy_name = $2)
-        LEFT JOIN fnames on (fnames.fid = wf.fid)
-        LEFT JOIN user_data on (user_data.fid = wf.fid and user_data.type in (6,1,3))
-        LEFT JOIN verifications v on (v.fid = wf.fid)
         LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
         LEFT JOIN k3l_channel_points_bal as bal 
             on (bal.channel_id=wf.channel_id and bal.fid=wf.fid)
@@ -1989,9 +1988,23 @@ async def get_top_channel_followers(
       			on (plog.model_name='cbrt_weighted' AND plog.channel_id=wf.channel_id
                 AND plog.fid = wf.fid
                 AND plog.insert_ts > channel_points.update_ts)
-    )
+    ),
+    bio_data AS (
+        SELECT
+            followers_data.fid,
+                any_value(fnames.fname) as fname,
+            any_value(case when user_data.type = 6 then user_data.value end) as username,
+            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
+            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            ARRAY_AGG(DISTINCT v.claim->>'address') as address
+        FROM followers_data
+        LEFT JOIN fnames on (fnames.fid = followers_data.fid)
+        LEFT JOIN user_data on (user_data.fid = followers_data.fid and user_data.type in (6,1,3))
+        LEFT JOIN verifications v on (v.fid = followers_data.fid)
+        GROUP BY followers_data.fid
+      )
     SELECT 
-        fid,
+        followers_data.fid,
 	    	any_value(fname) as fname,
         any_value(username) as username,
         any_value(pfp) as pfp,
@@ -2007,15 +2020,16 @@ async def get_top_channel_followers(
         max(token_daily_earnings) as token_daily_earnings,
         max(latest_earnings) as latest_earnings,
         max(latest_earnings) as token_latest_earnings,
-        max(plog_earnings) as weekly_earnings,
+        sum(plog_earnings) as weekly_earnings,
         max(token_weekly_earnings) as token_weekly_earnings,
         max(bal_update_ts) as bal_update_ts,
         bool_or(is_points_launched) as is_points_launched,
         bool_or(is_tokens_launched) as is_tokens_launched,
         min(memberat) as memberat
     FROM followers_data
-    GROUP BY fid,channel_id,channel_rank,global_rank
-    ORDER BY channel_rank, global_rank NULLS LAST
+    LEFT JOIN bio_data ON (bio_data.fid=followers_data.fid)
+    GROUP BY followers_data.fid,channel_id,channel_rank,global_rank
+    ORDER BY channel_rank,global_rank NULLS LAST
     OFFSET $3
     LIMIT $4
     """
