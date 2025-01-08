@@ -81,6 +81,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                             # ...therefore conclude that this is token launch
                             # ...therefore conclude airdrop
                             is_airdrop = True
+                            reason = "airdrop"
                         else:
                             logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
                     elif response.status_code == 404:
