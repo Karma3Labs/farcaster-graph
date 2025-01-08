@@ -12,7 +12,7 @@ done
 if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t airdrop"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t genesis"
   echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t daily"
   echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t weekly"
   echo ""

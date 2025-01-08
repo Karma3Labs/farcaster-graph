@@ -27,9 +27,19 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    run_main = BashOperator(
-        task_id="run_main",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t distrib",
+    run_genesis = BashOperator(
+        task_id="run_genesis",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis",
+        dag=dag)
+    
+    run_daily = BashOperator(
+        task_id="run_daily",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t daily",
+        dag=dag)
+    
+    run_weekly = BashOperator(
+        task_id="run_weekly",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t weekly",
         dag=dag)
 
     backup_to_s3 = BashOperator(
@@ -37,10 +47,5 @@ with DAG(
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal "
         )
 
-    run_simulation = BashOperator(
-        task_id="run_simulation",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t sim",
-        dag=dag)
-
-    run_main >> backup_to_s3 >> run_simulation
+    run_genesis >> run_daily >> run_weekly >> backup_to_s3
 
