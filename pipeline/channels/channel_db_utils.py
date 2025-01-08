@@ -388,7 +388,7 @@ def insert_reddit_points_log(
 def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     # WARNING - EXTREME CAUTION - be very careful with these variables
     STRATEGY = "60d_engagement" # TODO move this to k3l_channel_rewards_config
-    GENESIS_BUDGET = 1_000_000
+    GENESIS_BUDGET = 600_000
     # WARNING - EXTREME CAUTION
     insert_sql = f"""
         WITH 
