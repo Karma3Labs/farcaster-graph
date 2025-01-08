@@ -622,7 +622,7 @@ def insert_tokens_log(
     if is_airdrop:
         amt_sql = "round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot_bal.balance),0)"
     else:
-        amt_sql = "round((bal.latest_earnings * config.token_daily_budget * (1 - config.token_tax_pct) / tot.latest_earnings),0)"
+        amt_sql = "round((bal.latest_earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) / tot.latest_earnings),0)"
     points_col = "balance" if is_airdrop else "latest_earnings"
     insert_sql = f"""
         WITH latest_log AS (
