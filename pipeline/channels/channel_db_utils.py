@@ -632,8 +632,9 @@ def insert_tokens_log(
             GROUP BY channel_id, fid
         ),
         latest_verified_address as (
-            SELECT (array_agg(v.claim->>'address' order by timestamp))[1] as address, fid
+            SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
             FROM verifications v
+            WHERE deleted_at IS NULL
             GROUP BY fid
         ),
         channel_totals AS (
