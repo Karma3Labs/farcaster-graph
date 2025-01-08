@@ -48,7 +48,7 @@ def read_channel_ids_csv(csv_path:Path) -> list:
         channels_df = channels_df.drop_duplicates(subset=['channel id'], keep='last')
         channels_df = channels_df[["channel id"]]
         channels_df['channel id'] = channels_df['channel id'].str.lower()
-        channel_ids = channels_df["channel id"].values.tolist()
+        channel_ids = list(set(channels_df["channel id"].values.tolist()))
         return channel_ids
     except Exception as e:
         logger.error(f"Failed to read channel data from CSV: {e}")

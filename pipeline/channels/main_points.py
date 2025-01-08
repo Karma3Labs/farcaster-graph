@@ -47,8 +47,9 @@ class RedditModel(StrEnum):
     reddit_cast_weighted = "reddit_cast_weighted"
 
 class Task(StrEnum):
-    sim = "sim"
-    distrib = "distrib"
+    genesis = "genesis"
+    daily = "daily"
+    weekly = "weekly"
 
 def main(task: Task):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -56,11 +57,14 @@ def main(task: Task):
 
     sql_timeout_ms = 120_000
 
-    if task == Task.distrib:
+    if task == Task.genesis:
+        logger.info("Points genesis distribution")
+        channel_db_utils.insert_genesis_points(logger, pg_dsn, sql_timeout_ms)
+    elif task == Task.weekly:
             # uses the default weighted model to update points balances
-            logger.info("Updating points balances with default weighted model")
-            channel_db_utils.update_points_balance_v3(logger, pg_dsn, sql_timeout_ms)
-    elif task == Task.sim:
+            logger.info("Updating points balances with cbrt_weighted model")
+            channel_db_utils.update_points_balance_v4(logger, pg_dsn, sql_timeout_ms)
+    elif task == Task.daily:
 
         # Reddit-style Karma Points
         for model in RedditModel:
@@ -88,8 +92,12 @@ def main(task: Task):
             recast_wt=5,
             like_wt=1,
             cast_wt=0,
+            model_names=[e.value for e in WeightedModel],
         )
         logger.info(utils.df_info_to_string(df, with_sample=True, head=True))
+        if len(df) == 0:
+            logger.info("No points to distribute")
+            return
         TOTAL_POINTS = 10_000
         PERCENTILE_CUTOFF = 0.1
         df['percent_rank'] = df.groupby('channel_id')['score'].rank(pct=True)

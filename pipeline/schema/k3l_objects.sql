@@ -601,6 +601,26 @@ CREATE TABLE k3l_channel_tokens_log_y2025m03 PARTITION OF k3l_channel_tokens_log
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_log TO k3l_readonly;
 -------------------------------------------------
+CREATE TABLE public.k3l_channel_rewards_config (
+    channel_id text NOT NULL,
+    is_ranked boolean NOT NULL DEFAULT true,
+    is_points boolean NOT NULL DEFAULT false,
+    is_tokens boolean NOT NULL DEFAULT false,
+    token_airdrop_budget int8 NOT NULL DEFAULT 25000000,
+    token_daily_budget int8 NOT NULL DEFAULT 434981,
+    token_tax_pct numeric NOT NULL DEFAULT 0.02,
+    insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX k3l_channel_rewards_config_ch_idx ON public.k3l_channel_rewards_config USING btree (channel_id);
+GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_rewards_config TO k3l_readonly;
+-- bootstrap data as of 2025-01-07 19:35:09.586911+00
+-- INSERT INTO k3l_channel_rewards_config (channel_id, is_points)
+-- SELECT channel_id, is_allowed FROM k3l_channel_points_allowlist
+
+-------------------------------------------------
+-- TODO drop this once all jobs are migrated to channel_rewards_config
 CREATE TABLE public.k3l_channel_points_allowlist (
     channel_id text NOT NULL,
     is_allowed boolean NOT NULL DEFAULT true,
