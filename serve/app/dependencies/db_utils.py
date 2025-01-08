@@ -985,13 +985,20 @@ async def get_channel_profile_ranks(
     else:
         sql_query = """
         WITH 
-        tokens_launched as (
-            SELECT
-                channel_id
+        channel_points AS (
+            SELECT 
+                channel_id, max(update_ts) as update_ts
+            FROM k3l_channel_points_bal
+            WHERE channel_id = $1
+            GROUP BY channel_id
+        ),
+        channel_tokens as (
+            SELECT 
+                channel_id, max(update_ts) as update_ts
             FROM k3l_channel_tokens_bal
             WHERE channel_id = $1
-            LIMIT 1
-	    ),
+            GROUP BY channel_id
+        ),
         total AS (
             SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
@@ -1013,26 +1020,22 @@ async def get_channel_profile_ranks(
                 bal.balance as balance, 
           			tok.balance as token_balance,
                 CASE 
-                    WHEN (bal.update_ts < now() - interval '1 days') THEN 0
+                    WHEN (plog.insert_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
-                    ELSE bal.latest_earnings
+                    ELSE plog.earnings
                 END as daily_earnings,
-								CASE
-                    WHEN (tok.update_ts < now() - interval '1 days') THEN 0
-                    WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
-                    ELSE tok.latest_earnings
-                END as token_daily_earnings,
+								0 as token_daily_earnings,
                 bal.latest_earnings as latest_earnings,
                 tok.latest_earnings as token_latest_earnings,
-                bal.latest_earnings as weekly_earnings,
-                tok.latest_earnings as token_weekly_earnings,
+                plog.earnings as plog_earnings,
+                0 as token_weekly_earnings,
                 bal.update_ts as bal_update_ts,
           			CASE 
-                    WHEN channelpts.channel_id IS NOT NULL THEN true
+                    WHEN channel_points.channel_id IS NOT NULL THEN true
                     ELSE false
                 END as is_points_launched,
                 CASE 
-                  WHEN tokens_launched IS NOT NULL THEN true
+                  WHEN channel_tokens.channel_id IS NOT NULL THEN true
                     ELSE false
                 END as is_tokens_launched
             FROM k3l_channel_rank as ch
@@ -1041,16 +1044,18 @@ async def get_channel_profile_ranks(
             LEFT JOIN fnames on (fnames.fid = ch.fid)
             LEFT JOIN user_data on (user_data.fid = ch.fid and user_data.type in (6,1,3))
             LEFT JOIN verifications v on (v.fid = ch.fid)
-            LEFT JOIN k3l_channel_points_allowlist as channelpts 
-                on (channelpts.channel_id=ch.channel_id and channelpts.is_allowed=true)
             LEFT JOIN k3l_channel_points_bal as bal 
-                on (bal.channel_id=ch.channel_id and bal.fid=ch.fid 
-                    and bal.channel_id=channelpts.channel_id)
+                on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
             LEFT JOIN k3l_channel_tokens_bal as tok 
-            		on (tok.channel_id=ch.channel_id and tok.fid=ch.fid 
-                		and tok.channel_id=channelpts.channel_id)
-            LEFT JOIN tokens_launched 
-                on (tokens_launched.channel_id = ch.channel_id)
+            		on (tok.channel_id=ch.channel_id and tok.fid=ch.fid)
+            LEFT JOIN channel_points
+                on (channel_points.channel_id = ch.channel_id)
+            LEFT JOIN channel_tokens 
+                on (channel_tokens.channel_id = ch.channel_id)
+            LEFT JOIN k3l_channel_points_log as plog
+                on (plog.model_name='cbrt_weighted' AND plog.channel_id=ch.channel_id
+                    AND plog.fid = ch.fid
+                    AND plog.insert_ts > channel_points.update_ts)
             WHERE
                 ch.channel_id = $1
                 AND
@@ -1076,7 +1081,7 @@ async def get_channel_profile_ranks(
             max(token_daily_earnings) as token_daily_earnings,
             max(latest_earnings) as latest_earnings,
             max(latest_earnings) as token_latest_earnings,
-            max(weekly_earnings) as weekly_earnings,
+            sum(plog_earnings) as weekly_earnings,
             max(token_weekly_earnings) as token_weekly_earnings,
             any_value(bal_update_ts) as bal_update_ts,
             bool_or(is_points_launched) as is_points_launched,
@@ -1949,11 +1954,7 @@ async def get_top_channel_followers(
             WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
             ELSE plog.earnings
         END as daily_earnings,
-        CASE
-            WHEN (tok.update_ts < now() - interval '1 days') THEN 0
-            WHEN (tok.insert_ts = tok.update_ts) THEN 0 -- airdrop
-            ELSE tok.latest_earnings
-        END as token_daily_earnings,
+        0 as token_daily_earnings,
         bal.latest_earnings as latest_earnings,
         tok.latest_earnings as token_latest_earnings,
         plog.earnings as plog_earnings,
@@ -2014,7 +2015,7 @@ async def get_top_channel_followers(
         min(memberat) as memberat
     FROM followers_data
     GROUP BY fid,channel_id,channel_rank,global_rank
-    ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST
+    ORDER BY channel_rank, global_rank NULLS LAST
     OFFSET $3
     LIMIT $4
     """
