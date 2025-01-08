@@ -12,13 +12,14 @@ done
 if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t distrib"
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t sim"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t airdrop"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t daily"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t weekly"
   echo ""
   echo "Params:"
   echo "  [work_dir] The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
-  echo "  [task] The task to perform: sim or distrib."
+  echo "  [task] The task to perform: daily or distrib."
   echo ""
   exit
 fi
