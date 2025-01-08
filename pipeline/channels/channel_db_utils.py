@@ -155,14 +155,25 @@ def fetch_weighted_fid_scores_df(
     reply_wt: int,
     recast_wt: int,
     like_wt:int,
-    cast_wt:int
+    cast_wt:int,
+    model_names: list[str]
 ) -> pd.DataFrame:
     
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
 
+
     sql_query = f"""
-    WITH eligible_casts AS (
+    WITH 
+    excluded_channels AS (
+        -- IMPORTANT: don't generate points within last 23 hours
+        SELECT distinct(channel_id) as channel_id 
+        FROM k3l_channel_points_log
+        WHERE 
+            insert_ts > now() - interval '{INTERVAL}'
+            AND model_name IN {tuple(model_names)}
+    ),
+    eligible_casts AS (
         SELECT
             casts.hash as cast_hash,
                 actions.replied,
@@ -174,12 +185,15 @@ def fetch_weighted_fid_scores_df(
         FROM k3l_cast_action as actions 
             INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
             ON (actions.cast_hash = casts.hash
-                AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
+                AND actions.action_ts > now() - interval '{INTERVAL}'
                     )
         INNER JOIN warpcast_channels_data as channels
-                ON (channels.url = casts.root_parent_url)
+            ON (channels.url = casts.root_parent_url)
         INNER JOIN k3l_channel_rewards_config as config
-                ON (config.channel_id = channels.id AND config.is_points = true)
+            ON (config.channel_id = channels.id AND config.is_points = true)
+        LEFT JOIN excluded_channels as excl
+            ON (excl.channel_id = channels.id)
+        WHERE excl.channel_id IS NULL
     ),
     cast_scores_by_channel_fid AS (
         SELECT
@@ -255,11 +269,22 @@ def insert_reddit_points_log(
 
     insert_sql = f"""
     WITH 
+    excluded_channels AS (
+        -- IMPORTANT: don't generate points within last 23 hours
+        SELECT distinct(channel_id) as channel_id 
+        FROM k3l_channel_points_log
+        WHERE 
+            insert_ts > now() - interval '{INTERVAL}'
+            AND model_name = '{model_name}'
+    ),
     eligible_channel_rank AS (
-        SELECT ROUND(max(rank)/{CHANNEL_RANK_CUTOFF_RATIO},0) as max_rank, strategy_name, channel_id 
+        SELECT 
+            ROUND(max(rank)/{CHANNEL_RANK_CUTOFF_RATIO},0) as max_rank, 
+            strategy_name, 
+            k3l_channel_rank.channel_id 
         FROM k3l_channel_rank
         WHERE strategy_name = '{CHANNEL_RANK_STRATEGY}'
-        GROUP BY channel_id, strategy_name
+        GROUP BY k3l_channel_rank.channel_id, strategy_name
         ),
     eligible_channel_actors AS (
         SELECT fid, eligible_channel_rank.channel_id 
@@ -285,17 +310,24 @@ def insert_reddit_points_log(
                 AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
                     )
         INNER JOIN warpcast_channels_data as channels
-                ON (channels.url = casts.root_parent_url)
+            ON (channels.url = casts.root_parent_url)
         INNER JOIN k3l_channel_rewards_config as config
-                ON (config.channel_id = channels.id AND config.is_points = true)	
-            LEFT JOIN k3l_rank 
-                ON (k3l_rank.profile_id = actions.fid 
-                AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID} 
-                AND k3l_rank.rank <= {MAX_GLOBAL_RANK})
+            ON (config.channel_id = channels.id AND config.is_points = true)
+        LEFT JOIN excluded_channels as excl
+            ON (excl.channel_id = channels.id)	
+        LEFT JOIN k3l_rank 
+            ON (k3l_rank.profile_id = actions.fid 
+            AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID} 
+            AND k3l_rank.rank <= {MAX_GLOBAL_RANK})
         LEFT JOIN eligible_channel_actors 
-                ON (eligible_channel_actors.fid = actions.fid 
-                AND eligible_channel_actors.channel_id=channels.id)   
-        WHERE k3l_rank.profile_id IS NOT NULL OR eligible_channel_actors.fid IS NOT NULL
+            ON (eligible_channel_actors.fid = actions.fid 
+            AND eligible_channel_actors.channel_id=channels.id)   
+        WHERE 
+            excl.channel_id IS NULL AND
+            (   k3l_rank.profile_id IS NOT NULL  -- author is either ranked
+                OR 
+                eligible_channel_actors.fid IS NOT NULL -- has engagement from a ranked user
+            )
         GROUP BY channels.id, casts.hash
         ),
         author_scores AS (
@@ -399,130 +431,59 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+
 @Timer(name="update_points_balance_v4")
 def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
-    pass
-
-@Timer(name="update_points_balance_v3")
-def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
-    # WARNING - EXTREME CAUTION - be very careful with these variables
     OLD_TBL = "k3l_channel_points_bal_old"
     LIVE_TBL = "k3l_channel_points_bal"
     NEW_TBL = "k3l_channel_points_bal_new"
-    INTERVAL = "1 day"
-    STRATEGY = "60d_engagement"
-    NUM_NTILES = 10
-    CUTOFF_NTILE = 9
-    TOTAL_POINTS = 10_000
-    ALLOC_INTERVAL = '23 hours'
-    # WARNING - EXTREME CAUTION
+    ALLOC_INTERVAL = '7 days'
 
     create_sql = (
         f"DROP TABLE IF EXISTS {OLD_TBL};"
         f"CREATE TABLE {NEW_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
     )
 
-    replace_sql = (
-        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
-        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
-    )
-
     insert_sql = f"""
-        WITH eligible_casts AS (
-            SELECT
-                casts.hash as cast_hash,
-                    actions.replied,
-                    actions.casted,
-                    actions.liked,
-                    actions.recasted,
-                    actions.fid,
-                    channels.id as channel_id
-            FROM k3l_cast_action as actions 
-                INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
-                ON (actions.cast_hash = casts.hash
-                    AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
-                        )
-            INNER JOIN warpcast_channels_data as channels
-                    ON (channels.url = casts.root_parent_url)
-            INNER JOIN k3l_channel_rewards_config as config
-                    ON (config.channel_id = channels.id AND config.is_points = true)
-            ),
-            cast_scores_by_channel_fid AS (
-            SELECT
-                actions.cast_hash,
-                SUM(
-                        + (1 * ranks.score * actions.replied)
-                        + (5 * ranks.score * actions.recasted)
-                        + (1 * ranks.score * actions.liked)
-                    ) as cast_score,
-                actions.channel_id as channel_id
-            FROM eligible_casts as actions
-            INNER JOIN k3l_channel_rank as ranks
-                ON (ranks.fid = actions.fid 
-                    AND ranks.channel_id=actions.channel_id 
-                    AND ranks.strategy_name='{STRATEGY}')
-            GROUP BY actions.channel_id, actions.cast_hash, ranks.fid
-            ),
-            cast_scores AS (
-                SELECT
-                    cast_hash,
-                    channel_id,
-                    sum(cast_score) as cast_score
-                FROM cast_scores_by_channel_fid
-                WHERE cast_score > 0
-                GROUP BY cast_hash, channel_id
-            ),
-            author_scores AS (
-                SELECT
-                    SUM(cast_scores.cast_score) as score,
-                    casts.fid,
-                    cast_scores.channel_id
-                FROM cast_scores
-                INNER JOIN k3l_recent_parent_casts AS casts 
-                    ON casts.hash = cast_scores.cast_hash
-                GROUP BY casts.fid, cast_scores.channel_id
-            ),
-            points_budget AS (
-                SELECT 
-                    sum(score) as budget,
-                    channel_id
-                FROM (
-                    SELECT
-                    fid,
-                    score,
-                    NTILE({NUM_NTILES}) OVER (
-                        PARTITION BY channel_id
-                            ORDER BY score DESC
-                    ) as ptile,
-                    channel_id
-                    FROM
-                        author_scores
-                )
-                WHERE ptile <= {CUTOFF_NTILE}
-                GROUP BY channel_id
+        WITH 
+        last_channel_bal_ts AS (
+            SELECT max(update_ts) as update_ts, channel_id
+            FROM {LIVE_TBL}
+            GROUP BY channel_id
+        ),
+        eligible_fids AS (
+            SELECT 
+                plog.fid,
+                plog.channel_id,
+                SUM(plog.earnings) as weekly_earnings,
+                0 as score, -- TODO drop this column
+                0 as adj_score -- TODO drop this column
+            FROM k3l_channel_points_log AS plog
+            INNER JOIN last_channel_bal_ts
+                ON (last_channel_bal_ts.channel_id=plog.channel_id 
+                AND plog.model_name='cbrt_weighted'
+                AND plog.insert_ts > last_channel_bal_ts.update_ts
+                AND last_channel_bal_ts.update_ts <= now() - interval '{ALLOC_INTERVAL} days'
             )
-        INSERT INTO k3l_channel_points_bal_new 
+            GROUP BY plog.fid, plog.channel_id
+        )
+        INSERT INTO {NEW_TBL} 
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)
-            SELECT -- new fids with no previous balance and balances that are older than cutoff period
-                authors.fid,
-                authors.channel_id,
-                COALESCE(bal.balance, 0) + ((authors.score / bt.budget::numeric) * {TOTAL_POINTS}) as balance, 
-                (authors.score / bt.budget::numeric) * {TOTAL_POINTS} as latest_earnings,
-                authors.score as latest_score, 
-                (authors.score / bt.budget::numeric) as latest_adj_score,
-                CASE 
-                    WHEN bal.insert_ts IS NULL THEN now()
-                    ELSE bal.insert_ts
-                END as insert_ts,
+            SELECT -- existing fids and new fids (hence coalesce)
+                fids.fid,
+                fids.channel_id,
+                coalesce(bal.balance,0) + fids.weekly_earnings as balance,
+                fids.weekly_earnings as latest_earnings,
+                fids.score,
+                fids.adj_score,
+                coalesce(bal.insert_ts, now()) as insert_ts,
                 now() as update_ts
-            FROM author_scores as authors
-            INNER JOIN points_budget as bt on (bt.channel_id = authors.channel_id)
-            LEFT JOIN k3l_channel_points_bal as bal on (bal.channel_id = authors.channel_id 
-                                                        AND bal.fid = authors.fid)
-            WHERE
-                bal.update_ts IS NULL OR bal.update_ts < now() - interval '{ALLOC_INTERVAL}'
+            FROM eligible_fids as fids
+            LEFT JOIN {LIVE_TBL} as bal
+                ON (bal.channel_id = fids.channel_id
+                    AND bal.fid = fids.fid)
             UNION
-            SELECT -- existing balances that are not getting updated or were updated within cutoff period
+            SELECT -- existing balances with no points log in last 7 days
                 bal.fid,
                 bal.channel_id,
                 bal.balance as balance, 
@@ -531,12 +492,19 @@ def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                 bal.latest_adj_score as latest_adj_score,
                 bal.insert_ts,
                 bal.update_ts
-            FROM k3l_channel_points_bal as bal
-            LEFT JOIN author_scores as authors on (bal.channel_id = authors.channel_id 
-                                                AND bal.fid = authors.fid)
+            FROM {LIVE_TBL} AS bal
+            LEFT JOIN eligible_fids AS fids 
+                ON (bal.channel_id = fids.channel_id 
+                    AND bal.fid = fids.fid)
             WHERE
-                authors.fid IS NULL OR bal.update_ts > now() - interval '{ALLOC_INTERVAL}'	
+                fids.fid IS NULL	
     """
+
+    replace_sql = (
+        f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
+        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
+    )
+
     start_time = time.perf_counter()
     try:
         # start transaction 'with' context manager
