@@ -463,7 +463,7 @@ def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                 ON (last_channel_bal_ts.channel_id=plog.channel_id 
                 AND plog.model_name='cbrt_weighted'
                 AND plog.insert_ts > last_channel_bal_ts.update_ts
-                AND last_channel_bal_ts.update_ts <= now() - interval '{ALLOC_INTERVAL} days'
+                AND last_channel_bal_ts.update_ts <= now() - interval '{ALLOC_INTERVAL}'
             )
             GROUP BY plog.fid, plog.channel_id
         )
