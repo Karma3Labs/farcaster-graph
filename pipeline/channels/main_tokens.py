@@ -166,7 +166,7 @@ def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
         f"call smartcontractmgr for distributionId: {dist_id} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
     )
     logger.info(f"sample of distributions: {random.sample(distributions, min(10, len(distributions)))}")
-    payload = {'distributionId': dist_id, 'taxAmount': tax_amt, 'channelId': channel_id, 'distributions': distributions}
+    payload = {'distributionId': dist_id, 'taxAmount': str(tax_amt), 'channelId': channel_id, 'distributions': distributions}
     logger.trace(f"payload: {payload}")
     connect_timeout_s = 5.0
     read_timeout_s = 60.0
