@@ -620,7 +620,7 @@ def insert_tokens_log(
                 timeout_ms=timeout_ms,
     )
     if is_airdrop:
-        amt_sql = "round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot_bal.balance),0)"
+        amt_sql = "round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot.balance),0)"
     else:
         amt_sql = "round((bal.latest_earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) / tot.latest_earnings),0)"
     points_col = "balance" if is_airdrop else "latest_earnings"
@@ -677,14 +677,25 @@ def insert_tokens_log(
             pg_dsn, 
             options=f"-c statement_timeout={timeout_ms}"
         )  as conn: 
+            if is_airdrop:
+                with conn.cursor() as cursor:
+                    update_sql = f"""
+                        UPDATE k3l_channel_rewards_config
+                        SET is_tokens = 'true'
+                        WHERE channel_id = '{channel_id}'
+                    """ 
+                    logger.info(f"Executing: {update_sql}")
+                    cursor.execute(update_sql)
+                    logger.info(f"Updated channel rewards config for {channel_id}")
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
-                logger.info(f"Inserted rows: {cursor.rowcount}")
+                logger.info(f"Inserted rows: {cursor.rowcount} for {dist_id}")
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return dist_id
 
 @Timer(name="fetch_distribution_entries")
 def fetch_distribution_entries(

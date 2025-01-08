@@ -77,13 +77,10 @@ def prepare_for_distribution(scope: Scope, reason: str):
                         # TODO get token supply details from SCM
                         if token_address:
                             logger.info(f"Channel '{channel_id}' has token {channel_token}.")
-                            channel_db_utils.update_channel_token_status(
-                                logger,
-                                pg_dsn,
-                                settings.POSTGRES_TIMEOUT_MS,
-                                channel_id,
-                                True,
-                            )
+                            # this channel token is launched by SCM but we didn't see it in Postgres
+                            # ...therefore conclude that this is token launch
+                            # ...therefore conclude airdrop
+                            is_airdrop = True
                         else:
                             logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
                     elif response.status_code == 404:
@@ -95,7 +92,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
             # We know from Postgres or from SCM that channel token is launched;
             # ...let's prepare for distributing tokens based on recent balance update timestamp.
             logger.info(f"Prepping distribution for channel '{channel_id}'")
-            channel_db_utils.insert_tokens_log(
+            dist_id = channel_db_utils.insert_tokens_log(
                 logger=logger,
                 pg_dsn=pg_dsn,
                 timeout_ms=insert_timeout_ms,
@@ -103,6 +100,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                 reason=reason,
                 is_airdrop=is_airdrop,
             )
+            logger.info(f"Prepped distribution for channel '{channel_id}': {dist_id}")
 
 
 def distribute_tokens():
