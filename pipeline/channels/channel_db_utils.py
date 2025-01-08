@@ -9,6 +9,7 @@ from config import settings
 from asyncpg.pool import Pool
 import asyncpg
 import psycopg2
+import psycopg2.extras
 import pandas as pd
 
 class TokenDistStatus(StrEnum):
@@ -16,7 +17,6 @@ class TokenDistStatus(StrEnum):
     SUBMITTED = 'submitted'
     SUCCESS = 'success'
     FAILURE = 'failure'
-
 
 
 async def fetch_rows(
@@ -178,8 +178,8 @@ def fetch_weighted_fid_scores_df(
                     )
         INNER JOIN warpcast_channels_data as channels
                 ON (channels.url = casts.root_parent_url)
-        INNER JOIN k3l_channel_points_allowlist as allo
-                ON (allo.channel_id = channels.id)
+        INNER JOIN k3l_channel_rewards_config as config
+                ON (config.channel_id = channels.id AND config.is_points = true)
     ),
     cast_scores_by_channel_fid AS (
         SELECT
@@ -286,8 +286,8 @@ def insert_reddit_points_log(
                     )
         INNER JOIN warpcast_channels_data as channels
                 ON (channels.url = casts.root_parent_url)
-        INNER JOIN k3l_channel_points_allowlist as allo	
-                ON (allo.channel_id = channels.id)
+        INNER JOIN k3l_channel_rewards_config as config
+                ON (config.channel_id = channels.id AND config.is_points = true)	
             LEFT JOIN k3l_rank 
                 ON (k3l_rank.profile_id = actions.fid 
                 AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID} 
@@ -352,6 +352,57 @@ def insert_reddit_points_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+@Timer(name="insert_genesis_points")
+def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
+    # WARNING - EXTREME CAUTION - be very careful with these variables
+    STRATEGY = "60d_engagement" # TODO move this to k3l_channel_rewards_config
+    GENESIS_BUDGET = 1_000_000
+    # WARNING - EXTREME CAUTION
+    insert_sql = f"""
+        WITH 
+        excluded_channels AS (
+            -- IMPORTANT: don't airdrop for channels with existing balances
+            SELECT distinct(channel_id) as channel_id 
+            FROM k3l_channel_points_bal
+        ),
+        eligible_fids AS (
+            SELECT
+                rk.fid,
+                rk.score as score,
+                rk.channel_id,
+                rk.score * {GENESIS_BUDGET} as earnings
+            FROM k3l_channel_rank as rk
+            INNER JOIN k3l_channel_rewards_config as config
+                ON (config.channel_id = rk.channel_id AND config.is_points = true)
+            LEFT JOIN excluded_channels as excl
+                ON (excl.channel_id = rk.channel_id)
+            WHERE excl.channel_id IS NULL AND rk.strategy_name='{STRATEGY}'
+        )
+        INSERT INTO k3l_channel_points_bal 
+            (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score)
+        SELECT 
+            fids.fid, fids.channel_id, fids.earnings, fids.earnings, fids.score, fids.score
+        FROM eligible_fids as fids
+    """
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                logger.info(f"Inserted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+@Timer(name="update_points_balance_v4")
+def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
+    pass
+
 @Timer(name="update_points_balance_v3")
 def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     # WARNING - EXTREME CAUTION - be very careful with these variables
@@ -393,8 +444,8 @@ def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                         )
             INNER JOIN warpcast_channels_data as channels
                     ON (channels.url = casts.root_parent_url)
-            INNER JOIN k3l_channel_points_allowlist as allo
-                    ON (allo.channel_id = channels.id)
+            INNER JOIN k3l_channel_rewards_config as config
+                    ON (config.channel_id = channels.id AND config.is_points = true)
             ),
             cast_scores_by_channel_fid AS (
             SELECT
@@ -509,23 +560,16 @@ def update_points_balance_v3(logger: logging.Logger, pg_dsn: str, timeout_ms: in
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
-@Timer(name="fetch_channel_tokens_status")
-def fetch_channels_tokens_status(
-    logger: logging.Logger, pg_dsn: str, timeout_ms: int
-) -> list[tuple[str, bool]]:
-    select_sql = """
-        WITH 
-        existing_token_channels AS (
-        SELECT DISTINCT channel_id
-            FROM k3l_channel_tokens_log
-        )
+@Timer(name="fetch_rewards_config_list")
+def fetch_rewards_config_list(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str = None
+) -> list[dict]:
+    where_sql = "" if channel_id is None else f" WHERE channel_id = '{channel_id}'"
+    select_sql = f"""
         SELECT 
-            allo.channel_id,
-            CASE WHEN exch.channel_id IS NULL THEN false ELSE true END as is_status_known
-        FROM k3l_channel_points_allowlist AS allo
-        LEFT JOIN existing_token_channels AS exch
-            ON (exch.channel_id = allo.channel_id)
-        WHERE allo.is_allowed=true
+            *
+        FROM k3l_channel_rewards_config AS config
+        {where_sql}
         ORDER BY channel_id
     """
     start_time = time.perf_counter()
@@ -534,7 +578,7 @@ def fetch_channels_tokens_status(
             pg_dsn, 
             options=f"-c statement_timeout={timeout_ms}"
         )  as conn: 
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
                 logger.info(f"Executing: {select_sql}")
                 cursor.execute(select_sql)
                 rows = cursor.fetchall()
@@ -543,6 +587,31 @@ def fetch_channels_tokens_status(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return rows
+
+@Timer(name="update_channel_token_status")
+def update_channel_token_status(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, is_tokens: bool 
+) -> list[tuple[str, bool]]:
+    update_sql = f"""
+        UPDATE k3l_channel_rewards_config
+        SET is_tokens = {'true' if is_tokens else 'false'} 
+        WHERE channel_id = '{channel_id}'
+    """
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+            pg_dsn, 
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn: 
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {update_sql}")
+                cursor.execute(update_sql)
+                logger.info(f"Inserted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
 
 @Timer(name="get_next_dist_sequence")
 def get_next_dist_sequence(
@@ -578,8 +647,11 @@ def insert_tokens_log(
                 pg_dsn=pg_dsn,
                 timeout_ms=timeout_ms,
     )
+    if is_airdrop:
+        amt_sql = "round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot_bal.balance),0)"
+    else:
+        amt_sql = "round((bal.latest_earnings * config.token_daily_budget * (1 - config.token_tax_pct) / tot.latest_earnings),0)"
     points_col = "balance" if is_airdrop else "latest_earnings"
-    # TODO deduct tax amount from budget
     insert_sql = f"""
         WITH latest_log AS (
             SELECT max(points_ts) as max_points_ts, channel_id, fid 
@@ -591,6 +663,12 @@ def insert_tokens_log(
             SELECT (array_agg(v.claim->>'address' order by timestamp))[1] as address, fid
             FROM verifications v
             GROUP BY fid
+        ),
+        channel_totals AS (
+            SELECT sum(balance) as balance, sum(latest_earnings) as latest_earnings, channel_id
+            FROM k3l_channel_points_bal
+            WHERE channel_id='{channel_id}' 
+            GROUP BY channel_id
         )
         INSERT INTO k3l_channel_tokens_log
             (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
@@ -598,16 +676,20 @@ def insert_tokens_log(
             bal.fid,
             COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
-            round(bal.{points_col},0) as amt,
+            {amt_sql} as amt,
             {dist_id} as dist_id,
             '{reason}' as dist_reason,
             bal.{points_col} as latest_points,
             bal.update_ts as points_ts
         FROM k3l_channel_points_bal as bal
+        INNER JOIN channel_totals as tot 
+    		ON (tot.channel_id = bal.channel_id)
         LEFT JOIN latest_log as tlog 
             ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
             AND tlog.max_points_ts = bal.update_ts)
         INNER JOIN fids ON (fids.fid = bal.fid) 
+        INNER JOIN k3l_channel_rewards_config as config
+                ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
         LEFT JOIN latest_verified_address as vaddr 
             ON (vaddr.fid=bal.fid)
         WHERE tlog.channel_id IS NULL
@@ -728,6 +810,7 @@ def fetch_distributions_one_channel(
         FROM k3l_channel_tokens_log
         WHERE dist_status is NULL
         AND amt > 0
+        AND fid_address IS NOT NULL
         GROUP BY channel_id, dist_id
         ORDER BY channel_id, dist_id
         LIMIT 1

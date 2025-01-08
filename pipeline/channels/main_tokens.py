@@ -44,8 +44,8 @@ def prepare_for_distribution(scope: Scope, reason: str):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     insert_timeout_ms = 120_000
     is_airdrop = True if scope == Scope.airdrop else False
-    channels_list = channel_db_utils.fetch_channels_tokens_status(logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS)
-    logger.info(f"Channel token status: {channels_list}")
+    channels_list = channel_db_utils.fetch_rewards_config_list(logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS)
+    logger.debug(f"Channel token status: {channels_list}")
     retries = Retry(
         total=3,
         backoff_factor=0.1,
@@ -57,8 +57,12 @@ def prepare_for_distribution(scope: Scope, reason: str):
     with niquests.Session(retries=retries) as s:
         # reuse TCP connection for multiple scm requests
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
-        for channel_id, token_status in channels_list:
+        for channel in channels_list:
+            channel_id = channel['channel_id']
+            token_status = channel['is_tokens']
             if not token_status:
+                # In Postgres, we don't know if channel token is launched;
+                # ...let's query Cura Smart Contract Manager.
                 try:
                     path = f"/token/lookupTokenForChannel/{channel_id}"
                     logger.info(f"Channel '{channel_id}' has no distributions. Checking :{path}")
@@ -70,8 +74,16 @@ def prepare_for_distribution(scope: Scope, reason: str):
                     if response.status_code == 200:
                         channel_token = response.json()
                         token_address = channel_token.get('tokenAddress')
+                        # TODO get token supply details from SCM
                         if token_address:
-                            logger.info(f"Channel '{channel_id}' has token {channel_token}. Prepping distribution.")
+                            logger.info(f"Channel '{channel_id}' has token {channel_token}.")
+                            channel_db_utils.update_channel_token_status(
+                                logger,
+                                pg_dsn,
+                                settings.POSTGRES_TIMEOUT_MS,
+                                channel_id,
+                                True,
+                            )
                         else:
                             logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
                     elif response.status_code == 404:
@@ -80,6 +92,8 @@ def prepare_for_distribution(scope: Scope, reason: str):
                 except Exception as e:
                     logger.error(f"Failed to call smartcontractmgr: {e}")
                     raise e
+            # We know from Postgres or from SCM that channel token is launched;
+            # ...let's prepare for distributing tokens based on recent balance update timestamp.
             logger.info(f"Prepping distribution for channel '{channel_id}'")
             channel_db_utils.insert_tokens_log(
                 logger=logger,
@@ -105,6 +119,7 @@ def distribute_tokens():
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
         while True:
             # todo maybe? - parallelize this ? dbpool, http pool ?
+            
             channel_distributions = channel_db_utils.fetch_distributions_one_channel(
                 logger=logger,
                 pg_dsn=pg_dsn,
@@ -117,12 +132,21 @@ def distribute_tokens():
             channel_id = channel_distributions[0]
             dist_id = channel_distributions[1]
             distributions = channel_distributions[2]
-            # TODO calculate tax_amount based on formula
+            channel_config = channel_db_utils.fetch_rewards_config_list(
+                logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS, channel_id
+            )[0]
+            if channel_config is None:
+                logger.error(f"Channel '{channel_id}' not found in config.")
+                raise Exception(f"Channel '{channel_id}' not found in config table.")
+            total_distrib_amt = sum([d['amount'] for d in distributions])
+            tax_pct = channel_config['token_tax_pct']
+            tax_amount = int(total_distrib_amt * tax_pct)
+            logger.info(f"Total tax amount: {tax_amount}")
             scm_distribute(
                 http_session=s,
                 dist_id=dist_id,
                 channel_id=channel_id,
-                tax_amt=0,
+                tax_amt=tax_amount,
                 distributions=distributions,
             )
             logger.info(f"Distributed tokens for channel '{channel_id}'")
