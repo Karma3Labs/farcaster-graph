@@ -2,9 +2,11 @@ import logging
 from typing import Callable
 from enum import StrEnum
 import tempfile
+import time
+import datetime
 
 from timer import Timer
-import time
+import pytz
 from config import settings
 from asyncpg.pool import Pool
 import asyncpg
@@ -147,6 +149,21 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
    
+def _9am_utc_time():
+    pacific_tz = pytz.timezone('US/Pacific')
+    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    utc_time = pacific_time.astimezone(pytz.utc)
+    return utc_time
+
+def _monday_utc_time():
+    utc_time = _9am_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday())
+
+def _previous_monday_utc_time():
+    utc_time = _9am_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() + 7)
+
 @Timer(name="fetch_weighted_fid_scores_df")
 def fetch_weighted_fid_scores_df(
     logger: logging.Logger, 
@@ -162,6 +179,10 @@ def fetch_weighted_fid_scores_df(
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
 
+    CUTOFF_UTC_TIMESTAMP = (
+        f"TO_TIMESTAMP('{_9am_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')" 
+        " AT TIME ZONE 'UTC'"
+    )
 
     sql_query = f"""
     WITH 
@@ -170,7 +191,11 @@ def fetch_weighted_fid_scores_df(
         SELECT distinct(channel_id) as channel_id 
         FROM k3l_channel_points_log
         WHERE 
-            insert_ts > now() - interval '{INTERVAL}'
+            (
+                (now() > {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                OR  
+                (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '1 day')
+            )
             AND model_name IN {tuple(model_names)}
     ),
     eligible_casts AS (
@@ -185,7 +210,8 @@ def fetch_weighted_fid_scores_df(
         FROM k3l_cast_action as actions 
             INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
             ON (actions.cast_hash = casts.hash
-                AND actions.action_ts > now() - interval '{INTERVAL}'
+                AND actions.action_ts >= {CUTOFF_UTC_TIMESTAMP} - interval '{INTERVAL}'
+                AND actions.action_ts < {CUTOFF_UTC_TIMESTAMP}
                     )
         INNER JOIN warpcast_channels_data as channels
             ON (channels.url = casts.root_parent_url)
@@ -655,7 +681,10 @@ def insert_tokens_log(
         ORDER BY channel_id, amt DESC
         """
     else:
-        CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
+        CUTOFF_UTC_TIMESTAMP = (
+            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC'"
+        )
 
         insert_sql = f"""
             WITH latest_log AS (
@@ -704,9 +733,10 @@ def insert_tokens_log(
                     AND tlog.fid = bal.fid
                     AND 
                     ( 
+                        -- find recent distributions and filter with outer join 
                         tlog.max_points_ts = bal.update_ts
                         OR 
-                        tlog.max_points_ts > {CLOSEST_SUNDAY}
+                        tlog.max_points_ts > {CUTOFF_UTC_TIMESTAMP}
                     )
                 )
             INNER JOIN fids ON (fids.fid = bal.fid) 
