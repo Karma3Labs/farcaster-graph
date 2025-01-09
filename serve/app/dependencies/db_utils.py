@@ -985,20 +985,6 @@ async def get_channel_profile_ranks(
     else:
         sql_query = """
         WITH 
-        channel_points AS (
-            SELECT 
-                channel_id, max(update_ts) as update_ts
-            FROM k3l_channel_points_bal
-            WHERE channel_id = $1
-            GROUP BY channel_id
-        ),
-        channel_tokens as (
-            SELECT 
-                channel_id, max(update_ts) as update_ts
-            FROM k3l_channel_tokens_bal
-            WHERE channel_id = $1
-            GROUP BY channel_id
-        ),
         total AS (
             SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
@@ -1025,14 +1011,8 @@ async def get_channel_profile_ranks(
                 plog.earnings as plog_earnings,
                 0 as token_weekly_earnings,
                 bal.update_ts as bal_update_ts,
-          			CASE 
-                    WHEN channel_points.channel_id IS NOT NULL THEN true
-                    ELSE false
-                END as is_points_launched,
-                CASE 
-                  WHEN channel_tokens.channel_id IS NOT NULL THEN true
-                    ELSE false
-                END as is_tokens_launched
+          		coalesce(config.is_points, false) as is_points_launched,
+                coalesce(config.is_tokens, false) as is_tokens_launched
             FROM k3l_channel_rank as ch
             CROSS JOIN total
             LEFT JOIN k3l_rank on (ch.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
@@ -1040,14 +1020,12 @@ async def get_channel_profile_ranks(
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
             LEFT JOIN k3l_channel_tokens_bal as tok 
             		on (tok.channel_id=ch.channel_id and tok.fid=ch.fid)
-            LEFT JOIN channel_points
-                on (channel_points.channel_id = ch.channel_id)
-            LEFT JOIN channel_tokens 
-                on (channel_tokens.channel_id = ch.channel_id)
+            LEFT JOIN k3l_channel_rewards_config as config
+                on (config.channel_id = ch.channel_id)
             LEFT JOIN k3l_channel_points_log as plog
                 on (plog.model_name='cbrt_weighted' AND plog.channel_id=ch.channel_id
                     AND plog.fid = ch.fid
-                    AND plog.insert_ts > channel_points.update_ts)
+                    AND plog.insert_ts > now()::DATE - EXTRACT(DOW FROM now())::INTEGER)
             WHERE
                 ch.channel_id = $1
                 AND
