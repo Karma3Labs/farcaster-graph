@@ -165,13 +165,15 @@ def fetch_weighted_fid_scores_df(
 
     sql_query = f"""
     WITH 
-    excluded_channels AS (
-        -- IMPORTANT: don't generate points within last 23 hours
-        SELECT distinct(channel_id) as channel_id 
-        FROM k3l_channel_points_log
+    included_channels AS (
+        SELECT plog.channel_id, max(plog.insert_ts) as last_ts, any_value(channels.url) as url
+        FROM k3l_channel_points_log as plog
+        INNER JOIN warpcast_channels_data as channels
+            ON (channels.id = plog.channel_id)
         WHERE 
-            insert_ts > now() - interval '{INTERVAL}'
-            AND model_name IN {tuple(model_names)}
+            plog.insert_ts < now() - interval '{INTERVAL}'
+            AND plog.model_name IN {tuple(model_names)}
+        GROUP BY channel_id
     ),
     eligible_casts AS (
         SELECT
@@ -181,19 +183,13 @@ def fetch_weighted_fid_scores_df(
                 actions.liked,
                 actions.recasted,
                 actions.fid,
-                channels.id as channel_id
-        FROM k3l_cast_action as actions 
-            INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
-            ON (actions.cast_hash = casts.hash
-                AND actions.action_ts > now() - interval '{INTERVAL}'
-                    )
-        INNER JOIN warpcast_channels_data as channels
-            ON (channels.url = casts.root_parent_url)
-        INNER JOIN k3l_channel_rewards_config as config
-            ON (config.channel_id = channels.id AND config.is_points = true)
-        LEFT JOIN excluded_channels as excl
-            ON (excl.channel_id = channels.id)
-        WHERE excl.channel_id IS NULL
+                incl.channel_id as channel_id
+        FROM k3l_recent_parent_casts as casts 
+   			INNER JOIN included_channels as incl
+   				ON (incl.url = casts.root_parent_url)
+ 	 			INNER JOIN k3l_cast_action as actions
+      		ON (actions.cast_hash = casts.hash
+          	AND actions.action_ts > incl.last_ts)
     ),
     cast_scores_by_channel_fid AS (
         SELECT
