@@ -149,7 +149,7 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
    
-def _9am_utc_time():
+def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
     pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
@@ -157,11 +157,11 @@ def _9am_utc_time():
     return utc_time
 
 def _monday_utc_time():
-    utc_time = _9am_utc_time()
+    utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday())
 
 def _previous_monday_utc_time():
-    utc_time = _9am_utc_time()
+    utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() + 7)
 
 @Timer(name="fetch_weighted_fid_scores_df")
@@ -180,7 +180,7 @@ def fetch_weighted_fid_scores_df(
     INTERVAL = "1 day"
 
     CUTOFF_UTC_TIMESTAMP = (
-        f"TO_TIMESTAMP('{_9am_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')" 
+        f"TO_TIMESTAMP('{_9ampacific_in_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')" 
         " AT TIME ZONE 'UTC'"
     )
 
