@@ -18,7 +18,7 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-POINTS_FREQUENCY_H = 23  # Define the frequency in hours
+POINTS_FREQUENCY_H = 1  # Define the frequency in hours
 POINTS_DAG_NAME = 'update_channel_points_v2'
 
 with DAG(
