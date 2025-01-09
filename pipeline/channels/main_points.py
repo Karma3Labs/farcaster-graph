@@ -48,8 +48,8 @@ class RedditModel(StrEnum):
 
 class Task(StrEnum):
     genesis = "genesis"
-    daily = "daily"
-    weekly = "weekly"
+    compute = "compute"
+    update = "update"
 
 def main(task: Task):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -60,11 +60,7 @@ def main(task: Task):
     if task == Task.genesis:
         logger.info("Points genesis distribution")
         channel_db_utils.insert_genesis_points(logger, pg_dsn, sql_timeout_ms)
-    elif task == Task.weekly:
-            # uses the default weighted model to update points balances
-            logger.info("Updating points balances with cbrt_weighted model")
-            channel_db_utils.update_points_balance_v4(logger, pg_dsn, sql_timeout_ms)
-    elif task == Task.daily:
+    elif task == Task.compute:
 
         # Reddit-style Karma Points
         for model in RedditModel:
@@ -130,6 +126,10 @@ def main(task: Task):
             except Exception as e:
                 logger.error(f"Failed to insert data into the database for model {model.value}: {e}")
                 raise e
+    elif task == Task.update:
+        # uses the default weighted model to update points balances
+        logger.info("Updating points balances with cbrt_weighted model")
+        channel_db_utils.update_points_balance_v5(logger, pg_dsn, sql_timeout_ms)
             
 
 
