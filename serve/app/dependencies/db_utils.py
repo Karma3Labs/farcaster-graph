@@ -1013,7 +1013,7 @@ async def get_channel_profile_ranks(
                 k3l_rank.rank as global_rank,
                 ((total.total - (ch.rank - 1))*100 / total.total) as percentile,
                 bal.balance as balance, 
-          			tok.balance as token_balance,
+                tok.balance as token_balance,
                 CASE 
                     WHEN (plog.insert_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
@@ -1066,7 +1066,7 @@ async def get_channel_profile_ranks(
           FROM top_records
           LEFT JOIN fnames on (fnames.fid = top_records.fid)
           LEFT JOIN user_data on (user_data.fid = top_records.fid and user_data.type in (6,1,3))
-          LEFT JOIN verifications v on (v.fid = top_records.fid)
+          LEFT JOIN verifications v on (v.fid = top_records.fid and v.deleted_at is null)
           GROUP BY top_records.fid
         )
         SELECT
@@ -2000,7 +2000,7 @@ async def get_top_channel_followers(
         FROM followers_data
         LEFT JOIN fnames on (fnames.fid = followers_data.fid)
         LEFT JOIN user_data on (user_data.fid = followers_data.fid and user_data.type in (6,1,3))
-        LEFT JOIN verifications v on (v.fid = followers_data.fid)
+        LEFT JOIN verifications v on (v.fid = followers_data.fid and v.deleted_at is null)
         GROUP BY followers_data.fid
       )
     SELECT 
