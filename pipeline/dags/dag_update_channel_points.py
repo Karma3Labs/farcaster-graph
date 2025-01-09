@@ -34,12 +34,12 @@ with DAG(
     
     run_daily = BashOperator(
         task_id="run_daily",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t daily",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t compute",
         dag=dag)
     
     run_weekly = BashOperator(
         task_id="run_weekly",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t weekly",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t update",
         dag=dag)
 
     backup_to_s3 = BashOperator(

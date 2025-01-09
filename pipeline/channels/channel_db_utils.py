@@ -432,15 +432,12 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
 
-@Timer(name="update_points_balance_v4")
-def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
+@Timer(name="update_points_balance_v5")
+def update_points_balance_v5(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     OLD_TBL = "k3l_channel_points_bal_old"
     LIVE_TBL = "k3l_channel_points_bal"
     NEW_TBL = "k3l_channel_points_bal_new"
-    
-    # ALLOC_INTERVAL = "now() - interval '7 days'"
-    CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
-    TODAY = 'now()::DATE'
+    POINTS_MODEL = "cbrt_weighted"
 
     create_sql = (
         f"DROP TABLE IF EXISTS {OLD_TBL};"
@@ -464,11 +461,9 @@ def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: in
             FROM k3l_channel_points_log AS plog
             INNER JOIN last_channel_bal_ts
                 ON (last_channel_bal_ts.channel_id=plog.channel_id 
-                AND plog.model_name='cbrt_weighted'
-                AND plog.insert_ts > last_channel_bal_ts.update_ts
-                AND last_channel_bal_ts.update_ts <= {CLOSEST_SUNDAY}
-                AND {TODAY} != {CLOSEST_SUNDAY}
-            )
+                    AND plog.model_name='{POINTS_MODEL}'
+                    AND plog.insert_ts > last_channel_bal_ts.update_ts
+                    )
             GROUP BY plog.fid, plog.channel_id
         )
         INSERT INTO {NEW_TBL} 
@@ -487,7 +482,7 @@ def update_points_balance_v4(logger: logging.Logger, pg_dsn: str, timeout_ms: in
                 ON (bal.channel_id = fids.channel_id
                     AND bal.fid = fids.fid)
             UNION
-            SELECT -- existing balances with no points log in last 7 days
+            SELECT -- existing balances with no points log since last balance update
                 bal.fid,
                 bal.channel_id,
                 bal.balance as balance, 
@@ -620,21 +615,13 @@ def insert_tokens_log(
                 timeout_ms=timeout_ms,
     )
     if is_airdrop:
-        amt_sql = "round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot.balance),0)"
-    else:
-        amt_sql = "round((bal.latest_earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) / tot.latest_earnings),0)"
-    points_col = "balance" if is_airdrop else "latest_earnings"
-    insert_sql = f"""
-        WITH latest_log AS (
-            SELECT max(points_ts) as max_points_ts, channel_id, fid 
-            FROM k3l_channel_tokens_log
-            WHERE channel_id='{channel_id}'
-            GROUP BY channel_id, fid
-        ),
+        insert_sql = f"""
+        WITH 
         latest_verified_address as (
             SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
             FROM verifications v
             WHERE deleted_at IS NULL
+            AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
             GROUP BY fid
         ),
         channel_totals AS (
@@ -649,27 +636,89 @@ def insert_tokens_log(
             bal.fid,
             COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
-            {amt_sql} as amt,
+            round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot.balance),0) as amt,
             {dist_id} as dist_id,
             '{reason}' as dist_reason,
-            bal.{points_col} as latest_points,
+            bal.balance as latest_points,
             bal.update_ts as points_ts
         FROM k3l_channel_points_bal as bal
         INNER JOIN channel_totals as tot 
     		ON (tot.channel_id = bal.channel_id)
-        LEFT JOIN latest_log as tlog 
-            ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
-            AND tlog.max_points_ts = bal.update_ts)
         INNER JOIN fids ON (fids.fid = bal.fid) 
         INNER JOIN k3l_channel_rewards_config as config
                 ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
         LEFT JOIN latest_verified_address as vaddr 
             ON (vaddr.fid=bal.fid)
-        WHERE tlog.channel_id IS NULL
-        AND bal.channel_id = '{channel_id}'
-        AND bal.{points_col} > 0
+        WHERE 
+            bal.channel_id = '{channel_id}'
+            AND bal.balance > 0
         ORDER BY channel_id, amt DESC
-    """
+        """
+    else:
+        CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
+
+        insert_sql = f"""
+            WITH latest_log AS (
+                SELECT max(points_ts) as max_points_ts, channel_id, fid 
+                FROM k3l_channel_tokens_log
+                WHERE channel_id='{channel_id}'
+                GROUP BY channel_id, fid
+            ),
+            latest_verified_address as (
+                SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
+                FROM verifications v
+                WHERE deleted_at IS NULL
+                AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
+                GROUP BY fid
+            ),
+            channel_totals AS (
+                SELECT sum(balance) as balance, sum(latest_earnings) as latest_earnings, channel_id
+                FROM k3l_channel_points_bal
+                WHERE channel_id='{channel_id}' 
+                GROUP BY channel_id
+            )
+            INSERT INTO k3l_channel_tokens_log
+                (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
+            SELECT 
+                bal.fid,
+                COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
+                bal.channel_id,
+                round(
+                        (
+                        bal.latest_earnings 
+                        * config.token_daily_budget 
+                        * 7 
+                        * (1 - config.token_tax_pct) / tot.latest_earnings
+                        )
+                    ,0) as amt,
+                {dist_id} as dist_id,
+                '{reason}' as dist_reason,
+                bal.latest_earnings as latest_points,
+                bal.update_ts as points_ts
+            FROM k3l_channel_points_bal as bal
+            INNER JOIN channel_totals as tot 
+                ON (tot.channel_id = bal.channel_id)
+            LEFT JOIN latest_log as tlog 
+                ON (
+                    tlog.channel_id = bal.channel_id 
+                    AND tlog.fid = bal.fid
+                    AND 
+                    ( 
+                        tlog.max_points_ts = bal.update_ts
+                        OR 
+                        tlog.max_points_ts > {CLOSEST_SUNDAY}
+                    )
+                )
+            INNER JOIN fids ON (fids.fid = bal.fid) 
+            INNER JOIN k3l_channel_rewards_config as config
+                    ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
+            LEFT JOIN latest_verified_address as vaddr 
+                ON (vaddr.fid=bal.fid)
+            WHERE tlog.channel_id IS NULL
+            AND bal.channel_id = '{channel_id}'
+            AND bal.latest_earnings > 0
+            ORDER BY channel_id, amt DESC
+        """
     start_time = time.perf_counter()
     try:
         # start transaction 'with' context manager
