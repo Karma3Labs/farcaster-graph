@@ -167,15 +167,28 @@ def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
     logger.info(f"sample of distributions: {random.sample(distributions, min(10, len(distributions)))}")
     payload = {'distributionId': dist_id, 'taxAmount': str(tax_amt), 'channelId': channel_id, 'distributions': distributions}
     logger.trace(f"payload: {payload}")
-    connect_timeout_s = 5.0
-    read_timeout_s = 60.0
+    connect_timeout_s = settings.CURA_SCMGR_CONNECT_TIMEOUT_SECS
+    read_timeout_s = settings.CURA_SCMGR_READ_TIMEOUT_SECS
     try:
         response = http_session.post(
             urllib.parse.urljoin(settings.CURA_SCMGR_URL,"/distribution/"),
             json=payload,
             timeout=(connect_timeout_s, read_timeout_s)
         )
-        response.raise_for_status()
+        if response.status_code == 500:
+            err_json = response.json()
+            logger.error(f"500 Error: {response.json()}")
+            if err_json.get('error') == 'Distribution already has an onchain transaction':
+                logger.info(f"Distribution {dist_id} already has an onchain transaction")
+                return
+            else:
+                raise Exception(f"500 Error: {err_json}")
+        elif response.status_code == 200:
+            logger.info(f"200 OK: {response.json()}")
+            return
+        else:
+            logger.error(f"Unexpected status code: {response.status_code}: {response.text}")
+            raise Exception(f"Unexpected status code: {response.status_code}: {response.text}")
     except Exception as e:
         logger.error(f"Failed to call smartcontractmgr: {e}")
         raise e 

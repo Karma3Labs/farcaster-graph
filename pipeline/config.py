@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     CURA_SCMGR_URL: str = 'changeme'
     CURA_SCMGR_USERNAME: str = 'changeme'
     CURA_SCMGR_PASSWORD: SecretStr = 'changeme'
+    CURA_SCMGR_READ_TIMEOUT_SECS: float = 180.0
+    CURA_SCMGR_CONNECT_TIMEOUT_SECS: float = 5.0
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
