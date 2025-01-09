@@ -1035,8 +1035,8 @@ async def get_channel_profile_ranks(
         ),
         bio_data AS (
           SELECT
-          			top_records.fid,
-          			any_value(fnames.fname) as fname,
+                top_records.fid,
+                any_value(fnames.fname) as fname,
                 any_value(case when user_data.type = 6 then user_data.value end) as username,
                 any_value(case when user_data.type = 1 then user_data.value end) as pfp,
                 any_value(case when user_data.type = 3 then user_data.value end) as bio,
@@ -1058,7 +1058,7 @@ async def get_channel_profile_ranks(
             max(channel_score) as score,
             global_rank,
             any_value(percentile) as percentile,
-            ARRAY_AGG(DISTINCT address) as addresses,
+            any_value(address) as addresses,
             max(balance) as balance,
             max(token_balance) as token_balance,
             max(daily_earnings) as daily_earnings,
@@ -1895,20 +1895,6 @@ async def get_top_channel_followers(
 ):
     sql_query = """
     WITH 
-    channel_points AS (
-        SELECT 
-            channel_id, max(update_ts) as update_ts
-        FROM k3l_channel_points_bal
-        WHERE channel_id = $1
-        GROUP BY channel_id
-    ),
-    channel_tokens as (
-        SELECT 
-            channel_id, max(update_ts) as update_ts
-        FROM k3l_channel_tokens_bal
-        WHERE channel_id = $1
-        GROUP BY channel_id
-    ),
     distinct_warpcast_followers as (
     SELECT 
     	distinct
@@ -1940,14 +1926,8 @@ async def get_top_channel_followers(
         plog.earnings as plog_earnings,
         0 as token_weekly_earnings,
         bal.update_ts as bal_update_ts,
-        CASE 
-            WHEN channel_points.channel_id IS NOT NULL THEN true
-            ELSE false
-        END as is_points_launched,
-        CASE 
-      		WHEN channel_tokens.channel_id IS NOT NULL THEN true
-            ELSE false
-      	END as is_tokens_launched
+        coalesce(config.is_points, false) as is_points_launched,
+        coalesce(config.is_tokens, false) as is_tokens_launched
     FROM 
         distinct_warpcast_followers wf 
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
@@ -1958,19 +1938,17 @@ async def get_top_channel_followers(
             on (bal.channel_id=wf.channel_id and bal.fid=wf.fid)
         LEFT JOIN k3l_channel_tokens_bal as tok 
             on (tok.channel_id=wf.channel_id and tok.fid=wf.fid)
-      	LEFT JOIN channel_points
-      			on (channel_points.channel_id = wf.channel_id)
-        LEFT JOIN channel_tokens 
-            on (channel_tokens.channel_id = wf.channel_id)
+      	LEFT JOIN k3l_channel_rewards_config as config
+                on (config.channel_id = wf.channel_id)
       	LEFT JOIN k3l_channel_points_log as plog
       			on (plog.model_name='cbrt_weighted' AND plog.channel_id=wf.channel_id
                 AND plog.fid = wf.fid
-                AND plog.insert_ts > channel_points.update_ts)
+                AND plog.insert_ts > now()::DATE - EXTRACT(DOW FROM now())::INTEGER)
     ),
     bio_data AS (
         SELECT
             followers_data.fid,
-                any_value(fnames.fname) as fname,
+            any_value(fnames.fname) as fname,
             any_value(case when user_data.type = 6 then user_data.value end) as username,
             any_value(case when user_data.type = 1 then user_data.value end) as pfp,
             any_value(case when user_data.type = 3 then user_data.value end) as bio,
@@ -1983,15 +1961,15 @@ async def get_top_channel_followers(
       )
     SELECT 
         followers_data.fid,
-	    	any_value(fname) as fname,
+        any_value(fname) as fname,
         any_value(username) as username,
         any_value(pfp) as pfp,
         any_value(bio) as bio,
-				channel_id,
+        channel_id,
         channel_rank as rank,
         max(channel_score) as score,
         global_rank,
-        ARRAY_AGG(DISTINCT address) as addresses,
+        any_value(address) as addresses,
         max(balance) as balance,
         max(token_balance) as token_balance,
         max(daily_earnings) as daily_earnings,
