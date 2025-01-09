@@ -23,6 +23,7 @@ class ChannelPointsOrderBy(StrEnum):
 
 class ChannelEarningsOrderBy(StrEnum):
     TOTAL = 'total'
+    WEEKLY = 'weekly'
     DAILY = 'daily'
 
 class ChannelEarningsScope(StrEnum):

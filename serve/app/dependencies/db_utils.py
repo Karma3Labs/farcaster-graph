@@ -1992,6 +1992,113 @@ async def get_top_channel_followers(
 
     return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_top_channel_holders(
+        channel_id: str,
+        strategy_name: str,
+        orderby: ChannelEarningsOrderBy,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    
+    if orderby == ChannelEarningsOrderBy.WEEKLY :    
+        orderby_clause = "ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+    elif orderby == ChannelEarningsOrderBy.DAILY:
+        orderby_clause = "ORDER BY daily_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+    elif orderby == ChannelEarningsOrderBy.TOTAL:
+        orderby_clause = "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+    else:
+        orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
+    CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
+
+    sql_query = f"""
+    WITH
+    balance_data as (
+        SELECT
+            bal.fid,
+            bal.channel_id,
+            klcr.rank as channel_rank,
+            klcr.score as channel_score,
+            k3l_rank.rank as global_rank,
+            warpcast_members.memberat,
+            bal.balance as balance,
+            tok.balance as token_balance,
+            CASE
+                WHEN (plog.insert_ts < now() - interval '1 days') THEN 0
+                WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
+                ELSE plog.earnings
+            END as daily_earnings,
+            0 as token_daily_earnings,
+            bal.latest_earnings as latest_earnings,
+            tok.latest_earnings as token_latest_earnings,
+            plog.earnings as plog_earnings,
+            0 as token_weekly_earnings,
+            bal.update_ts as bal_update_ts,
+            coalesce(config.is_points, false) as is_points_launched,
+            coalesce(config.is_tokens, false) as is_tokens_launched
+        FROM 
+            k3l_channel_points_bal as bal 
+            LEFT JOIN k3l_rank on (bal.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
+            LEFT JOIN k3l_channel_rank klcr 
+                on (bal.fid = klcr.fid and bal.channel_id = klcr.channel_id and klcr.strategy_name = $2)
+            LEFT JOIN warpcast_members on (warpcast_members.fid = bal.fid and warpcast_members.channel_id = bal.channel_id)
+            LEFT JOIN k3l_channel_tokens_bal as tok 
+                on (tok.channel_id=bal.channel_id and tok.fid=bal.fid)
+            LEFT JOIN k3l_channel_rewards_config as config
+                    on (config.channel_id = bal.channel_id)
+            LEFT JOIN k3l_channel_points_log as plog
+                    on (plog.model_name='cbrt_weighted' AND plog.channel_id=bal.channel_id
+                    AND plog.fid = bal.fid
+                    AND plog.insert_ts > {CLOSEST_SUNDAY})
+        WHERE bal.channel_id = $1
+    ),
+    bio_data AS (
+        SELECT
+            balance_data.fid,
+            any_value(fnames.fname) as fname,
+            any_value(case when user_data.type = 6 then user_data.value end) as username,
+            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
+            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            ARRAY_AGG(DISTINCT v.claim->>'address') as address
+        FROM balance_data
+        LEFT JOIN fnames on (fnames.fid = balance_data.fid)
+        LEFT JOIN user_data on (user_data.fid = balance_data.fid and user_data.type in (6,1,3))
+        LEFT JOIN verifications v on (v.fid = balance_data.fid AND v.deleted_at IS NULL)
+        GROUP BY balance_data.fid
+    )
+    SELECT 
+        balance_data.fid,
+        any_value(fname) as fname,
+        any_value(username) as username,
+        any_value(pfp) as pfp,
+        any_value(bio) as bio,
+        channel_id,
+        channel_rank as rank,
+        max(channel_score) as score,
+        global_rank,
+        any_value(address) as addresses,
+        max(balance) as balance,
+        max(token_balance) as token_balance,
+        max(daily_earnings) as daily_earnings,
+        max(token_daily_earnings) as token_daily_earnings,
+        max(latest_earnings) as latest_earnings,
+        max(latest_earnings) as token_latest_earnings,
+        sum(plog_earnings) as weekly_earnings,
+        max(token_weekly_earnings) as token_weekly_earnings,
+        max(bal_update_ts) as bal_update_ts,
+        bool_or(is_points_launched) as is_points_launched,
+        bool_or(is_tokens_launched) as is_tokens_launched,
+        min(memberat) as memberat
+    FROM balance_data
+    LEFT JOIN bio_data ON (bio_data.fid=balance_data.fid)
+    GROUP BY balance_data.fid,channel_id,channel_rank,global_rank
+    {orderby_clause}
+    OFFSET $3
+    LIMIT $4
+    """
+
+    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+
 async def get_top_channel_repliers(
         channel_id: str,
         strategy_name: str,
