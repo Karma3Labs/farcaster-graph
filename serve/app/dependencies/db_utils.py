@@ -1,4 +1,6 @@
 import time
+import datetime
+import pytz
 import json
 
 from ..config import settings
@@ -40,6 +42,17 @@ SessionLocal = sessionmaker(
 #             raise e
 #         finally:
 #             await session.close()
+
+def _9ampacific_in_utc_time():
+    pacific_tz = pytz.timezone('US/Pacific')
+    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    utc_time = pacific_time.astimezone(pytz.utc)
+    return utc_time
+
+def _monday_utc_time():
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday())
 
 async def fetch_rows(
         *args,
@@ -983,7 +996,11 @@ async def get_channel_profile_ranks(
         ORDER BY rank
         """
     else:
-        sql_query = """
+        CUTOFF_UTC_TIMESTAMP = (
+            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC'"
+        )
+        sql_query = f"""
         WITH 
         total AS (
             SELECT count(*) as total from k3l_channel_rank
@@ -1025,7 +1042,7 @@ async def get_channel_profile_ranks(
             LEFT JOIN k3l_channel_points_log as plog
                 on (plog.model_name='cbrt_weighted' AND plog.channel_id=ch.channel_id
                     AND plog.fid = ch.fid
-                    AND plog.insert_ts > now()::DATE - EXTRACT(DOW FROM now())::INTEGER)
+                    AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
             WHERE
                 ch.channel_id = $1
                 AND
@@ -1893,7 +1910,11 @@ async def get_top_channel_followers(
         limit: int,
         pool: Pool
 ):
-    sql_query = """
+    CUTOFF_UTC_TIMESTAMP = (
+        f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC'"
+    )
+    sql_query = f"""
     WITH 
     distinct_warpcast_followers as (
     SELECT 
@@ -1943,7 +1964,7 @@ async def get_top_channel_followers(
       	LEFT JOIN k3l_channel_points_log as plog
       			on (plog.model_name='cbrt_weighted' AND plog.channel_id=wf.channel_id
                 AND plog.fid = wf.fid
-                AND plog.insert_ts > now()::DATE - EXTRACT(DOW FROM now())::INTEGER)
+                AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
     ),
     bio_data AS (
         SELECT
@@ -2009,8 +2030,12 @@ async def get_top_channel_holders(
         orderby_clause = "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     else:
         orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
-    CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
-
+    
+    # CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
+    CUTOFF_UTC_TIMESTAMP = (
+            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC'"
+        )
     sql_query = f"""
     WITH
     balance_data as (
@@ -2049,7 +2074,7 @@ async def get_top_channel_holders(
             LEFT JOIN k3l_channel_points_log as plog
                     on (plog.model_name='cbrt_weighted' AND plog.channel_id=bal.channel_id
                     AND plog.fid = bal.fid
-                    AND plog.insert_ts > {CLOSEST_SUNDAY})
+                    AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
         WHERE bal.channel_id = $1
     ),
     bio_data AS (
