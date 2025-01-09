@@ -621,6 +621,7 @@ def insert_tokens_log(
             SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
             FROM verifications v
             WHERE deleted_at IS NULL
+            AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
             GROUP BY fid
         ),
         channel_totals AS (
@@ -667,6 +668,7 @@ def insert_tokens_log(
                 SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
                 FROM verifications v
                 WHERE deleted_at IS NULL
+                AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
                 GROUP BY fid
             ),
             channel_totals AS (
