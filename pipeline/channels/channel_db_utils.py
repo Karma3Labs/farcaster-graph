@@ -660,7 +660,7 @@ def insert_tokens_log(
             (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
         SELECT 
             bal.fid,
-            COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
+            COALESCE(vaddr.address, '0x' ||encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
             round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot.balance),0) as amt,
             {dist_id} as dist_id,
