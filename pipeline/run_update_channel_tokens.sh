@@ -15,7 +15,7 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ]; then
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task]"
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [scope] -r [reason]"
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t prep -s daily -r reason"
+  echo "Example: $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t prep -s weekly -r reason"
   echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t distrib"
   echo "         $0 -w . -v /home/ubuntu/venvs/fc-graph-env3/ -t verify"
   echo ""

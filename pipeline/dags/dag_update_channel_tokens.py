@@ -35,7 +35,7 @@ with DAG(
 
     prepare = BashOperator(
         task_id="prepare",
-        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s daily -r {{ run_id }}",
+        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
         dag=dag)
 
     distribute = BashOperator(

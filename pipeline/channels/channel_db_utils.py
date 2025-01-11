@@ -261,7 +261,7 @@ def fetch_weighted_fid_scores_df(
             copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
         else:
             copy_sql = f"COPY ({sql_query}) TO STDOUT WITH CSV HEADER"
-        logger.debug(f"{copy_sql}")
+        logger.info(f"{copy_sql}")
         with psycopg2.connect(
             pg_dsn, options=f"-c statement_timeout={timeout_ms}"
         ) as conn:
@@ -413,8 +413,11 @@ def insert_reddit_points_log(
 @Timer(name="insert_genesis_points")
 def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     # WARNING - EXTREME CAUTION - be very careful with these variables
-    STRATEGY = "60d_engagement" # TODO move this to k3l_channel_rewards_config
-    GENESIS_BUDGET = 600_000
+    # TODO move these to k3l_channel_rewards_config 
+    # ...because there will be a product requirement at some point in the future 
+    # ...where we want to expose them to frontend 
+    STRATEGY = "60d_engagement" 
+    GENESIS_BUDGET = 600_000 
     # WARNING - EXTREME CAUTION
     insert_sql = f"""
         WITH 
@@ -631,7 +634,12 @@ def get_next_dist_sequence(
 
 @Timer(name="insert_tokens_log")
 def insert_tokens_log(
-    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, reason:str, is_airdrop: bool = False
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    channel_id: str,
+    reason: str,
+    is_airdrop: bool = False,
 ):
     # dist_id is fetched in separate transaction
     # but risk of gaps is not an issue 
@@ -681,73 +689,72 @@ def insert_tokens_log(
         ORDER BY channel_id, amt DESC
         """
     else:
-        CUTOFF_UTC_TIMESTAMP = (
+        BEGIN_TIMESTAMP = (
             f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC'"
+        )
+        END_TIMESTAMP = (
+            f"TO_TIMESTAMP('{_previous_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
             " AT TIME ZONE 'UTC'"
         )
 
         insert_sql = f"""
-            WITH latest_log AS (
-                SELECT max(points_ts) as max_points_ts, channel_id, fid 
-                FROM k3l_channel_tokens_log
-                WHERE channel_id='{channel_id}'
-                GROUP BY channel_id, fid
+            WITH
+            pts_distrib AS (
+                SELECT count(distinct plog.insert_ts) as num_distrib, plog.channel_id
+                FROM k3l_channel_points_log AS plog
+                WHERE plog.channel_id = '{channel_id}'
+                    AND plog.model_name='cbrt_weighted'
+                    AND plog.insert_ts > (
+                            SELECT max(update_ts) FROM k3l_channel_tokens_bal WHERE channel_id = '{channel_id}'
+                        )
+                    AND plog.insert_ts 
+                            BETWEEN ({BEGIN_TIMESTAMP})
+                                AND ({END_TIMESTAMP})
+                GROUP BY plog.channel_id
             ),
-            latest_verified_address as (
-                SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
-                FROM verifications v
-                WHERE deleted_at IS NULL
-                AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
-                GROUP BY fid
-            ),
-            channel_totals AS (
-                SELECT sum(balance) as balance, sum(latest_earnings) as latest_earnings, channel_id
-                FROM k3l_channel_points_bal
-                WHERE channel_id='{channel_id}' 
-                GROUP BY channel_id
+            eligible AS (
+                SELECT 
+                    plog.fid,
+                    plog.channel_id,	
+                    sum(plog.earnings) as earnings,
+                    max(plog.insert_ts) as latest_points_ts,
+                (array_agg(v.claim->>'address' order by timestamp))[1] as address
+                FROM k3l_channel_points_log as plog
+                    LEFT JOIN verifications as v
+                    ON (v.fid=plog.fid AND v.deleted_at IS NULL AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
+                WHERE 
+                    plog.channel_id = '{channel_id}'
+                    AND plog.insert_ts > (
+                        SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = 'cryptosapiens'
+                    )  		
+                    AND plog.model_name='cbrt_weighted'
+                    AND plog.insert_ts 
+                        BETWEEN ({BEGIN_TIMESTAMP})
+                            AND ({END_TIMESTAMP})
+                GROUP BY plog.fid, plog.channel_id
             )
             INSERT INTO k3l_channel_tokens_log
                 (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
-            SELECT 
-                bal.fid,
-                COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
-                bal.channel_id,
-                round(
-                        (
-                        bal.latest_earnings 
-                        * config.token_daily_budget 
-                        * 7 
-                        * (1 - config.token_tax_pct) / tot.latest_earnings
-                        )
-                    ,0) as amt,
-                {dist_id} as dist_id,
+            SELECT
+                eligible.fid,
+                COALESCE(eligible.address, '0x' || encode(fids.custody_address,'hex')) as fid_address,
+                eligible.channel_id,
+                round((
+                        eligible.earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) 
+                        / 
+                        (10000 * pts_distrib.num_distrib)
+                    ),0) as amt,
+                {dist_id},
                 '{reason}' as dist_reason,
-                bal.latest_earnings as latest_points,
-                bal.update_ts as points_ts
-            FROM k3l_channel_points_bal as bal
-            INNER JOIN channel_totals as tot 
-                ON (tot.channel_id = bal.channel_id)
-            LEFT JOIN latest_log as tlog 
-                ON (
-                    tlog.channel_id = bal.channel_id 
-                    AND tlog.fid = bal.fid
-                    AND 
-                    ( 
-                        -- find recent distributions and filter with outer join 
-                        tlog.max_points_ts = bal.update_ts
-                        OR 
-                        tlog.max_points_ts > {CUTOFF_UTC_TIMESTAMP}
-                    )
-                )
-            INNER JOIN fids ON (fids.fid = bal.fid) 
+                eligible.earnings as latest_points,
+                eligible.latest_points_ts as points_ts
+            FROM eligible
+            INNER JOIN pts_distrib ON (pts_distrib.channel_id = eligible.channel_id)
             INNER JOIN k3l_channel_rewards_config as config
-                    ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
-            LEFT JOIN latest_verified_address as vaddr 
-                ON (vaddr.fid=bal.fid)
-            WHERE tlog.channel_id IS NULL
-            AND bal.channel_id = '{channel_id}'
-            AND bal.latest_earnings > 0
-            ORDER BY channel_id, amt DESC
+                ON (config.channel_id = eligible.channel_id AND config.is_tokens=true)
+            INNER JOIN fids ON (fids.fid = eligible.fid)
+            ORDER BY channel_id, fid DESC
         """
     start_time = time.perf_counter()
     try:

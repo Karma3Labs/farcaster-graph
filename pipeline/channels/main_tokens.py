@@ -33,7 +33,7 @@ load_dotenv()
 
 class Scope(Enum):
   airdrop = 'airdrop'
-  daily = 'daily'
+  weekly = 'weekly'
 
 class Task(Enum):
   prep = 'prep'
@@ -105,6 +105,8 @@ def prepare_for_distribution(scope: Scope, reason: str):
 
 
 def distribute_tokens():
+    logger.error("Not implemented")
+    return
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     upsert_timeout_ms = 180_000
     retries = Retry(
