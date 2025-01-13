@@ -718,11 +718,8 @@ def insert_tokens_log(
                     plog.fid,
                     plog.channel_id,	
                     sum(plog.earnings) as earnings,
-                    max(plog.insert_ts) as latest_points_ts,
-                (array_agg(v.claim->>'address' order by timestamp))[1] as address
+                    max(plog.insert_ts) as latest_points_ts
                 FROM k3l_channel_points_log as plog
-                    LEFT JOIN verifications as v
-                    ON (v.fid=plog.fid AND v.deleted_at IS NULL AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
                 WHERE 
                     plog.channel_id = '{channel_id}'
                     AND plog.insert_ts > (
@@ -733,28 +730,43 @@ def insert_tokens_log(
                         BETWEEN ({BEGIN_TIMESTAMP})
                             AND ({END_TIMESTAMP})
                 GROUP BY plog.fid, plog.channel_id
+            ),
+            tokens AS (
+                SELECT
+                    eligible.fid,
+                    fids.custody_address,
+                    eligible.channel_id,
+                    round((
+                        eligible.earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) 
+                        / (10000 * pts_distrib.num_distrib))
+                    ,0) as amt,
+                    eligible.earnings as latest_points,
+                    eligible.latest_points_ts as points_ts
+                FROM eligible
+                INNER JOIN pts_distrib ON (pts_distrib.channel_id = eligible.channel_id)
+                INNER JOIN k3l_channel_rewards_config as config
+                        ON (config.channel_id = eligible.channel_id AND config.is_tokens=true)
+                INNER JOIN fids ON (fids.fid = eligible.fid)
+                ORDER BY channel_id, fid DESC
             )
             INSERT INTO k3l_channel_tokens_log
                 (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
             SELECT
-                eligible.fid,
-                COALESCE(eligible.address, '0x' || encode(fids.custody_address,'hex')) as fid_address,
-                eligible.channel_id,
-                round((
-                        eligible.earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) 
-                        / 
-                        (10000 * pts_distrib.num_distrib)
-                    ),0) as amt,
+                tokens.fid,
+                COALESCE(
+                        (array_agg(v.claim->>'address' order by timestamp))[1] as address, 
+                        '0x' || encode(any_value(custody_address),'hex')) as fid_address,
+                tokens.channel_id,
+                max(amt) as amt,
                 {dist_id},
                 '{reason}' as dist_reason,
-                eligible.earnings as latest_points,
-                eligible.latest_points_ts as points_ts
-            FROM eligible
-            INNER JOIN pts_distrib ON (pts_distrib.channel_id = eligible.channel_id)
-            INNER JOIN k3l_channel_rewards_config as config
-                ON (config.channel_id = eligible.channel_id AND config.is_tokens=true)
-            INNER JOIN fids ON (fids.fid = eligible.fid)
-            ORDER BY channel_id, fid DESC
+                max(latest_points) as latest_points,
+                max(points_ts) as points_ts
+            FROM tokens
+            LEFT JOIN verifications as v
+                    ON (v.fid=plog.fid AND v.deleted_at IS NULL 
+                        AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
+            GROUP BY tokens.fid, tokens.channel_id
         """
     start_time = time.perf_counter()
     try:
