@@ -731,7 +731,7 @@ def insert_tokens_log(
                     AND plog.insert_ts 
                             BETWEEN ({BEGIN_TIMESTAMP})
                                 AND ({END_TIMESTAMP})
-                    now() > ({TOKEN_CUTOFF_TIMESTAMP})
+                    AND now() > ({TOKEN_CUTOFF_TIMESTAMP})
                 GROUP BY plog.channel_id
             ),
             eligible AS (
