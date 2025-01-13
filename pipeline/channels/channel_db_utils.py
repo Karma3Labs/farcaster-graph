@@ -689,11 +689,11 @@ def insert_tokens_log(
         ORDER BY channel_id, amt DESC
         """
     else:
-        BEGIN_TIMESTAMP = (
+        END_TIMESTAMP = (
             f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
             " AT TIME ZONE 'UTC'"
         )
-        END_TIMESTAMP = (
+        BEGIN_TIMESTAMP = (
             f"TO_TIMESTAMP('{_previous_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
             " AT TIME ZONE 'UTC'"
         )
