@@ -764,7 +764,7 @@ def insert_tokens_log(
                 max(points_ts) as points_ts
             FROM tokens
             LEFT JOIN verifications as v
-                    ON (v.fid=plog.fid AND v.deleted_at IS NULL 
+                    ON (v.fid=tokens.fid AND v.deleted_at IS NULL 
                         AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
             GROUP BY tokens.fid, tokens.channel_id
         """
