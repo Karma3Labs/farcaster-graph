@@ -1,6 +1,6 @@
 import logging
 from typing import Callable
-from enum import StrEnum
+from enum import StrEnum, Enum
 import tempfile
 import time
 import datetime
@@ -20,6 +20,14 @@ class TokenDistStatus(StrEnum):
     SUCCESS = 'success'
     FAILURE = 'failure'
 
+class DOW(Enum):
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
 
 async def fetch_rows(
         *args,
@@ -155,6 +163,14 @@ def _9ampacific_in_utc_time():
     pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
+
+def _dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
+
+def _last_dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
 
 def _monday_utc_time():
     utc_time = _9ampacific_in_utc_time()
@@ -689,12 +705,16 @@ def insert_tokens_log(
         ORDER BY channel_id, amt DESC
         """
     else:
+        TOKEN_CUTOFF_TIMESTAMP = (
+            f"TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC'"
+        )
         END_TIMESTAMP = (
-            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            f"TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
             " AT TIME ZONE 'UTC'"
         )
         BEGIN_TIMESTAMP = (
-            f"TO_TIMESTAMP('{_previous_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            f"TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
             " AT TIME ZONE 'UTC'"
         )
 
@@ -711,6 +731,7 @@ def insert_tokens_log(
                     AND plog.insert_ts 
                             BETWEEN ({BEGIN_TIMESTAMP})
                                 AND ({END_TIMESTAMP})
+                    now() > ({TOKEN_CUTOFF_TIMESTAMP})
                 GROUP BY plog.channel_id
             ),
             eligible AS (
