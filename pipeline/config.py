@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     CURA_SCMGR_READ_TIMEOUT_SECS: float = 180.0
     CURA_SCMGR_CONNECT_TIMEOUT_SECS: float = 5.0
 
+    CURA_FE_API_URL: str = 'changeme'
+    CURA_FE_API_KEY: str = 'changeme'
+
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
         env_file=('.env', '.env.prod')

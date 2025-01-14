@@ -162,6 +162,27 @@ def distribute_tokens():
                 new_status=TokenDistStatus.SUBMITTED
             )
 
+def cura_notify(channel_id, fids):
+
+    logger.info(f"Sending notification for channel {channel_id}")
+    title = f"/{channel_id} leaderboard updated!"
+    body = f"Claim your {channel_id} tokens!"
+    req = {
+        "title": title,
+        "body": body,
+        "fids": fids
+    }
+    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
+    logger.info(f"{url}: {req}")
+
+    response = niquests.post(url, json=req, auth=settings.CURA_FE_API_KEY)
+    res_json = response.json()
+    if response.status_code != 200:
+        logger.error(f"Failed to send notification: {res_json}")
+        raise Exception(f"Failed to send notification: {res_json}")
+    else:
+        logger.info(f"Notification sent: {res_json}")
+
 def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
     logger.info(
         f"call smartcontractmgr for distributionId: {dist_id} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
@@ -253,7 +274,16 @@ def verify_distribution():
             except Exception as e:
                 logger.error(f"Failed to call smartcontractmgr: {e}")
                 raise e
-            logger.info(f"Prepping distribution for channel '{channel_id}'")
+            fids = channel_db_utils.fetch_distribution_fids(
+                logger=logger,
+                pg_dsn=pg_dsn,
+                timeout_ms=settings.POSTGRES_TIMEOUT_MS,
+                batch_size=2,
+                channel_id=channel_id,
+                dist_id=dist_id,
+            )
+            cura_notify(channel_id=channel_id, fids=fids)
+            logger.info(f"Distribution verified for channel '{channel_id}'")
 
 
 if __name__ == "__main__":

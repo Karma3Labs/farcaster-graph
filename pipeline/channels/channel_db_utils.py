@@ -712,7 +712,7 @@ def insert_tokens_log(
 
         insert_sql = f"""
             WITH
-                is_monday_pts_done AS (
+            is_monday_pts_done AS (
                 SELECT channel_id FROM k3l_channel_points_log
                 WHERE channel_id = '{channel_id}'
                     AND model_name='cbrt_weighted'
@@ -726,7 +726,7 @@ def insert_tokens_log(
                 WHERE plog.channel_id = '{channel_id}'
                     AND plog.model_name='cbrt_weighted'
                     AND plog.insert_ts > (
-                            SELECT max(update_ts) FROM k3l_channel_tokens_bal WHERE channel_id = '{channel_id}'
+                            SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = '{channel_id}'
                         )
                     AND plog.insert_ts > ({BEGIN_TIMESTAMP})
                     AND plog.insert_ts < ({END_TIMESTAMP})
@@ -743,7 +743,7 @@ def insert_tokens_log(
                 WHERE 
                     plog.channel_id = '{channel_id}'
                     AND plog.insert_ts > (
-                        SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = 'cryptosapiens'
+                        SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = '{channel_id}'
                     )  		
                     AND plog.model_name='cbrt_weighted'
                     AND plog.insert_ts > ({BEGIN_TIMESTAMP})
@@ -815,20 +815,22 @@ def insert_tokens_log(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return dist_id
 
-@Timer(name="fetch_distribution_entries")
-def fetch_distribution_entries(
+@Timer(name="fetch_distribution_fids")
+def fetch_distribution_fids(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    batch_size: int = 1000,
-    callbackFn: Callable[[tuple], None] = None,
+    batch_size: int,
+    channel_id: str,
+    dist_id: int,
 ):
+    fids = []
     limit = 10 if settings.IS_TEST else 1_000_000
     select_sql = f"""
         SELECT 
-            channel_id, fid, fid_address, amt 
+            fid 
         FROM k3l_channel_tokens_log
-        WHERE dist_status is NULL
+        WHERE dist_id = {dist_id} AND channel_id = '{channel_id}'
         ORDER BY channel_id, amt DESC
         LIMIT {limit} -- safety valve
     """
@@ -843,17 +845,15 @@ def fetch_distribution_entries(
                     cursor.execute(select_sql)
                     while True:
                         rows = cursor.fetchmany(batch_size)
+                        fids.extend([row[0] for row in rows])
                         if len(rows) == 0:
                             logger.info("No more rows to process")
                             break
-                        if callbackFn is not None:
-                            logger.info(f"Processing {len(rows)} rows")
-                            callbackFn(rows)
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
-    return
+    return fids
 
 @Timer(name="fetch_distribution_ids")
 def fetch_distribution_ids(
