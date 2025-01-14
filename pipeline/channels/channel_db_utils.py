@@ -712,18 +712,24 @@ def insert_tokens_log(
 
         insert_sql = f"""
             WITH
+                is_monday_pts_done AS (
+                SELECT channel_id FROM k3l_channel_points_log
+                WHERE channel_id = '{channel_id}'
+                    AND model_name='cbrt_weighted'
+                    AND insert_ts > ({TOKEN_CUTOFF_TIMESTAMP})
+                LIMIT 1
+            ),
             pts_distrib AS (
                 SELECT count(distinct plog.insert_ts) as num_distrib, plog.channel_id
                 FROM k3l_channel_points_log AS plog
+                INNER JOIN is_monday_pts_done ON (plog.channel_id=is_monday_pts_done.channel_id)
                 WHERE plog.channel_id = '{channel_id}'
                     AND plog.model_name='cbrt_weighted'
                     AND plog.insert_ts > (
                             SELECT max(update_ts) FROM k3l_channel_tokens_bal WHERE channel_id = '{channel_id}'
                         )
-                    AND plog.insert_ts 
-                            BETWEEN ({BEGIN_TIMESTAMP})
-                                AND ({END_TIMESTAMP})
-                    AND now() > ({TOKEN_CUTOFF_TIMESTAMP})
+                    AND plog.insert_ts > ({BEGIN_TIMESTAMP})
+                    AND plog.insert_ts < ({END_TIMESTAMP})
                 GROUP BY plog.channel_id
             ),
             eligible AS (
@@ -733,15 +739,15 @@ def insert_tokens_log(
                     sum(plog.earnings) as earnings,
                     max(plog.insert_ts) as latest_points_ts
                 FROM k3l_channel_points_log as plog
+                INNER JOIN is_monday_pts_done ON (plog.channel_id=is_monday_pts_done.channel_id)
                 WHERE 
                     plog.channel_id = '{channel_id}'
                     AND plog.insert_ts > (
                         SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = 'cryptosapiens'
                     )  		
                     AND plog.model_name='cbrt_weighted'
-                    AND plog.insert_ts 
-                        BETWEEN ({BEGIN_TIMESTAMP})
-                            AND ({END_TIMESTAMP})
+                    AND plog.insert_ts > ({BEGIN_TIMESTAMP})
+                    AND plog.insert_ts < ({END_TIMESTAMP})
                 GROUP BY plog.fid, plog.channel_id
             ),
             tokens AS (
