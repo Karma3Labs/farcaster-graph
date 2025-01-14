@@ -172,14 +172,6 @@ def _last_dow_utc_time(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
 
-def _monday_utc_time():
-    utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday())
-
-def _previous_monday_utc_time():
-    utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday() + 7)
-
 @Timer(name="fetch_weighted_fid_scores_df")
 def fetch_weighted_fid_scores_df(
     logger: logging.Logger, 
