@@ -60,17 +60,17 @@ def _9ampacific_in_utc_time():
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
 
-def _monday_utc_time():
+def _dow_utc_timestamp_str(dow: DOW) -> str:
     utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday())
+    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
+    return (f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')")
 
-def _dow_utc_time(dow: DOW):
+def _last_dow_utc_timestamp_str(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
-
-def _last_dow_utc_time(dow: DOW):
-    utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
+    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
+    return (f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')")
 
 async def fetch_rows(
         *args,
@@ -1014,18 +1014,10 @@ async def get_channel_profile_ranks(
         ORDER BY rank
         """
     else:
-        MONDAY_UTC_TIMESTAMP = (
-            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')"
-        )
-        TUESDAY_UTC_TIMESTAMP = (
-            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')"
-        )
-        LAST_TUESDAY_UTC_TIMESTAMP = (
-            f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')"
-        )
+        MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
+        TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
+        LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+
         sql_query = f"""
         WITH 
         total AS (
@@ -1951,18 +1943,11 @@ async def get_top_channel_followers(
         limit: int,
         pool: Pool
 ):
-    MONDAY_UTC_TIMESTAMP = (
-        f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC')"
-    )
-    TUESDAY_UTC_TIMESTAMP = (
-        f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC')"
-    )
-    LAST_TUESDAY_UTC_TIMESTAMP = (
-        f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC')"
-    )
+    
+    MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
+    TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
+    LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+    
     sql_query = f"""
     WITH 
     distinct_warpcast_followers as (
@@ -2096,18 +2081,10 @@ async def get_top_channel_holders(
         orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
     
     # CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
-    MONDAY_UTC_TIMESTAMP = (
-            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')"
-    )
-    TUESDAY_UTC_TIMESTAMP = (
-            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')"
-    )
-    LAST_TUESDAY_UTC_TIMESTAMP = (
-        f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC')"
-    )
+    MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
+    TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
+    LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+    
     sql_query = f"""
     WITH
     balance_data as (
