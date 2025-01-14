@@ -2,6 +2,7 @@ import time
 import datetime
 import pytz
 import json
+from enum import Enum
 
 from ..config import settings
 from app.models.score_model import ScoreAgg, Weights, Voting
@@ -16,6 +17,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
 from loguru import logger
+
+class DOW(Enum):
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
 
 engine = create_async_engine(
     settings.POSTGRES_ASYNC_URI.get_secret_value(),
@@ -53,6 +63,14 @@ def _9ampacific_in_utc_time():
 def _monday_utc_time():
     utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday())
+
+def _dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
+
+def _last_dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
 
 async def fetch_rows(
         *args,
@@ -996,9 +1014,17 @@ async def get_channel_profile_ranks(
         ORDER BY rank
         """
     else:
-        CUTOFF_UTC_TIMESTAMP = (
-            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC'"
+        MONDAY_UTC_TIMESTAMP = (
+            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')"
+        )
+        TUESDAY_UTC_TIMESTAMP = (
+            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')"
+        )
+        LAST_TUESDAY_UTC_TIMESTAMP = (
+            f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')"
         )
         sql_query = f"""
         WITH 
@@ -1022,10 +1048,24 @@ async def get_channel_profile_ranks(
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                     ELSE plog.earnings
                 END as daily_earnings,
-								0 as token_daily_earnings,
-                bal.latest_earnings as latest_earnings,
+                0 as token_daily_earnings,
+                CASE 
+                    WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+                    ELSE true
+                END as is_weekly_earnings_available,
+                CASE
+                    WHEN (
+                        now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
+                        AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP} 
+                        AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+                    ) THEN plog.earnings
+                    ELSE NULL
+                END as latest_earnings,
                 tok.latest_earnings as token_latest_earnings,
-                plog.earnings as plog_earnings,
+                CASE
+                    WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+                    ELSE 0
+                END as weekly_earnings,
                 0 as token_weekly_earnings,
                 bal.update_ts as bal_update_ts,
           		coalesce(config.is_points, false) as is_points_launched,
@@ -1042,7 +1082,7 @@ async def get_channel_profile_ranks(
             LEFT JOIN k3l_channel_points_log as plog
                 on (plog.model_name='cbrt_weighted' AND plog.channel_id=ch.channel_id
                     AND plog.fid = ch.fid
-                    AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                    AND plog.insert_ts > now() - interval '8 days')
             WHERE
                 ch.channel_id = $1
                 AND
@@ -1080,9 +1120,10 @@ async def get_channel_profile_ranks(
             max(token_balance) as token_balance,
             max(daily_earnings) as daily_earnings,
             max(token_daily_earnings) as token_daily_earnings,
-            max(latest_earnings) as latest_earnings,
-            max(latest_earnings) as token_latest_earnings,
-            sum(plog_earnings) as weekly_earnings,
+            bool_and(is_weekly_earnings_available) as is_weekly_earnings_available,
+            sum(latest_earnings) as latest_earnings,
+            max(token_latest_earnings) as token_latest_earnings,
+            sum(weekly_earnings) as weekly_earnings,
             max(token_weekly_earnings) as token_weekly_earnings,
             any_value(bal_update_ts) as bal_update_ts,
             bool_or(is_points_launched) as is_points_launched,
@@ -1910,9 +1951,17 @@ async def get_top_channel_followers(
         limit: int,
         pool: Pool
 ):
-    CUTOFF_UTC_TIMESTAMP = (
-        f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC'"
+    MONDAY_UTC_TIMESTAMP = (
+        f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
+    )
+    TUESDAY_UTC_TIMESTAMP = (
+        f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
+    )
+    LAST_TUESDAY_UTC_TIMESTAMP = (
+        f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
     )
     sql_query = f"""
     WITH 
@@ -1942,9 +1991,23 @@ async def get_top_channel_followers(
             ELSE plog.earnings
         END as daily_earnings,
         0 as token_daily_earnings,
-        bal.latest_earnings as latest_earnings,
+        CASE 
+            WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+            ELSE true
+        END as is_weekly_earnings_available,
+        CASE 
+            WHEN (
+                now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
+                AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
+                AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+            ) THEN plog.earnings
+            ELSE NULL
+        END as latest_earnings,
         tok.latest_earnings as token_latest_earnings,
-        plog.earnings as plog_earnings,
+        CASE
+            WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+            ELSE 0
+        END as weekly_earnings,
         0 as token_weekly_earnings,
         bal.update_ts as bal_update_ts,
         coalesce(config.is_points, false) as is_points_launched,
@@ -1964,7 +2027,7 @@ async def get_top_channel_followers(
       	LEFT JOIN k3l_channel_points_log as plog
       			on (plog.model_name='cbrt_weighted' AND plog.channel_id=wf.channel_id
                 AND plog.fid = wf.fid
-                AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                AND plog.insert_ts > now() - interval '8 days')
     ),
     bio_data AS (
         SELECT
@@ -1995,9 +2058,10 @@ async def get_top_channel_followers(
         max(token_balance) as token_balance,
         max(daily_earnings) as daily_earnings,
         max(token_daily_earnings) as token_daily_earnings,
-        max(latest_earnings) as latest_earnings,
-        max(latest_earnings) as token_latest_earnings,
-        sum(plog_earnings) as weekly_earnings,
+        bool_and(is_weekly_earnings_available) as is_weekly_earnings_available,
+        sum(latest_earnings) as latest_earnings,
+        max(token_latest_earnings) as token_latest_earnings,
+        sum(weekly_earnings) as weekly_earnings,
         max(token_weekly_earnings) as token_weekly_earnings,
         max(bal_update_ts) as bal_update_ts,
         bool_or(is_points_launched) as is_points_launched,
@@ -2032,10 +2096,18 @@ async def get_top_channel_holders(
         orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
     
     # CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
-    CUTOFF_UTC_TIMESTAMP = (
-            f"TO_TIMESTAMP('{_monday_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC'"
-        )
+    MONDAY_UTC_TIMESTAMP = (
+            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.MONDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')"
+    )
+    TUESDAY_UTC_TIMESTAMP = (
+            f"(TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+            " AT TIME ZONE 'UTC')"
+    )
+    LAST_TUESDAY_UTC_TIMESTAMP = (
+        f"(TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
+    )
     sql_query = f"""
     WITH
     balance_data as (
@@ -2054,9 +2126,23 @@ async def get_top_channel_holders(
                 ELSE plog.earnings
             END as daily_earnings,
             0 as token_daily_earnings,
-            bal.latest_earnings as latest_earnings,
+            CASE 
+                WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+                ELSE true
+            END as is_weekly_earnings_available,
+            CASE 
+                WHEN (
+                    now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
+                    AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
+                    AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+                ) THEN plog.earnings
+                ELSE NULL
+            END as latest_earnings,
             tok.latest_earnings as token_latest_earnings,
-            plog.earnings as plog_earnings,
+            CASE
+                WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+                ELSE 0
+            END as weekly_earnings,
             0 as token_weekly_earnings,
             bal.update_ts as bal_update_ts,
             coalesce(config.is_points, false) as is_points_launched,
@@ -2074,7 +2160,7 @@ async def get_top_channel_holders(
             LEFT JOIN k3l_channel_points_log as plog
                     on (plog.model_name='cbrt_weighted' AND plog.channel_id=bal.channel_id
                     AND plog.fid = bal.fid
-                    AND plog.insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                    AND plog.insert_ts > now() - interval '8 days')
         WHERE bal.channel_id = $1
     ),
     bio_data AS (
@@ -2106,9 +2192,10 @@ async def get_top_channel_holders(
         max(token_balance) as token_balance,
         max(daily_earnings) as daily_earnings,
         max(token_daily_earnings) as token_daily_earnings,
-        max(latest_earnings) as latest_earnings,
-        max(latest_earnings) as token_latest_earnings,
-        sum(plog_earnings) as weekly_earnings,
+        bool_and(is_weekly_earnings_available) as is_weekly_earnings_available,
+        sum(latest_earnings) as latest_earnings,
+        max(token_latest_earnings) as token_latest_earnings,
+        sum(weekly_earnings) as weekly_earnings,
         max(token_weekly_earnings) as token_weekly_earnings,
         max(bal_update_ts) as bal_update_ts,
         bool_or(is_points_launched) as is_points_launched,
