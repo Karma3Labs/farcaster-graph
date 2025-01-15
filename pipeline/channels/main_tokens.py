@@ -119,7 +119,6 @@ def prepare_for_distribution(scope: Scope, reason: str):
                 except Exception as e:
                     logger.error(f"Failed to call smartcontractmgr: {e}")
                     raise e
-            continue
             # We know from Postgres or from SCM that channel token is launched;
             # ...let's prepare for distributing tokens based on recent balance update timestamp.
             logger.info(f"Prepping distribution for channel '{channel_id}'")
