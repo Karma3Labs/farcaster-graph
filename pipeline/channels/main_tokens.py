@@ -79,16 +79,16 @@ def prepare_for_distribution(scope: Scope, reason: str):
                             total_supply = int(channel_token.get('supply') / 1e18) if channel_token.get('supply') else 1_000_000_000 # 1 billion * 1e18
                             creator_cut = int(channel_token.get('creatorCut', 500)) # 500 = 50%
                             vesting_months = int(channel_token.get('vestingPeriod', 36))
-                            airdrop_pct = int(channel_token.get('airdropPct', 50)) #  50 = 5%
+                            airdrop_pmil = int(channel_token.get('airdropPermil', 50)) #  50 = 5%
                             community_supply = int(total_supply * creator_cut /  (10 * 100))
-                            token_airdrop_budget = int(community_supply * airdrop_pct / (10 * 100))
+                            token_airdrop_budget = int(community_supply * airdrop_pmil / (10 * 100))
                             token_daily_budget = int((community_supply - token_airdrop_budget) / ((vesting_months/12) * 52 * 7))
                             logger.info(
                                 f"Channel '{channel_id}'"
                                 f" total supply: {total_supply}"
                                 f", creator cut: {creator_cut}"
                                 f", vesting months: {vesting_months}"
-                                f", airdrop pct: {airdrop_pct}"
+                                f", airdrop pmil: {airdrop_pmil}"
                                 f", community supply: {community_supply}"
                                 f", token airdrop budget: {token_airdrop_budget}"
                                 f", token daily budget: {token_daily_budget}"
@@ -101,7 +101,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                                 total_supply=total_supply,
                                 creator_cut=creator_cut,
                                 vesting_months=vesting_months,
-                                airdrop_pct=airdrop_pct,
+                                airdrop_pmil=airdrop_pmil,
                                 community_supply=community_supply,
                                 token_airdrop_budget=token_airdrop_budget,
                                 token_daily_budget=token_daily_budget

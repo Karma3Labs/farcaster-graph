@@ -601,7 +601,7 @@ def update_channel_rewards_config(
     total_supply: int,
     creator_cut: int,
     vesting_months: int,
-    airdrop_pct: int,
+    airdrop_pmil: int,
     community_supply: int,
     token_airdrop_budget: int,
     token_daily_budget: int,
@@ -614,7 +614,7 @@ def update_channel_rewards_config(
         total_supply={total_supply},
         creator_cut={creator_cut},
         vesting_months={vesting_months},
-        airdrop_pct={airdrop_pct},
+        airdrop_pmil={airdrop_pmil},
         community_supply={community_supply}
         WHERE channel_id = '{channel_id}'
     """

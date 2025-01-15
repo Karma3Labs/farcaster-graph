@@ -612,7 +612,7 @@ CREATE TABLE public.k3l_channel_rewards_config (
     total_supply int8 NOT NULL DEFAULT 1000000000,
     creator_cut int2 NOT NULL DEFAULT 500,
     vesting_months int2 NOT NULL DEFAULT 36,
-    airdrop_pct int2 NOT NULL DEFAULT 50,
+    airdrop_pmil int2 NOT NULL DEFAULT 50,
     community_supply int8 NOT NULL DEFAULT 500000000,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
