@@ -105,8 +105,6 @@ def prepare_for_distribution(scope: Scope, reason: str):
 
 
 def distribute_tokens():
-    logger.error("Not implemented")
-    return
     if settings.IS_TEST:
         logger.warning("Skipping token distribution in test mode.")
         return

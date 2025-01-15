@@ -90,7 +90,7 @@ with DAG(
 
     check_last_successful_points = check_last_successful_points()
 
-    check_last_successful_points >> trigger_points_dag >> prepare >> distribute >> verify
+    prepare >> distribute >> verify >> check_last_successful_points >> trigger_points_dag
 
-    check_last_successful_points >> skip_points_dag >> prepare >> distribute >> verify
+    prepare >> distribute >> verify >> check_last_successful_points >> skip_points_dag
 
