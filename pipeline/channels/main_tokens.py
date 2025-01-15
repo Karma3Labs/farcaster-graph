@@ -107,6 +107,9 @@ def prepare_for_distribution(scope: Scope, reason: str):
 def distribute_tokens():
     logger.error("Not implemented")
     return
+    if settings.IS_TEST:
+        logger.warning("Skipping token distribution in test mode.")
+        return
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     upsert_timeout_ms = 180_000
     retries = Retry(
@@ -263,7 +266,7 @@ def verify_distribution():
                         new_status=TokenDistStatus.SUCCESS,
                     )
                     if settings.IS_TEST:
-                        logger.info(f"Skipping update_token_bal for channel {channel_id} in test mode")
+                        logger.warning(f"Skipping update_token_bal for channel {channel_id} in test mode")
                     else:
                         channel_db_utils.update_token_bal(
                             logger=logger,
