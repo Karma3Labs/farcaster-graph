@@ -27,7 +27,7 @@ with DAG(
     description='update channel tokens started by trigger dag or manually',
     start_date=datetime(2024, 7, 10, 18),
     # schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST 
-    schedule_interval=timedelta(hours=1),
+    schedule_interval=timedelta(minutes=5),
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
@@ -90,7 +90,7 @@ with DAG(
 
     check_last_successful_points = check_last_successful_points()
 
-    prepare >> distribute >> verify >> check_last_successful_points >> trigger_points_dag
+    check_last_successful_points >> trigger_points_dag >> prepare >> distribute >> verify
 
-    prepare >> distribute >> verify >> check_last_successful_points >> skip_points_dag
+    check_last_successful_points >> skip_points_dag >> prepare >> distribute >> verify
 
