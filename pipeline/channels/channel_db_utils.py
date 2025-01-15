@@ -592,13 +592,30 @@ def fetch_rewards_config_list(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return rows
 
-@Timer(name="update_channel_token_status")
-def update_channel_token_status(
-    logger: logging.Logger, pg_dsn: str, timeout_ms: int, channel_id: str, is_tokens: bool 
+@Timer(name="update_channel_rewards_config")
+def update_channel_rewards_config(
+    logger: logging.Logger, 
+    pg_dsn: str, 
+    timeout_ms: int, 
+    channel_id: str, 
+    total_supply: int,
+    creator_cut: int,
+    vesting_months: int,
+    airdrop_pct: int,
+    community_supply: int,
+    token_airdrop_budget: int,
+    token_daily_budget: int,
 ) -> list[tuple[str, bool]]:
     update_sql = f"""
         UPDATE k3l_channel_rewards_config
-        SET is_tokens = {'true' if is_tokens else 'false'} 
+        SET 
+        token_airdrop_budget={token_airdrop_budget}, 
+        token_daily_budget={token_daily_budget},
+        total_supply={total_supply},
+        creator_cut={creator_cut},
+        vesting_months={vesting_months},
+        airdrop_pct={airdrop_pct},
+        community_supply={community_supply}
         WHERE channel_id = '{channel_id}'
     """
     start_time = time.perf_counter()

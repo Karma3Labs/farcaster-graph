@@ -73,10 +73,39 @@ def prepare_for_distribution(scope: Scope, reason: str):
                     )
                     if response.status_code == 200:
                         channel_token = response.json()
-                        token_address = channel_token.get('tokenAddress')
-                        # TODO get token supply details from SCM
+                        token_address = channel_token.get('tokenAddress')                        
                         if token_address:
                             logger.info(f"Channel '{channel_id}' has token {channel_token}.")
+                            total_supply = int(channel_token.get('supply') / 1e18) if channel_token.get('supply') else 1_000_000_000 # 1 billion * 1e18
+                            creator_cut = int(channel_token.get('creatorCut', 500)) # 500 = 50%
+                            vesting_months = int(channel_token.get('vestingPeriod', 36))
+                            airdrop_pct = int(channel_token.get('airdropPct', 50)) #  50 = 5%
+                            community_supply = int(total_supply * creator_cut /  (10 * 100))
+                            token_airdrop_budget = int(community_supply * airdrop_pct / (10 * 100))
+                            token_daily_budget = int((community_supply - token_airdrop_budget) / ((vesting_months/12) * 52 * 7))
+                            logger.info(
+                                f"Channel '{channel_id}'"
+                                f" total supply: {total_supply}"
+                                f", creator cut: {creator_cut}"
+                                f", vesting months: {vesting_months}"
+                                f", airdrop pct: {airdrop_pct}"
+                                f", community supply: {community_supply}"
+                                f", token airdrop budget: {token_airdrop_budget}"
+                                f", token daily budget: {token_daily_budget}"
+                            )
+                            channel_db_utils.update_channel_rewards_config(
+                                logger=logger,
+                                pg_dsn=pg_dsn,
+                                timeout_ms=insert_timeout_ms,
+                                channel_id=channel_id,
+                                total_supply=total_supply,
+                                creator_cut=creator_cut,
+                                vesting_months=vesting_months,
+                                airdrop_pct=airdrop_pct,
+                                community_supply=community_supply,
+                                token_airdrop_budget=token_airdrop_budget,
+                                token_daily_budget=token_daily_budget
+                            )
                             # this channel token is launched by SCM but we didn't see it in Postgres
                             # ...therefore conclude that this is token launch
                             # ...therefore conclude airdrop
@@ -90,6 +119,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                 except Exception as e:
                     logger.error(f"Failed to call smartcontractmgr: {e}")
                     raise e
+            continue
             # We know from Postgres or from SCM that channel token is launched;
             # ...let's prepare for distributing tokens based on recent balance update timestamp.
             logger.info(f"Prepping distribution for channel '{channel_id}'")
