@@ -262,13 +262,16 @@ def verify_distribution():
                         old_status=TokenDistStatus.SUBMITTED,
                         new_status=TokenDistStatus.SUCCESS,
                     )
-                    channel_db_utils.update_token_bal(
-                        logger=logger,
-                        pg_dsn=pg_dsn,
-                        timeout_ms=upsert_timeout_ms,
-                        dist_id=dist_id,
-                        channel_id=channel_id,
-                    )                
+                    if settings.IS_TEST:
+                        logger.info(f"Skipping update_token_bal for channel {channel_id} in test mode")
+                    else:
+                        channel_db_utils.update_token_bal(
+                            logger=logger,
+                            pg_dsn=pg_dsn,
+                            timeout_ms=upsert_timeout_ms,
+                            dist_id=dist_id,
+                            channel_id=channel_id,
+                        )                
                 elif response.status_code == 404:
                     logger.warning(f"404 Error: Skipping channel {channel_id} :{response.reason}")
                     continue
