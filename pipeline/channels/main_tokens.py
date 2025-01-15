@@ -166,10 +166,11 @@ def cura_notify(channel_id, fids):
 
     logger.info(f"Sending notification for channel {channel_id}")
     title = f"/{channel_id} leaderboard updated!"
-    body = f"Claim your {channel_id} tokens!"
+    body = f"Claim your /{channel_id} tokens!"
     req = {
         "title": title,
         "body": body,
+        "channelId": channel_id,
         "fids": fids
     }
     url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
