@@ -598,6 +598,7 @@ def update_channel_rewards_config(
     pg_dsn: str, 
     timeout_ms: int, 
     channel_id: str, 
+    symbol: str,
     total_supply: int,
     creator_cut: int,
     vesting_months: int,
@@ -609,6 +610,7 @@ def update_channel_rewards_config(
     update_sql = f"""
         UPDATE k3l_channel_rewards_config
         SET 
+        symbol='{symbol}',
         token_airdrop_budget={token_airdrop_budget}, 
         token_daily_budget={token_daily_budget},
         total_supply={total_supply},

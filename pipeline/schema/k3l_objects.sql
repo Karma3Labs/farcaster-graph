@@ -603,6 +603,7 @@ GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_log TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_rewards_config (
     channel_id text NOT NULL,
+    symbol text NULL,
     is_ranked boolean NOT NULL DEFAULT true,
     is_points boolean NOT NULL DEFAULT false,
     is_tokens boolean NOT NULL DEFAULT false,
