@@ -26,6 +26,18 @@ def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
         logger.error(f"Failed to read channel data from CSV: {e}")
         raise e
 
+def read_channel_bot_fids_csv(csv_path:Path) -> pd.DataFrame:
+    try:
+        bots_df = pd.read_csv(csv_path)
+        # csv can have extra columns for comments or other info 
+        # ... but channel id should not be empty
+        bots_df = bots_df.dropna(subset = ['FID'])
+        bots_df = bots_df.drop_duplicates(subset=['FID'], keep='last')
+        return bots_df
+    except Exception as e:
+        logger.error(f"Failed to read bot data from CSV: {e}")
+        raise e
+
 def fetch_channel_domain_df(pg_url: str, category: str, channel_ids:list[str]=None) -> pd.DataFrame:    
     try:
         domains_df = db_utils.fetch_channel_domains_for_category(pg_url, category)
@@ -55,9 +67,20 @@ def read_channel_ids_csv(csv_path:Path) -> list:
         raise e
 
 def prep_trust_data(
-    cid: str, channel_seeds_df: pd.DataFrame, pg_dsn: str, pg_url: str, interval: int
-): 
-    host_fids: list = [int(fid) for fid in channel_seeds_df[channel_seeds_df["channel id"] == cid]["seed_fids_list"].values[0]]
+    cid: str,
+    channel_seeds_df: pd.DataFrame,
+    channel_bots_df: pd.DataFrame,
+    pg_dsn: str,
+    pg_url: str,
+    interval: int,
+):
+    # channel_seeds_df["seed_fids_list"].values returns [["fid1","fid2"]] 
+    host_fids: list = [
+        int(fid)
+        for fid in 
+            channel_seeds_df[channel_seeds_df["channel id"] == cid]["seed_fids_list"].values[0]
+    ]
+    bot_fids = channel_bots_df["FID"].values.tolist()
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         if channel is None:
@@ -68,12 +91,17 @@ def prep_trust_data(
             host_fids.append(lead_fid)
             mod_fids = [int(fid) for fid in channel['moderatorfids']]
             host_fids.extend(mod_fids)
+        logger.info(
+            f"Removing bot fids {bot_fids} from host fids {host_fids} for channel {cid}: "
+            f"{set.intersection(set(host_fids), set(bot_fids))}"
+        )
+        host_fids = list(set(host_fids) - set(bot_fids))
     except Exception as e:
         logger.error(f"Failed to fetch channel details for channel {cid}: {e}")
         raise e
 
     logger.info(f"Channel details: {channel}")
-    logger.info(f"Host fids: {set(host_fids)}")
+    logger.info(f"Host fids: {host_fids}")
 
     utils.log_memusage(logger)
     try:

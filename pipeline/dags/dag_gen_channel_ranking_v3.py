@@ -129,7 +129,8 @@ def create_dag():
         def process_channel_chunk(chunk: list, interval: int):
             chunk_str = ','.join(chunk)
             bash_command = (
-                f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process -c channels/Top_Channels.csv'
+                f'cd /pipeline && ./run_channel_scraper_v3.sh -w . -v .venv -t process'
+                f' -c channels/Top_Channels.csv -b channels/Bot_Fids.csv'
                 f' -n {interval}'
                 f' "{chunk_str}"'
             )

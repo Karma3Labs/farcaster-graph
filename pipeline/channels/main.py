@@ -77,8 +77,11 @@ def process_channel_goserver(
     utils.log_memusage(logger)
 
     try:
-        logger.info(f"Inserting data into the database for channel {cid}")
-        db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
+        if settings.IS_TEST:
+            logger.warning(f"Skipping database insertion for channel {cid}")
+        else:
+            logger.info(f"Inserting data into the database for channel {cid}")
+            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
@@ -87,6 +90,7 @@ def process_channel_goserver(
 
 def process_channels(
     channel_seeds_csv: Path,
+    channel_bots_csv: Path,
     channel_ids_str: str,
     interval: int = 0,
 ):
@@ -96,12 +100,15 @@ def process_channels(
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
+    channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
     channel_ids = channel_ids_str.split(',')
     missing_seed_fids = []
 
     for cid in channel_ids:
         try:
-            channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(cid, channel_seeds_df, pg_dsn, pg_url, interval)
+            channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(
+                cid, channel_seeds_df, channel_bots_df, pg_dsn, pg_url, interval
+            )
 
             if len(channel_lt_df) == 0:
                 if interval > 0:
@@ -133,6 +140,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--csv",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
+        required=True,
+    )
+    parser.add_argument(
+        "-b",
+        "--bots",
         type=lambda f: Path(f).expanduser().resolve(),
         help="path to the CSV file. For example, -c /path/to/file.csv",
         required=True,
@@ -174,6 +188,7 @@ if __name__ == "__main__":
                 sys.exit(1)
         process_channels(
             channel_seeds_csv=args.csv,
+            channel_bots_csv=args.bots,
             channel_ids_str=args.channel_ids,
             interval=args.interval,
         )
