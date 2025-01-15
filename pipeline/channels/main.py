@@ -149,7 +149,7 @@ if __name__ == "__main__":
         "--bots",
         type=lambda f: Path(f).expanduser().resolve(),
         help="path to the CSV file. For example, -c /path/to/file.csv",
-        required=True,
+        required=False,
     )
     parser.add_argument(
         "-t",
@@ -183,8 +183,8 @@ if __name__ == "__main__":
         random.shuffle(channel_ids) # in-place shuffle
         print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
     elif args.task == 'process':
-        if not hasattr(args, 'channel_ids') or not hasattr(args, 'interval'):
-                logger.error("Channel IDs  and Interval are required for processing.")
+        if not hasattr(args, 'channel_ids') or not hasattr(args, 'interval') or not hasattr(args, 'bots'):
+                logger.error("Channel IDs, Bot FIDs and Interval are required for processing.")
                 sys.exit(1)
         process_channels(
             channel_seeds_csv=args.csv,
