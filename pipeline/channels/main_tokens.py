@@ -80,9 +80,9 @@ def prepare_for_distribution(scope: Scope, reason: str):
                             if token_metadata:
                                 symbol = token_metadata.get('symbol')
                                 total_supply = int(token_metadata.get('supply') / 1e18) if channel_token.get('supply') else 1_000_000_000 # 1 billion * 1e18
-                                creator_cut = int(token_metadata.get('creatorCut', 500)) # 500 = 50%
-                                vesting_months = int(token_metadata.get('vestingPeriod', 36))
-                                airdrop_pmil = int(token_metadata.get('airdropPermil', 50)) #  50 = 5%
+                                creator_cut = int(token_metadata.get('creatorCut')) if token_metadata.get('creatorCut') else 500 # 500 = 50%
+                                vesting_months = int(token_metadata.get('vestingPeriod')) if token_metadata.get('vestingPeriod') else 36 # 36 months
+                                airdrop_pmil = int(token_metadata.get('airdropPermil')) if token_metadata.get('airdropPermil') else 50 #  50 = 5%
                                 community_supply = int(total_supply * creator_cut /  (10 * 100))
                                 token_airdrop_budget = int(community_supply * airdrop_pmil / (10 * 100))
                                 token_daily_budget = int((community_supply - token_airdrop_budget) / ((vesting_months/12) * 52 * 7))
