@@ -43,7 +43,6 @@ class Task(Enum):
 def prepare_for_distribution(scope: Scope, reason: str):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     insert_timeout_ms = 120_000
-    is_airdrop = True if scope == Scope.airdrop else False
     channels_list = channel_db_utils.fetch_rewards_config_list(logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS)
     logger.debug(f"Channel token status: {channels_list}")
     retries = Retry(
@@ -59,13 +58,18 @@ def prepare_for_distribution(scope: Scope, reason: str):
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
         for channel in channels_list:
             channel_id = channel['channel_id']
-            token_status = channel['is_tokens']
-            if not token_status:
+            token_live_in_db = channel['is_tokens']
+            if scope == Scope.weekly and not token_live_in_db:
+                logger.info(f"Channel '{channel_id}' scope: {scope}, token_live_in_db: {token_live_in_db}")
+                logger.warning(f"Skipping distribution for channel '{channel_id}'")
+                continue
+            is_new_airdrop = False
+            if not token_live_in_db:
                 # In Postgres, we don't know if channel token is launched;
-                # ...let's query Cura Smart Contract Manager.
+                # ...let's query Cura Smart Contract Manager to see if we need to do an airdrop
                 try:
                     path = f"/token/lookupTokenForChannel/{channel_id}"
-                    logger.info(f"Channel '{channel_id}' has no distributions. Checking :{path}")
+                    logger.info(f"GET {path}")
                     response = s.get(
                         urllib.parse.urljoin(settings.CURA_SCMGR_URL,path),
                         headers={"Accept": "application/json", "Content-Type": "application/json"},
@@ -114,7 +118,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                             # this channel token is launched by SCM but we didn't see it in Postgres
                             # ...therefore conclude that this is token launch
                             # ...therefore conclude airdrop
-                            is_airdrop = True
+                            is_new_airdrop = True
                             reason = "airdrop"
                         else:
                             logger.info(f"Channel '{channel_id}' token not fully launched: {channel_token}.")
@@ -124,21 +128,31 @@ def prepare_for_distribution(scope: Scope, reason: str):
                 except Exception as e:
                     logger.error(f"Failed to call smartcontractmgr: {e}")
                     raise e
-            # We know from Postgres or from SCM that channel token is launched;
-            # ...let's prepare for distributing tokens based on recent balance update timestamp.
-            logger.info(f"Prepping distribution for channel '{channel_id}'")
-            dist_id = channel_db_utils.insert_tokens_log(
-                logger=logger,
-                pg_dsn=pg_dsn,
-                timeout_ms=insert_timeout_ms,
-                channel_id=channel_id,
-                reason=reason,
-                is_airdrop=is_airdrop,
+            logger.info(
+                f"Channel '{channel_id}' scope: {scope}"
+                f", is_new_airdrop: {is_new_airdrop}, token_live_in_db: {token_live_in_db}"
             )
-            logger.info(f"Prepped distribution for channel '{channel_id}': {dist_id}")
+            if (scope == Scope.weekly and token_live_in_db) or (scope == Scope.airdrop and is_new_airdrop):
+                # Token was already live in db and we are doing weekly distributions
+                # ...or token was just launched and we are doing airdrop
+                # ...let's prepare for distributing tokens.
+                logger.info(f"Prepping distribution for channel '{channel_id}'")
+                dist_id = channel_db_utils.insert_tokens_log(
+                    logger=logger,
+                    pg_dsn=pg_dsn,
+                    timeout_ms=insert_timeout_ms,
+                    channel_id=channel_id,
+                    reason=reason,
+                    is_airdrop=is_new_airdrop,
+                )
+                logger.info(f"Prepped distribution for channel '{channel_id}': {dist_id}")
+            else:
+                logger.info(f"Skipping distribution for channel '{channel_id}'")
 
 
 def distribute_tokens():
+    logger.error("Short-circuiting token distribution.")
+    return
     if settings.IS_TEST:
         logger.warning("Skipping token distribution in test mode.")
         return

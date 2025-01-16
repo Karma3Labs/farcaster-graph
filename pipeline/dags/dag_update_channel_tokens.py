@@ -33,7 +33,12 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    prepare = BashOperator(
+    prepare_airdrop = BashOperator(
+        task_id="prepare",
+        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
+        dag=dag)
+
+    prepare_weekly = BashOperator(
         task_id="prepare",
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
         dag=dag)
@@ -54,6 +59,8 @@ with DAG(
         task_id='trigger_points_dag',
         trigger_dag_id=POINTS_DAG_NAME,
         execution_date='{{ macros.datetime.now() }}',
+        wait_for_completion=True,
+        poke_interval=60,
         conf={"trigger": "trigger_channel_points_tokens"},
     )
 
@@ -90,7 +97,7 @@ with DAG(
 
     check_last_successful_points = check_last_successful_points()
 
-    prepare >> distribute >> verify >> check_last_successful_points >> trigger_points_dag
+    check_last_successful_points >> trigger_points_dag >> prepare_airdrop >> prepare_weekly >> distribute >> verify
 
-    prepare >> distribute >> verify >> check_last_successful_points >> skip_points_dag
+    check_last_successful_points >> skip_points_dag >> prepare_airdrop >> distribute >> verify
 
