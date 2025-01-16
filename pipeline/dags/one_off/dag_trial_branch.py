@@ -38,22 +38,22 @@ with DAG(
 
     @task_group(group_id='all_group')
     def tg_all():
-        always = PythonOperator(task_id="all_always", 
+        always = PythonOperator(task_id="always", 
                              python_callable=empty_fn, 
                              op_args=[],
                              op_kwargs={},
-                             trigger_rule=TriggerRule.ONE_SUCCESS)
+                             trigger_rule=TriggerRule.ALL_SUCCESS)
         t3 = EmptyOperator(task_id="t3")
 
         always >> t3
 
     @task_group(group_id='some_group')
     def tg_some():
-        always = PythonOperator(task_id="some_always", 
+        always = PythonOperator(task_id="always", 
                              python_callable=empty_fn, 
                              op_args=[],
                              op_kwargs={},
-                             trigger_rule=TriggerRule.ONE_SUCCESS)
+                             trigger_rule=TriggerRule.ALL_SUCCESS)
         sometimes = EmptyOperator(task_id="sometimes")
         t3 = EmptyOperator(task_id="t3")
 

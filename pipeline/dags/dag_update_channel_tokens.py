@@ -5,7 +5,7 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import DagRun
-from airflow.decorators import task
+from airflow.decorators import task, task_group
 from airflow.utils.state import DagRunState
 
 from hooks.discord import send_alert_discord
@@ -33,25 +33,49 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    prepare_airdrop = BashOperator(
-        task_id="prepare_airdrop",
-        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
-        dag=dag)
+    @task_group(group_id='all_group')
+    def tg_all():
+        prepare_airdrop = BashOperator(
+            task_id="prepare_airdrop",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
+            dag=dag)
 
-    prepare_weekly = BashOperator(
-        task_id="prepare_weekly",
-        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
-        dag=dag)
+        prepare_weekly = BashOperator(
+            task_id="prepare_weekly",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
+            dag=dag)
 
-    distribute = BashOperator(
-        task_id="distribute",
-        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t distrib",
-        dag=dag)
-    
-    verify = BashOperator(
-        task_id="verify",
-        bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
-        dag=dag)
+        distribute = BashOperator(
+            task_id="distribute",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t distrib",
+            dag=dag)
+        
+        verify = BashOperator(
+            task_id="verify",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
+            dag=dag)
+        prepare_airdrop >> prepare_weekly >> distribute >> verify
+
+
+    @task_group(group_id='skip_weekly_group')
+    def tg_skip_weekly():
+        # WARNING: DRY principle breaks down in Airflow task definitions
+        # ...so unfortunately we have to repeat ourself here
+        prepare_airdrop = BashOperator(
+            task_id="prepare_airdrop",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
+            dag=dag)
+
+        distribute = BashOperator(
+            task_id="distribute",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t distrib",
+            dag=dag)
+        
+        verify = BashOperator(
+            task_id="verify",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
+            dag=dag)
+        prepare_airdrop >> distribute >> verify
 
     skip_points_dag = EmptyOperator(task_id="skip_points_dag")
 
@@ -97,7 +121,7 @@ with DAG(
 
     check_last_successful_points = check_last_successful_points()
 
-    check_last_successful_points >> trigger_points_dag >> prepare_airdrop >> prepare_weekly >> distribute >> verify
+    check_last_successful_points >> trigger_points_dag >> tg_all()
 
-    check_last_successful_points >> skip_points_dag >> prepare_airdrop >> distribute >> verify
+    check_last_successful_points >> skip_points_dag >> tg_skip_weekly()
 
