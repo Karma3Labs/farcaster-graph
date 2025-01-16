@@ -32,7 +32,7 @@ with DAG(
     t1 = EmptyOperator(task_id="t1")
     t2 = EmptyOperator(task_id="t2")
     allways = EmptyOperator(task_id="allways", trigger_rule=TriggerRule.ONE_SUCCESS)
-    sometimes = EmptyOperator(task_id="t3")
+    sometimes = EmptyOperator(task_id="sometimes")
     t3 = EmptyOperator(task_id="t3")
 
     branch >> t1 
