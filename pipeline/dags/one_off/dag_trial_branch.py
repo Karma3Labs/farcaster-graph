@@ -3,6 +3,8 @@ from datetime import timedelta
 from airflow import DAG
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
+
 from airflow.decorators import task, task_group
 
 default_args = {
@@ -26,21 +28,36 @@ with DAG(
     def branch_fn():
         return "t1"
     
+    def empty_fn(*args, **kwargs):
+        pass
 
     branch = branch_fn()
     t1 = EmptyOperator(task_id="t1")
     t2 = EmptyOperator(task_id="t2")
-    allways = EmptyOperator(task_id="allways", trigger_rule=TriggerRule.ONE_SUCCESS)
-    sometimes = EmptyOperator(task_id="sometimes")
-    t3 = EmptyOperator(task_id="t3")
+    
 
     @task_group(group_id='all_group')
     def tg_all():
-        allways >> sometimes >> t3
+        always = PythonOperator(task_id="all_always", 
+                             python_callable=empty_fn, 
+                             op_args=[],
+                             op_kwargs={},
+                             trigger_rule=TriggerRule.ONE_SUCCESS)
+        t3 = EmptyOperator(task_id="t3")
+
+        always >> t3
 
     @task_group(group_id='some_group')
     def tg_some():
-        sometimes >> t3
+        always = PythonOperator(task_id="some_always", 
+                             python_callable=empty_fn, 
+                             op_args=[],
+                             op_kwargs={},
+                             trigger_rule=TriggerRule.ONE_SUCCESS)
+        sometimes = EmptyOperator(task_id="sometimes")
+        t3 = EmptyOperator(task_id="t3")
+
+        always >> sometimes >> t3
 
     branch >> t1 >> tg_all()
     branch >> t2 >> tg_some()
