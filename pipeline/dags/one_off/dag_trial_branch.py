@@ -1,11 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from airflow import DAG
-from airflow.utils.dates import days_ago
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.operators.empty import EmptyOperator
-from airflow.operators.python import BranchPythonOperator
-from airflow.decorators import task
+from airflow.decorators import task, task_group
 
 default_args = {
     'owner': 'karma3labs',
@@ -27,6 +25,7 @@ with DAG(
     @task.branch(task_id="branch")
     def branch_fn():
         return "t1"
+    
 
     branch = branch_fn()
     t1 = EmptyOperator(task_id="t1")
@@ -35,8 +34,14 @@ with DAG(
     sometimes = EmptyOperator(task_id="sometimes")
     t3 = EmptyOperator(task_id="t3")
 
-    branch >> t1 
-    branch >> t2
+    @task_group(group_id='all_group')
+    def tg_all():
+        allways >> sometimes >> t3
 
-    t1 >> allways >> sometimes >> t3 
-    t2 >> allways >> t3
+    @task_group(group_id='some_group')
+    def tg_some():
+        sometimes >> t3
+
+    branch >> t1 >> tg_all()
+    branch >> t2 >> tg_some()
+
