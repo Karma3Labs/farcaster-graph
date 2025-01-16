@@ -42,7 +42,7 @@ with DAG(
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
     start_date=datetime(2024, 7, 24),
     # schedule_interval='0 0 */2 * *',
-    schedule_interval=timedelta(hours=1),
+    schedule_interval=timedelta(days=7),
     max_active_runs=1,
     is_paused_upon_creation=True,
     catchup=False,
