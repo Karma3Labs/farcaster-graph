@@ -34,12 +34,12 @@ with DAG(
 ) as dag:
 
     prepare_airdrop = BashOperator(
-        task_id="prepare",
+        task_id="prepare_airdrop",
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
         dag=dag)
 
     prepare_weekly = BashOperator(
-        task_id="prepare",
+        task_id="prepare_weekly",
         bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
         dag=dag)
 
