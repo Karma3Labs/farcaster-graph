@@ -667,6 +667,7 @@ def insert_tokens_log(
     channel_id: str,
     reason: str,
     is_airdrop: bool = False,
+    batch_size: int = 250,
 ):
     # dist_id is fetched in separate transaction
     # but risk of gaps is not an issue 
@@ -686,19 +687,24 @@ def insert_tokens_log(
             GROUP BY fid
         ),
         channel_totals AS (
-            SELECT sum(balance) as balance, sum(latest_earnings) as latest_earnings, channel_id
+            SELECT 
+                sum(balance) as balance, 
+                sum(latest_earnings) as latest_earnings, 
+                count(*) as ct,
+                channel_id
             FROM k3l_channel_points_bal
             WHERE channel_id='{channel_id}' 
             GROUP BY channel_id
         )
         INSERT INTO k3l_channel_tokens_log
-            (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
+            (fid, fid_address, channel_id, amt, dist_id, batch_id, dist_reason, latest_points, points_ts)
         SELECT 
             bal.fid,
             COALESCE(vaddr.address, '0x' ||encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
             round((bal.balance * config.token_airdrop_budget * (1 - config.token_tax_pct) / tot.balance),0) as amt,
             {dist_id} as dist_id,
+            ntile(cast(ceil(tot.ct / {batch_size}::numeric) as int)) over (order by bal.fid asc) as batch_id,
             '{reason}' as dist_reason,
             bal.balance as latest_points,
             bal.update_ts as points_ts
@@ -713,7 +719,7 @@ def insert_tokens_log(
         WHERE 
             bal.channel_id = '{channel_id}'
             AND bal.balance > 0
-        ORDER BY channel_id, amt DESC
+        ORDER BY channel_id, batch_id, fid
         """
     else:
         TOKEN_CUTOFF_TIMESTAMP = (
@@ -739,7 +745,9 @@ def insert_tokens_log(
                 LIMIT 1
             ),
             pts_distrib AS (
-                SELECT count(distinct plog.insert_ts) as num_distrib, plog.channel_id
+                SELECT 
+                    count(distinct plog.insert_ts) as num_distrib, 
+                    plog.channel_id
                 FROM k3l_channel_points_log AS plog
                 INNER JOIN is_monday_pts_done ON (plog.channel_id=is_monday_pts_done.channel_id)
                 WHERE plog.channel_id = '{channel_id}'
@@ -786,9 +794,14 @@ def insert_tokens_log(
                         ON (config.channel_id = eligible.channel_id AND config.is_tokens=true)
                 INNER JOIN fids ON (fids.fid = eligible.fid)
                 ORDER BY channel_id, fid DESC
+            ),
+            numfids AS (
+                SELECT count(*) as ct, channel_id
+                FROM tokens
+                GROUP BY channel_id
             )
             INSERT INTO k3l_channel_tokens_log
-                (fid, fid_address, channel_id, amt, dist_id, dist_reason, latest_points, points_ts)
+                (fid, fid_address, channel_id, amt, dist_id, batch_id, dist_reason, latest_points, points_ts)
             SELECT
                 tokens.fid,
                 COALESCE(
@@ -797,10 +810,12 @@ def insert_tokens_log(
                 tokens.channel_id,
                 max(amt) as amt,
                 {dist_id},
+                ntile(cast(ceil(max(numfids.ct) / {batch_size}::numeric) as int)) over (order by tokens.fid asc) as batch_id,
                 '{reason}' as dist_reason,
                 max(latest_points) as latest_points,
                 max(points_ts) as points_ts
             FROM tokens
+            INNER JOIN numfids ON (numfids.channel_id = tokens.channel_id)
             LEFT JOIN verifications as v
                     ON (v.fid=tokens.fid AND v.deleted_at IS NULL 
                         AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
@@ -839,18 +854,21 @@ def fetch_distribution_fids(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    batch_size: int,
     channel_id: str,
     dist_id: int,
+    batch_id: int
 ):
     fids = []
     limit = 10 if settings.IS_TEST else 1_000_000
+    sql_batch_size = 2 if settings.IS_TEST else 1_000
     select_sql = f"""
         SELECT 
             fid 
         FROM k3l_channel_tokens_log
-        WHERE dist_id = {dist_id} AND channel_id = '{channel_id}'
-        ORDER BY channel_id, amt DESC
+        WHERE channel_id = '{channel_id}'
+        AND dist_id = {dist_id}
+        AND batch_id = {batch_id}
+        ORDER BY fid
         LIMIT {limit} -- safety valve
     """
     logger.info(f"Executing: {select_sql}")
@@ -863,7 +881,7 @@ def fetch_distribution_fids(
                 with conn.cursor() as cursor:
                     cursor.execute(select_sql)
                     while True:
-                        rows = cursor.fetchmany(batch_size)
+                        rows = cursor.fetchmany(sql_batch_size)
                         fids.extend([row[0] for row in rows])
                         if len(rows) == 0:
                             logger.info("No more rows to process")
@@ -889,10 +907,10 @@ def fetch_distribution_ids(
             status_condn = f" = '{status}' " 
     select_sql = f"""
         SELECT 
-            distinct channel_id, dist_id 
+            distinct channel_id, dist_id, batch_id 
         FROM k3l_channel_tokens_log
         WHERE dist_status {status_condn}
-        ORDER BY channel_id, dist_id
+        ORDER BY channel_id, dist_id, batch_id
         LIMIT {limit} -- safety valve
     """
     logger.info(f"Executing: {select_sql}")
@@ -921,6 +939,7 @@ def fetch_distributions_one_channel(
         SELECT 
             channel_id, 
             dist_id,
+            batch_id,
             json_agg(
                 json_build_object(
                 'address', fid_address,
@@ -931,8 +950,8 @@ def fetch_distributions_one_channel(
         WHERE dist_status is NULL
         AND amt > 0
         AND fid_address IS NOT NULL
-        GROUP BY channel_id, dist_id
-        ORDER BY channel_id, dist_id
+        GROUP BY channel_id, dist_id, batch_id
+        ORDER BY channel_id, dist_id, batch_id
         LIMIT 1
     """
     logger.info(f"Executing: {select_sql}")
@@ -958,6 +977,7 @@ def update_distribution_status(
     pg_dsn: str,
     timeout_ms: int,
     dist_id: int,
+    batch_id: int,
     channel_id: str,
     txn_hash: str,
     old_status:TokenDistStatus,
@@ -981,6 +1001,7 @@ def update_distribution_status(
         WHERE dist_status {status_condn} 
         AND channel_id = '{channel_id}'
         AND dist_id = {dist_id}
+        AND batch_id = {batch_id}
     """
     logger.info(f"Executing: {update_sql}")
     start_time = time.perf_counter()
@@ -1004,6 +1025,7 @@ def update_token_bal(
     pg_dsn: str,
     timeout_ms: int,
     dist_id: int,
+    batch_id: int,
     channel_id: str,
 ):
     update_sql = f"""
@@ -1014,6 +1036,7 @@ def update_token_bal(
             WHERE dist_status = 'success' 
                 AND channel_id = '{channel_id}'
             AND dist_id = {dist_id}
+            AND batch_id = {batch_id}
         )
         MERGE INTO k3l_channel_tokens_bal as bal
         USING eligible_fids as fids 
