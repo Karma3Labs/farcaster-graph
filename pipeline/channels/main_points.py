@@ -43,8 +43,9 @@ class WeightedModel(StrEnum):
     cbrt_weighted = "cbrt_weighted"
 
 class RedditModel(StrEnum):
-    reddit_default = "reddit_default"
-    reddit_cast_weighted = "reddit_cast_weighted"
+    pass
+    # reddit_default = "reddit_default"
+    # reddit_cast_weighted = "reddit_cast_weighted"
 
 class Task(StrEnum):
     genesis = "genesis"
