@@ -144,6 +144,7 @@ def prepare_for_distribution(scope: Scope, reason: str):
                     channel_id=channel_id,
                     reason=reason,
                     is_airdrop=is_new_airdrop,
+                    batch_size=settings.CURA_SCMGR_BATCH_SIZE
                 )
                 logger.info(f"Prepped distribution for channel '{channel_id}': {dist_id}")
             else:
@@ -151,8 +152,8 @@ def prepare_for_distribution(scope: Scope, reason: str):
 
 
 def distribute_tokens():
-    logger.error("Short-circuiting token distribution.")
-    return
+    # logger.error("Short-circuiting token distribution.")
+    # return
     if settings.IS_TEST:
         logger.warning("Skipping token distribution in test mode.")
         return
@@ -181,7 +182,8 @@ def distribute_tokens():
                 return
             channel_id = channel_distributions[0]
             dist_id = channel_distributions[1]
-            distributions = channel_distributions[2]
+            batch_id = channel_distributions[2]
+            distributions = channel_distributions[3]
             channel_config = channel_db_utils.fetch_rewards_config_list(
                 logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS, channel_id
             )[0]
@@ -195,6 +197,7 @@ def distribute_tokens():
             scm_distribute(
                 http_session=s,
                 dist_id=dist_id,
+                batch_id=batch_id,
                 channel_id=channel_id,
                 tax_amt=tax_amount,
                 distributions=distributions,
@@ -205,6 +208,7 @@ def distribute_tokens():
                 pg_dsn=pg_dsn,
                 timeout_ms=upsert_timeout_ms,
                 dist_id=dist_id,
+                batch_id=batch_id,
                 channel_id=channel_id,
                 txn_hash=None,
                 old_status=TokenDistStatus.NULL,
@@ -233,12 +237,16 @@ def cura_notify(channel_id, fids):
     else:
         logger.info(f"Notification sent: {res_json}")
 
-def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
+def scm_distributionId(dist_id, batch_id):
+    return f"{dist_id}-{batch_id}"
+
+def scm_distribute(http_session, dist_id, batch_id, channel_id, tax_amt, distributions):
+    did = scm_distributionId(dist_id, batch_id)
     logger.info(
-        f"call smartcontractmgr for distributionId: {dist_id} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
+        f"call smartcontractmgr for distributionId: {did} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
     )
     logger.info(f"sample of distributions: {random.sample(distributions, min(10, len(distributions)))}")
-    payload = {'distributionId': dist_id, 'taxAmount': str(tax_amt), 'channelId': channel_id, 'distributions': distributions}
+    payload = {'distributionId': did, 'taxAmount': str(tax_amt), 'channelId': channel_id, 'distributions': distributions}
     logger.trace(f"payload: {payload}")
     connect_timeout_s = settings.CURA_SCMGR_CONNECT_TIMEOUT_SECS
     read_timeout_s = settings.CURA_SCMGR_READ_TIMEOUT_SECS
@@ -252,7 +260,7 @@ def scm_distribute(http_session, dist_id, channel_id, tax_amt, distributions):
             err_json = response.json()
             logger.error(f"500 Error: {response.json()}")
             if err_json.get('error') == 'Distribution already has an onchain transaction':
-                logger.info(f"Distribution {dist_id} already has an onchain transaction")
+                logger.info(f"Distribution {did} already has an onchain transaction")
                 return
             else:
                 raise Exception(f"500 Error: {err_json}")
@@ -286,9 +294,9 @@ def verify_distribution():
         # reuse TCP connection for multiple scm requests
         s.auth = HTTPBasicAuth(settings.CURA_SCMGR_USERNAME, settings.CURA_SCMGR_PASSWORD.get_secret_value())
         timeout=(connect_timeout_s, read_timeout_s)
-        for channel_id, dist_id in submitted_dist_ids_list:
+        for channel_id, dist_id, batch_id in submitted_dist_ids_list:
             url = urllib.parse.urljoin(
-                settings.CURA_SCMGR_URL, f"/distribution/{dist_id}",
+                settings.CURA_SCMGR_URL, f"/distribution/{scm_distributionId(dist_id, batch_id)}",
             )
             logger.info(f"Checking token distribution status: {url}")
             try:
@@ -306,6 +314,7 @@ def verify_distribution():
                         pg_dsn=pg_dsn,
                         timeout_ms=upsert_timeout_ms,
                         dist_id=dist_id,
+                        batch_id=batch_id,
                         channel_id=channel_id,
                         txn_hash=data.get('tx'),
                         old_status=TokenDistStatus.SUBMITTED,
@@ -319,6 +328,7 @@ def verify_distribution():
                             pg_dsn=pg_dsn,
                             timeout_ms=upsert_timeout_ms,
                             dist_id=dist_id,
+                            batch_id=batch_id,
                             channel_id=channel_id,
                         )                
                 elif response.status_code == 404:
@@ -331,10 +341,14 @@ def verify_distribution():
                 logger=logger,
                 pg_dsn=pg_dsn,
                 timeout_ms=settings.POSTGRES_TIMEOUT_MS,
-                batch_size=2,
                 channel_id=channel_id,
                 dist_id=dist_id,
+                batch_id=batch_id
             )
+            if settings.IS_TEST:
+                logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
+                logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
+                continue
             cura_notify(channel_id=channel_id, fids=fids)
             logger.info(f"Distribution verified for channel '{channel_id}'")
 
