@@ -617,7 +617,8 @@ CREATE TABLE public.k3l_channel_rewards_config (
     airdrop_pmil int2 NOT NULL DEFAULT 50,
     community_supply int8 NOT NULL DEFAULT 500000000,
     insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT k3l_channel_rewards_config_ch_unq UNIQUE ( channel_id )
 );
 
 CREATE INDEX k3l_channel_rewards_config_ch_idx ON public.k3l_channel_rewards_config USING btree (channel_id);
@@ -631,7 +632,8 @@ GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_rewards_config TO k3l_readon
 CREATE TABLE public.k3l_channel_points_allowlist (
     channel_id text NOT NULL,
     is_allowed boolean NOT NULL DEFAULT true,
-    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT k3l_channel_points_allowlist_ch_uniq UNIQUE (channel_id)
 );
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_allowlist TO k3l_readonly;
