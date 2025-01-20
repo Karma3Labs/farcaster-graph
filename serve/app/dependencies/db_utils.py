@@ -560,8 +560,8 @@ async def get_top_channel_earnings(
             bal.latest_earnings as latest_earnings,
             bal.update_ts as bal_update_ts
         FROM {table_name} as bal
-        INNER JOIN k3l_channel_points_allowlist as allo 
-            ON (allo.channel_id=bal.channel_id AND allo.is_allowed=true AND allo.channel_id=$1)
+        INNER JOIN k3l_channel_rewards_config as config 
+            ON (config.channel_id=bal.channel_id AND config.is_points=true AND config.channel_id=$1)
         {orderby_clause}
         OFFSET $2
         LIMIT $3
@@ -591,8 +591,8 @@ async def get_top_channel_earnings(
                 bal.latest_earnings as latest_earnings,
                 bal.update_ts as bal_update_ts
             FROM {table_name} as bal
-            INNER JOIN k3l_channel_points_allowlist as allo 
-                on (allo.channel_id=bal.channel_id and allo.is_allowed=true)
+            INNER JOIN k3l_channel_rewards_config as config 
+                on (config.channel_id=bal.channel_id and config.is_points=true)
             LEFT JOIN fnames on (fnames.fid = bal.fid)
             LEFT JOIN user_data on (user_data.fid = bal.fid)
             WHERE
@@ -820,9 +820,9 @@ async def get_tokens_distrib_preview(
                 bal.channel_id as channel_id,
                 round(bal.{points_col},0) as amt
             FROM k3l_channel_points_bal as bal
-            INNER JOIN k3l_channel_points_allowlist as allo 
-                ON (allo.channel_id = bal.channel_id AND allo.is_allowed=true 
-                    AND allo.channel_id = $1)
+            INNER JOIN k3l_channel_rewards_config as config 
+                ON (config.channel_id = bal.channel_id AND config.is_points=true 
+                    AND config.channel_id = $1)
             LEFT JOIN latest_log as tlog 
                 ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
                     AND tlog.max_points_ts = bal.update_ts)
@@ -909,8 +909,8 @@ async def get_top_channel_profiles(
             CROSS JOIN total
             LEFT JOIN fnames on (fnames.fid = ch.fid)
             LEFT JOIN user_data on (user_data.fid = ch.fid)
-            LEFT JOIN k3l_channel_points_allowlist as channelpts 
-                on (channelpts.channel_id=ch.channel_id and channelpts.is_allowed=true)
+            LEFT JOIN k3l_channel_rewards_config as channelpts 
+                on (channelpts.channel_id=ch.channel_id and channelpts.is_points=true)
             LEFT JOIN k3l_channel_points_bal as bal 
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid 
                     and bal.channel_id=channelpts.channel_id)
