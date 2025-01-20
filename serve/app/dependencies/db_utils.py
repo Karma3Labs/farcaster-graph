@@ -2117,7 +2117,11 @@ async def get_top_channel_holders(
             END as latest_earnings,
             tok.latest_earnings as token_latest_earnings,
             CASE
-                WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+                WHEN (
+                        (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                        OR
+                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                    ) THEN plog.earnings
                 ELSE 0
             END as weekly_earnings,
             0 as token_weekly_earnings,
