@@ -461,8 +461,8 @@ async def get_channel_stats(
     token_num_holders,
     --   token_p25_balance,token_p50_balance,token_p75_balance,token_p90_balance,
     token_min_balance,token_max_balance
-    FROM follower_stats as fids
-    LEFT JOIN rank_stats as rs
+    FROM rank_stats as rs
+    LEFT JOIN follower_stats as fids
         ON (rs.ranked_cid = fids.channel_id)
     LEFT JOIN member_stats as ms
         ON (ms.member_cid = fids.channel_id)
@@ -1055,7 +1055,11 @@ async def get_channel_profile_ranks(
                 END as latest_earnings,
                 tok.latest_earnings as token_latest_earnings,
                 CASE
-                    WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+                    WHEN (
+                        (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                        OR
+                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                    ) THEN plog.earnings
                     ELSE 0
                 END as weekly_earnings,
                 0 as token_weekly_earnings,
@@ -1990,7 +1994,11 @@ async def get_top_channel_followers(
         END as latest_earnings,
         tok.latest_earnings as token_latest_earnings,
         CASE
-            WHEN (plog.insert_ts > {TUESDAY_UTC_TIMESTAMP}) THEN plog.earnings
+            WHEN (
+                    (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                    OR
+                    (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                ) THEN plog.earnings
             ELSE 0
         END as weekly_earnings,
         0 as token_weekly_earnings,
