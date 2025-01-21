@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.models import DagRun
 from airflow.decorators import task, task_group
 from airflow.utils.state import DagRunState
@@ -28,6 +29,9 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
+
+    b1 = EmptyOperator(task_id="all")
+    b2 = EmptyOperator(task_id="weekly")
 
     @task_group(group_id='tg_all')
     def tg_all():
@@ -93,19 +97,19 @@ with DAG(
         try:
             pts_run = get_last_successful_dag_run(POINTS_DAG_NAME)
         except ValueError:
-            return "tg_skip_weekly"
+            return "weekly"
         
         prev_tokens_date = context['prev_data_interval_start_success']
         if prev_tokens_date < pts_run.end_date:
             # there has been no successful token run since the last points run
             # let's trigger weekly distribution of tokens
             # to see if any weekly tokens need to be distributed
-            return "tg_all"
-        return "tg_skip_weekly"
+            return "all"
+        return "weekly"
 
     check_last_successful_points = check_last_successful_points()
 
-    check_last_successful_points  >> tg_all()
+    check_last_successful_points  >> b1 >> tg_all()
 
-    check_last_successful_points  >> tg_skip_weekly()
+    check_last_successful_points  >> b2 >> tg_skip_weekly()
 
