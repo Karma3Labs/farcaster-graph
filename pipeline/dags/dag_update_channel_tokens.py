@@ -29,7 +29,7 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    @task_group(group_id='all_group')
+    @task_group(group_id='tg_all')
     def tg_all():
         prepare_airdrop = BashOperator(
             task_id="prepare_airdrop",
@@ -53,7 +53,7 @@ with DAG(
         prepare_airdrop >> prepare_weekly >> distribute >> verify
 
 
-    @task_group(group_id='skip_weekly_group')
+    @task_group(group_id='tg_skip_weekly')
     def tg_skip_weekly():
         # WARNING: DRY principle breaks down in Airflow task definitions
         # ...so unfortunately we have to repeat ourself here
