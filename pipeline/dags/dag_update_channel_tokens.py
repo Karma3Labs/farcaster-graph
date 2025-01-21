@@ -95,7 +95,7 @@ with DAG(
         except ValueError:
             return "tg_skip_weekly"
         
-        prev_tokens_date = context['prev_execution_date_success']
+        prev_tokens_date = context['prev_data_interval_start_success']
         if prev_tokens_date < pts_run.end_date:
             # there has been no successful token run since the last points run
             # let's trigger weekly distribution of tokens
