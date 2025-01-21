@@ -31,7 +31,7 @@ with DAG(
 ) as dag:
 
     b1 = EmptyOperator(task_id="all")
-    b2 = EmptyOperator(task_id="weekly")
+    b2 = EmptyOperator(task_id="skip_weekly")
 
     @task_group(group_id='tg_all')
     def tg_all():
@@ -97,7 +97,7 @@ with DAG(
         try:
             pts_run = get_last_successful_dag_run(POINTS_DAG_NAME)
         except ValueError:
-            return "weekly"
+            return "skip_weekly"
         
         prev_tokens_date = context['prev_data_interval_start_success']
         if prev_tokens_date < pts_run.end_date:
@@ -105,7 +105,7 @@ with DAG(
             # let's trigger weekly distribution of tokens
             # to see if any weekly tokens need to be distributed
             return "all"
-        return "weekly"
+        return "skip_weekly"
 
     check_last_successful_points = check_last_successful_points()
 
