@@ -626,6 +626,7 @@ async def get_top_channel_earnings(
 async def get_tokens_distrib_details(
         channel_id: str,
         dist_id: int,
+        batch_id: int,
         offset: int,
         limit: int,
         pool: Pool
@@ -639,9 +640,10 @@ async def get_tokens_distrib_details(
     WITH 
     dist_id AS (
         SELECT
-            channel_id, dist_id
+            channel_id, dist_id, batch_id
         FROM k3l_channel_tokens_log
         WHERE channel_id=$1
+        AND batch_id=$2
         {dist_filter} 
         LIMIT 1
     ),
@@ -649,6 +651,7 @@ async def get_tokens_distrib_details(
         SELECT
             tlog.channel_id,
             tlog.dist_id,
+            tlog.batch_id,
             tlog.fid,
             fid_address,
             fnames.fname as fname,
@@ -658,7 +661,10 @@ async def get_tokens_distrib_details(
             tlog.amt,
             tlog.txn_hash
         FROM k3l_channel_tokens_log AS tlog
-        INNER JOIN dist_id ON (tlog.channel_id = dist_id.channel_id AND dist_id.dist_id = tlog.dist_id)
+        INNER JOIN dist_id 
+            ON (tlog.channel_id = dist_id.channel_id 
+                AND dist_id.dist_id = tlog.dist_id
+                AND dist_id.batch_id = tlog.batch_id)
         LEFT JOIN fnames on (fnames.fid = tlog.fid)
         LEFT JOIN user_data on (user_data.fid = tlog.fid)
     )
@@ -666,6 +672,7 @@ async def get_tokens_distrib_details(
         fid,
         any_value(channel_id) as channel_id,
         any_value(dist_id) as dist_id,
+        any_value(batch_id) as batch_id,
         any_value(fid_address) as fid_address,
         any_value(fname) as fname,
         any_value(username) as username,
@@ -676,10 +683,10 @@ async def get_tokens_distrib_details(
     FROM distrib_rows
     GROUP BY fid
     ORDER BY amt DESC
-    OFFSET $2
-    LIMIT $3
+    OFFSET $3
+    LIMIT $4
     """
-    return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, batch_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
 async def get_tokens_distrib_overview(
@@ -691,26 +698,32 @@ async def get_tokens_distrib_overview(
     sql_query = """
     SELECT 
         channel_id,
-    dist_id,
+        dist_id,
+        batch_id,
         count(distinct fid) as num_fids,
-    any_value(txn_hash) as txn_hash,
-    case
-        when any_value(dist_status) is NULL THEN 'Pending'
-        when any_value(dist_status) = 'submitted' THEN 'In Progress'
-        when any_value(dist_status) = 'success' THEN 'Completed'
-        when any_value(dist_status) ='failure' THEN 'Failed'
-        else 'Unknown'
-    END as dist_status,
-    any_value(dist_reason) as dist_reason,
-    max(update_ts) as update_ts,
-        sum(amt) as total_amt,
-        max(amt) as max_amt,
-    min(amt) as min_amt,
+        any_value(txn_hash) as txn_hash,
+        CASE
+            when any_value(dist_status) is NULL THEN 'Pending'
+            when any_value(dist_status) = 'submitted' THEN 'In Progress'
+            when any_value(dist_status) = 'success' THEN 'Completed'
+            when any_value(dist_status) ='failure' THEN 'Failed'
+            else 'Unknown'
+        END as dist_status,
+        CASE
+    	    when any_value(dist_reason) ~ 'airdrop' THEN 'Airdrop'
+            when any_value(dist_reason) ~ 'manual'  THEN 'Manual'
+            when any_value(dist_reason) ~ 'scheduled' THEN 'Scheduled'
+     	    else 'Unknown'
+        END as dist_reason,
+        max(update_ts) as update_ts,
+            sum(amt) as total_amt,
+            max(amt) as max_amt,
+        min(amt) as min_amt,
     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY amt) AS median_amt
     FROM k3l_channel_tokens_log 
     WHERE channel_id = $1
-    GROUP BY channel_id, dist_id
-    ORDER BY dist_id DESC
+    GROUP BY channel_id, dist_id, batch_id
+    ORDER BY dist_id DESC, batch_id ASC
     OFFSET $2
     LIMIT $3
     """

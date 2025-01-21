@@ -156,6 +156,7 @@ async def get_tokens_distrib_overview(
 async def get_tokens_distrib_details(
         channel: str,
         dist_id: Annotated[int | None, Query()] = None,
+        batch_id: Annotated[int | None, Query()] = 1,
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
@@ -163,6 +164,7 @@ async def get_tokens_distrib_details(
   details = await db_utils.get_tokens_distrib_details(
         channel_id=channel,
         dist_id=dist_id,
+        batch_id=batch_id,
         offset=offset,
         limit=limit,
         pool=pool)
