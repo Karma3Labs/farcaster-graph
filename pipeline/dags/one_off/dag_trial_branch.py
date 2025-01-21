@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import pytz
+import datetime
 from airflow import DAG
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.operators.empty import EmptyOperator
@@ -12,6 +14,14 @@ default_args = {
     'retries': 5,
     'retry_delay': timedelta(minutes=2),
 }
+
+def _monday_9ampacific_in_utc_time():
+    pacific_tz = pytz.timezone('US/Pacific')
+    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    utc_time = pacific_time.astimezone(pytz.utc)
+    monday = utc_time - timedelta(days=utc_time.weekday())
+    return monday
 
 with DAG(
     dag_id='one_off_trial_branch',
@@ -27,6 +37,10 @@ with DAG(
     @task.branch(task_id="branch")
     def branch_fn(**context):
         print(f"context: {context}")
+        prev = context['prev_execution_date_success']
+        print(f"prev_execution_date_success: {prev}")
+        if prev > _monday_9ampacific_in_utc_time():
+            return "t2"
         return "t1"
     
     def empty_fn(*args, **kwargs):

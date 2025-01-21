@@ -1,9 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.operators.empty import EmptyOperator
 from airflow.models import DagRun
 from airflow.decorators import task, task_group
 from airflow.utils.state import DagRunState
@@ -18,7 +16,6 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-POINTS_FREQUENCY_H = 1  # Define the frequency in hours
 POINTS_DAG_NAME = 'update_channel_points_v2'
 
 with DAG(
@@ -26,7 +23,6 @@ with DAG(
     default_args=default_args,
     description='update channel tokens started by trigger dag or manually',
     start_date=datetime(2024, 7, 10, 18),
-    # schedule_interval='0 0 * * *', # every day at 00:00 UTC / 16:00 PST 
     schedule_interval=timedelta(minutes=5),
     is_paused_upon_creation=True,
     max_active_runs=1,
@@ -77,51 +73,39 @@ with DAG(
             dag=dag)
         prepare_airdrop >> distribute >> verify
 
-    skip_points_dag = EmptyOperator(task_id="skip_points_dag")
-
-    trigger_points_dag = TriggerDagRunOperator(
-        task_id='trigger_points_dag',
-        trigger_dag_id=POINTS_DAG_NAME,
-        execution_date='{{ macros.datetime.now() }}',
-        wait_for_completion=True,
-        poke_interval=60,
-        conf={"trigger": "trigger_channel_points_tokens"},
-    )
-
-    @task.branch(task_id="check_last_successful_points")
-    def check_last_successful_points(**context) -> bool:
+    def get_last_successful_dag_run(dag_id):
         dag_runs = DagRun.find(dag_id=POINTS_DAG_NAME, state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
-            # No previous runs
+            # Points dag has never been run
             print(f"No previous runs of {POINTS_DAG_NAME}")
-            return "trigger_main_dag"
+            raise ValueError(f"No successful runs found for DAG: {dag_id}")
         print(f"Found {len(dag_runs)} previous runs of {POINTS_DAG_NAME}")
         dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
         print("Last run: ", dag_runs[0]) 
         # Query the last successful DAG run
         last_run = dag_runs[0]
         print("Last run: ", last_run)
-        current_time = datetime.now(timezone.utc)
-        delta = POINTS_FREQUENCY_H
-        if last_run:
-            print("Last run end_date: ", last_run.end_date)
-            print("Last run start_date: ", last_run.start_date)
-            if last_run.end_date:
-                delta_last = (current_time - last_run.end_date).total_seconds() / 3600
-                delta = min(delta_last, delta)
-            if last_run.start_date:
-                delta_last = (current_time - last_run.start_date).total_seconds() / 3600
-                delta = min(delta_last, delta)
-        print(f"Delta: {delta}")
-        if delta >= POINTS_FREQUENCY_H:
-            # Last run was more than FREQUENCY_H hours ago, so we should run
-            print(f"Last run of {POINTS_DAG_NAME} was more than {POINTS_FREQUENCY_H} hours ago, so we should run")
-            return "trigger_points_dag"
-        return "skip_points_dag"
+        return last_run
+    
+
+    @task.branch(task_id="check_last_successful_points")
+    def check_last_successful_points(**context) -> bool:
+        try:
+            pts_run = get_last_successful_dag_run(POINTS_DAG_NAME)
+        except ValueError:
+            return "tg_skip_weekly"
+        
+        prev_tokens_date = context['prev_execution_date_success']
+        if prev_tokens_date < pts_run.end_date:
+            # there has been no successful token run since the last points run
+            # let's trigger weekly distribution of tokens
+            # to see if any weekly tokens need to be distributed
+            return "tg_all"
+        return "tg_skip_weekly"
 
     check_last_successful_points = check_last_successful_points()
 
-    check_last_successful_points >> trigger_points_dag >> tg_all()
+    check_last_successful_points  >> tg_all()
 
-    check_last_successful_points >> skip_points_dag >> tg_skip_weekly()
+    check_last_successful_points  >> tg_skip_weekly()
 
