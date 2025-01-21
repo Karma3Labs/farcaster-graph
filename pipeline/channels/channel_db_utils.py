@@ -805,7 +805,7 @@ def insert_tokens_log(
             SELECT
                 tokens.fid,
                 COALESCE(
-                        (array_agg(v.claim->>'address' order by timestamp))[1], 
+                        (array_agg(v.claim->>'address' order by timestamp DESC))[1], 
                         '0x' || encode(any_value(custody_address),'hex')) as fid_address,
                 tokens.channel_id,
                 max(amt) as amt,
