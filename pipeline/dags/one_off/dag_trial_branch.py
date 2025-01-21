@@ -25,7 +25,8 @@ with DAG(
 ) as dag:
     
     @task.branch(task_id="branch")
-    def branch_fn():
+    def branch_fn(**context):
+        print(f"context: {context}")
         return "t1"
     
     def empty_fn(*args, **kwargs):
