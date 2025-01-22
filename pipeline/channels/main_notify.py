@@ -116,8 +116,16 @@ if __name__ == "__main__":
         help="dummy arg to prevent accidental execution",
         required=True
     )
+    parser.add_argument(
+        "--dry-run",
+        help="indicate dry-run mode",
+        action="store_true"
+    ) 
     args = parser.parse_args()
     print(args)
     logger.info(settings)
+    
+    if args.dry_run:
+        settings.IS_TEST = True
 
     notify()
