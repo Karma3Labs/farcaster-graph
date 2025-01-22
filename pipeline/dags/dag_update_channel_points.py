@@ -19,7 +19,7 @@ with DAG(
     default_args=default_args,
     description='update channel points triggered by update_channel_tokens dag',
     start_date=datetime(2024, 7, 10, 18),
-    schedule_interval='17 0 * * *', # every day at 17:00 UTC / 09:00 PDT 
+    schedule_interval='0 17 * * *', # every day at 17:00 UTC / 09:00 PDT 
     # schedule_interval=timedelta(days=1),
     # schedule=None, 
     is_paused_upon_creation=True,
