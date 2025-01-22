@@ -215,27 +215,6 @@ def distribute_tokens():
                 new_status=TokenDistStatus.SUBMITTED
             )
 
-def cura_notify(channel_id, fids):
-
-    logger.info(f"Sending notification for channel {channel_id}")
-    title = f"/{channel_id} leaderboard updated!"
-    body = f"Claim your /{channel_id} tokens!"
-    req = {
-        "title": title,
-        "body": body,
-        "channelId": channel_id,
-        "fids": fids
-    }
-    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
-    logger.info(f"{url}: {req}")
-
-    response = niquests.post(url, json=req, auth=settings.CURA_FE_API_KEY)
-    res_json = response.json()
-    if response.status_code != 200:
-        logger.error(f"Failed to send notification: {res_json}")
-        raise Exception(f"Failed to send notification: {res_json}")
-    else:
-        logger.info(f"Notification sent: {res_json}")
 
 def scm_distributionId(dist_id, batch_id):
     return f"{dist_id}-{batch_id}"
@@ -337,19 +316,6 @@ def verify_distribution():
             except Exception as e:
                 logger.error(f"Failed to call smartcontractmgr: {e}")
                 raise e
-            fids = channel_db_utils.fetch_distribution_fids(
-                logger=logger,
-                pg_dsn=pg_dsn,
-                timeout_ms=settings.POSTGRES_TIMEOUT_MS,
-                channel_id=channel_id,
-                dist_id=dist_id,
-                batch_id=batch_id
-            )
-            if settings.IS_TEST:
-                logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
-                logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
-                continue
-            cura_notify(channel_id=channel_id, fids=fids)
             logger.info(f"Distribution verified for channel '{channel_id}'")
 
 
