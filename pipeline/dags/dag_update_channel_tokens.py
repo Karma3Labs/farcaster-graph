@@ -94,7 +94,7 @@ with DAG(
             print(f"No previous runs of {dag_id}")
             raise ValueError(f"No successful runs found for DAG: {dag_id}")
         print(f"Found {len(dag_runs)} previous runs of {dag_id}")
-        dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
+        dag_runs.sort(key=lambda x: x.end_date, reverse=True)
         print("Last run: ", dag_runs[0]) 
         # Query the last successful DAG run
         last_run = dag_runs[0]
@@ -110,6 +110,7 @@ with DAG(
             return "skip_weekly"
         
         prev_tokens_date = context['prev_data_interval_start_success']
+        print(f"prev_tokens_date: {prev_tokens_date}, pts_run.end_date: {pts_run.end_date}")
         if prev_tokens_date < pts_run.end_date:
             # there has been no successful token run since the last points run
             # let's trigger weekly distribution of tokens
