@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
-# from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 
 from hooks.discord import send_alert_discord

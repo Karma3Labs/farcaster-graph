@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     PERSONAL_IGRAPH_URL: str
 
     USE_NEYNAR:bool = True # Deprecated. Remove in future update.
+   # We don't have a test env, so control is in the code
     IS_TEST: bool = False
     TEST_CURSOR_LIMIT: int = 2
     TEST_CHANNEL_LIMIT: int = 2
@@ -98,6 +99,7 @@ class Settings(BaseSettings):
 
     CURA_FE_API_URL: str = 'changeme'
     CURA_FE_API_KEY: str = 'changeme'
+    CURA_NOTIFY_CHUNK_SIZE: int = 100
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`

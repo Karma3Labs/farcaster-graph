@@ -849,26 +849,34 @@ def insert_tokens_log(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return dist_id
 
-@Timer(name="fetch_distribution_fids")
-def fetch_distribution_fids(
+@Timer(name="fetch_notify_entries")
+def fetch_notify_entries(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
-    channel_id: str,
-    dist_id: int,
-    batch_id: int
-):
-    fids = []
+) -> tuple[str, pd.DataFrame]:
+    END_TIMESTAMP = (
+        f"TO_TIMESTAMP('{_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC'"
+    )
+    BEGIN_TIMESTAMP = (
+        f"TO_TIMESTAMP('{_last_dow_utc_time(DOW.TUESDAY).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC'"
+    )
+
+    entries = []
     limit = 10 if settings.IS_TEST else 1_000_000
-    sql_batch_size = 2 if settings.IS_TEST else 1_000
+    sql_batch_size = 2 if settings.IS_TEST else 10_000
     select_sql = f"""
         SELECT 
-            fid 
-        FROM k3l_channel_tokens_log
-        WHERE channel_id = '{channel_id}'
-        AND dist_id = {dist_id}
-        AND batch_id = {batch_id}
-        ORDER BY fid
+            fid, channel_id
+        FROM k3l_channel_points_log
+        WHERE 
+            model_name='cbrt_weighted'
+            AND insert_ts > ({BEGIN_TIMESTAMP})
+            AND insert_ts < ({END_TIMESTAMP})
+        GROUP BY channel_id, fid    
+        ORDER BY channel_id, fid
         LIMIT {limit} -- safety valve
     """
     logger.info(f"Executing: {select_sql}")
@@ -882,15 +890,17 @@ def fetch_distribution_fids(
                     cursor.execute(select_sql)
                     while True:
                         rows = cursor.fetchmany(sql_batch_size)
-                        fids.extend([row[0] for row in rows])
+                        entries.extend(rows)
                         if len(rows) == 0:
                             logger.info("No more rows to process")
                             break
+                    columns = [desc[0] for desc in cursor.description]
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
-    return fids
+    return (_dow_utc_time(DOW.TUESDAY), pd.DataFrame(entries, columns=columns))
+
 
 @Timer(name="fetch_distribution_ids")
 def fetch_distribution_ids(
