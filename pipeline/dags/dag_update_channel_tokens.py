@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.models import DagRun
 from airflow.decorators import task, task_group
 from airflow.utils.state import DagRunState
@@ -35,6 +36,7 @@ with DAG(
 
     @task_group(group_id='tg_all')
     def tg_all():
+
         prepare_airdrop = BashOperator(
             task_id="prepare_airdrop",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
@@ -54,7 +56,15 @@ with DAG(
             task_id="verify",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
             dag=dag)
-        prepare_airdrop >> prepare_weekly >> distribute >> verify
+
+        trigger_notify_dag = TriggerDagRunOperator(
+            task_id='trigger_notify_dag',
+            trigger_dag_id='update_channel_notify',
+            execution_date='{{ macros.datetime.now() }}',
+            conf={"trigger": "update_channel_tokens"},
+        )
+
+        prepare_airdrop >> prepare_weekly >> distribute >> verify >> trigger_notify_dag
 
 
     @task_group(group_id='tg_skip_weekly')
@@ -78,12 +88,12 @@ with DAG(
         prepare_airdrop >> distribute >> verify
 
     def get_last_successful_dag_run(dag_id):
-        dag_runs = DagRun.find(dag_id=POINTS_DAG_NAME, state=DagRunState.SUCCESS)
+        dag_runs = DagRun.find(dag_id=dag_id, state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
-            # Points dag has never been run
-            print(f"No previous runs of {POINTS_DAG_NAME}")
+            # Given dag_id has never run before
+            print(f"No previous runs of {dag_id}")
             raise ValueError(f"No successful runs found for DAG: {dag_id}")
-        print(f"Found {len(dag_runs)} previous runs of {POINTS_DAG_NAME}")
+        print(f"Found {len(dag_runs)} previous runs of {dag_id}")
         dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
         print("Last run: ", dag_runs[0]) 
         # Query the last successful DAG run
