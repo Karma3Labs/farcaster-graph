@@ -18,10 +18,10 @@ default_args = {
 
 def _monday_9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
-    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
-    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    pacific_9am_str = ' '.join([datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    pacific_time = pacific_tz.localize(datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
     utc_time = pacific_time.astimezone(pytz.utc)
-    monday_utc_time = utc_time - datetime.timedelta(days=utc_time.weekday() - 0) 
+    monday_utc_time = utc_time - timedelta(days=utc_time.weekday() - 0) 
     return monday_utc_time
 
 with DAG(
@@ -45,7 +45,7 @@ with DAG(
     @task.branch(task_id="check_last_successful")
     def check_last_successful(**context) -> bool:
         prev_tokens_date = context['prev_data_interval_start_success']
-        if prev_tokens_date < _monday_9ampacific_in_utc_time():
+        if prev_tokens_date is None or prev_tokens_date < _monday_9ampacific_in_utc_time():
             # Last successful run was before 9am on Monday, so we should run
             print(f"Last run was before {prev_tokens_date}, so we should run")
             return "notify"
