@@ -35,19 +35,26 @@ def create_trigger_dag():
         conf={"trigger": "one_off_trial_trigger_src"},
     )
 
-    @task.branch(task_id="check_last_successful_run")
-    def check_last_successful_run(**context) -> bool:
-        dag_runs = DagRun.find(dag_id="one_off_trial_trigger_tgt", state=DagRunState.SUCCESS)
+    def get_last_successful_dag_run(dag_id):
+        dag_runs = DagRun.find(dag_id=dag_id, state=DagRunState.SUCCESS)
         if not dag_runs or len(dag_runs) == 0:
-            # No previous runs
-            print("No previous runs")
-            return "trigger_main_dag"
-        print(f"Found {len(dag_runs)} previous runs")
+            # Given dag_id has never run before
+            print(f"No previous runs of {dag_id}")
+            raise ValueError(f"No successful runs found for DAG: {dag_id}")
+        print(f"Found {len(dag_runs)} previous runs of {dag_id}")
         dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
         print("Last run: ", dag_runs[0]) 
         # Query the last successful DAG run
         last_run = dag_runs[0]
         print("Last run: ", last_run)
+        return last_run
+
+    @task.branch(task_id="check_last_successful_run")
+    def check_last_successful_run(**context) -> bool:
+        try:
+            last_run = get_last_successful_dag_run("one_off_trial_trigger_tgt")
+        except ValueError:
+            return "trigger_main_dag"
         current_time = datetime.now(timezone.utc)
         delta = FREQUENCY_H
         if last_run:
