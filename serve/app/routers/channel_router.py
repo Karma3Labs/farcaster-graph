@@ -343,11 +343,12 @@ async def get_popular_channel_casts(
 @router.get("/casts/daily/{channel}")
 async def get_trending_casts(
         channel: str,
-        channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         max_cast_age: Annotated[int | None, Query(ge=0, le=30)] = 1,
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
                                          " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
+        time_decay: Annotated[bool, Query()] = True,
         offset: Annotated[int | None, Query(ge=0)] = 0,
         limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
@@ -358,6 +359,7 @@ async def get_trending_casts(
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
         max_cast_age=max_cast_age,
         agg=agg,
+        time_decay=time_decay,
         offset=offset,
         limit=limit,
         pool=pool

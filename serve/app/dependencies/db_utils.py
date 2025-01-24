@@ -2293,6 +2293,7 @@ async def get_trending_channel_casts(
         channel_strategy: str,
         max_cast_age: int,
         agg: ScoreAgg,
+        time_decay: bool,
         offset: int,
         limit: int,
         pool: Pool
@@ -2305,6 +2306,15 @@ async def get_trending_channel_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
+    if time_decay:
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
 
     sql_query = f"""
     WITH
@@ -2318,10 +2328,7 @@ async def get_trending_channel_casts(
                             + (1 * fids.score * ci.liked)
                         )
                         *
-                        power(
-                            1-(1/(365*24)::numeric),
-                            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                        )
+                        {decay_sql}
                     ) as cast_score,
                                 ci.fid,
                     MIN(ci.action_ts) as cast_ts
