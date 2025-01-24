@@ -173,7 +173,7 @@ async def get_tokens_distrib_details(
 @router.get("/rankings/{channel}")
 async def get_top_channel_profiles(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=1000)] = 100,
         lite: bool = True,
@@ -204,7 +204,7 @@ async def get_top_channel_profiles(
 @router.get("/rankings/{channel}/stats")
 async def get_channel_stats(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         pool: Pool = Depends(db_pool.get_db)
 ):
     """
@@ -223,7 +223,7 @@ async def get_channel_rank_for_fids(
         # Example: -d '[1, 2]'
         channel: str,
         fids: list[int],
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         lite: bool = True,
         pool: Pool = Depends(db_pool.get_db)
 ):
@@ -252,7 +252,7 @@ async def get_channel_rank_for_handles(
         # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
         channel: str,
         handles: list[str],
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         pool: Pool = Depends(db_pool.get_db)
 ):
     """
@@ -281,7 +281,7 @@ async def get_channel_rank_for_handles(
 @router.get("/casts/popular/{channel}")
 async def get_popular_channel_casts(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
                                          " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
@@ -414,7 +414,7 @@ async def get_popular_casts_from_degen_graph(
 @router.get("/followers/{channel}")
 async def get_top_channel_followers(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=500000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
@@ -439,7 +439,7 @@ async def get_top_channel_followers(
 @router.get("/holders/{channel}")
 async def get_top_channel_holders(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         orderby: ChannelEarningsOrderBy = Query(ChannelEarningsOrderBy.TOTAL),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=500000)] = 100,
@@ -467,7 +467,7 @@ async def get_top_channel_holders(
 @router.get("/repliers/{channel}")
 async def get_top_channel_repliers(
         channel: str,
-        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.LIFETIME),
+        rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=500000)] = 100,
         pool: Pool = Depends(db_pool.get_db)
