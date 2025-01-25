@@ -5,7 +5,7 @@ import json
 from enum import Enum
 
 from ..config import settings
-from app.models.score_model import ScoreAgg, Weights, Voting
+from app.models.score_model import ScoreAgg, Weights, Voting, Sorting_Order
 from app.models.channel_model import (
     ChannelPointsOrderBy,
     ChannelEarningsOrderBy,
@@ -2293,9 +2293,12 @@ async def get_trending_channel_casts(
         channel_strategy: str,
         max_cast_age: int,
         agg: ScoreAgg,
+        weights: Weights,
         time_decay: bool,
+        normalize: bool,
         offset: int,
         limit: int,
+        sorting_order: Sorting_Order,
         pool: Pool
 ):
     match agg:
@@ -2316,6 +2319,21 @@ async def get_trending_channel_casts(
     else:
         decay_sql = "1"
 
+    if normalize:
+        fidscore_sql = 'cbrt(fids.score)'
+    else:
+        fidscore_sql = 'fids.score'
+
+    match sorting_order:
+        case Sorting_Order.POPULAR:
+            order_sql = 'cast_details.cast_score DESC'
+        case Sorting_Order.RECENT:
+            order_sql = 'cast_details.cast_ts DESC'
+        case Sorting_Order.HOUR:
+            order_sql = 'cast_details.cast_hour DESC, cast_details.cast_score DESC'
+        case Sorting_Order.REACTIONS:
+            order_sql = 'cast_details.reaction_count DESC, cast_details.cast_score DESC'
+
     sql_query = f"""
     WITH
     fid_cast_scores as (
@@ -2323,9 +2341,10 @@ async def get_trending_channel_casts(
                     hash as cast_hash,
                     SUM(
                         (
-                            (1 * fids.score * ci.replied)
-                            + (5 * fids.score * ci.recasted)
-                            + (1 * fids.score * ci.liked)
+                            ({weights.cast} * {fidscore_sql} * ci.casted)
+                            + ({weights.reply} * {fidscore_sql} * ci.replied)
+                            + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                            + ({weights.like} * {fidscore_sql} * ci.liked)
                         )
                         *
                         {decay_sql}
@@ -2401,7 +2420,7 @@ async def get_trending_channel_casts(
         cast_details.cast_hour,
         cast_details.cast_ts,
         cast_details.text
-    ORDER BY cast_score DESC
+    ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
     """

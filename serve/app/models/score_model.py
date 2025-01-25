@@ -18,6 +18,8 @@ class Voting(StrEnum):
 class Sorting_Order(StrEnum):
     POPULAR = 'popular'
     RECENT = 'recent'
+    HOUR = 'hour'
+    REACTIONS = 'reactions'
 
 
 class QueryType(StrEnum):

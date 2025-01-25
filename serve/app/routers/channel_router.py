@@ -347,21 +347,31 @@ async def get_trending_casts(
         max_cast_age: Annotated[int | None, Query(ge=0, le=30)] = 1,
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
-                                         " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUMSQUARE,
+                                         " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM,
+        weights: Annotated[str | None, Query()] = 'L1C0R1Y1',
         time_decay: Annotated[bool, Query()] = True,
+        normalize: Annotated[bool, Query()] = True,
         offset: Annotated[int | None, Query(ge=0)] = 0,
         limit: Annotated[int | None, Query(ge=0, le=5000)] = 100,
+        sorting_order: Annotated[Sorting_Order, Query()] = Sorting_Order.POPULAR,
         pool: Pool = Depends(db_pool.get_db)
 ):
+    try:
+        weights = Weights.from_str(weights)
+    except:
+        raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
     casts = await db_utils.get_trending_channel_casts(
         channel_id=channel,
         channel_url=fetch_channel(channel_id=channel),
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
         max_cast_age=max_cast_age,
         agg=agg,
+        weights=weights,
         time_decay=time_decay,
+        normalize=normalize,
         offset=offset,
         limit=limit,
+        sorting_order=sorting_order,
         pool=pool
     )
 
