@@ -44,12 +44,16 @@ with DAG(
     
     @task.branch(task_id="check_last_successful")
     def check_last_successful(**context) -> bool:
-        prev_tokens_date = context['prev_data_interval_start_success']
+        now = datetime.now(pytz.utc)
+        prev_run_date = context['prev_data_interval_start_success']
         weekly_run = _monday_9ampacific_in_utc_time()
-        print(f"prev_tokens_date: {prev_tokens_date}, weekly_run: {weekly_run}")
-        if prev_tokens_date is None or prev_tokens_date < weekly_run:
+        print(f"now: {now}, prev_run_date: {prev_run_date}, weekly_run: {weekly_run}")
+        if (
+            now > weekly_run
+            and (prev_run_date is None or prev_run_date < weekly_run)
+        ):
             # Last successful run was before 9am on Monday, so we should run
-            print(f"Last run {prev_tokens_date} was before {weekly_run}, so we should run")
+            print(f"Last run {prev_run_date} was before {weekly_run}, so we should run")
             return "notify"
         return "skip_notify"
 
