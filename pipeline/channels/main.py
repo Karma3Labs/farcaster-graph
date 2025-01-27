@@ -35,11 +35,6 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-class Mode(Enum):
-    goserver = 'goserver'
-    openrank = 'openrank'
-
-
 def process_channel_goserver(
         cid: str,
         channel_lt_df: pd.DataFrame,

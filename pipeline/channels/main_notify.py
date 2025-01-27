@@ -101,7 +101,7 @@ def notify():
         timeouts=(connect_timeout_s, read_timeout_s)
         for channel_id, fids in chunked_df.items():
             for fids_chunk in fids:
-                fids_chunk = fids_chunk.tolist()
+                fids_chunk = fids_chunk.tolist() # convert numpy array to scalar list
                 logger.info(f"Sending notification for channel {channel_id}: {fids_chunk}")
                 cura_notify(session, timeouts, channel_id, fids_chunk, cutoff_time)
             logger.info(f"Notifications sent for channel '{channel_id}'")
