@@ -5,7 +5,7 @@ psutil==5.9.8
 psycopg2-binary==2.9.9
 pydantic-settings==2.2.1
 sqlalchemy==1.4.52
-requests==2.31.0
+requests==2.32.2
 loguru==0.7.2
 beautifulsoup4==4.12.3
 aiohttp==3.9.3
