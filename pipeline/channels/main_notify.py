@@ -43,7 +43,7 @@ def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: 
         "body": body,
         "notificationId": notification_id,
         "channelId": channel_id,
-        "fids": fids.tolist() # convert np array to scalar list
+        "fids": fids
     }
     url = urllib.parse.urljoin(settings.CURA_SCMGR_URL,"/api/warpcast-frame-notify")
     logger.info(f"{url}: {req}")
@@ -64,7 +64,7 @@ def group_and_chunk_df(
     df: pd.DataFrame, group_by_column: str, collect_column: str, chunk_size: int
 ) -> pd.DataFrame:
     def chunk_list(x):
-        return [list(chunk) for chunk in np.array_split(x, np.ceil(len(x)/chunk_size))]
+        return [chunk for chunk in np.array_split(x, np.ceil(len(x)/chunk_size))]
     
     return df.groupby(group_by_column)[collect_column].agg(list).apply(chunk_list)
 
@@ -101,6 +101,7 @@ def notify():
         timeouts=(connect_timeout_s, read_timeout_s)
         for channel_id, fids in chunked_df.items():
             for fids_chunk in fids:
+                fids_chunk = fids_chunk.tolist()
                 logger.info(f"Sending notification for channel {channel_id}: {fids_chunk}")
                 cura_notify(session, timeouts, channel_id, fids_chunk, end_time)
             logger.info(f"Notifications sent for channel '{channel_id}'")
