@@ -13,9 +13,9 @@ from ..dependencies import db_pool, db_utils
 from .. import utils
 from ..utils import fetch_channel
 
-router = APIRouter(tags=["Channel OpenRank Scores"])
+router = APIRouter()
 
-@router.get("/openrank/{channel}")
+@router.get("/openrank/{channel}", tags=["Experimental"])
 async def get_top_openrank_channel_profiles(
   channel: str,
   category: OpenrankCategory = Query(OpenrankCategory.PROD),
@@ -31,7 +31,7 @@ async def get_top_openrank_channel_profiles(
         pool=pool)
   return {"result": ranks}
 
-@router.get("/points/{channel}")
+@router.get("/points/{channel}", tags=["Deprecated"])
 async def get_top_channel_balances(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
@@ -49,7 +49,7 @@ async def get_top_channel_balances(
         pool=pool)
   return {"result": balances}
 
-@router.get("/tokens/{channel}")
+@router.get("/tokens/{channel}", tags=["Deprecated"])
 async def get_top_token_balances(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
@@ -68,7 +68,7 @@ async def get_top_token_balances(
         pool=pool)
   return {"result": balances}
 
-@router.get("/tokens/{channel}/claim")
+@router.get("/tokens/{channel}/claim", tags=["Tokens"])
 async def get_token_claim(
         channel: str,
         fid: int,
@@ -112,7 +112,7 @@ async def get_token_claim(
         # }
     return {"result": {**balance, **channel_token}}
 
-@router.get("/distribution/preview/{channel}")
+@router.get("/distribution/preview/{channel}", tags=["Distribute Rewards"])
 async def get_tokens_distrib_preview(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
@@ -138,7 +138,7 @@ async def get_tokens_distrib_preview(
           pool=pool)
   return {"result": distributions}
 
-@router.get("/distribution/overview/{channel}")
+@router.get("/distribution/overview/{channel}", tags=["Tokens"])
 async def get_tokens_distrib_overview(
         channel: str,
         offset: Annotated[int | None, Query()] = 0,
@@ -152,7 +152,7 @@ async def get_tokens_distrib_overview(
         pool=pool)
   return {"result": distribribution_stats}
 
-@router.get("/distribution/details/{channel}")
+@router.get("/distribution/details/{channel}", tags=["Tokens"])
 async def get_tokens_distrib_details(
         channel: str,
         dist_id: Annotated[int | None, Query()] = None,
@@ -170,7 +170,7 @@ async def get_tokens_distrib_details(
         pool=pool)
   return {"result": details}
 
-@router.get("/rankings/{channel}")
+@router.get("/rankings/{channel}", tags=["Deprecated"])
 async def get_top_channel_profiles(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -201,7 +201,7 @@ async def get_top_channel_profiles(
         pool=pool)
     return {"result": ranks}
 
-@router.get("/rankings/{channel}/stats")
+@router.get("/rankings/{channel}/stats", tags=["Leaderboard"])
 async def get_channel_stats(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -218,7 +218,7 @@ async def get_channel_stats(
         pool=pool)
     return {"result": stats}
 
-@router.post("/rankings/{channel}/fids")
+@router.post("/rankings/{channel}/fids", tags=["Deprecated"])
 async def get_channel_rank_for_fids(
         # Example: -d '[1, 2]'
         channel: str,
@@ -247,7 +247,7 @@ async def get_channel_rank_for_fids(
     return {"result": ranks}
 
 
-@router.post("/rankings/{channel}/handles")
+@router.post("/rankings/{channel}/handles", tags=["Deprecated"])
 async def get_channel_rank_for_handles(
         # Example: -d '["farcaster.eth", "varunsrin.eth", "farcaster", "v"]'
         channel: str,
@@ -278,7 +278,7 @@ async def get_channel_rank_for_handles(
     return {"result": ranks}
 
 
-@router.get("/casts/popular/{channel}")
+@router.get("/casts/popular/{channel}", tags=["Deprecated"])
 async def get_popular_channel_casts(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -340,7 +340,7 @@ async def get_popular_channel_casts(
     return {"result": casts}
 
 
-@router.get("/casts/daily/{channel}")
+@router.get("/casts/daily/{channel}", tags=["Channel Feed"])
 async def get_trending_casts(
         channel: str,
         channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -377,7 +377,7 @@ async def get_trending_casts(
 
     return {"result": casts}
 
-@router.get("/experiments/degen/casts")
+@router.get("/experiments/degen/casts", tags=["Deprecated"])
 async def get_popular_casts_from_degen_graph(
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
@@ -421,7 +421,7 @@ async def get_popular_casts_from_degen_graph(
     return {"result": casts}
 
 
-@router.get("/followers/{channel}")
+@router.get("/followers/{channel}", tags=["Deprecated"])
 async def get_top_channel_followers(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -446,7 +446,7 @@ async def get_top_channel_followers(
         pool=pool)
     return {"result": followers}
 
-@router.get("/holders/{channel}")
+@router.get("/holders/{channel}", tags=["Leaderboard"])
 async def get_top_channel_holders(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -474,7 +474,7 @@ async def get_top_channel_holders(
     return {"result": followers}
 
 
-@router.get("/repliers/{channel}")
+@router.get("/repliers/{channel}", tags=["Deprecated"])
 async def get_top_channel_repliers(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
