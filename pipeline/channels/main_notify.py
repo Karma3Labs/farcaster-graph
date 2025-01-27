@@ -43,7 +43,7 @@ def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: 
         "body": body,
         "notificationId": notification_id,
         "channelId": channel_id,
-        "fids": fids
+        "fids": fids.tolist() # convert np array to scalar list
     }
     url = urllib.parse.urljoin(settings.CURA_SCMGR_URL,"/api/warpcast-frame-notify")
     logger.info(f"{url}: {req}")
