@@ -45,7 +45,7 @@ def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: 
         "channelId": channel_id,
         "fids": fids
     }
-    url = urllib.parse.urljoin(settings.CURA_SCMGR_URL,"/api/warpcast-frame-notify")
+    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
     logger.info(f"{url}: {req}")
     if settings.IS_TEST:
         logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
