@@ -899,7 +899,7 @@ def fetch_notify_entries(
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
-    return (_dow_utc_time(DOW.TUESDAY), pd.DataFrame(entries, columns=columns))
+    return (_dow_utc_time(DOW.MONDAY), pd.DataFrame(entries, columns=columns))
 
 
 @Timer(name="fetch_distribution_ids")

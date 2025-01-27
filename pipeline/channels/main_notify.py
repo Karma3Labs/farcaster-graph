@@ -33,9 +33,9 @@ logger.add(sys.stdout,
 load_dotenv()
 
 
-def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: list[int], end_time:datetime.datetime):
-    notification_id = hashlib.sha256(f"{channel_id}-{end_time}".encode("utf-8")).hexdigest()
-    logger.info(f"Sending notification for channel {channel_id}-{end_time}")
+def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: list[int], cutoff_time:datetime.datetime):
+    notification_id = hashlib.sha256(f"{channel_id}-{cutoff_time}".encode("utf-8")).hexdigest()
+    logger.info(f"Sending notification for channel {channel_id}-{cutoff_time}")
     title = f"/{channel_id} leaderboard updated!"
     body = f"Claim your /{channel_id} tokens!"
     req = {
@@ -70,7 +70,7 @@ def group_and_chunk_df(
 
 def notify():
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    (end_time, entries_df) = channel_db_utils.fetch_notify_entries(
+    (cutoff_time, entries_df) = channel_db_utils.fetch_notify_entries(
         logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS,
     )
     logger.info(f"Channel fids to be notified: {utils.df_info_to_string(entries_df, with_sample=True)}")
@@ -103,7 +103,7 @@ def notify():
             for fids_chunk in fids:
                 fids_chunk = fids_chunk.tolist()
                 logger.info(f"Sending notification for channel {channel_id}: {fids_chunk}")
-                cura_notify(session, timeouts, channel_id, fids_chunk, end_time)
+                cura_notify(session, timeouts, channel_id, fids_chunk, cutoff_time)
             logger.info(f"Notifications sent for channel '{channel_id}'")
         logger.info("Notifications sent for all channels")    
 
