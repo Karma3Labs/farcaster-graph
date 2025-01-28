@@ -77,8 +77,9 @@ def prepare_for_distribution(scope: Scope, reason: str):
                     )
                     if response.status_code == 200:
                         channel_token = response.json()
-                        token_address = channel_token.get('tokenAddress')                        
-                        if token_address:
+                        token_address = channel_token.get('tokenAddress')      
+                        claim_contract_address = channel_token.get('claimContractAddress')                  
+                        if token_address and claim_contract_address:
                             logger.info(f"Channel '{channel_id}' has token {channel_token}.")
                             token_metadata = channel_token.get('tokenMetadata')
                             if token_metadata:
