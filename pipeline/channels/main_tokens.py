@@ -333,7 +333,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s",
         "--scope",
-        help="airdrop or daily",
+        help="airdrop or weekly",
         required=False,
         choices=list(Scope),
         type=Scope,

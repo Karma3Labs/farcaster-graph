@@ -607,19 +607,30 @@ def update_channel_rewards_config(
     token_airdrop_budget: int,
     token_daily_budget: int,
 ) -> list[tuple[str, bool]]:
-    update_sql = f"""
+    update_sql = """
         UPDATE k3l_channel_rewards_config
         SET 
-        symbol='{symbol}',
-        token_airdrop_budget={token_airdrop_budget}, 
-        token_daily_budget={token_daily_budget},
-        total_supply={total_supply},
-        creator_cut={creator_cut},
-        vesting_months={vesting_months},
-        airdrop_pmil={airdrop_pmil},
-        community_supply={community_supply}
-        WHERE channel_id = '{channel_id}'
+        symbol=%(symbol)s,
+        token_airdrop_budget=%(token_airdrop_budget)s, 
+        token_daily_budget=%(token_daily_budget)s,
+        total_supply=%(total_supply)s,
+        creator_cut=%(creator_cut)s,
+        vesting_months=%(vesting_months)s,
+        airdrop_pmil=%(airdrop_pmil)s,
+        community_supply=%(community_supply)s
+        WHERE channel_id=%(channel_id)s
     """
+    update_data = {
+        'symbol': symbol,
+        'token_airdrop_budget': token_airdrop_budget,
+        'token_daily_budget': token_daily_budget,
+        'total_supply': total_supply,
+        'creator_cut': creator_cut,
+        'vesting_months': vesting_months,
+        'airdrop_pmil': airdrop_pmil,
+        'community_supply': community_supply,
+        'channel_id': channel_id,
+    }
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
@@ -628,7 +639,7 @@ def update_channel_rewards_config(
         )  as conn: 
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {update_sql}")
-                cursor.execute(update_sql)
+                cursor.execute(update_sql, update_data)
                 logger.info(f"Inserted rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
