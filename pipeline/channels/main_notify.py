@@ -33,11 +33,21 @@ logger.add(sys.stdout,
 load_dotenv()
 
 
-def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: list[int], cutoff_time:datetime.datetime):
+def cura_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    is_token: bool,
+    fids: list[int],
+    cutoff_time: datetime.datetime,
+):
     notification_id = hashlib.sha256(f"{channel_id}-{cutoff_time}".encode("utf-8")).hexdigest()
     logger.info(f"Sending notification for channel {channel_id}-{cutoff_time}")
     title = f"/{channel_id} leaderboard updated!"
-    body = f"Claim your /{channel_id} tokens!"
+    if is_token:
+        body = f"Claim your /{channel_id} tokens!"
+    else:
+        body = f"Check your /{channel_id} rank!"
     req = {
         "title": title,
         "body": body,
@@ -61,12 +71,12 @@ def cura_notify(session:niquests.Session, timeouts:tuple, channel_id:str, fids: 
 
    
 def group_and_chunk_df(
-    df: pd.DataFrame, group_by_column: str, collect_column: str, chunk_size: int
+    df: pd.DataFrame, group_by_columns: list[str], collect_column: str, chunk_size: int
 ) -> pd.DataFrame:
     def chunk_list(x):
         return [chunk for chunk in np.array_split(x, np.ceil(len(x)/chunk_size))]
     
-    return df.groupby(group_by_column)[collect_column].agg(list).apply(chunk_list)
+    return df.groupby(group_by_columns)[collect_column].agg(list).apply(chunk_list)
 
 def notify():
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -78,7 +88,7 @@ def notify():
         chunk_size = 2
     else:
         chunk_size = settings.CURA_NOTIFY_CHUNK_SIZE
-    chunked_df = group_and_chunk_df(entries_df, "channel_id", "fid", chunk_size)
+    chunked_df = group_and_chunk_df(entries_df, ["channel_id","is_token"], "fid", chunk_size)
     logger.info(f"Channel fids to be notified: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}")
 
     retries = Retry(
@@ -99,11 +109,11 @@ def notify():
             }
         )
         timeouts=(connect_timeout_s, read_timeout_s)
-        for channel_id, fids in chunked_df.items():
+        for (channel_id, is_token), fids in chunked_df.items():
             for fids_chunk in fids:
                 fids_chunk = fids_chunk.tolist() # convert numpy array to scalar list
-                logger.info(f"Sending notification for channel {channel_id}: {fids_chunk}")
-                cura_notify(session, timeouts, channel_id, fids_chunk, cutoff_time)
+                logger.info(f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_chunk}")
+                cura_notify(session, timeouts, channel_id, is_token, fids_chunk, cutoff_time)
             logger.info(f"Notifications sent for channel '{channel_id}'")
         logger.info("Notifications sent for all channels")    
 

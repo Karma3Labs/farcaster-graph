@@ -869,14 +869,18 @@ def fetch_notify_entries(
     sql_batch_size = 2 if settings.IS_TEST else 10_000
     select_sql = f"""
         SELECT 
-            fid, channel_id
-        FROM k3l_channel_points_log
+            plog.fid, 
+            plog.channel_id,
+            bool_or(config.is_tokens) as is_token
+        FROM k3l_channel_points_log AS plog
+        INNER JOIN k3l_channel_rewards_config AS config 
+            ON (config.channel_id = plog.channel_id)
         WHERE 
-            model_name='cbrt_weighted'
-            AND insert_ts > ({BEGIN_TIMESTAMP})
-            AND insert_ts < ({END_TIMESTAMP})
-        GROUP BY channel_id, fid    
-        ORDER BY channel_id, fid
+            plog.model_name='cbrt_weighted'
+            AND plog.insert_ts > ({BEGIN_TIMESTAMP})
+            AND plog.insert_ts < ({END_TIMESTAMP})
+        GROUP BY plog.channel_id, plog.fid    
+        ORDER BY plog.channel_id, plog.fid
         LIMIT {limit} -- safety valve
     """
     logger.info(f"Executing: {select_sql}")
