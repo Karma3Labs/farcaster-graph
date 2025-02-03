@@ -39,7 +39,7 @@ with DAG(
 
     notify = BashOperator(
             task_id="notify",
-            bash_command="cd /pipeline && ./run_update_channel_notify.sh  -w . -v .venv -r -d ",
+            bash_command="cd /pipeline && ./run_update_channel_notify.sh  -w . -v .venv -r ",
             dag=dag)
     
     @task.branch(task_id="check_last_successful")
