@@ -463,13 +463,13 @@ async def get_channel_stats(
     token_min_balance,token_max_balance
     FROM rank_stats as rs
     LEFT JOIN follower_stats as fids
-        ON (rs.ranked_cid = fids.channel_id)
+        ON (fids.channel_id = rs.ranked_cid)
     LEFT JOIN member_stats as ms
-        ON (ms.member_cid = fids.channel_id)
+        ON (ms.member_cid = rs.ranked_cid)
     LEFT JOIN points_stats as ps
-        ON (ps.points_cid = fids.channel_id)
+        ON (ps.points_cid = rs.ranked_cid)
     LEFT JOIN tokens_stats as ts
-        ON (ts.tokens_cid = fids.channel_id)
+        ON (ts.tokens_cid = rs.ranked_cid)
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
