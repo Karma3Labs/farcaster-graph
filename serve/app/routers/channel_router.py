@@ -471,7 +471,8 @@ async def get_top_channel_holders(
         offset=offset,
         limit=limit,
         pool=pool)
-    return {"result": followers}
+    results = [{**f, 'order_rank': idx+offset} for idx, f in enumerate(followers, start=1)]
+    return {"result": results}
 
 
 @router.get("/repliers/{channel}", tags=["Deprecated"])
