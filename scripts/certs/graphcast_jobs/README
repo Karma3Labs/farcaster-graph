@@ -1,12 +1,28 @@
 We use letsencrypt to issue SSL certs for our domains.
 
+# graph.castN.k3l.io
+
+Example, graph.cast9.k3l.io. This sub-domain is not load-balanced but is very useful when we want to simulate a blue-green deployment.
+
+A typical crontab to both **install** as well as **renew** certs looks like this:
+``` 
+1 0 */7 * * sudo certbot run --nginx -d graph.cast9.k3l.io -m ops@karma3labs.com --agree-tos -n
+```
+This crontab assumes that `/etc/nginx/sites-available/` is aleady configured for the sub-domain name.
+
+This repo has a sample nginx file that you can use. **REMEMBER** to replace `N` with your preferred number. 
+
+# graph.cast.k3l.io
 The sub-domain `graph.cast.k3l.io` is load-balanced across multiple machines. When renewing certs, we cannot have certs renewed from multiple machines and have them invalidate the others. So, we renew certs on 1 machine and push the cert to all the other machines. 
 
 The `install_certs.sh` script takes care of renewing the cert while `push_certs.sh` pushes the cert to the other machines.
 
-**Pre-req**
+#### Pre-req
 `/etc/nginx/sites-available/` should have a config for `graph.cast.k3l.io`
 
+This repo has a sample nginx file that you can use. **REMEMBER** to replace `CHANGME_OPENSSL_RAND_KEY` with a strong api key. 
+
+#### Cronjobs
 A typical crontab on the **"primary"** host looks like this: 
 ```
 15 0 */7 * * sudo certbot run --nginx -d graph.cast.k3l.io -m ops@karma3labs.com --agree-tos -n >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1; sudo nginx -s reload >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1; date >> /var/log/farcaster-graph/graphcast_jobs.log ; cd /home/ubuntu/graphcast_jobs; ./push_certs.sh -h 162.55.109.106 >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1;
