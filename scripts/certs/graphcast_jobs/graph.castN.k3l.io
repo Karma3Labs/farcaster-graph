@@ -46,7 +46,7 @@ server {
     location ~* \.(woff|jpg|jpeg|png|gif|ico|css|js)$ {
       access_log off;
     }
-    if ($host = graph.cast4.k3l.io) {
+    if ($host = graph.castN.k3l.io) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
