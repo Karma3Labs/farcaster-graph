@@ -1,0 +1,22 @@
+We use letsencrypt to issue SSL certs for our domains.
+
+The sub-domain `graph.cast.k3l.io` is load-balanced across multiple machines. When renewing certs, we cannot have certs renewed from multiple machines and have them invalidate the others. So, we renew certs on 1 machine and push the cert to all the other machines. 
+
+The `install_certs.sh` script takes care of renewing the cert while `push_certs.sh` pushes the cert to the other machines.
+
+**Pre-req**
+`/etc/nginx/sites-available/` should have a config for `graph.cast.k3l.io`
+
+A typical crontab on the **"primary"** host looks like this: 
+```
+15 0 */7 * * sudo certbot run --nginx -d graph.cast.k3l.io -m ops@karma3labs.com --agree-tos -n >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1; sudo nginx -s reload >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1; date >> /var/log/farcaster-graph/graphcast_jobs.log ; cd /home/ubuntu/graphcast_jobs; ./push_certs.sh -h 162.55.109.106 >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1;
+```
+1. renew cert `sudo certbot run --nginx -d graph.cast.k3l.io -m ops@karma3labs.com --agree-tos -n`
+2. reload nginx locally to make sure cert is fine `sudo nginx -s reload`
+3. push renewed cert to 162.55.109.106 `./push_certs.sh -h 162.55.109.106`
+
+And, the crontab on the **"secondary"** host looks like this:
+```
+30 0 */7 * * date >> /var/log/farcaster-graph/graphcast_jobs.log ; cd /home/ubuntu/graphcast_jobs; ./install_certs.sh >> /var/log/farcaster-graph/graphcast_jobs.log 2>&1
+```
+1. install cert assuming that graph.cast.k3l.io nginx config already exists and the "primary" server has scp'd over the pem files.
