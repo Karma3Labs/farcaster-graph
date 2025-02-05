@@ -55,7 +55,7 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 channel_ids = top_channel_ids
             elif scope == Scope.all:
                 logger.info("Fetching all Warpcast channels:")
-                all_channel_ids = await channel_extractor_utils.fetch_all_channels_warpcast()
+                all_channel_ids = await channel_extractor_utils.fetch_all_channel_ids_warpcast()
                 logger.info(f"Total number of channels: {len(all_channel_ids)}")
                 logger.info(f"First 10 channel ids: {all_channel_ids[:10]}")
                 channel_ids = list(set(all_channel_ids) - set(top_channel_ids))
