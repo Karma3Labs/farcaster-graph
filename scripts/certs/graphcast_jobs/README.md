@@ -11,6 +11,7 @@ A typical crontab to both **install** as well as **renew** certs looks like this
 This crontab assumes that `/etc/nginx/sites-available/` is aleady configured for the sub-domain name.
 
 This repo has a sample nginx file that you can use. **REMEMBER** to replace `N` with your preferred number. 
+Also, **REMEMBER** to soft link the config file from `/etc/nginx/sites-available/` to `/etc/nginx/sites-anabled/`
 
 # graph.cast.k3l.io
 The sub-domain `graph.cast.k3l.io` is load-balanced across multiple machines. When renewing certs, we cannot have certs renewed from multiple machines and have them invalidate the others. So, we renew certs on 1 machine and push the cert to all the other machines. 
@@ -20,7 +21,7 @@ The `install_certs.sh` script takes care of renewing the cert while `push_certs.
 #### Pre-req
 `/etc/nginx/sites-available/` should have a config for `graph.cast.k3l.io`
 
-This repo has a sample nginx file that you can use. **REMEMBER** to replace `CHANGME_OPENSSL_RAND_KEY` with a strong api key. 
+This repo has a sample nginx file that you can use. **REMEMBER** to replace `CHANGME_OPENSSL_RAND_KEY` with a strong api key. Also, **REMEMBER** to soft link the config file from `/etc/nginx/sites-available/` to `/etc/nginx/sites-anabled/`
 
 #### Cronjobs
 A typical crontab on the **"primary"** host looks like this: 

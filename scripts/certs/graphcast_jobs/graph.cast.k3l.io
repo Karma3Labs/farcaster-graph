@@ -10,15 +10,15 @@ geo $is_internal {
 # Define a map for internal unlimited API keys
 map $http_api_key $is_valid_internal_api {
     default 0;
-    "CHANGME_OPENSSL_RAND_KEY" 1;  # FOR INTERNAL USE ONLY
+    "CHANGEME_OPENSSL_RAND_KEY" 1;  # FOR INTERNAL USE ONLY
 }
 
 # Define a map for high-rate-limit API keys
 map $http_api_key $is_valid_api_key {
     default 0;
-    "CHANGME_OPENSSL_RAND_KEY" 1;  # for Automod
-    "CHANGME_OPENSSL_RAND_KEY" 1;  # reserved for future use
-    "CHANGME_OPENSSL_RAND_KEY" 1;  # reserved for future use
+    "CHANGEME_OPENSSL_RAND_KEY" 1;  # for Automod
+    "CHANGEME_OPENSSL_RAND_KEY" 1;  # reserved for future use
+    "CHANGEME_OPENSSL_RAND_KEY" 1;  # reserved for future use
     # Add more API keys as needed into zone 1
 }
 
@@ -40,7 +40,7 @@ server {
 		return 403;
 	    }
             rewrite ^/internal/(.*)$ /$1 break;
-            proxy_pass http://localhost:8880;
+            proxy_pass http://localhost:8000;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
@@ -55,7 +55,7 @@ server {
 	    }
             limit_req zone=high_zone burst=100 nodelay;
             rewrite ^/priority/(.*)$ /$1 break;
-            proxy_pass http://localhost:8880;
+            proxy_pass http://localhost:8000;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
@@ -66,7 +66,7 @@ server {
         # Root location without rate limiting
         location / {
             limit_req zone=regular_zone burst=10 nodelay;
-            proxy_pass http://localhost:8880;
+            proxy_pass http://localhost:8000;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
