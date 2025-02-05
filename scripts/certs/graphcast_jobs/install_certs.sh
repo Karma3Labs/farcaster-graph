@@ -52,8 +52,4 @@ else
     log_message "No files moved. Nginx reload not required."
 fi
 
-# Clean up the *.pem files from the work directory
-log_message "Cleaning up .pem files from the work directory."
-rm -f ${WORK_DIR}/*.pem
-
 log_message "Script completed."

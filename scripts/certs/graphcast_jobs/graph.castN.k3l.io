@@ -33,11 +33,6 @@ server {
 	proxy_cache_bypass $http_upgrade;
     }
 
-    listen 443 ssl; 
-    ssl_certificate /etc/letsencrypt/live/graph.castN.k3l.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/graph.castN.k3l.io/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf; 
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; 
 }
 
 server {
@@ -46,10 +41,6 @@ server {
     location ~* \.(woff|jpg|jpeg|png|gif|ico|css|js)$ {
       access_log off;
     }
-    if ($host = graph.castN.k3l.io) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
 
     listen 80;
-    return 404;
 }
