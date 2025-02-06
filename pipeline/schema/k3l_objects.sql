@@ -341,6 +341,22 @@ CREATE INDEX k3l_channel_rank_ch_fid_idx ON public.k3l_channel_rank USING btree 
 GRANT SELECT,REFERENCES ON public.k3l_channel_rank TO k3l_readonly;
 
 ------------------------------------------------------------------------------------
+CREATE TABLE public.cura_hidden_fids (
+    channel_id text NOT NULL,
+    hidden_fid int8 NOT NULL,
+    hider_fid int8 NOT NULL,
+    is_active boolean NOT NULL,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone,
+    insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX cura_hidden_fids_ch_fid_act_idx
+    ON public.cura_hidden_fids USING btree (action, channel_id, hidden_fid, is_active);
+
+GRANT SELECT,REFERENCES ON public.cura_hidden_fids TO k3l_readonly;
+-------------------------------------------------------------------------------------
 CREATE TABLE public.automod_data (
     created_at timestamp without time zone,
     action text,

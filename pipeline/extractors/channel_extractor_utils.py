@@ -36,7 +36,7 @@ class JobType(Enum):
             raise ValueError()
 
 
-async def fetch_all_channels_warpcast():
+async def fetch_all_channel_ids_warpcast():
     url = "https://api.warpcast.com/v2/all-channels"
 
     async with aiohttp.ClientSession() as session:

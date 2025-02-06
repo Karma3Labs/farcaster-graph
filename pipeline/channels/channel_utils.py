@@ -106,7 +106,7 @@ def prep_trust_data(
     utils.log_memusage(logger)
     try:
         channel_interactions_df = channel_queries.fetch_interactions_df(
-            logger, pg_dsn, channel_url=channel["url"], interval=interval
+            logger, pg_dsn, channel_url=channel["url"], channel_id=channel["id"], interval=interval
         )
         channel_interactions_df = channel_interactions_df.rename(columns={'l1rep6rec3m12': 'v'})
         logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
