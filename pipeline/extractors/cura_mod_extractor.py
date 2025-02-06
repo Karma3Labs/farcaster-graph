@@ -55,6 +55,7 @@ def fetch_cura_hide_list(channel_ids: list[str]) -> pd.DataFrame:
         timeouts=(connect_timeout_s, read_timeout_s)
         url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/channel-hide-list")
         logger.info(f"url: {url}")   
+        # TODO parallelize this
         for channel_id in channel_ids:
             req = {"channelId": channel_id,}
             response = session.post(url, json=req, timeout=timeouts)
