@@ -278,7 +278,7 @@ async def get_channel_rank_for_handles(
     return {"result": ranks}
 
 
-@router.get("/casts/popular/{channel}", tags=["Deprecated"])
+@router.get("/casts/popular/{channel}", tags=["Neynar"])
 async def get_popular_channel_casts(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
