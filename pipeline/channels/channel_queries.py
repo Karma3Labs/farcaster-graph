@@ -29,13 +29,15 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             INNER JOIN
                 casts ON casts.hash = reactions.target_hash
             LEFT JOIN 
-                excluded_fids ON (excluded_fids.fid = reactions.fid)
+                excluded_fids AS x1 ON (x1.fid = reactions.fid)
+            LEFT JOIN 
+                excluded_fids AS x2 ON (x2.fid = reactions.target_fid)
             WHERE
                 reactions.reaction_type = 1
                 AND reactions.target_fid IS NOT NULL
                 AND reactions.deleted_at IS NULL
                 AND casts.root_parent_url = '{channel_url}'
-                AND excluded_fids.fid IS NULL
+                AND x1.fid IS NULL AND x2.fid IS NULL
                 {r_condition}
             GROUP BY
                 reactions.fid, reactions.target_fid
@@ -48,12 +50,14 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             FROM
                 casts
             LEFT JOIN 
-                excluded_fids ON (excluded_fids.fid = casts.fid)
+                excluded_fids AS x1 ON (x1.fid = casts.fid)
+            LEFT JOIN 
+                excluded_fids AS x2 ON (x2.fid = casts.parent_fid)
             WHERE
                 casts.parent_hash IS NOT NULL
                 AND casts.root_parent_url = '{channel_url}'
                 AND casts.deleted_at IS NULL
-                AND excluded_fids.fid IS NULL
+                AND x1.fid IS NULL AND x2.fid IS NULL
                 {c_condition}
             GROUP BY
                 casts.fid, casts.parent_fid
@@ -64,12 +68,9 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
                 unnest(casts.mentions) AS mention_fid
             FROM
                 casts
-            LEFT JOIN 
-                excluded_fids ON (excluded_fids.fid = casts.fid)
             WHERE
                 casts.root_parent_url = '{channel_url}'
                 AND casts.deleted_at IS NULL
-                AND excluded_fids.fid IS NULL
                 {c_condition}
         ),
         mentions_agg AS (
@@ -80,9 +81,11 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             FROM
                 mentions_rows
             LEFT JOIN 
-                excluded_fids ON (excluded_fids.fid = author_fid)
+                excluded_fids AS x1 ON (x1.fid = author_fid)
+            LEFT JOIN 
+                excluded_fids AS x2 ON (x2.fid = mention_fid)
             WHERE
-                excluded_fids.fid IS NULL
+                x1.fid IS NULL AND x2.fid IS NULL
             GROUP BY
                 author_fid, mention_fid
         ),
@@ -96,13 +99,15 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
             INNER JOIN
                 casts ON reactions.target_hash = casts.hash
             LEFT JOIN 
-                excluded_fids ON (excluded_fids.fid = reactions.fid)
+                excluded_fids AS x1 ON (x1.fid = reactions.fid)
+            LEFT JOIN 
+                excluded_fids AS x2 ON (x2.fid = reactions.target_fid)
             WHERE
                 reactions.reaction_type = 2
                 AND reactions.target_fid IS NOT NULL
                 AND reactions.deleted_at IS NULL
                 AND casts.root_parent_url = '{channel_url}'
-                AND excluded_fids.fid IS NULL
+                AND x1.fid IS NULL AND x2.fid IS NULL
                 {r_condition}
             GROUP BY
                 reactions.fid, reactions.target_fid
@@ -126,7 +131,7 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
                 1 AS follows_v
             FROM
                 unique_pairs up
-            JOIN
+            INNER JOIN
                 links ON up.i = links.fid AND up.j = links.target_fid
             WHERE
                 links.type = 'follow'
