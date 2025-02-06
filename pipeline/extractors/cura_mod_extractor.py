@@ -91,6 +91,9 @@ def main(csv_path: Path) -> pd.DataFrame:
     df.rename(columns=rename_cols, inplace=True)
     logger.info(utils.df_info_to_string(df, with_sample=True, head=True))
     table_name = 'cura_hidden_fids'
+    if settings.IS_TEST:
+        logger.info(f"Skipping replace data in the database: {table_name}")
+        return
     logger.info(f"Replacing data in the database: {table_name}")
     try:
         postgres_engine = create_engine(
