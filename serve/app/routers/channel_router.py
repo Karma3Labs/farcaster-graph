@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Path
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from loguru import logger
 from asyncpg.pool import Pool
 from ..models.score_model import ScoreAgg, Weights, Sorting_Order
@@ -445,6 +445,39 @@ async def get_top_channel_followers(
         limit=limit,
         pool=pool)
     return {"result": followers}
+
+@router.post("/holders/{channel}/fids", tags=["Leaderboard"])
+async def get_leaderboard_rank_for_fids(
+        # Example: -d '[1, 2]'
+        channel: str,
+        fids: list[int],
+        orderby: ChannelEarningsOrderBy = Query(ChannelEarningsOrderBy.TOTAL, alias="type"),
+        pool: Pool = Depends(db_pool.get_db)
+):
+    """
+  Given a list of input fids, return a list of fids
+    that are ranked based on the engagement relationships in the channel
+    and scored by Eigentrust algorithm. \n
+    Example: [1, 2] \n
+  Parameter 'lite' is used to indicate if additional details like
+    fnames and percentile should be returned or not. \n
+  By default, lite is True
+  """
+    if not (1 <= len(fids) <= 100):
+        raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+    # TODO replace this with a materialized view
+    holders = await db_utils.get_top_channel_holders(
+        channel_id=channel,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS],
+        orderby=orderby,
+        offset=0,
+        limit=100000,
+        pool=pool)
+    result = []
+    for idx, holder in enumerate(holders, start=1):
+      if holder["fid"] in fids:
+        result.append({**holder, "order_rank": idx})
+    return {"result": result}
 
 @router.get("/holders/{channel}", tags=["Leaderboard"])
 async def get_top_channel_holders(
