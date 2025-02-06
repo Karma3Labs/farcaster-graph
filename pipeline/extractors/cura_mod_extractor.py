@@ -58,6 +58,7 @@ def fetch_cura_hide_list(channel_ids: list[str]) -> pd.DataFrame:
         # TODO parallelize this
         for channel_id in channel_ids:
             req = {"channelId": channel_id,}
+            logger.info(f"Fetching channel-hide-list for channel {channel_id}")
             response = session.post(url, json=req, timeout=timeouts)
             res_json = response.json()
             if response.status_code != 200:
