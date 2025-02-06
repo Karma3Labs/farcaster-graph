@@ -14,3 +14,4 @@ notebooks/data/
 pipeline/logs
 **/.vscode
 certificates
+**/tmp
