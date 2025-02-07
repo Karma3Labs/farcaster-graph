@@ -5,13 +5,14 @@ import json
 from enum import Enum
 
 from ..config import settings
-from app.models.score_model import ScoreAgg, Weights, Voting, Sorting_Order
+from app.models.score_model import ScoreAgg, Weights, Voting
 from app.models.channel_model import (
     ChannelPointsOrderBy,
     ChannelEarningsOrderBy,
     ChannelEarningsType,
     ChannelEarningsScope,
 )
+from app.models.feed_model import SortingOrder
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -2298,7 +2299,7 @@ async def get_trending_channel_casts(
         normalize: bool,
         offset: int,
         limit: int,
-        sorting_order: Sorting_Order,
+        sorting_order: SortingOrder,
         pool: Pool
 ):
     match agg:
@@ -2325,13 +2326,13 @@ async def get_trending_channel_casts(
         fidscore_sql = 'fids.score'
 
     match sorting_order:
-        case Sorting_Order.POPULAR:
+        case SortingOrder.POPULAR:
             order_sql = 'cast_details.cast_score DESC'
-        case Sorting_Order.RECENT:
+        case SortingOrder.RECENT:
             order_sql = 'cast_details.cast_ts DESC'
-        case Sorting_Order.HOUR:
+        case SortingOrder.HOUR:
             order_sql = 'cast_details.cast_hour DESC, cast_details.cast_score DESC'
-        case Sorting_Order.REACTIONS:
+        case SortingOrder.REACTIONS:
             order_sql = 'cast_details.reaction_count DESC, cast_details.cast_score DESC'
 
     sql_query = f"""

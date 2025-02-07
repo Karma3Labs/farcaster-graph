@@ -1,4 +1,5 @@
 from enum import Enum, StrEnum
+from pydantic import BaseModel
 
 class ChannelRankingsTimeframe(str, Enum):
     LIFETIME = 'lifetime'
@@ -17,6 +18,7 @@ class OpenrankCategory(StrEnum):
     TEST = 'test'
     PROD = 'prod'
 
+# Deprecated
 class ChannelPointsOrderBy(StrEnum):
     TOTAL_POINTS = 'total_points'
     DAILY_POINTS = 'daily_points'
@@ -33,3 +35,6 @@ class ChannelEarningsScope(StrEnum):
 class ChannelEarningsType(StrEnum):
     POINTS = 'points'
     TOKENS = 'tokens'
+
+
+
