@@ -337,15 +337,15 @@ async def get_popular_channel_casts(
         casts = await db_utils.get_trending_channel_casts_lite(
           channel_id=channel,
           channel_url=fetch_channel(channel_id=channel),
-          channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS], # default
+          channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS], # hard-coded
           max_cast_age=max_cast_age, 
-          agg=ScoreAgg.SUM, # default
-          weights=Weights.from_str('L1C0R1Y1'), # default
-          time_decay=True, # default
-          normalize=True, # default
+          agg=ScoreAgg.SUM, # hard-coded
+          weights=Weights.from_str('L1C0R1Y1'), # hard-coded
+          time_decay=True, # hard-coded
+          normalize=True, # hard-coded
           offset=offset,
           limit=limit,
-          sorting_order=SortingOrder.HOUR, # default
+          sorting_order=SortingOrder.HOUR, # hard-coded
           pool=pool
         )
       else:
@@ -353,45 +353,50 @@ async def get_popular_channel_casts(
         casts = await db_utils.get_trending_channel_casts_heavy(
           channel_id=channel,
           channel_url=fetch_channel(channel_id=channel),
-          channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS], # default
+          channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS], # fixed
           max_cast_age=max_cast_age, 
-          agg=ScoreAgg.SUM, # default
-          weights=Weights.from_str('L1C0R1Y1'), # default
-          time_decay=True, # default
-          normalize=True, # default
+          agg=ScoreAgg.SUM, # hard-coded
+          weights=Weights.from_str('L1C0R1Y1'), # hard-coded
+          time_decay=True, # hard-coded
+          normalize=True, # hard-coded
           offset=offset,
           limit=limit,
-          sorting_order=SortingOrder.HOUR, # default
+          sorting_order=SortingOrder.HOUR, # hard-coded
           pool=pool
         )
     else:
-      # if metadata is not provided, or feed type is not trending, go with popular
-      max_cast_age = '30 days' if not md_model else CASTS_AGE[md_model.lookback]
-      if lite:
-          casts = await db_utils.get_popular_channel_casts_lite(
-              channel_id=channel,
-              channel_url=fetch_channel(channel_id=channel),
-              strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-              max_cast_age=max_cast_age,
-              agg=agg,
-              weights=weights,
-              offset=offset,
-              limit=limit,
-              sorting_order=sorting_order,
-              pool=pool)
-      else:
-          # TODO get rid of the heavy version if all clients are going to come through Neynar
-          casts = await db_utils.get_popular_channel_casts_heavy(
-              channel_id=channel,
-              channel_url=fetch_channel(channel_id=channel),
-              strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-              max_cast_age=max_cast_age,
-              agg=agg,
-              weights=weights,
-              offset=offset,
-              limit=limit,
-              sorting_order=sorting_order,
-              pool=pool)
+        # if metadata is not provided, or feed type is not trending, go with popular
+        max_cast_age = "30 days" if not md_model \
+                        else CASTS_AGE[md_model.lookback]
+        sorting_order = sorting_order if not md_model \
+                        else SortingOrder.SCORE # hard-coded if metadata is provided
+        if lite:
+            casts = await db_utils.get_popular_channel_casts_lite(
+                channel_id=channel,
+                channel_url=fetch_channel(channel_id=channel),
+                strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
+                max_cast_age=max_cast_age,
+                agg=agg,
+                weights=weights,
+                offset=offset,
+                limit=limit,
+                sorting_order=sorting_order,
+                pool=pool,
+            )
+        else:
+            # TODO get rid of the heavy version if all clients are going to come through Neynar
+            casts = await db_utils.get_popular_channel_casts_heavy(
+                channel_id=channel,
+                channel_url=fetch_channel(channel_id=channel),
+                strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
+                max_cast_age=max_cast_age,
+                agg=agg,
+                weights=weights,
+                offset=offset,
+                limit=limit,
+                sorting_order=sorting_order,
+                pool=pool,
+            )
     return {"result": casts}
 
 

@@ -31,4 +31,3 @@ CASTS_AGE = {
 class ProviderMetadata(BaseModel):
     feed_type: Annotated[FeedType, Field(alias="feedType")]
     lookback: CastsTimeframe
-    sorting_order: Annotated[SortingOrder, Field(alias="sortBy")]
