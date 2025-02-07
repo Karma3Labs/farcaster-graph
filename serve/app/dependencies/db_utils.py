@@ -1604,11 +1604,12 @@ async def get_popular_channel_casts_lite(
         channel_id: str,
         channel_url: str,
         strategy_name: str,
+        max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
         limit: int,
-        sorting_order: str,
+        sorting_order: SortingOrder,
         pool: Pool
 ):
     match agg:
@@ -1619,10 +1620,13 @@ async def get_popular_channel_casts_lite(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    if sorting_order == 'recent':
-        ordering = True
-    else:
-        ordering = False
+    match sorting_order:
+        case SortingOrder.SCORE | SortingOrder.POPULAR | SortingOrder.REACTIONS:
+            order_sql = 'cast_score DESC'
+        case SortingOrder.RECENT:
+            order_sql = 'cast_ts DESC'
+        case SortingOrder.HOUR:
+            order_sql = "ORDER BY date_trunc('hour',cast_ts) DESC, cast_score DESC"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1645,8 +1649,7 @@ async def get_popular_channel_casts_lite(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '30 days'
-  										AND now() - interval '10 minutes'
+                    AND ci.action_ts > now() - interval '{max_cast_age}'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
@@ -1662,34 +1665,32 @@ async def get_popular_channel_casts_lite(
                 MIN(cast_ts) as cast_ts
             FROM fid_cast_scores
             GROUP BY cast_hash
-        ),
-    cast_details as (
+        )
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
-        cast_ts,
-        row_number() over(partition by date_trunc('day',cast_ts) order by random()) as rn
+        cast_ts, 
+        cast_score
     FROM scores
     WHERE cast_score*100000000000>100
-    {"ORDER BY cast_ts desc" if ordering else "ORDER BY date_trunc('day',cast_ts) DESC, cast_score DESC"}
+    ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
-    )
-    select cast_hash, cast_hour, cast_ts from cast_details
-
     """
     return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
 
+# TODO deprecate in favor of get_popular_channel_casts_lite
 async def get_popular_channel_casts_heavy(
         channel_id: str,
         channel_url: str,
         strategy_name: str,
+        max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
         offset: int,
         limit: int,
-        sorting_order: str,
+        sorting_order: SortingOrder,
         pool: Pool
 ):
     match agg:
@@ -1700,10 +1701,13 @@ async def get_popular_channel_casts_heavy(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    if sorting_order == 'recent':
-        ordering = True
-    else:
-        ordering = False
+    match sorting_order:
+        case SortingOrder.SCORE | SortingOrder.POPULAR | SortingOrder.REACTIONS:
+            order_sql = 'cast_score DESC'
+        case SortingOrder.RECENT:
+            order_sql = 'cast_ts DESC'
+        case SortingOrder.HOUR:
+            order_sql = "ORDER BY cast_hour DESC, cast_score DESC"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1726,8 +1730,7 @@ async def get_popular_channel_casts_heavy(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '30 days'
-  										AND now() - interval '10 minutes'
+                    AND ci.action_ts > now() - interval '{max_cast_age}'
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
@@ -1742,8 +1745,7 @@ async def get_popular_channel_casts_heavy(
                 {agg_sql} as cast_score
                 FROM fid_cast_scores
                 GROUP BY cast_hash
-            ),
-    cast_details as (
+            )
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', casts.timestamp) as cast_hour,
@@ -1752,17 +1754,14 @@ async def get_popular_channel_casts_heavy(
         casts.mentions,
         casts.fid,
         casts.timestamp,
-        cast_score,
-        row_number() over(partition by date_trunc('day',casts.timestamp) order by random()) as rn
+        casts.timestamp as cast_ts,
+        cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE cast_score*100000000000>100
-    {"ORDER BY casts.timestamp desc" if ordering else "ORDER BY date_trunc('day',casts.timestamp) DESC, cast_score DESC"}
+    ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
-    )
-    select cast_hash, cast_hour, text, embeds, mentions, fid, timestamp, cast_score
-    from cast_details
     """
     return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
@@ -2288,11 +2287,12 @@ async def get_top_channel_repliers(
 
     return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_trending_channel_casts(
+# TODO deprecate in favor of get_trending_channel_casts_lite
+async def get_trending_channel_casts_heavy(
         channel_id: str,
         channel_url: str,
         channel_strategy: str,
-        max_cast_age: int,
+        max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
         time_decay: bool,
@@ -2326,7 +2326,7 @@ async def get_trending_channel_casts(
         fidscore_sql = 'fids.score'
 
     match sorting_order:
-        case SortingOrder.POPULAR:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_details.cast_score DESC'
         case SortingOrder.RECENT:
             order_sql = 'cast_details.cast_ts DESC'
@@ -2355,11 +2355,11 @@ async def get_trending_channel_casts(
                 FROM k3l_recent_parent_casts as casts
                 INNER JOIN k3l_cast_action as ci
                     ON (ci.cast_hash = casts.hash
-                        AND ci.action_ts BETWEEN now() - interval '{max_cast_age} day' AND now() - interval '10 minutes'
+                        AND ci.action_ts > now() - interval '{max_cast_age}'
                         AND casts.root_parent_url = $2)
                 INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
                 LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-                WHERE casts.created_at BETWEEN now() - interval '{max_cast_age} day' AND now()
+                WHERE casts.created_at > now() - interval '{max_cast_age}'
                         GROUP BY casts.hash, ci.fid
                 ORDER BY cast_ts DESC
             ), 
@@ -2388,7 +2388,7 @@ async def get_trending_channel_casts(
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN k3l_rank ON (ci.fid = k3l_rank.profile_id and k3l_rank.strategy_id=9)
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
-        WHERE ci.timestamp BETWEEN now() - interval '{max_cast_age} day' AND now()
+        WHERE ci.timestamp > now() - interval '{max_cast_age}'
         ORDER BY scores.cast_score DESC
     )
     SELECT
@@ -2421,6 +2421,104 @@ async def get_trending_channel_casts(
         cast_details.cast_hour,
         cast_details.cast_ts,
         cast_details.text
+    ORDER BY {order_sql}
+    OFFSET $4
+    LIMIT $5
+    """
+
+    return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_trending_channel_casts_lite(
+        channel_id: str,
+        channel_url: str,
+        channel_strategy: str,
+        max_cast_age: str,
+        agg: ScoreAgg,
+        weights: Weights,
+        time_decay: bool,
+        normalize: bool,
+        offset: int,
+        limit: int,
+        sorting_order: SortingOrder,
+        pool: Pool
+):
+    match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
+        case ScoreAgg.SUMSQUARE:
+            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(fid_cast_scores.cast_score)'
+
+    if time_decay:
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
+
+    if normalize:
+        fidscore_sql = 'cbrt(fids.score)'
+    else:
+        fidscore_sql = 'fids.score'
+
+    match sorting_order:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
+            order_sql = 'cast_score DESC'
+        case SortingOrder.RECENT:
+            order_sql = 'cast_ts DESC'
+        case SortingOrder.HOUR:
+            order_sql = 'cast_hour DESC, cast_score DESC'
+        case SortingOrder.REACTIONS:
+            order_sql = 'reaction_count DESC, cast_score DESC'
+
+    sql_query = f"""
+    WITH
+    fid_cast_scores as (
+                SELECT
+                    hash as cast_hash,
+                    SUM(
+                        (
+                            ({weights.cast} * {fidscore_sql} * ci.casted)
+                            + ({weights.reply} * {fidscore_sql} * ci.replied)
+                            + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                            + ({weights.like} * {fidscore_sql} * ci.liked)
+                        )
+                        *
+                        {decay_sql}
+                    ) as cast_score,
+                                ci.fid,
+                    MIN(ci.action_ts) as cast_ts
+                FROM k3l_recent_parent_casts as casts
+                INNER JOIN k3l_cast_action as ci
+                    ON (ci.cast_hash = casts.hash
+                        AND ci.action_ts > now() - interval '{max_cast_age}'
+                        AND casts.root_parent_url = $2)
+                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
+                LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+                WHERE casts.created_at > now() - interval '{max_cast_age}'
+                        GROUP BY casts.hash, ci.fid
+                ORDER BY cast_ts DESC
+            ), 
+            scores AS (
+            SELECT
+                cast_hash,
+                {agg_sql} as cast_score,
+                MIN(cast_ts) as cast_ts,
+                COUNT (*) - 1 as reaction_count
+            FROM fid_cast_scores
+            GROUP BY cast_hash
+            )
+    SELECT
+        '0x' || encode(cast_hash, 'hex') as cast_hash,
+        DATE_TRUNC('hour', cast_ts) as cast_hour,
+        cast_ts,
+        cast_score
+    FROM scores
+    WHERE cast_score*100000000000>100
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
