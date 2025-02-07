@@ -1612,6 +1612,7 @@ async def get_popular_channel_casts_lite(
         sorting_order: SortingOrder,
         pool: Pool
 ):
+    logger.info("get_popular_channel_casts_lite")
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
@@ -1626,7 +1627,7 @@ async def get_popular_channel_casts_lite(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = "ORDER BY date_trunc('hour',cast_ts) DESC, cast_score DESC"
+            order_sql = "cast_hour DESC, random(), cast_score DESC"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1693,6 +1694,7 @@ async def get_popular_channel_casts_heavy(
         sorting_order: SortingOrder,
         pool: Pool
 ):
+    logger.info("get_popular_channel_casts_heavy")
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
@@ -1707,7 +1709,7 @@ async def get_popular_channel_casts_heavy(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = "ORDER BY cast_hour DESC, cast_score DESC"
+            order_sql = "cast_hour DESC, random(), cast_score DESC"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -2302,6 +2304,7 @@ async def get_trending_channel_casts_heavy(
         sorting_order: SortingOrder,
         pool: Pool
 ):
+    logger.info("get_trending_channel_casts_heavy")
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
@@ -2327,13 +2330,13 @@ async def get_trending_channel_casts_heavy(
 
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_details.cast_score DESC'
+            order_sql = 'cast_score DESC'
         case SortingOrder.RECENT:
-            order_sql = 'cast_details.cast_ts DESC'
+            order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = 'cast_details.cast_hour DESC, cast_details.cast_score DESC'
+            order_sql = 'cast_hour DESC, random(), cast_score DESC'
         case SortingOrder.REACTIONS:
-            order_sql = 'cast_details.reaction_count DESC, cast_details.cast_score DESC'
+            order_sql = 'reaction_count DESC, cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -2390,37 +2393,40 @@ async def get_trending_channel_casts_heavy(
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
         WHERE ci.timestamp > now() - interval '{max_cast_age}'
         ORDER BY scores.cast_score DESC
-    )
-    SELECT
-        distinct
-        cast_details.fid,
-        cast_details.channel_id,
-        cast_details.channel_rank,
-        cast_details.global_rank,
-        cast_details.cast_hash,
-        ANY_VALUE(fnames.fname) as fname,
-        ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
-        ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
-        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
-        cast_details.cast_score,
-        cast_details.reaction_count,
-        cast_details.cast_hour,
-        cast_details.cast_ts,
-        cast_details.text
-    FROM cast_details
-    LEFT JOIN fnames ON (cast_details.fid = fnames.fid)
-    LEFT JOIN user_data ON (cast_details.fid = user_data.fid)
-    GROUP BY 
-        cast_details.fid,
-        cast_details.channel_id,
-        cast_details.channel_rank,
-        cast_details.global_rank,
-        cast_details.cast_hash,
-        cast_details.cast_score,
-        cast_details.reaction_count,
-        cast_details.cast_hour,
-        cast_details.cast_ts,
-        cast_details.text
+    ),
+    feed AS (
+        SELECT
+            distinct
+            cast_details.fid,
+            cast_details.channel_id,
+            cast_details.channel_rank,
+            cast_details.global_rank,
+            cast_details.cast_hash,
+            ANY_VALUE(fnames.fname) as fname,
+            ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
+            ANY_VALUE(case when user_data.type = 1 then user_data.value end) as pfp,
+            ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
+            cast_details.cast_score,
+            cast_details.reaction_count,
+            cast_details.cast_hour,
+            cast_details.cast_ts,
+            cast_details.text
+        FROM cast_details
+        LEFT JOIN fnames ON (cast_details.fid = fnames.fid)
+        LEFT JOIN user_data ON (cast_details.fid = user_data.fid)
+        GROUP BY 
+            cast_details.fid,
+            cast_details.channel_id,
+            cast_details.channel_rank,
+            cast_details.global_rank,
+            cast_details.cast_hash,
+            cast_details.cast_score,
+            cast_details.reaction_count,
+            cast_details.cast_hour,
+            cast_details.cast_ts,
+            cast_details.text
+            )
+    SELECT * FROM feed
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2442,6 +2448,7 @@ async def get_trending_channel_casts_lite(
         sorting_order: SortingOrder,
         pool: Pool
 ):
+    logger.info("get_trending_channel_casts_lite")
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
@@ -2471,7 +2478,7 @@ async def get_trending_channel_casts_lite(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = 'cast_hour DESC, cast_score DESC'
+            order_sql = 'cast_hour DESC, random(), cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
 
