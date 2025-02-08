@@ -2341,40 +2341,40 @@ async def get_trending_channel_casts_heavy(
     sql_query = f"""
     WITH
     fid_cast_scores as (
-                SELECT
-                    hash as cast_hash,
-                    SUM(
-                        (
-                            ({weights.cast} * {fidscore_sql} * ci.casted)
-                            + ({weights.reply} * {fidscore_sql} * ci.replied)
-                            + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                            + ({weights.like} * {fidscore_sql} * ci.liked)
-                        )
-                        *
-                        {decay_sql}
-                    ) as cast_score,
-                                ci.fid,
-                    MIN(ci.action_ts) as cast_ts
-                FROM k3l_recent_parent_casts as casts
-                INNER JOIN k3l_cast_action as ci
-                    ON (ci.cast_hash = casts.hash
-                        AND ci.action_ts > now() - interval '{max_cast_age}'
-                        AND casts.root_parent_url = $2)
-                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
-                LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-                WHERE casts.created_at > now() - interval '{max_cast_age}'
-                        GROUP BY casts.hash, ci.fid
-                ORDER BY cast_ts DESC
-            ), 
-            scores AS (
-            SELECT
-                cast_hash,
-                {agg_sql} as cast_score,
-                MIN(cast_ts) as cast_ts,
-                    COUNT (*) - 1 as reaction_count
-            FROM fid_cast_scores
-            GROUP BY cast_hash
-            ),
+        SELECT
+            hash as cast_hash,
+            SUM(
+                (
+                    ({weights.cast} * {fidscore_sql} * ci.casted)
+                    + ({weights.reply} * {fidscore_sql} * ci.replied)
+                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                )
+                *
+                {decay_sql}
+            ) as cast_score,
+            ci.fid,
+            MIN(casts.timestamp) as cast_ts
+        FROM k3l_recent_parent_casts as casts
+        INNER JOIN k3l_cast_action as ci
+            ON (ci.cast_hash = casts.hash
+                AND ci.action_ts > now() - interval '{max_cast_age}'
+                AND casts.root_parent_url = $2)
+        INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
+        LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        GROUP BY casts.hash, ci.fid
+        ORDER BY cast_ts DESC
+    ), 
+    scores AS (
+        SELECT
+            cast_hash,
+            {agg_sql} as cast_score,
+            MIN(cast_ts) as cast_ts,
+            COUNT (*) - 1 as reaction_count
+        FROM fid_cast_scores
+        GROUP BY cast_hash
+    ),
     cast_details AS (
         SELECT
             '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
@@ -2485,40 +2485,40 @@ async def get_trending_channel_casts_lite(
     sql_query = f"""
     WITH
     fid_cast_scores as (
-                SELECT
-                    hash as cast_hash,
-                    SUM(
-                        (
-                            ({weights.cast} * {fidscore_sql} * ci.casted)
-                            + ({weights.reply} * {fidscore_sql} * ci.replied)
-                            + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                            + ({weights.like} * {fidscore_sql} * ci.liked)
-                        )
-                        *
-                        {decay_sql}
-                    ) as cast_score,
-                                ci.fid,
-                    MIN(ci.action_ts) as cast_ts
-                FROM k3l_recent_parent_casts as casts
-                INNER JOIN k3l_cast_action as ci
-                    ON (ci.cast_hash = casts.hash
-                        AND ci.action_ts > now() - interval '{max_cast_age}'
-                        AND casts.root_parent_url = $2)
-                INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
-                LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-                WHERE casts.created_at > now() - interval '{max_cast_age}'
-                        GROUP BY casts.hash, ci.fid
-                ORDER BY cast_ts DESC
-            ), 
-            scores AS (
-            SELECT
-                cast_hash,
-                {agg_sql} as cast_score,
-                MIN(cast_ts) as cast_ts,
-                COUNT (*) - 1 as reaction_count
-            FROM fid_cast_scores
-            GROUP BY cast_hash
-            )
+        SELECT
+            hash as cast_hash,
+            SUM(
+                (
+                    ({weights.cast} * {fidscore_sql} * ci.casted)
+                    + ({weights.reply} * {fidscore_sql} * ci.replied)
+                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                )
+                *
+                {decay_sql}
+            ) as cast_score,
+                        ci.fid,
+            MIN(casts.timestamp) as cast_ts
+        FROM k3l_recent_parent_casts as casts
+        INNER JOIN k3l_cast_action as ci
+            ON (ci.cast_hash = casts.hash
+                AND ci.action_ts > now() - interval '{max_cast_age}'
+                AND casts.root_parent_url = $2)
+        INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
+        LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        GROUP BY casts.hash, ci.fid
+        ORDER BY cast_ts DESC
+    ), 
+    scores AS (
+        SELECT
+            cast_hash,
+            {agg_sql} as cast_score,
+            MIN(cast_ts) as cast_ts,
+            COUNT (*) - 1 as reaction_count
+        FROM fid_cast_scores
+        GROUP BY cast_hash
+    )
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
