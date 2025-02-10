@@ -1650,7 +1650,7 @@ async def get_popular_channel_casts_lite(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts > now() - interval '{max_cast_age}'
+                    AND ci.action_ts > now() - interval {max_cast_age}
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
@@ -1732,7 +1732,7 @@ async def get_popular_channel_casts_heavy(
             FROM k3l_recent_parent_casts as casts
             INNER JOIN k3l_cast_action as ci
                 ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts > now() - interval '{max_cast_age}'
+                    AND ci.action_ts > now() - interval {max_cast_age}
                     AND casts.root_parent_url = $2)
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
@@ -2358,11 +2358,11 @@ async def get_trending_channel_casts_heavy(
         FROM k3l_recent_parent_casts as casts
         INNER JOIN k3l_cast_action as ci
             ON (ci.cast_hash = casts.hash
-                AND ci.action_ts > now() - interval '{max_cast_age}'
+                AND ci.action_ts > now() - interval {max_cast_age}
                 AND casts.root_parent_url = $2)
         INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
         LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        WHERE casts.timestamp > now() - interval {max_cast_age}
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
     ), 
@@ -2391,7 +2391,7 @@ async def get_trending_channel_casts_heavy(
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN k3l_rank ON (ci.fid = k3l_rank.profile_id and k3l_rank.strategy_id=9)
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
-        WHERE ci.timestamp > now() - interval '{max_cast_age}'
+        WHERE ci.timestamp > now() - interval {max_cast_age}
         ORDER BY scores.cast_score DESC
     ),
     feed AS (
@@ -2502,11 +2502,11 @@ async def get_trending_channel_casts_lite(
         FROM k3l_recent_parent_casts as casts
         INNER JOIN k3l_cast_action as ci
             ON (ci.cast_hash = casts.hash
-                AND ci.action_ts > now() - interval '{max_cast_age}'
+                AND ci.action_ts > now() - interval {max_cast_age}
                 AND casts.root_parent_url = $2)
         INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
         LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        WHERE casts.timestamp > now() - interval {max_cast_age}
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
     ), 
