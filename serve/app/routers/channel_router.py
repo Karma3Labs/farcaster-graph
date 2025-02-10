@@ -422,7 +422,7 @@ async def get_trending_casts(
         channel_id=channel,
         channel_url=fetch_channel(channel_id=channel),
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[channel_strategy],
-        max_cast_age=f"'{max_cast_age} days'",
+        max_cast_age=f"{max_cast_age} days",
         agg=agg,
         weights=weights,
         time_decay=time_decay,
