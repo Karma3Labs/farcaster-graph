@@ -1,18 +1,17 @@
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field
+from .score_model import ScoreAgg
+
+from pydantic import BaseModel, Field, TypeAdapter
 
 class SortingOrder(StrEnum):
     SCORE = 'score'
     POPULAR = 'popular'
     RECENT = 'recent'
     HOUR = 'hour'
+    DAY = 'day'
     REACTIONS = 'reactions'
-
-class FeedType(StrEnum):
-    POPULAR = 'popular'
-    TRENDING = 'trending'
 
 class CastsTimeframe(StrEnum):
     DAY = 'day'
@@ -27,7 +26,27 @@ CASTS_AGE = {
     CastsTimeframe.SIX_MONTHS: '6 months',
 }
 
+class TrendingFeed(BaseModel):
+    feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
+    lookback: CastsTimeframe = CastsTimeframe.WEEK
+    agg: ScoreAgg = ScoreAgg.SUM
+    weights: str = 'L1C0R1Y1'
+    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.DAY
+    time_decay: Annotated[bool, Field(alias="timeDecay")] = True
+    normalize: bool = True
+    shuffle: bool = False
 
-class ProviderMetadata(BaseModel):
-    feed_type: Annotated[FeedType, Field(alias="feedType")]
-    lookback: CastsTimeframe
+class PopularFeed(BaseModel):
+    feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
+    lookback: CastsTimeframe = CastsTimeframe.WEEK
+    agg: ScoreAgg = ScoreAgg.SUMSQUARE
+    weights: str = 'L1C10R1Y1'
+    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
+    time_decay: Annotated[bool, Field(alias="timeDecay")] = False
+    normalize: bool = False
+    shuffle: bool = False
+
+FeedMetadata = TypeAdapter(Annotated[
+    Union[TrendingFeed, PopularFeed],
+    Field(discriminator="feed_type"),
+])

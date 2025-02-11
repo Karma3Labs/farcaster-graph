@@ -1627,7 +1627,9 @@ async def get_popular_channel_casts_lite(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = "cast_hour DESC, random(), cast_score DESC"
+            order_sql = "cast_hour DESC, cast_score DESC"
+        case SortingOrder.DAY:
+            order_sql = "cast_day DESC, cast_score DESC"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1670,6 +1672,7 @@ async def get_popular_channel_casts_lite(
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
+        DATE_TRUNC('day', cast_ts) as cast_day,
         cast_ts, 
         cast_score
     FROM scores
@@ -2297,6 +2300,7 @@ async def get_trending_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
+        shuffle: bool,
         time_decay: bool,
         normalize: bool,
         offset: int,
@@ -2328,15 +2332,20 @@ async def get_trending_channel_casts_heavy(
     else:
         fidscore_sql = 'fids.score'
 
+    if shuffle:
+        shuffle_sql = 'random(),'
+    else:
+        shuffle_sql = ''
+
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = 'cast_hour DESC, random(), cast_score DESC'
+            order_sql = f'cast_hour DESC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
-            order_sql = 'reaction_count DESC, cast_score DESC'
+            order_sql = f'reaction_count DESC, {shuffle_sql} cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -2441,6 +2450,7 @@ async def get_trending_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
+        shuffle: bool,
         time_decay: bool,
         normalize: bool,
         offset: int,
@@ -2472,13 +2482,20 @@ async def get_trending_channel_casts_lite(
     else:
         fidscore_sql = 'fids.score'
 
+    if shuffle:
+        shuffle_sql = 'random(),'
+    else:
+        shuffle_sql = ''
+
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = 'cast_hour DESC, random(), cast_score DESC'
+            order_sql = f'cast_hour DESC, {shuffle_sql} cast_score DESC'
+        case SortingOrder.DAY:
+            order_sql = f'cast_day DESC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
 
@@ -2522,6 +2539,7 @@ async def get_trending_channel_casts_lite(
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         DATE_TRUNC('hour', cast_ts) as cast_hour,
+        DATE_TRUNC('day', cast_ts) as cast_day,
         cast_ts,
         cast_score
     FROM scores

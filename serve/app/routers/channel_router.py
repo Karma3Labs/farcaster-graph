@@ -1,10 +1,10 @@
-from typing import Annotated
+from typing import Annotated, Literal
 import urllib.parse
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
-from pydantic_core import from_json, ValidationError
+from pydantic_core import ValidationError
 
 from ..models.score_model import ScoreAgg, Weights
 from ..models.channel_model import (
@@ -12,7 +12,7 @@ from ..models.channel_model import (
   ChannelPointsOrderBy, ChannelEarningsOrderBy, ChannelEarningsType,
   ChannelEarningsScope
 )
-from ..models.feed_model import SortingOrder, ProviderMetadata, FeedType, CASTS_AGE, CastsTimeframe
+from ..models.feed_model import SortingOrder, CASTS_AGE, FeedMetadata, TrendingFeed, PopularFeed
 from ..dependencies import db_pool, db_utils
 from .. import utils
 from ..utils import fetch_channel
@@ -288,12 +288,12 @@ async def get_popular_channel_casts(
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         agg: Annotated[ScoreAgg | None,
                        Query(description="Define the aggregation function" \
-                                         " - `rms`, `sumsquare`, `sum`")] = ScoreAgg.SUM,
-        weights: Annotated[str | None, Query()] = 'L1C0R1Y1',
+                                         " - `rms`, `sumsquare`, `sum`")] = None,
+        weights: Annotated[str | None, Query()] = None,
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=50)] = 25,
         lite: Annotated[bool, Query()] = True,
-        sorting_order: Annotated[SortingOrder, Query()] = SortingOrder.HOUR,
+        sorting_order: Annotated[SortingOrder, Query()] = None,
         provider_metadata: Annotated[str | None, Query()] = None,
         pool: Pool = Depends(db_pool.get_db),
 ):
@@ -314,36 +314,48 @@ async def get_popular_channel_casts(
     limit=25, and lite=true
     i.e., returns recent 25 popular casts.
   """
-    try:
-        weights = Weights.from_str(weights)
-    except:
-        raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
-
-    md_model = None
+    metadata = None
     if provider_metadata:
       # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
       md_str = urllib.parse.unquote(provider_metadata)
-      md_obj = from_json(md_str)
-      logger.info(f"Provider metadata: {md_obj}")
+      logger.info(f"Provider metadata: {md_str}")
       try:
-        md_model = ProviderMetadata.validate(md_obj)
+        metadata = FeedMetadata.validate_json(md_str)
       except ValidationError as e:
         logger.error(f"Error while validating provider metadata: {e}")
-        # raise HTTPException(status_code=400, detail="Error while validating provider metadata")
+        raise HTTPException(status_code=400, detail="Error while validating provider metadata")
+    else:
+      # default this api to Trending because Neynar uses this for Trending
+      md_json = {"feedType": "trending"}
+      metadata = TrendingFeed.validate(md_json)
     
-    if md_model and md_model.feed_type == FeedType.POPULAR:
-        max_cast_age = CASTS_AGE[md_model.lookback]
+    # For backward compatibility reasons, honor request params over metadata
+    if weights:
+      metadata.weights = weights
+    if agg: 
+      metadata.agg = agg
+    if sorting_order:
+      metadata.sorting_order = sorting_order
+
+    try:
+      parsed_weights = Weights.from_str(metadata.weights)
+    except:
+        raise HTTPException(status_code=400, detail="Weights should be of the form 'LxxCxxRxx'")
+
+    logger.info(f"Feed params: {metadata}")
+
+    if metadata and type(metadata) is PopularFeed:
         if lite:
             casts = await db_utils.get_popular_channel_casts_lite(
                 channel_id=channel,
                 channel_url=fetch_channel(channel_id=channel),
                 strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-                max_cast_age=max_cast_age,
-                agg=ScoreAgg.SUMSQUARE, # hard-coded
-                weights=Weights.from_str('L1C10R5Y1'), # hard-coded
+                max_cast_age=CASTS_AGE[metadata.lookback],
+                agg=metadata.agg,
+                weights=parsed_weights,
                 offset=offset,
                 limit=limit,
-                sorting_order=SortingOrder.SCORE, # hard-coded
+                sorting_order=metadata.sorting_order,
                 pool=pool,
             )
         else:
@@ -352,30 +364,30 @@ async def get_popular_channel_casts(
                 channel_id=channel,
                 channel_url=fetch_channel(channel_id=channel),
                 strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-                max_cast_age=max_cast_age,
-                agg=ScoreAgg.SUMSQUARE, # hard-coded
-                weights=Weights.from_str('L1C10R5Y1'), # hard-coded
+                max_cast_age=CASTS_AGE[metadata.lookback],
+                agg=metadata.agg,
+                weights=parsed_weights,
                 offset=offset,
                 limit=limit,
-                sorting_order=SortingOrder.SCORE, # hard-coded
+                sorting_order=metadata.sorting_order,
                 pool=pool,
             )
     else:
-      # default this api to Trending because Neynar uses this for Trending
-      max_cast_age = CASTS_AGE[CastsTimeframe.WEEK] if not md_model else CASTS_AGE[md_model.lookback]
+      # defaults to Trending because Neynar calls this API for Trending feed
       if lite:
         casts = await db_utils.get_trending_channel_casts_lite(
           channel_id=channel,
           channel_url=fetch_channel(channel_id=channel),
           channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-          max_cast_age=max_cast_age, 
-          agg=agg, 
-          weights=weights,
-          time_decay=True, # hard-coded
-          normalize=True, # hard-coded
+          max_cast_age=CASTS_AGE[metadata.lookback], 
+          agg=metadata.agg, 
+          weights=parsed_weights,
+          shuffle=metadata.shuffle,
+          time_decay=metadata.time_decay,
+          normalize=metadata.normalize,
           offset=offset,
           limit=limit,
-          sorting_order=sorting_order, 
+          sorting_order=metadata.sorting_order, 
           pool=pool
         )
       else:
@@ -384,14 +396,15 @@ async def get_popular_channel_casts(
           channel_id=channel,
           channel_url=fetch_channel(channel_id=channel),
           channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
-          max_cast_age=max_cast_age, 
-          agg=agg, 
-          weights=weights,
-          time_decay=True, # hard-coded
-          normalize=True, # hard-coded
+          max_cast_age=CASTS_AGE[metadata.lookback], 
+          agg=metadata.agg, 
+          weights=parsed_weights,
+          shuffle=metadata.shuffle,
+          time_decay=metadata.time_decay,
+          normalize=metadata.normalize,
           offset=offset,
           limit=limit,
-          sorting_order=sorting_order, 
+          sorting_order=metadata.sorting_order, 
           pool=pool
         )
 
