@@ -39,11 +39,11 @@ class TrendingFeed(BaseModel):
 class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
-    agg: ScoreAgg = ScoreAgg.SUMSQUARE
-    weights: str = 'L1C10R1Y1'
+    agg: ScoreAgg = ScoreAgg.SUM
+    weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[bool, Field(alias="timeDecay")] = False
-    normalize: bool = False
+    normalize: bool = True
     shuffle: bool = False
 
 FeedMetadata = TypeAdapter(Annotated[

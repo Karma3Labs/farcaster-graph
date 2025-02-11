@@ -286,26 +286,16 @@ async def get_channel_rank_for_handles(
 async def get_popular_channel_casts(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
-        agg: Annotated[ScoreAgg | None,
-                       Query(description="Define the aggregation function" \
-                                         " - `rms`, `sumsquare`, `sum`")] = None,
-        weights: Annotated[str | None, Query()] = None,
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=50)] = 25,
         lite: Annotated[bool, Query()] = True,
-        sorting_order: Annotated[SortingOrder, Query()] = None,
         provider_metadata: Annotated[str | None, Query()] = None,
         pool: Pool = Depends(db_pool.get_db),
 ):
     """
   Get a list of recent casts that are the most popular
     based on Eigentrust scores of fids in the channel. \n
-  This API takes optional parameters -
-    agg, weights, offset, limit andlite. \n
-  Parameter 'agg' is used to define the aggregation function and
-    can take any of the following values - `rms`, `sumsquare`, `sum`. \n
-  Parameter 'weights' is used to define the weights to be assigned
-    to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+  This API takes optional parameters - offset, limit and lite. \n
   Parameter 'lite' is used to constrain the result to just cast hashes. \n
   Parameter 'offset' is used to specify how many results to skip
     and can be useful for paginating through results. \n
@@ -326,11 +316,11 @@ async def get_popular_channel_casts(
   { \n
       "feedType": "popular",  \n
       "lookback": "day" | "week" | "month" | "six_months", # week is default \n
-      "agg": "sum" | "rms" | "sumsquare", # sumsquare is default \n
-      "weights": "L1C10R1Y1", # default \n
+      "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "weights": "L1C1R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score", # score is default \n
       "timeDecay": true | false, # false is default \n
-      "normalize": true | false, # false is default \n
+      "normalize": true | false, # true is default \n
       "shuffle": true | false # false is default \n
     } \n
   Parameter 'limit' is used to specify the number of results to return. \n
@@ -351,14 +341,6 @@ async def get_popular_channel_casts(
       # default this api to Trending because Neynar uses this for Trending
       md_json = {"feedType": "trending"}
       metadata = TrendingFeed.validate(md_json)
-    
-    # For backward compatibility reasons, honor request params over metadata
-    if weights:
-      metadata.weights = weights
-    if agg: 
-      metadata.agg = agg
-    if sorting_order:
-      metadata.sorting_order = sorting_order
 
     try:
       parsed_weights = Weights.from_str(metadata.weights)
