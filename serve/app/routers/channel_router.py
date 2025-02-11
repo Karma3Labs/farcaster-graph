@@ -309,9 +309,32 @@ async def get_popular_channel_casts(
   Parameter 'lite' is used to constrain the result to just cast hashes. \n
   Parameter 'offset' is used to specify how many results to skip
     and can be useful for paginating through results. \n
+  provider_metadata is a **URI encoded JSON string** 
+  that contains the following for **Trending Feed**: \n
+    { \n
+      "feedType": "trending",  \n
+      "lookback": "day" | "week" | "month" | "six_months", # week is default \n
+      "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "weights": "L1C0R1Y1", # default \n
+      "sortingOrder": "day" | "hour" | "score" | "reactions", # day is default \n
+      "timeDecay": true | false, # true is default \n
+      "normalize": true | false, # true is default \n
+      "shuffle": true | false # false is default \n
+    } \n
+  provider_metadata is a **URI encoded JSON string** 
+    that contains the following for **Popular Feed**: \n
+  { \n
+      "feedType": "popular",  \n
+      "lookback": "day" | "week" | "month" | "six_months", # week is default \n
+      "agg": "sum" | "rms" | "sumsquare", # sumsquare is default \n
+      "weights": "L1C10R1Y1", # default \n
+      "sortingOrder": "day" | "hour" | "score", # score is default \n
+      "timeDecay": true | false, # false is default \n
+      "normalize": true | false, # false is default \n
+      "shuffle": true | false # false is default \n
+    } \n
   Parameter 'limit' is used to specify the number of results to return. \n
-  By default, agg=sum, weights='L1C0R1Y1', offset=0,
-    limit=25, and lite=true
+  By default, offset=0, limit=25, and lite=true
     i.e., returns recent 25 popular casts.
   """
     metadata = None
