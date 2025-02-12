@@ -1607,6 +1607,8 @@ async def get_popular_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
+        time_decay: bool,
+        normalize: bool,
         offset: int,
         limit: int,
         sorting_order: SortingOrder,
@@ -1627,9 +1629,25 @@ async def get_popular_channel_casts_lite(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = "cast_hour DESC, cast_score DESC"
+            order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
-            order_sql = "cast_day DESC, cast_score DESC"
+            order_sql = "age_days ASC, cast_score DESC"
+
+    if time_decay:
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
+
+    if normalize:
+        fidscore_sql = 'cbrt(fids.score)'
+    else:
+        fidscore_sql = 'fids.score'
+
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1637,16 +1655,13 @@ async def get_popular_channel_casts_lite(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted)
-                        + ({weights.reply} * fids.score * ci.replied)
-                        + ({weights.recast} * fids.score * ci.recasted)
-                        + ({weights.like} * fids.score * ci.liked)
+                        ({weights.cast} * {fidscore_sql} * ci.casted)
+                        + ({weights.reply} * {fidscore_sql} * ci.replied)
+                        + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                        + ({weights.like} * {fidscore_sql} * ci.liked)
                     )
                     *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
+                    {decay_sql}
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -1671,8 +1686,8 @@ async def get_popular_channel_casts_lite(
         )
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', cast_ts) as cast_hour,
-        DATE_TRUNC('day', cast_ts) as cast_day,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
         cast_ts, 
         cast_score
     FROM scores
@@ -1692,6 +1707,8 @@ async def get_popular_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
+        time_decay: bool,
+        normalize: bool,
         offset: int,
         limit: int,
         sorting_order: SortingOrder,
@@ -1712,7 +1729,25 @@ async def get_popular_channel_casts_heavy(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = "cast_hour DESC, random(), cast_score DESC"
+            order_sql = "age_hours ASC, cast_score DESC"
+        case SortingOrder.DAY:
+            order_sql = "age_days ASC, cast_score DESC"
+
+    if time_decay:
+        decay_sql = """
+            power(
+                1-(1/365::numeric),
+                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+            )
+        """
+    else:
+        decay_sql = "1"
+
+    if normalize:
+        fidscore_sql = 'cbrt(fids.score)'
+    else:
+        fidscore_sql = 'fids.score'
+
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1720,16 +1755,13 @@ async def get_popular_channel_casts_heavy(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * fids.score * ci.casted)
-                        + ({weights.reply} * fids.score * ci.replied)
-                        + ({weights.recast} * fids.score * ci.recasted)
-                        + ({weights.like} * fids.score * ci.liked)
+                        ({weights.cast} * {fidscore_sql} * ci.casted)
+                        + ({weights.reply} * {fidscore_sql} * ci.replied)
+                        + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                        + ({weights.like} * {fidscore_sql} * ci.liked)
                     )
                     *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
+                    {decay_sql}
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -1753,12 +1785,12 @@ async def get_popular_channel_casts_heavy(
             )
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', casts.timestamp) as cast_hour,
+        FLOOR(EXTRACT(EPOCH FROM (now() - casts.timestamp))/3600) as age_hours,
+        FLOOR(EXTRACT(EPOCH FROM (now() - casts.timestamp))/(60 * 60 * 24)::numeric) AS age_days,
         casts.text,
         casts.embeds,
         casts.mentions,
         casts.fid,
-        casts.timestamp,
         casts.timestamp as cast_ts,
         cast_score
     FROM k3l_recent_parent_casts as casts
@@ -2343,7 +2375,9 @@ async def get_trending_channel_casts_heavy(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = f'cast_hour DESC, {shuffle_sql} cast_score DESC'
+            order_sql = f'age_hours ASC, {shuffle_sql} cast_score DESC'
+        case SortingOrder.DAY:
+            order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = f'reaction_count DESC, {shuffle_sql} cast_score DESC'
 
@@ -2387,8 +2421,9 @@ async def get_trending_channel_casts_heavy(
     cast_details AS (
         SELECT
             '0x' || encode(scores.cast_hash, 'hex') as cast_hash,
-            DATE_TRUNC('hour', scores.cast_ts) AS cast_hour,
-            scores.cast_ts,
+            FLOOR(EXTRACT(EPOCH FROM (now() - ci.timestamp))/3600) as age_hours,
+            FLOOR(EXTRACT(EPOCH FROM (now() - ci.timestamp))/(60 * 60 * 24)::numeric) AS age_days,
+            ci.timestamp as cast_ts,
             scores.cast_score,
             scores.reaction_count as reaction_count,
             ci.text,
@@ -2406,35 +2441,26 @@ async def get_trending_channel_casts_heavy(
     feed AS (
         SELECT
             distinct
-            cast_details.fid,
-            cast_details.channel_id,
-            cast_details.channel_rank,
-            cast_details.global_rank,
             cast_details.cast_hash,
+            ANY_VALUE(cast_details.fid) as fid,
+            ANY_VALUE(cast_details.channel_id) as channel_id,
+            MIN(cast_details.channel_rank) as channel_rank,
+            MIN(cast_details.global_rank) as global_rank,
             ANY_VALUE(fnames.fname) as fname,
             ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
             ANY_VALUE(case when user_data.type = 1 then user_data.value end) as pfp,
             ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
-            cast_details.cast_score,
-            cast_details.reaction_count,
-            cast_details.cast_hour,
-            cast_details.cast_ts,
-            cast_details.text
+            MAX(cast_details.cast_score) as cast_score,
+            MAX(cast_details.reaction_count) as reaction_count, 
+            MIN(cast_details.age_hours) as age_hours,
+            MIN(cast_details.age_days) as age_days,
+            MIN(cast_details.cast_ts) as cast_ts,
+            ANY_VALUE(cast_details.text) as text
         FROM cast_details
         LEFT JOIN fnames ON (cast_details.fid = fnames.fid)
         LEFT JOIN user_data ON (cast_details.fid = user_data.fid)
-        GROUP BY 
-            cast_details.fid,
-            cast_details.channel_id,
-            cast_details.channel_rank,
-            cast_details.global_rank,
-            cast_details.cast_hash,
-            cast_details.cast_score,
-            cast_details.reaction_count,
-            cast_details.cast_hour,
-            cast_details.cast_ts,
-            cast_details.text
-            )
+        GROUP BY cast_details.cast_hash
+    )
     SELECT * FROM feed
     ORDER BY {order_sql}
     OFFSET $4
@@ -2493,9 +2519,9 @@ async def get_trending_channel_casts_lite(
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
         case SortingOrder.HOUR:
-            order_sql = f'cast_hour DESC, {shuffle_sql} cast_score DESC'
+            order_sql = f'age_hours ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.DAY:
-            order_sql = f'cast_day DESC, {shuffle_sql} cast_score DESC'
+            order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
 
@@ -2538,8 +2564,8 @@ async def get_trending_channel_casts_lite(
     )
     SELECT
         '0x' || encode(cast_hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', cast_ts) as cast_hour,
-        DATE_TRUNC('day', cast_ts) as cast_day,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
         cast_ts,
         cast_score
     FROM scores

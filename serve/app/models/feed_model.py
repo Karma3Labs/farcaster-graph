@@ -44,7 +44,6 @@ class PopularFeed(BaseModel):
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[bool, Field(alias="timeDecay")] = False
     normalize: bool = True
-    shuffle: bool = False
 
 FeedMetadata = TypeAdapter(Annotated[
     Union[TrendingFeed, PopularFeed],

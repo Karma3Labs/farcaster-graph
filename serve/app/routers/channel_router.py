@@ -321,7 +321,6 @@ async def get_popular_channel_casts(
       "sortingOrder": "day" | "hour" | "score", # score is default \n
       "timeDecay": true | false, # false is default \n
       "normalize": true | false, # true is default \n
-      "shuffle": true | false # false is default \n
     } \n
   Parameter 'limit' is used to specify the number of results to return. \n
   By default, offset=0, limit=25, and lite=true
@@ -358,6 +357,8 @@ async def get_popular_channel_casts(
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
                 weights=parsed_weights,
+                time_decay=metadata.time_decay,
+                normalize=metadata.normalize,
                 offset=offset,
                 limit=limit,
                 sorting_order=metadata.sorting_order,
@@ -372,6 +373,8 @@ async def get_popular_channel_casts(
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
                 weights=parsed_weights,
+                time_decay=metadata.time_decay,
+                normalize=metadata.normalize,
                 offset=offset,
                 limit=limit,
                 sorting_order=metadata.sorting_order,
