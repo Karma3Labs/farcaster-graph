@@ -26,7 +26,7 @@ def fetch_unprocessed_urls(logger: logging.Logger, pg_dsn: str, limit: int) -> l
 @Timer(name="update_url_categories")
 def update_url_categories(logger: logging.Logger, pg_dsn: str, url_categories: list[tuple]):
   """url_categories should be of the form [(url_id, category)]"""
-  update_sql = f"""
+  update_sql = """
     UPDATE k3l_url_labels as k
     SET processed_ts=now(), category=v.cat
     FROM (VALUES %s) AS v(id, cat)

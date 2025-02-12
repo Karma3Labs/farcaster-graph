@@ -22,11 +22,10 @@ async def categorize_url(
     timeout: aiohttp.ClientTimeout
 ) -> tuple[int, str]:
   logger.debug(f"Fetching {url_id} - {url}")
-  if urlparse(url).scheme not in ['http','https']:
-    logger.error(f"bad url {url_id} - {url}")
-    return (url_id, URLCategory.BAD.value)
-
   try:
+    if urlparse(url).scheme not in ['http','https']:
+      logger.error(f"bad url {url_id} - {url}")
+      return (url_id, URLCategory.BAD.value)
     async with session.get(url, timeout=timeout) as resp:
       body = await resp.text()
       soup = BeautifulSoup(body, 'html.parser')
