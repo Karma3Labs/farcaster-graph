@@ -31,6 +31,7 @@ DAEMON=${DAEMON:-false}
 
 source $VENV/bin/activate
 # pip install -r requirements.txt
-tldextract --update
+mkdir -p tmp/tldcache
+export TLDEXTRACT_CACHE=tmp/tldcache
 python3 -m frames.main -d $DAEMON
 deactivate

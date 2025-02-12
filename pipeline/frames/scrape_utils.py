@@ -60,15 +60,18 @@ def parse_url(
     url:str
 ) -> tuple[int, str, str, str, str, str]:
   logger.debug(f"parsing {url_id} - {url}")
-  parse_result = urlparse(url)
-  extract = tldextract.extract(url)
-  path = parse_result.path
-  if path.endswith(':'):
-    path = path[:-1]
-  return tuple(URL_parts(url_id,
-                   parse_result.scheme,
-                   extract.domain,
-                   extract.subdomain,
-                   extract.suffix,
-                   path))
-
+  try:
+    parse_result = urlparse(url)
+    extract = tldextract.extract(url)
+    path = parse_result.path
+    if path.endswith(':'):
+      path = path[:-1]
+    return tuple(URL_parts(url_id,
+                    parse_result.scheme,
+                    extract.domain,
+                    extract.subdomain,
+                    extract.suffix,
+                    path))
+  except Exception as e:
+    logger.error(f"error {url_id} - {url}: {e}")
+    return (url_id, '', '', '', '', '')
