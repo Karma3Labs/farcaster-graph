@@ -41,6 +41,12 @@ async def categorize_url(
   except aiohttp.ClientError as e:
     logger.error(f"error {url_id} - {url}: {e}")
     return (url_id, URLCategory.ERROR.value)
+  except aiohttp.ClientError as e:
+    logger.error(f"error {url_id} - {url}: {e}")
+    return (url_id, URLCategory.ERROR.value)
+  except ValueError as e:
+    logger.error(f"error {url_id} - {url}: {e}")
+    return (url_id, URLCategory.ERROR.value)
   except Exception as e:
     logger.error(f"error {url_id} - {url}: {e}")
     return (url_id, URLCategory.ERROR.value)
