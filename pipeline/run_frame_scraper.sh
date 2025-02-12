@@ -31,5 +31,6 @@ DAEMON=${DAEMON:-false}
 
 source $VENV/bin/activate
 # pip install -r requirements.txt
+tldextract --update
 python3 -m frames.main -d $DAEMON
 deactivate
