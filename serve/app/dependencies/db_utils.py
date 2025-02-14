@@ -1606,6 +1606,7 @@ async def get_popular_channel_casts_lite(
         strategy_name: str,
         max_cast_age: str,
         agg: ScoreAgg,
+        score_threshold: float,
         weights: Weights,
         time_decay: CastsTimeDecay,
         normalize: bool,
@@ -1699,7 +1700,7 @@ async def get_popular_channel_casts_lite(
         cast_ts, 
         cast_score
     FROM scores
-    WHERE cast_score*100000000000>100
+    WHERE cast_score > {score_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -1714,6 +1715,7 @@ async def get_popular_channel_casts_heavy(
         strategy_name: str,
         max_cast_age: str,
         agg: ScoreAgg,
+        score_threshold: float,
         weights: Weights,
         time_decay: CastsTimeDecay,
         normalize: bool,
@@ -1811,7 +1813,7 @@ async def get_popular_channel_casts_heavy(
         cast_score
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
-    WHERE cast_score*100000000000>100
+    WHERE cast_score > {score_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2349,6 +2351,7 @@ async def get_trending_channel_casts_heavy(
         channel_strategy: str,
         max_cast_age: str,
         agg: ScoreAgg,
+        score_threshold: float,
         weights: Weights,
         shuffle: bool,
         time_decay: CastsTimeDecay,
@@ -2384,7 +2387,7 @@ async def get_trending_channel_casts_heavy(
                     (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
                 )
             """
-            
+
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
     else:
@@ -2488,6 +2491,7 @@ async def get_trending_channel_casts_heavy(
         GROUP BY cast_details.cast_hash
     )
     SELECT * FROM feed
+    WHERE cast_score > {score_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2501,6 +2505,7 @@ async def get_trending_channel_casts_lite(
         channel_strategy: str,
         max_cast_age: str,
         agg: ScoreAgg,
+        score_threshold: float,
         weights: Weights,
         shuffle: bool,
         time_decay: CastsTimeDecay,
@@ -2603,7 +2608,7 @@ async def get_trending_channel_casts_lite(
         cast_ts,
         cast_score
     FROM scores
-    WHERE cast_score*100000000000>100
+    WHERE cast_score > {score_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5

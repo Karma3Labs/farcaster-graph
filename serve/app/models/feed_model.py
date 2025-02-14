@@ -36,6 +36,7 @@ class TrendingFeed(BaseModel):
     feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
+    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
     weights: str = 'L1C0R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.DAY
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
@@ -46,6 +47,7 @@ class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
+    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
