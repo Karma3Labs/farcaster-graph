@@ -307,7 +307,7 @@ async def get_popular_channel_casts(
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "weights": "L1C0R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score" | "reactions", # day is default \n
-      "timeDecay": true | false, # true is default \n
+      "timeDecay": "minute" | "hour" | "day" | "never", , # "hour" is default \n
       "normalize": true | false, # true is default \n
       "shuffle": true | false # false is default \n
     } \n
@@ -319,7 +319,7 @@ async def get_popular_channel_casts(
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "weights": "L1C1R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score", # score is default \n
-      "timeDecay": true | false, # false is default \n
+      "timeDecay": "minute" | "hour" | "day" | "never", # "never" is default \n
       "normalize": true | false, # true is default \n
     } \n
   Parameter 'limit' is used to specify the number of results to return. \n

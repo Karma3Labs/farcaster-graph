@@ -26,13 +26,19 @@ CASTS_AGE = {
     CastsTimeframe.SIX_MONTHS: '6 months',
 }
 
+class CastsTimeDecay(StrEnum):
+    MINUTE = 'minute'
+    HOUR = 'hour'
+    DAY = 'day'
+    NEVER = 'never'
+
 class TrendingFeed(BaseModel):
     feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     weights: str = 'L1C0R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.DAY
-    time_decay: Annotated[bool, Field(alias="timeDecay")] = True
+    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
     normalize: bool = True
     shuffle: bool = False
 
@@ -42,7 +48,7 @@ class PopularFeed(BaseModel):
     agg: ScoreAgg = ScoreAgg.SUM
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
-    time_decay: Annotated[bool, Field(alias="timeDecay")] = False
+    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
     normalize: bool = True
 
 FeedMetadata = TypeAdapter(Annotated[

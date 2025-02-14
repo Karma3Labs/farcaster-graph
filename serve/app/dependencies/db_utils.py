@@ -12,7 +12,7 @@ from app.models.channel_model import (
     ChannelEarningsType,
     ChannelEarningsScope,
 )
-from app.models.feed_model import SortingOrder
+from app.models.feed_model import SortingOrder, CastsTimeDecay
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -1607,7 +1607,7 @@ async def get_popular_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
-        time_decay: bool,
+        time_decay: CastsTimeDecay,
         normalize: bool,
         offset: int,
         limit: int,
@@ -1633,15 +1633,23 @@ async def get_popular_channel_casts_lite(
         case SortingOrder.DAY:
             order_sql = "age_days ASC, cast_score DESC"
 
-    if time_decay:
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
+    match time_decay:
+        case CastsTimeDecay.NEVER:
+            decay_sql = "1"
+        case _:
+            match time_decay:
+                case CastsTimeDecay.MINUTE:
+                    decay_time = 60
+                case CastsTimeDecay.HOUR:
+                    decay_time = 60 * 60
+                case CastsTimeDecay.DAY:
+                    decay_time = 60 * 60 * 24
+            decay_sql = f"""
+                power(
+                    1-(1/365::numeric),
+                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
+                )
+            """
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -1707,7 +1715,7 @@ async def get_popular_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         weights: Weights,
-        time_decay: bool,
+        time_decay: CastsTimeDecay,
         normalize: bool,
         offset: int,
         limit: int,
@@ -1733,15 +1741,23 @@ async def get_popular_channel_casts_heavy(
         case SortingOrder.DAY:
             order_sql = "age_days ASC, cast_score DESC"
 
-    if time_decay:
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
+    match time_decay:
+        case CastsTimeDecay.NEVER:
+            decay_sql = "1"
+        case _:
+            match time_decay:
+                case CastsTimeDecay.MINUTE:
+                    decay_time = 60
+                case CastsTimeDecay.HOUR:
+                    decay_time = 60 * 60
+                case CastsTimeDecay.DAY:
+                    decay_time = 60 * 60 * 24
+            decay_sql = f"""
+                power(
+                    1-(1/365::numeric),
+                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
+                )
+            """
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -2335,7 +2351,7 @@ async def get_trending_channel_casts_heavy(
         agg: ScoreAgg,
         weights: Weights,
         shuffle: bool,
-        time_decay: bool,
+        time_decay: CastsTimeDecay,
         normalize: bool,
         offset: int,
         limit: int,
@@ -2351,16 +2367,24 @@ async def get_trending_channel_casts_heavy(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    if time_decay:
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
-
+    match time_decay:
+        case CastsTimeDecay.NEVER:
+            decay_sql = "1"
+        case _:
+            match time_decay:
+                case CastsTimeDecay.MINUTE:
+                    decay_time = 60
+                case CastsTimeDecay.HOUR:
+                    decay_time = 60 * 60
+                case CastsTimeDecay.DAY:
+                    decay_time = 60 * 60 * 24
+            decay_sql = f"""
+                power(
+                    1-(1/365::numeric),
+                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
+                )
+            """
+            
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
     else:
@@ -2479,7 +2503,7 @@ async def get_trending_channel_casts_lite(
         agg: ScoreAgg,
         weights: Weights,
         shuffle: bool,
-        time_decay: bool,
+        time_decay: CastsTimeDecay,
         normalize: bool,
         offset: int,
         limit: int,
@@ -2495,15 +2519,23 @@ async def get_trending_channel_casts_lite(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    if time_decay:
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
+    match time_decay:
+        case CastsTimeDecay.NEVER:
+            decay_sql = "1"
+        case _:
+            match time_decay:
+                case CastsTimeDecay.MINUTE:
+                    decay_time = 60
+                case CastsTimeDecay.HOUR:
+                    decay_time = 60 * 60
+                case CastsTimeDecay.DAY:
+                    decay_time = 60 * 60 * 24
+            decay_sql = f"""
+                power(
+                    1-(1/365::numeric),
+                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
+                )
+            """
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
