@@ -19,7 +19,10 @@ with DAG(
     description='Extract urls from cast embeds for frames and refresh pg statistics',
     start_date=datetime(2024, 7, 9, 18),
     # schedule_interval='1-59/20 * * * *',
-    schedule_interval=timedelta(minutes=20),
+    # Decommission Frames ranking due to lack of usage
+    # ... and relevance with the introduction of Frames V2 by Warpcast
+    # schedule_interval=timedelta(minutes=20),
+    schedule_interval=None,
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,

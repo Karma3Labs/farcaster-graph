@@ -156,7 +156,9 @@ app.include_router(graph_router, prefix='/graph')
 app.include_router(metadata_router, prefix='/metadata')
 app.include_router(lt_router, prefix='/scores/personalized')
 app.include_router(gt_router, prefix='/scores/global')
-app.include_router(frame_router, prefix='/frames')
+# Decommission Frames ranking due to lack of usage
+# ... and relevance with the introduction of Frames V2 by Warpcast
+# app.include_router(frame_router, prefix='/frames')
 app.include_router(cast_router, prefix='/casts')
 app.include_router(channel_router, prefix='/channels')
 app.include_router(user_router, prefix='/users')
