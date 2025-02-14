@@ -2133,6 +2133,8 @@ async def get_top_channel_holders(
         orderby_clause = "ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.DAILY:
         orderby_clause = "ORDER BY daily_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+    elif orderby == ChannelEarningsOrderBy.LATEST:
+        orderby_clause = "ORDER BY latest_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.TOTAL:
         orderby_clause = "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     else:

@@ -27,6 +27,7 @@ class ChannelEarningsOrderBy(StrEnum):
     TOTAL = 'total'
     WEEKLY = 'weekly'
     DAILY = 'daily'
+    LATEST = 'latest'
 
 class ChannelEarningsScope(StrEnum):
     AIRDROP = 'airdrop'
