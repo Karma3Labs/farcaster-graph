@@ -179,7 +179,7 @@ process_globaltrust() {
 
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
-  # publish_to_s3 "$csv_file"
+  /usr/bin/gzip -f $csv_file
   # export_csv_to_bq "$csv_file"
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
@@ -191,7 +191,7 @@ process_globaltrust_config() {
 
   export_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 1 "dataset_k3l_cast_globaltrust_config_v2"
-  # publish_to_s3 "$csv_file"
+  /usr/bin/gzip -f $csv_file
   # export_csv_to_bq "$csv_file"
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
@@ -207,7 +207,7 @@ process_localtrust_v1() {
   tail -n+2 $graph_folder/localtrust.v3engagement.csv >> $csv_file
   tail -n+2 $graph_folder/localtrust.following.csv >> $csv_file
 
-  # publish_to_s3 "$csv_file"
+  /usr/bin/gzip -f $csv_file
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
