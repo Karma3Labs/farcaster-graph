@@ -71,8 +71,13 @@ with DAG(
         dag=dag)
     
     upload_to_dune =  BashOperator(
-        task_id="insert_globaltrust_to_dune_v3",
-        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh insert_globaltrust_to_dune_v3",
+        task_id="upload_to_dune",
+        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3",
+        dag=dag)
+
+    upload_to_s3 =  BashOperator(
+        task_id="upload_to_s3",
+        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_global_engagement_rankings_in_s3",
         dag=dag)
 
     rmdir_tmp =  BashOperator(
@@ -114,6 +119,7 @@ with DAG(
         >> compute_following
         >> insert_db
         >> upload_to_dune
+        >> upload_to_s3
         >> trigger_refresh_views
         >> trigger_copy_to_replica
         >> trigger_sync_sandbox

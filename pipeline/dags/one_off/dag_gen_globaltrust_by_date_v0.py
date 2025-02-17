@@ -35,8 +35,8 @@ with DAG(
     catchup=False,
 ) as dag:
     push_to_dune = BashOperator(
-        task_id='insert_globaltrust_to_dune_v3_f',
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh insert_globaltrust_to_dune_v3 "
+        task_id='push_to_dune',
+        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3 "
     )
 
     task1 = BashOperator(

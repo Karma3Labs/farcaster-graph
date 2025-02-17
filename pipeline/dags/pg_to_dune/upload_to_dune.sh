@@ -1,8 +1,8 @@
 #!/bin/bash
 
 source ./.env
-S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-cast-to-dune/constant"}
-S3_BUCKET_NAME_DAILY=${S3_BUCKET_NAME_DAILY:-"k3l-cast-to-dune"}
+# S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-cast-to-dune/constant"}
+S3_BUCKET_NAME_CONSTANT=${S3_BUCKET_NAME_CONSTANT:-"k3l-openrank-farcaster"}
 S3_BUCKET_NAME_BACKUP=${S3_BUCKET_NAME_BACKUP:-"k3l-farcaster-backups"}
 if [[ $(uname) == "Darwin" ]]; then
   TIMESTAMP=$(date -j -v-1d +%Y-%m-%d)
@@ -279,7 +279,7 @@ insert_globaltrust_to_dune_v2() {
   rm -rf $tmp_folder
 }
 
-insert_globaltrust_to_dune_v3() {
+overwrite_globaltrust_in_dune_v3() {
   filename="k3l_cast_globaltrust_full"
   tmp_folder="tmp_insert_globaltrust_to_dune_v3"
   csv_file="$tmp_folder/${filename}.csv"
@@ -427,8 +427,8 @@ case "$1" in
     backup_channel_points_bal)
         backup_channel_points_bal_to_private_s3
         ;;
-    insert_globaltrust_to_dune_v3)
-        insert_globaltrust_to_dune_v3
+    overwrite_globaltrust_in_dune_v3)
+        overwrite_globaltrust_in_dune_v3
         ;;
     overwrite_global_engagement_rankings_in_s3)
         overwrite_global_engagement_rankings_in_s3
