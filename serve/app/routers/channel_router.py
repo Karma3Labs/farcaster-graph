@@ -305,6 +305,7 @@ async def get_popular_channel_casts(
       "feedType": "trending",  \n
       "lookback": "day" | "week" | "month" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C0R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score" | "reactions", # day is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", , # "hour" is default \n
@@ -317,6 +318,7 @@ async def get_popular_channel_casts(
       "feedType": "popular",  \n
       "lookback": "day" | "week" | "month" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C1R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score", # score is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", # "never" is default \n
