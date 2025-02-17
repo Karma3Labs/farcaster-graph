@@ -68,7 +68,7 @@ publish_to_s3() {
   log "GZipping $csv_file"
   /usr/bin/gzip -f $csv_file
   
-  upload_gzip_to_s3 "$csv_file.gz" "$s3_bucket"
+  upload_to_s3 "$csv_file.gz" "$s3_bucket"
 }
 
 publish_to_s3_and_cleanup() {
@@ -87,11 +87,11 @@ backup_to_s3_and_cleanup() {
   TS_SECONDS=$(date +%s)
   local csv_gz_file="${WORK_DIR}/${filename}_${TS_SECONDS}.csv.gz"
   mv "$csv_file.gz" "$csv_gz_file"
-  upload_gzip_to_s3 "$csv_gz_file" "$s3_bucket"
+  upload_to_s3 "$csv_gz_file" "$s3_bucket"
   rm $csv_gz_file
 }
 
-upload_gzip_to_s3() {
+upload_to_s3() {
   local csv_file_gz="$1"
   local s3_bucket="$2"
 
@@ -179,7 +179,7 @@ process_globaltrust() {
 
   export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
-  publish_to_s3 "$csv_file"
+  # publish_to_s3 "$csv_file"
   # export_csv_to_bq "$csv_file"
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
@@ -191,8 +191,8 @@ process_globaltrust_config() {
 
   export_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 1 "dataset_k3l_cast_globaltrust_config_v2"
-  publish_to_s3 "$csv_file"
-  #export_csv_to_bq "$csv_file"
+  # publish_to_s3 "$csv_file"
+  # export_csv_to_bq "$csv_file"
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
@@ -207,12 +207,11 @@ process_localtrust_v1() {
   tail -n+2 $graph_folder/localtrust.v3engagement.csv >> $csv_file
   tail -n+2 $graph_folder/localtrust.following.csv >> $csv_file
 
-
-  publish_to_s3 "$csv_file"
+  # publish_to_s3 "$csv_file"
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
-# Function to export and process k3l_channel_rank table
+# DEPRECATED
 upload_lifetime_channel_rank_to_public_s3() {
   filename="k3l_channel_rankings"
   csv_file="${WORK_DIR}/$filename.csv"
@@ -259,7 +258,7 @@ backup_channel_points_bal_to_private_s3() {
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
-
+# DEPRECATED
 insert_globaltrust_to_dune_v2() {
   filename="k3l_cast_globaltrust_incremental"
   tmp_folder="tmp_insert_globaltrust_to_dune_v2"
@@ -288,7 +287,7 @@ insert_globaltrust_to_dune_v3() {
   shopt -s nullglob
   rm -f "$tmp_folder"/*
 
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
 
   dune_table_name="dataset_k3l_cast_globaltrust"
   _clear_dune_table "openrank" $dune_table_name
@@ -298,6 +297,22 @@ insert_globaltrust_to_dune_v3() {
   rm -rf $tmp_folder
 }
 
+overwrite_global_engagement_rankings_in_s3() {
+  filename="k3l_global_engagement_rankings"
+  tmp_folder="tmp_overwrite_globalrank_for_neynar"
+  csv_file="$tmp_folder/$filename.csv"
+  mkdir -p $tmp_folder
+  shopt -s nullglob
+  rm -f "$tmp_folder"/*
+
+  rm -f $csv_file
+  export_to_csv \
+    "k3l_rank" \
+    "$csv_file" \
+    "\COPY (SELECT profile_id as fid, score FROM k3l_rank WHERE strategy_id = 9)\
+      TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  publish_to_s3_and_cleanup "$csv_file"
+}
 
 overwrite_channel_rank_in_dune_v3() {
   filename="k3l_channel_rankings_full"
@@ -406,17 +421,17 @@ case "$1" in
         process_localtrust_v1 $2
         ;;
     upload_channel_rank_to_s3)
-        upload_lifetime_channel_rank_to_public_s3
+        # upload_lifetime_channel_rank_to_public_s3
         backup_all_channel_rank_to_private_s3
         ;;
     backup_channel_points_bal)
         backup_channel_points_bal_to_private_s3
         ;;
-    insert_globaltrust_to_dune_v2)
-        insert_globaltrust_to_dune_v2
-        ;;
     insert_globaltrust_to_dune_v3)
         insert_globaltrust_to_dune_v3
+        ;;
+    overwrite_global_engagement_rankings_in_s3)
+        overwrite_global_engagement_rankings_in_s3
         ;;
     overwrite_channel_rank_in_dune_v3)
         overwrite_channel_rank_in_dune_v3
