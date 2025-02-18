@@ -13,6 +13,17 @@ class SortingOrder(StrEnum):
     DAY = 'day'
     REACTIONS = 'reactions'
 
+class ChannelTimeframe(StrEnum):
+    DAY = 'day'
+    WEEK = 'week'
+    MONTH = 'month'
+
+PARENT_CASTS_AGE = {
+    ChannelTimeframe.DAY: '1 day',
+    ChannelTimeframe.WEEK: '7 days',
+    ChannelTimeframe.MONTH: '30 days',
+}
+
 class CastsTimeframe(StrEnum):
     DAY = 'day'
     WEEK = 'week'

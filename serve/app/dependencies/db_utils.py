@@ -2615,3 +2615,44 @@ async def get_trending_channel_casts_lite(
     """
 
     return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
+
+async def get_trending_channels(
+        max_cast_age: str,
+        rank_threshold: int,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    logger.info("get_trending_channels")
+
+    sql_query = f"""
+    WITH top_fids AS (
+        SELECT
+            profile_id as fid, rank
+        FROM
+            k3l_rank
+        WHERE strategy_id=9 AND rank <= $1
+        ORDER BY rank ASC
+    ),
+    top_channels AS (
+        SELECT
+            casts.root_parent_url as url,
+            count(*) as score
+        FROM k3l_recent_parent_casts AS casts
+        INNER JOIN top_fids ON (top_fids.fid = casts.fid
+            AND casts.timestamp > now() - interval '{max_cast_age}'
+            AND casts.root_parent_url IS NOT NULL)
+        GROUP BY casts.root_parent_url
+    )
+    SELECT
+        ch.id,
+        top_channels.score,
+        ch.pinnedcasthash
+    FROM top_channels
+    INNER JOIN warpcast_channels_data as ch ON (ch.url = top_channels.url)
+    ORDER BY top_channels.score DESC
+    OFFSET $2
+    LIMIT $3
+    """
+
+    return await fetch_rows(rank_threshold, offset, limit, sql_query=sql_query, pool=pool)

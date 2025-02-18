@@ -8,11 +8,23 @@ from pydantic_core import ValidationError
 
 from ..models.score_model import ScoreAgg, Weights
 from ..models.channel_model import (
-  ChannelRankingsTimeframe, CHANNEL_RANKING_STRATEGY_NAMES, OpenrankCategory,
-  ChannelPointsOrderBy, ChannelEarningsOrderBy, ChannelEarningsType,
-  ChannelEarningsScope
+    ChannelRankingsTimeframe,
+    CHANNEL_RANKING_STRATEGY_NAMES,
+    OpenrankCategory,
+    ChannelPointsOrderBy,
+    ChannelEarningsOrderBy,
+    ChannelEarningsType,
+    ChannelEarningsScope,
 )
-from ..models.feed_model import SortingOrder, CASTS_AGE, FeedMetadata, TrendingFeed, PopularFeed
+from ..models.feed_model import (
+    SortingOrder,
+    CASTS_AGE,
+    PARENT_CASTS_AGE,
+    FeedMetadata,
+    TrendingFeed,
+    PopularFeed,
+    ChannelTimeframe,
+)
 from ..dependencies import db_pool, db_utils
 from .. import utils
 from ..utils import fetch_channel
@@ -618,3 +630,33 @@ async def get_top_channel_repliers(
         pool=pool)
     return {"result": followers}
 
+@router.get("/trending", tags=["Trending Channels"])
+async def get_trending_channels(
+        lookback: ChannelTimeframe = Query(ChannelTimeframe.WEEK),
+        rank_threshold: Annotated[int | None, Query(alias="rankThreshold", le=100000)] = 10000,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=100)] = 25,
+        pool: Pool = Depends(db_pool.get_db),
+):
+    """
+    Get a list of trending channels
+      based on Eigentrust rankings of fids. \n
+    This API takes optional parameters - lookback, rankThreshold, offset and limit. \n
+    Parameter 'lookback' is used to specify how far back to look for casts.\n
+    Parameter 'rankThreshold' is used to specify 
+      the minimum rank for an fid's activity to be considered. \n
+    Parameter 'offset' is used to specify how many results to skip
+      and can be useful for paginating through results. \n
+    Parameter 'limit' is used to specify the number of results to return. \n
+    By default, lookback='week, rankThreshold=10000, offset=0, and limit=25
+      i.e., returns recent 25 popular casts.
+    """
+
+    channels = await db_utils.get_trending_channels(
+      max_cast_age=PARENT_CASTS_AGE[lookback],
+      rank_threshold=rank_threshold,
+      offset=offset,
+      limit=limit,
+      pool=pool,
+    )
+    return {"result": channels}
