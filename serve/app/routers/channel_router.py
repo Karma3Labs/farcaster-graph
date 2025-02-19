@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated
 import urllib.parse
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -24,6 +24,7 @@ from ..models.feed_model import (
     TrendingFeed,
     PopularFeed,
     ChannelTimeframe,
+    CastsTimeDecay
 )
 from ..dependencies import db_pool, db_utils
 from .. import utils
@@ -294,7 +295,7 @@ async def get_channel_rank_for_handles(
     return {"result": ranks}
 
 
-@router.get("/casts/popular/{channel}", tags=["Neynar Trending Feed"])
+@router.get("/casts/popular/{channel}", tags=["Channel Feed", "Neynar Trending Feed"])
 async def get_popular_channel_casts(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -437,7 +438,7 @@ async def get_popular_channel_casts(
     return {"result": casts}
 
 
-@router.get("/casts/daily/{channel}", tags=["Channel Feed"])
+@router.get("/casts/daily/{channel}", tags=["Deprecated"])
 async def get_trending_casts(
         channel: str,
         channel_strategy: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -453,6 +454,10 @@ async def get_trending_casts(
         sorting_order: Annotated[SortingOrder, Query()] = SortingOrder.SCORE,
         pool: Pool = Depends(db_pool.get_db)
 ):
+    if time_decay:
+        time_decay = CastsTimeDecay.HOUR
+    else:
+        time_decay = CastsTimeDecay.NEVER
     try:
         weights = Weights.from_str(weights)
     except:
