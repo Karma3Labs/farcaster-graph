@@ -2314,13 +2314,6 @@ GRANT ALL ON TABLE public.pretrust_v2 TO k3l_readonly;
 
 
 --
--- Name: TABLE tmp_globaltrust_v2; Type: ACL; Schema: public; Owner: k3l_user
---
-
-GRANT SELECT,REFERENCES ON TABLE public.tmp_globaltrust_v2 TO k3l_readonly;
-
-
---
 -- PostgreSQL database dump complete
 --
 
