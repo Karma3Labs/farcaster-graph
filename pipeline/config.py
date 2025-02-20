@@ -72,6 +72,12 @@ class Settings(BaseSettings):
     REMOTE_DB_HOST:str = '127.0.0.1'
     REMOTE_DB_PORT:int = 9541
     
+    ALT_REMOTE_DB_USER:str = 'postgres'
+    ALT_REMOTE_DB_PASSWORD:SecretStr = 'password'
+    ALT_REMOTE_DB_NAME:str = 'postgres'
+    ALT_REMOTE_DB_HOST:str = '127.0.0.1'
+    ALT_REMOTE_DB_PORT:int = 9541
+    
     SANDBOX_DB_USER:str = 'postgres'
     SANDBOX_DB_PASSWORD:SecretStr = 'password'
     SANDBOX_DB_NAME:str = 'postgres'
