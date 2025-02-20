@@ -81,6 +81,12 @@ REMOTE_DB_USER=${REMOTE_DB_USER:-k3l_user}
 REMOTE_DB_NAME=${REMOTE_DB_NAME:-farcaster}
 REMOTE_DB_PASSWORD=${REMOTE_DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
 
+ALT_REMOTE_DB_HOST=${ALT_REMOTE_DB_HOST:-127.0.0.1}
+ALT_REMOTE_DB_PORT=${ALT_REMOTE_DB_PORT:-5432}
+ALT_REMOTE_DB_USER=${ALT_REMOTE_DB_USER:-k3l_user}
+ALT_REMOTE_DB_NAME=${ALT_REMOTE_DB_NAME:-farcaster}
+ALT_REMOTE_DB_PASSWORD=${ALT_REMOTE_DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
+
 # set -x
 set -e
 set -o pipefail
@@ -93,10 +99,16 @@ log "DATE_OPTION: $OPT_DATE_SUFFIX"
 log "TARGET_DATE: $TARGET_DATE_SUFFIX"
 log "TEMP_DIR: $TEMP_DIR"
 log "OUT_DIR: $OUT_DIR"
+
 log "REMOTE_DB_HOST: $REMOTE_DB_HOST"
 log "REMOTE_DB_PORT: $REMOTE_DB_PORT"
 log "REMOTE_DB_USER: $REMOTE_DB_USER"
 log "REMOTE_DB_NAME: $REMOTE_DB_NAME"
+
+log "ALT_REMOTE_DB_HOST: $ALT_REMOTE_DB_HOST"
+log "ALT_REMOTE_DB_PORT: $ALT_REMOTE_DB_PORT"
+log "ALT_REMOTE_DB_USER: $ALT_REMOTE_DB_USER"
+log "ALT_REMOTE_DB_NAME: $ALT_REMOTE_DB_NAME"
 
 
 echo "Executing step: $STEP"
@@ -194,49 +206,89 @@ elif [ "$STEP" = "insert_db" ]; then
     PSQL=/usr/bin/psql
   fi
 
-  # create temp table for globaltrust csv import
+  # Eigen2 create temp table for globaltrust csv import
   log "Inserting tmp_globaltrust_v2${OPT_DATE_SUFFIX}"
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c "DROP TABLE IF EXISTS tmp_globaltrust_v2${OPT_DATE_SUFFIX};
     CREATE UNLOGGED TABLE tmp_globaltrust_v2${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
 
-  # import FOLLOWING globaltrust csv into temp table
+  # Eigen8 create temp table for globaltrust csv import
+  PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+  $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+    -c "DROP TABLE IF EXISTS tmp_globaltrust_v2${OPT_DATE_SUFFIX};
+    CREATE UNLOGGED TABLE tmp_globaltrust_v2${OPT_DATE_SUFFIX} AS SELECT * FROM globaltrust LIMIT 0;"
+
   if [ -f "${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 import FOLLOWING globaltrust csv into temp table
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
       -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
       (i,v,date,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+      -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
+      (i,v,date,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.following${TARGET_DATE_SUFFIX}.csv
   fi
 
-  # import ENGAGEMENT globaltrust csv into temp table
   if [ -f "${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 import ENGAGEMENT globaltrust csv into temp table
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
       -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
       (i,v,date,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+      -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
+      (i,v,date,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.engagement${TARGET_DATE_SUFFIX}.csv
   fi
 
-  # import V3_ENGAGEMENT globaltrust csv into temp table
   if [ -f "${TEMP_DIR}/globaltrust.v3engagement${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 import V3_ENGAGEMENT globaltrust csv into temp table
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
       -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
       (i,v,date,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.v3engagement${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+      -c  "COPY tmp_globaltrust_v2${OPT_DATE_SUFFIX}
+      (i,v,date,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/globaltrust.v3engagement${TARGET_DATE_SUFFIX}.csv
   fi
 
-  # copy globaltrust from temp table into main table
+  # Eigen2 copy globaltrust from temp table into main table
   log "Inserting globaltrust"
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
     -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust_v2${OPT_DATE_SUFFIX});
   INSERT INTO globaltrust SELECT * FROM tmp_globaltrust_v2${OPT_DATE_SUFFIX};"
 
+  # Eigen8 copy globaltrust from temp table into main table
+  PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+  $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+    -c "DELETE FROM globaltrust WHERE date = (SELECT min(date) FROM tmp_globaltrust_v2${OPT_DATE_SUFFIX});
+  INSERT INTO globaltrust SELECT * FROM tmp_globaltrust_v2${OPT_DATE_SUFFIX};"
+
+  # Eigen2 vacuum and analyze
+  log "Vacuum and analyze"
   PGPASSWORD=$REMOTE_DB_PASSWORD \
   $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+    -c "VACUUM ANALYZE globaltrust;"
+
+  # Eigen8 vacuum and analyze
+  PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+  $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
     -c "VACUUM ANALYZE globaltrust;"
 
   if [ -z "$TARGET_DATE" ] && [[ $TEMP_DIR != $OUT_DIR ]]; then
@@ -251,28 +303,49 @@ elif [ "$STEP" = "insert_db" ]; then
 
   log "Inserting localtrust_stats"
 
-  # insert localtrust stats for ENGAGEMENT strategy
   if [ -f "${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 insert localtrust stats for ENGAGEMENT strategy
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
       -c  "COPY localtrust_stats_v2
       (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+      -c  "COPY localtrust_stats_v2
+      (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.engagement${TARGET_DATE_SUFFIX}.csv
   fi
 
-  # insert localtrust stats for FOLLOWING strategy
   if [ -f "${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 insert localtrust stats for FOLLOWING strategy
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
       -c  "COPY localtrust_stats_v2
       (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
+      -c  "COPY localtrust_stats_v2
+      (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.following${TARGET_DATE_SUFFIX}.csv
   fi
 
-  # insert localtrust stats for V3_ENGAGEMENT strategy
   if [ -f "${TEMP_DIR}/localtrust_stats.v3engagement${TARGET_DATE_SUFFIX}.csv" ]; then
+    # Eigen2 insert localtrust stats for V3_ENGAGEMENT strategy
     PGPASSWORD=$REMOTE_DB_PASSWORD \
     $PSQL -e -h $REMOTE_DB_HOST -p $REMOTE_DB_PORT -U $REMOTE_DB_USER -d $REMOTE_DB_NAME \
+      -c  "COPY localtrust_stats_v2
+      (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
+      FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.v3engagement${TARGET_DATE_SUFFIX}.csv
+
+    # Eigen8
+    PGPASSWORD=$ALT_REMOTE_DB_PASSWORD \
+    $PSQL -e -h $ALT_REMOTE_DB_HOST -p $ALT_REMOTE_DB_PORT -U $ALT_REMOTE_DB_USER -d $ALT_REMOTE_DB_NAME \
       -c  "COPY localtrust_stats_v2
       (date,strategy_id_row_count,strategy_id_mean,strategy_id_stddev,strategy_id_range,strategy_id)
       FROM STDIN WITH (FORMAT CSV, HEADER);" < ${TEMP_DIR}/localtrust_stats.v3engagement${TARGET_DATE_SUFFIX}.csv
