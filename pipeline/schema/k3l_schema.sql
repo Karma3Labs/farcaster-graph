@@ -21,6 +21,19 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: tokens_dist_status; Type: TYPE; Schema: public; Owner: k3l_user
+--
+
+CREATE TYPE public.tokens_dist_status AS ENUM (
+    'submitted',
+    'success',
+    'failure'
+);
+
+
+ALTER TYPE public.tokens_dist_status OWNER TO k3l_user;
+
+--
 -- Name: automod_data; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
@@ -660,7 +673,7 @@ CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
     mentions_positions,
     root_parent_hash,
     root_parent_url
-   FROM public.casts
+   FROM neynarv2.casts
   WHERE ((parent_hash IS NULL) AND (deleted_at IS NULL) AND (("timestamp" >= (now() - '30 days'::interval)) AND ("timestamp" <= now())))
   WITH NO DATA;
 
@@ -750,20 +763,6 @@ CREATE TABLE public.pretrust_v2 (
 
 
 ALTER TABLE public.pretrust_v2 OWNER TO k3l_user;
-
---
--- Name: tmp_globaltrust_v2; Type: TABLE; Schema: public; Owner: k3l_user
---
-
-CREATE UNLOGGED TABLE public.tmp_globaltrust_v2 (
-    strategy_id integer,
-    i bigint,
-    v real,
-    date date
-);
-
-
-ALTER TABLE public.tmp_globaltrust_v2 OWNER TO k3l_user;
 
 --
 -- Name: k3l_cast_action_y2024m12; Type: TABLE ATTACH; Schema: public; Owner: k3l_user
