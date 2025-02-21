@@ -23,6 +23,8 @@ from ..models.feed_model import (
     FeedMetadata,
     TrendingFeed,
     PopularFeed,
+    ScoresMetadata,
+    SearchScores,
     ChannelTimeframe,
     CastsTimeDecay
 )
@@ -435,6 +437,82 @@ async def get_popular_channel_casts(
           pool=pool
         )
 
+    return {"result": casts}
+
+@router.post("/casts/scores/{channel}", tags=["Channel Feed"])
+async def post_score_channel_casts(
+        cast_hashes: list[str],
+        channel: str,
+        offset: Annotated[int | None, Query()] = 0,
+        limit: Annotated[int | None, Query(le=50)] = 25,
+        provider_metadata: Annotated[str | None, Query()] = None,
+        pool: Pool = Depends(db_pool.get_db),
+):
+    """
+  Rank a list of given casts based on Eigentrust scores of fids in the channel. \n
+  This API takes optional parameters - offset, limit and provider_metadata. \n
+  Parameter 'offset' is used to specify how many results to skip
+    and can be useful for paginating through results. \n
+  `provider_metadata` is a **URI encoded JSON string**
+    that contains the following defaults for scoring Search results: \n
+  { \n
+      "feedType": "search",  \n
+      "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "scoreThreshold": 0.000000001, # 0.000000001 is default \n
+      "weights": "L1C1R1Y1", # default \n
+      "sortingOrder": "day" | "hour" | "score", # score is default \n
+      "timeDecay": "minute" | "hour" | "day" | "never", # "hour" is default \n
+      "normalize": true | false, # true is default \n
+    } \n
+  provider_metadata is a **URI encoded JSON string**
+    that contains the following defaultsfor scoring Replies: \n
+    { \n
+      "feedType": "reply",  \n
+      "agg": "sum" | "rms" | "sumsquare", # sum is default \n
+      "scoreThreshold": 0.000000001, # 0.000000001 is default \n
+      "weights": "L1C0R1Y1", # default \n
+      "sortingOrder": "day" | "hour" | "score" | "reactions"| "recent", # recent is default \n
+      "timeDecay": "minute" | "hour" | "day" | "never", , # "never" is default \n
+      "normalize": true | false, # true is default \n
+    } \n
+  Parameter 'limit' is used to specify the number of results to return. \n
+  By default, offset=0, limit=25, and `provider_metadata` is Search.
+  """
+    if not (1 <= len(cast_hashes) <= 100):
+      raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
+
+    metadata = None
+    if provider_metadata:
+      # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
+      md_str = urllib.parse.unquote(provider_metadata)
+      logger.info(f"Provider metadata: {md_str}")
+      try:
+        metadata = ScoresMetadata.validate_json(md_str)
+      except ValidationError as e:
+        logger.error(f"Error while validating provider metadata: {e}")
+        raise HTTPException(status_code=400, detail="Error while validating provider metadata")
+    else:
+      # default this api to Search
+      md_json = {"feedType": "search"}
+      metadata = SearchScores.validate(md_json)
+
+    logger.info(f"Feed params: {metadata}")
+    cast_hashes = [bytes.fromhex(cast_hash[2:]) for cast_hash in cast_hashes]
+
+    casts = await db_utils.get_channel_casts_scores_lite(
+        cast_hashes=cast_hashes,
+        channel_id=channel,
+        channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS],
+        agg=metadata.agg,
+        score_threshold=metadata.score_threshold,
+        weights=Weights.from_str(metadata.weights),
+        time_decay=metadata.time_decay,
+        normalize=metadata.normalize,
+        offset=offset,
+        limit=limit,
+        sorting_order=metadata.sorting_order,
+        pool=pool,
+    )
     return {"result": casts}
 
 

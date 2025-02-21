@@ -2616,6 +2616,118 @@ async def get_trending_channel_casts_lite(
 
     return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_channel_casts_scores_lite(
+        cast_hashes: list[bytes],
+        channel_id: str,
+        channel_strategy: str,
+        agg: ScoreAgg,
+        score_threshold: float,
+        weights: Weights,
+        time_decay: CastsTimeDecay,
+        normalize: bool,
+        offset: int,
+        limit: int,
+        sorting_order: SortingOrder,
+        pool: Pool
+):
+
+    logger.info("get_trending_channel_casts_lite")
+    match agg:
+        case ScoreAgg.RMS:
+            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
+        case ScoreAgg.SUMSQUARE:
+            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
+        case ScoreAgg.SUM | _:
+            agg_sql = 'sum(fid_cast_scores.cast_score)'
+
+    match time_decay:
+        case CastsTimeDecay.NEVER:
+            decay_sql = "1"
+        case _:
+            match time_decay:
+                case CastsTimeDecay.MINUTE:
+                    decay_time = 60
+                case CastsTimeDecay.HOUR:
+                    decay_time = 60 * 60
+                case CastsTimeDecay.DAY:
+                    decay_time = 60 * 60 * 24
+            decay_sql = f"""
+                power(
+                    1-(1/365::numeric),
+                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
+                )
+            """
+
+    if normalize:
+        fidscore_sql = 'cbrt(fids.score)'
+    else:
+        fidscore_sql = 'fids.score'
+
+    match sorting_order:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
+            order_sql = 'cast_score DESC'
+        case SortingOrder.RECENT:
+            order_sql = 'cast_ts DESC'
+        case SortingOrder.HOUR:
+            order_sql = 'age_hours ASC, cast_score DESC'
+        case SortingOrder.DAY:
+            order_sql = 'age_days ASC, cast_score DESC'
+        case SortingOrder.REACTIONS:
+            order_sql = 'reaction_count DESC, cast_score DESC'
+
+    sql_query = f"""
+    WITH
+    fid_cast_scores as (
+        SELECT
+            ci.cast_hash,
+            SUM(
+                (
+                    ({weights.cast} * {fidscore_sql} * ci.casted)
+                    + ({weights.reply} * {fidscore_sql} * ci.replied)
+                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
+                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                )
+                *
+                {decay_sql}
+            ) as cast_score,
+            ci.fid,
+            MIN(ci.action_ts) as cast_ts
+        FROM k3l_cast_action as ci
+        INNER JOIN k3l_channel_rank as fids
+            ON (fids.channel_id = $1
+                AND fids.fid = ci.fid
+                AND fids.strategy_name = $2
+                AND ci.cast_hash = ANY($3::bytea[])
+             )
+        LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+        WHERE md.channel_id IS NULL
+        GROUP BY ci.cast_hash, ci.fid
+        ORDER BY cast_ts DESC
+    ),
+    scores AS (
+        SELECT
+            cast_hash,
+            {agg_sql} as cast_score,
+            MIN(cast_ts) as cast_ts,
+            COUNT (*) - 1 as reaction_count
+        FROM fid_cast_scores
+        GROUP BY cast_hash
+    )
+    SELECT
+        '0x' || encode(cast_hash, 'hex') as cast_hash,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
+        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
+        cast_ts,
+        cast_score
+    FROM scores
+    WHERE cast_score > {score_threshold}
+    ORDER BY {order_sql}
+    OFFSET $4
+    LIMIT $5
+    """
+
+    return await fetch_rows(channel_id, channel_strategy,cast_hashes,  offset, limit, sql_query=sql_query, pool=pool)
+
 async def get_trending_channels(
         max_cast_age: str,
         rank_threshold: int,

@@ -64,7 +64,31 @@ class PopularFeed(BaseModel):
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
     normalize: bool = True
 
+class SearchScores(BaseModel):
+    score_type: Annotated[Literal['search'], Field(alias="scoreType")]
+    agg: ScoreAgg = ScoreAgg.SUM
+    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    weights: str = 'L1C1R1Y1'
+    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
+    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
+    normalize: bool = True
+
+class ReplyScores(BaseModel):
+    score_type: Annotated[Literal['reply'], Field(alias="scoreType")]
+    agg: ScoreAgg = ScoreAgg.SUM
+    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    weights: str = 'L1C1R1Y1'
+    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.RECENT
+    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
+    normalize: bool = True
+
+
 FeedMetadata = TypeAdapter(Annotated[
     Union[TrendingFeed, PopularFeed],
     Field(discriminator="feed_type"),
+])
+
+ScoresMetadata = TypeAdapter(Annotated[
+    Union[SearchScores, ReplyScores],
+    Field(discriminator="score_type"),
 ])
