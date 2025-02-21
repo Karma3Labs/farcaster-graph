@@ -28,12 +28,14 @@ class CastsTimeframe(StrEnum):
     DAY = 'day'
     WEEK = 'week'
     MONTH = 'month'
+    THREE_MONTHS = 'three_months'
     SIX_MONTHS = 'six_months'
 
 CASTS_AGE = {
     CastsTimeframe.DAY: '1 day',
     CastsTimeframe.WEEK: '1 week',
     CastsTimeframe.MONTH: '1 month',
+    CastsTimeframe.THREE_MONTHS: '3 months',
     CastsTimeframe.SIX_MONTHS: '6 months',
 }
 
