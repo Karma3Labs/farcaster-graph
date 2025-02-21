@@ -107,6 +107,18 @@ def main(csv_path: Path) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Failed to replace data in the database: {e}")
         raise e
+    try:
+        alt_postgres_engine = create_engine(
+            settings.ALT_POSTGRES_URL.get_secret_value(),
+            connect_args={"connect_timeout": 1000},
+        )
+        with alt_postgres_engine.begin() as conn:
+            conn.execute(text(f"TRUNCATE TABLE {table_name};"))
+            df.to_sql(table_name, con=conn, if_exists='append', index=False)
+    except Exception as e:
+        logger.error(f"Failed to replace data in the database: {e}")
+        raise e
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

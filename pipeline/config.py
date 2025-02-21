@@ -131,10 +131,24 @@ class Settings(BaseSettings):
                        f" password={self.DB_PASSWORD.get_secret_value()}")
 
     @computed_field
+    def ALT_POSTGRES_DSN(self) -> SecretStr:
+      return SecretStr(f" dbname={self.ALT_REMOTE_DB_NAME}"
+                       f" user={self.ALT_REMOTE_DB_USER}"
+                       f" host={self.ALT_REMOTE_DB_HOST}"
+                       f" port={self.ALT_REMOTE_DB_PORT}"
+                       f" password={self.ALT_REMOTE_DB_PASSWORD.get_secret_value()}")
+
+    @computed_field
     def POSTGRES_URL(self) -> SecretStr:
       return SecretStr(f"postgresql+psycopg2://"
                        f"{self.DB_USER}:{self.DB_PASSWORD.get_secret_value()}@"
                        f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
+
+    @computed_field
+    def ALT_POSTGRES_URL(self) -> SecretStr:
+      return SecretStr(f"postgresql+psycopg2://"
+                       f"{self.ALT_REMOTE_DB_USER}:{self.ALT_REMOTE_DB_PASSWORD.get_secret_value()}@"
+                       f"{self.ALT_REMOTE_DB_HOST}:{self.ALT_REMOTE_DB_PORT}/{self.ALT_REMOTE_DB_NAME}")
 
     @computed_field
     def POSTGRES_ASYNC_URI(self) -> SecretStr:
