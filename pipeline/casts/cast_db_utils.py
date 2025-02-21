@@ -180,7 +180,7 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
     OFFSET 0
     )
     select cast_hash,fid as i, cast_score as v from cast_details
-    WHERE fid not in (select fid from pretrust)
+    WHERE fid not in (select fid from pretrust_v2)
     order by cast_score DESC
   """
   return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
