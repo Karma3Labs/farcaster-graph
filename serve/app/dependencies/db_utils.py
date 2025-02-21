@@ -2625,8 +2625,6 @@ async def get_channel_casts_scores_lite(
         weights: Weights,
         time_decay: CastsTimeDecay,
         normalize: bool,
-        offset: int,
-        limit: int,
         sorting_order: SortingOrder,
         pool: Pool
 ):
@@ -2722,11 +2720,9 @@ async def get_channel_casts_scores_lite(
     FROM scores
     WHERE cast_score > {score_threshold}
     ORDER BY {order_sql}
-    OFFSET $4
-    LIMIT $5
     """
 
-    return await fetch_rows(channel_id, channel_strategy,cast_hashes,  offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, channel_strategy,cast_hashes,  sql_query=sql_query, pool=pool)
 
 async def get_trending_channels(
         max_cast_age: str,

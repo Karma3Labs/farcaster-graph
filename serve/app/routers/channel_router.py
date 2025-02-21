@@ -443,20 +443,16 @@ async def get_popular_channel_casts(
 async def post_score_channel_casts(
         cast_hashes: list[str],
         channel: str,
-        offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=50)] = 25,
         provider_metadata: Annotated[str | None, Query()] = None,
         pool: Pool = Depends(db_pool.get_db),
 ):
     """
   Rank a list of given casts based on Eigentrust scores of fids in the channel. \n
-  This API takes optional parameters - offset, limit and provider_metadata. \n
-  Parameter 'offset' is used to specify how many results to skip
-    and can be useful for paginating through results. \n
+  This API takes 1 optional parameter - provider_metadata. \n
   `provider_metadata` is a **URI encoded JSON string**
     that contains the following defaults for scoring Search results: \n
   { \n
-      "feedType": "search",  \n
+      "scoreType": "search",  \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C1R1Y1", # default \n
@@ -467,7 +463,7 @@ async def post_score_channel_casts(
   provider_metadata is a **URI encoded JSON string**
     that contains the following defaultsfor scoring Replies: \n
     { \n
-      "feedType": "reply",  \n
+      "scoreType": "reply",  \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C0R1Y1", # default \n
@@ -475,15 +471,14 @@ async def post_score_channel_casts(
       "timeDecay": "minute" | "hour" | "day" | "never", , # "never" is default \n
       "normalize": true | false, # true is default \n
     } \n
-  Parameter 'limit' is used to specify the number of results to return. \n
-  By default, offset=0, limit=25, and `provider_metadata` is Search.
+  By default, `provider_metadata` is Search.
   """
     if not (1 <= len(cast_hashes) <= 100):
       raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
 
     metadata = None
     if provider_metadata:
-      # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
+      # Example: %7B%22scoreType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
       md_str = urllib.parse.unquote(provider_metadata)
       logger.info(f"Provider metadata: {md_str}")
       try:
@@ -493,7 +488,7 @@ async def post_score_channel_casts(
         raise HTTPException(status_code=400, detail="Error while validating provider metadata")
     else:
       # default this api to Search
-      md_json = {"feedType": "search"}
+      md_json = {"scoreType": "search"}
       metadata = SearchScores.validate(md_json)
 
     logger.info(f"Feed params: {metadata}")
@@ -508,8 +503,6 @@ async def post_score_channel_casts(
         weights=Weights.from_str(metadata.weights),
         time_decay=metadata.time_decay,
         normalize=metadata.normalize,
-        offset=offset,
-        limit=limit,
         sorting_order=metadata.sorting_order,
         pool=pool,
     )
