@@ -29,11 +29,13 @@ async def main(daemon: bool):
   while True:
     sleep_duration = settings.CASTS_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    logger.info(f"inserting k3l_cast_action into {settings.DB_HOST}")
     cast_db_utils.insert_cast_action(logger,
                                           pg_dsn,
                                           settings.CASTS_BATCH_LIMIT)
 
     pg_dsn_8 = settings.ALT_POSTGRES_DSN.get_secret_value()
+    logger.info(f"inserting k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
     cast_db_utils.insert_cast_action(logger,
                                           pg_dsn_8,
                                           settings.CASTS_BATCH_LIMIT)
