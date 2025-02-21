@@ -25,20 +25,32 @@ logger.add(sys.stdout,
            level=0)
 
 
-async def main(daemon: bool):
+async def main(daemon: bool, backfill: bool):
   while True:
     sleep_duration = settings.CASTS_SLEEP_SECS
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    logger.info(f"inserting k3l_cast_action into {settings.DB_HOST}")
-    cast_db_utils.insert_cast_action(logger,
-                                          pg_dsn,
-                                          settings.CASTS_BATCH_LIMIT)
+    alt_pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
 
-    pg_dsn_8 = settings.ALT_POSTGRES_DSN.get_secret_value()
-    logger.info(f"inserting k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
-    cast_db_utils.insert_cast_action(logger,
-                                          pg_dsn_8,
-                                          settings.CASTS_BATCH_LIMIT)
+    if not backfill:
+      logger.info(f"inserting k3l_cast_action into {settings.DB_HOST}")
+      cast_db_utils.insert_cast_action(logger,
+                                            pg_dsn,
+                                            settings.CASTS_BATCH_LIMIT)
+
+      logger.info(f"inserting k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
+      cast_db_utils.insert_cast_action(logger,
+                                            alt_pg_dsn,
+                                            settings.CASTS_BATCH_LIMIT)
+    else:
+      logger.info(f"backfilling k3l_cast_action into {settings.DB_HOST}")
+      cast_db_utils.backfill_cast_action(logger,
+                                            pg_dsn,
+                                            settings.CASTS_BATCH_LIMIT)
+
+      logger.info(f"backfilling k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
+      cast_db_utils.backfill_cast_action(logger,
+                                            alt_pg_dsn,
+                                            settings.CASTS_BATCH_LIMIT)
 
     if daemon:
       logger.info(f"sleeping for {sleep_duration}s")
@@ -54,9 +66,12 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("-d", "--daemon",
                    help="set or not",
-                   default=False,
-                   type=lambda x: (str(x).lower() == 'true'))
+                   action="store_true")
   
+  parser.add_argument("-b", "--backfill",
+                   help="set or not",
+                   action="store_true")
+
   args = parser.parse_args()
   print(args)
 
@@ -64,4 +79,4 @@ if __name__ == "__main__":
   print(settings)
 
   logger.info('hello hello')
-  asyncio.run(main(args.daemon))
+  asyncio.run(main(args.daemon, args.backfill))

@@ -108,6 +108,20 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
 
+@Timer(name="backfill_cast_action")
+def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
+  raise NotImplementedError
+  insert_sql = f"""
+  {"TODO"}
+  """
+  with psycopg2.connect(
+    pg_dsn,
+    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+  ) as conn:
+    with conn.cursor() as cursor:
+      logger.info(f"Executing: {insert_sql}")
+      cursor.execute(insert_sql)
+
 
 @Timer(name="fetch_top_casters_df")
 def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
