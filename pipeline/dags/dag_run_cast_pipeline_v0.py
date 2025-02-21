@@ -45,7 +45,7 @@ with DAG(
     )
 
     refresh8 = BashOperator(
-        task_id='refresh_parent_casts_view',
+        task_id='refresh_parent_casts_view_e8',
         bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
         REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_recent_parent_casts;"
         '''
@@ -59,7 +59,7 @@ with DAG(
     # )
 
     # vacuum8 = BashOperator(
-    #     task_id='vacuum_k3l_recent_parent_casts_v0',
+    #     task_id='vacuum_k3l_recent_parent_casts_v0_e8',
     #     bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
     #     VACUUM ANALYZE k3l_recent_parent_casts;"
     #     '''
