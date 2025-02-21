@@ -33,6 +33,11 @@ async def main(daemon: bool):
                                           pg_dsn,
                                           settings.CASTS_BATCH_LIMIT)
 
+    pg_dsn_8 = settings.ALT_POSTGRES_DSN.get_secret_value()
+    cast_db_utils.insert_cast_action(logger,
+                                          pg_dsn_8,
+                                          settings.CASTS_BATCH_LIMIT)
+
     if daemon:
       logger.info(f"sleeping for {sleep_duration}s")
       await asyncio.sleep(sleep_duration)
