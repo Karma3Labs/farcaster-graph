@@ -318,7 +318,7 @@ async def get_popular_channel_casts(
   that contains the following for **Trending Feed**: \n
     { \n
       "feedType": "trending",  \n
-      "lookback": "day" | "week" | "month" | "six_months", # week is default \n
+      "lookback": "day" | "week" | "month" | "three_months" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C0R1Y1", # default \n
@@ -331,7 +331,7 @@ async def get_popular_channel_casts(
     that contains the following for **Popular Feed**: \n
   { \n
       "feedType": "popular",  \n
-      "lookback": "day" | "week" | "month" | "six_months", # week is default \n
+      "lookback": "day" | "week" | "month" | "three_months" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C1R1Y1", # default \n
@@ -440,7 +440,7 @@ async def get_popular_channel_casts(
     return {"result": casts}
 
 @router.post("/casts/scores/{channel}", tags=["Channel Feed"])
-async def post_score_channel_casts(
+async def get_channel_casts_scores(
         cast_hashes: list[str],
         channel: str,
         provider_metadata: Annotated[str | None, Query()] = None,

@@ -73,7 +73,7 @@ async def get_popular_casts_for_fid(
 
 
 @router.get("/personalized/recent/{fid}")
-async def get_recent_casts_for_fid(
+async def get_personalized_casts_for_fid(
         fid: int,
         k: Annotated[int, Query(le=5)] = 1,
         offset: Annotated[int | None, Query()] = 0,
@@ -119,7 +119,7 @@ async def get_recent_casts_for_fid(
 
 
 @router.post("/curated/recent/")
-async def post_recent_casts_for_fid(
+async def get_curated_casts_for_fid(
         fids: List[int],
         offset: Annotated[int | None, Query()] = 0,
         limit: Annotated[int | None, Query(le=50)] = 25,
