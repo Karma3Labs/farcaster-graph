@@ -466,7 +466,7 @@ async def get_channel_casts_scores(
       "scoreType": "reply",  \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
-      "weights": "L1C0R1Y1", # default \n
+      "weights": "L1C1R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score" | "reactions"| "recent", # recent is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", , # "never" is default \n
       "normalize": true | false, # true is default \n
