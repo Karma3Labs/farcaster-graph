@@ -110,9 +110,155 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
 
 @Timer(name="backfill_cast_action")
 def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
-  raise NotImplementedError
   insert_sql = f"""
-  {"TODO"}
+    INSERT INTO k3l_cast_action
+    WITH
+      min_cast_action AS (
+        SELECT
+          min(created_at) as min_at
+        FROM k3l_cast_action
+      )
+    SELECT
+      casts.fid as fid,
+      casts.hash as cast_hash,
+      1 as casted,
+      0 as replied,
+      0 as recasted,
+      0 as liked,
+      casts.timestamp as action_ts,
+      casts.created_at
+    FROM casts, min_cast_action
+    WHERE
+      casts.created_at
+        BETWEEN min_cast_action.min_at - interval '5 days'
+                AND min_cast_action.min_at
+    UNION ALL
+    SELECT
+      casts.fid as fid,
+      casts.parent_hash as cast_hash,
+      0 as casted,
+      1 as replied,
+      0 as recasted,
+      0 as liked,
+      casts.timestamp as action_ts,
+      casts.created_at
+    FROM casts CROSS JOIN min_cast_action
+    WHERE
+      casts.parent_hash IS NOT NULL
+      AND
+      casts.created_at
+        BETWEEN min_cast_action.min_at - interval '5 days'
+                AND min_cast_action.min_at
+    UNION ALL
+    SELECT
+      reactions.fid as fid,
+      reactions.target_hash as cast_hash,
+      0 as casted,
+      0 as replied,
+      CASE reactions.reaction_type WHEN 2 THEN 1 ELSE 0 END as recasted,
+      CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
+      reactions.timestamp as action_ts,
+      reactions.created_at
+    FROM reactions CROSS JOIN min_cast_action
+    WHERE
+      reactions.created_at
+        BETWEEN min_cast_action.min_at - interval '5 days'
+                AND min_cast_action.min_at
+      AND
+      reactions.reaction_type IN (1,2)
+      AND
+      reactions.target_hash IS NOT NULL
+    ORDER BY created_at DESC
+    LIMIT {insert_limit}
+    ON CONFLICT(cast_hash, fid, action_ts)
+    DO NOTHING -- expect duplicates because of between clause
+  """
+  with psycopg2.connect(
+    pg_dsn,
+    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+  ) as conn:
+    with conn.cursor() as cursor:
+      logger.info(f"Executing: {insert_sql}")
+      cursor.execute(insert_sql)
+
+@Timer(name="gapfill_cast_action")
+def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: str):
+  insert_sql = f"""
+    INSERT INTO k3l_cast_action
+    WITH
+      missing_casts AS (
+        SELECT
+          casts.fid as fid,
+          casts.hash as cast_hash,
+          1 as casted,
+          0 as replied,
+          0 as recasted,
+          0 as liked,
+          casts.timestamp as action_ts,
+          casts.created_at
+        FROM casts
+        LEFT JOIN k3l_cast_action
+          AS ca ON (
+            casts.hash = ca.cast_hash
+          )
+        WHERE casts.created_at
+          BETWEEN '{target_date}'::date AND ('{target_date}'::date + interval '1 day')
+        AND casts.deleted_at IS NULL
+        AND ca.cast_hash IS NULL
+        LIMIT {insert_limit}
+      ),
+      missing_replies AS (
+        SELECT
+          casts.fid as fid,
+          casts.parent_hash as cast_hash,
+          0 as casted,
+          1 as replied,
+          0 as recasted,
+          0 as liked,
+          casts.timestamp as action_ts,
+          casts.created_at
+        FROM casts
+        LEFT JOIN k3l_cast_action
+          AS ca ON (
+            casts.parent_hash = ca.cast_hash
+          )
+        WHERE
+          casts.parent_hash IS NOT NULL
+          AND casts.created_at
+            BETWEEN '{target_date}'::date AND ('{target_date}'::date + interval '1 day')
+          AND casts.deleted_at IS NULL
+          AND ca.cast_hash IS NULL
+        LIMIT {insert_limit}
+      ),
+      missing_reactions AS (
+        SELECT
+          reactions.fid as fid,
+          reactions.target_hash as cast_hash,
+          0 as casted,
+          0 as replied,
+          CASE reactions.reaction_type WHEN 2 THEN 1 ELSE 0 END as recasted,
+          CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
+          reactions.timestamp as action_ts,
+          reactions.created_at
+        FROM reactions
+        LEFT JOIN k3l_cast_action
+          AS ca ON (
+            reactions.target_hash = ca.cast_hash
+          )
+        WHERE
+          reactions.created_at
+            BETWEEN '{target_date}'::date AND ('{target_date}'::date + interval '1 day')
+          AND reactions.deleted_at IS NULL
+          AND ca.cast_hash IS NULL
+        LIMIT {insert_limit}
+      )
+    SELECT * FROM missing_casts
+    UNION ALL
+    SELECT * FROM missing_replies
+    UNION ALL
+    SELECT * FROM missing_reactions
+    ON CONFLICT(cast_hash, fid, action_ts)
+    DO NOTHING -- expect duplicates because of between clause
   """
   with psycopg2.connect(
     pg_dsn,
