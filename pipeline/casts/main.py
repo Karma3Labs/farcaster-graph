@@ -3,7 +3,7 @@ import sys
 import argparse
 from datetime import datetime
 import asyncio
-from enum import Enum
+from enum import StrEnum
 
 # local dependencies
 from config import settings
@@ -13,7 +13,7 @@ from . import cast_db_utils
 from dotenv import load_dotenv
 from loguru import logger
 
-class FillType(str, Enum):
+class FillType(StrEnum):
     default = "default"
     backfill = "backfill"
     gapfill = "gapfill"

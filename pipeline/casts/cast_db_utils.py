@@ -246,7 +246,9 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
             reactions.target_hash = ca.cast_hash
           )
         WHERE
-          reactions.created_at
+          reactions.reaction_type IN (1,2)
+          AND reactions.target_hash IS NOT NULL
+          AND reactions.created_at
             BETWEEN '{target_date}'::date AND ('{target_date}'::date + interval '1 day')
           AND reactions.deleted_at IS NULL
           AND ca.cast_hash IS NULL
