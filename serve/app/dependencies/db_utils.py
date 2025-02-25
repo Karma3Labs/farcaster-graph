@@ -2352,6 +2352,7 @@ async def get_trending_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        cutoff_ptile: int,
         weights: Weights,
         shuffle: bool,
         time_decay: CastsTimeDecay,
@@ -2459,13 +2460,15 @@ async def get_trending_channel_casts_heavy(
             ci.fid,
             fids.channel_id,
             fids.rank AS channel_rank,
-            k3l_rank.rank AS global_rank
+            k3l_rank.rank AS global_rank,
+            NTILE(100) OVER (ORDER BY cast_score DESC) as ptile
         FROM scores
         INNER JOIN k3l_recent_parent_casts AS ci ON ci.hash = scores.cast_hash
         INNER JOIN k3l_rank ON (ci.fid = k3l_rank.profile_id and k3l_rank.strategy_id=9)
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
-        WHERE ci.timestamp > now() - interval '{max_cast_age}'
-        ORDER BY scores.cast_score DESC
+        WHERE
+            ci.timestamp > now() - interval '{max_cast_age}'
+            AND scores.cast_score > {score_threshold}
     ),
     feed AS (
         SELECT
@@ -2475,6 +2478,7 @@ async def get_trending_channel_casts_heavy(
             ANY_VALUE(cast_details.channel_id) as channel_id,
             MIN(cast_details.channel_rank) as channel_rank,
             MIN(cast_details.global_rank) as global_rank,
+            MIN(cast_details.ptile) as ptile,
             ANY_VALUE(fnames.fname) as fname,
             ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
             ANY_VALUE(case when user_data.type = 1 then user_data.value end) as pfp,
@@ -2491,7 +2495,7 @@ async def get_trending_channel_casts_heavy(
         GROUP BY cast_details.cast_hash
     )
     SELECT * FROM feed
-    WHERE cast_score > {score_threshold}
+    WHERE ptile <= {cutoff_ptile}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2506,6 +2510,7 @@ async def get_trending_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        cutoff_ptile: int,
         weights: Weights,
         shuffle: bool,
         time_decay: CastsTimeDecay,
@@ -2600,15 +2605,22 @@ async def get_trending_channel_casts_lite(
             COUNT (*) - 1 as reaction_count
         FROM fid_cast_scores
         GROUP BY cast_hash
+    ),
+    cast_scores AS (
+        SELECT
+            '0x' || encode(cast_hash, 'hex') as cast_hash,
+            FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
+            FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
+            cast_ts,
+            cast_score,
+            NTILE(100) OVER (ORDER BY cast_score DESC) as ptile
+        FROM scores
+        WHERE cast_score > {score_threshold}
     )
     SELECT
-        '0x' || encode(cast_hash, 'hex') as cast_hash,
-        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
-        FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
-        cast_ts,
-        cast_score
-    FROM scores
-    WHERE cast_score > {score_threshold}
+        *
+    FROM cast_scores
+    WHERE ptile <= {cutoff_ptile}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2629,7 +2641,7 @@ async def get_channel_casts_scores_lite(
         pool: Pool
 ):
 
-    logger.info("get_trending_channel_casts_lite")
+    logger.info("get_channel_casts_scores_lite")
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'

@@ -302,7 +302,7 @@ async def get_popular_channel_casts(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
         offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=50)] = 25,
+        limit: Annotated[int | None, Query(le=100)] = 25,
         lite: Annotated[bool, Query()] = True,
         provider_metadata: Annotated[str | None, Query()] = None,
         pool: Pool = Depends(db_pool.get_db),
@@ -321,6 +321,7 @@ async def get_popular_channel_casts(
       "lookback": "day" | "week" | "month" | "three_months" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
+      "cutoffPtile": 0-100, # 100 is default \n
       "weights": "L1C0R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score" | "reactions", # day is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", , # "hour" is default \n
@@ -341,7 +342,7 @@ async def get_popular_channel_casts(
     } \n
   Parameter 'limit' is used to specify the number of results to return. \n
   By default, offset=0, limit=25, and lite=true
-    i.e., returns recent 25 popular casts.
+    i.e., returns recent 25 **Trending** casts.
   """
     metadata = None
     if provider_metadata:
@@ -352,7 +353,8 @@ async def get_popular_channel_casts(
         metadata = FeedMetadata.validate_json(md_str)
       except ValidationError as e:
         logger.error(f"Error while validating provider metadata: {e}")
-        raise HTTPException(status_code=400, detail="Error while validating provider metadata")
+        logger.error(f"errors(): {e.errors()}")
+        raise HTTPException(status_code=400, detail=f"Error while validating provider metadata: {e.errors()}")
     else:
       # default this api to Trending because Neynar uses this for Trending
       md_json = {"feedType": "trending"}
@@ -409,6 +411,7 @@ async def get_popular_channel_casts(
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
           score_threshold=metadata.score_threshold,
+          cutoff_ptile=metadata.cutoff_ptile,
           weights=parsed_weights,
           shuffle=metadata.shuffle,
           time_decay=metadata.time_decay,
@@ -427,6 +430,7 @@ async def get_popular_channel_casts(
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
           score_threshold=metadata.score_threshold,
+          cutoff_ptile=metadata.cutoff_ptile,
           weights=parsed_weights,
           shuffle=metadata.shuffle,
           time_decay=metadata.time_decay,
@@ -499,7 +503,6 @@ async def get_channel_casts_scores(
         channel_id=channel,
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS],
         agg=metadata.agg,
-        score_threshold=metadata.score_threshold,
         weights=Weights.from_str(metadata.weights),
         time_decay=metadata.time_decay,
         normalize=metadata.normalize,

@@ -49,7 +49,8 @@ class TrendingFeed(BaseModel):
     feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
+    cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
     weights: str = 'L1C0R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.DAY
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
@@ -60,7 +61,7 @@ class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
@@ -69,7 +70,7 @@ class PopularFeed(BaseModel):
 class SearchScores(BaseModel):
     score_type: Annotated[Literal['search'], Field(alias="scoreType")]
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
@@ -78,7 +79,7 @@ class SearchScores(BaseModel):
 class ReplyScores(BaseModel):
     score_type: Annotated[Literal['reply'], Field(alias="scoreType")]
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold")] = 0.000000001
+    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.RECENT
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
