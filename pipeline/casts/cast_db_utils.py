@@ -107,6 +107,8 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
+      rows = cursor.rowcount
+      logger.info(f"Inserted {rows} rows into k3l_cast_action")
 
 @Timer(name="backfill_cast_action")
 def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
@@ -180,6 +182,8 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int)
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
+      rows = cursor.rowcount
+      logger.info(f"Backfilled {rows} rows into k3l_cast_action")
 
 @Timer(name="gapfill_cast_action")
 def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: str):
@@ -269,6 +273,8 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
     with conn.cursor() as cursor:
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
+      rows = cursor.rowcount
+      logger.info(f"Gapfilled {rows} rows into k3l_cast_action")
 
 
 @Timer(name="fetch_top_casters_df")
