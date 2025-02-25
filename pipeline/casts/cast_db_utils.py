@@ -55,6 +55,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
         BETWEEN max_cast_action.max_at
         AND now()
+      AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
       casts.fid as fid,
@@ -74,6 +75,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       casts.created_at
         BETWEEN max_cast_action.max_at
           AND now()
+      AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
       reactions.fid as fid,
@@ -95,6 +97,7 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       reactions.reaction_type IN (1,2)
       AND
       reactions.target_hash IS NOT NULL
+      AND reactions.deleted_at IS NULL
     ORDER BY created_at ASC
     LIMIT {insert_limit}
     ON CONFLICT(cast_hash, fid, action_ts)
@@ -134,6 +137,7 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int)
       casts.created_at
         BETWEEN min_cast_action.min_at - interval '5 days'
                 AND min_cast_action.min_at
+      AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
       casts.fid as fid,
@@ -151,6 +155,7 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int)
       casts.created_at
         BETWEEN min_cast_action.min_at - interval '5 days'
                 AND min_cast_action.min_at
+      AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
       reactions.fid as fid,
@@ -170,6 +175,7 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int)
       reactions.reaction_type IN (1,2)
       AND
       reactions.target_hash IS NOT NULL
+      AND reactions.deleted_at IS NULL
     ORDER BY created_at DESC
     LIMIT {insert_limit}
     ON CONFLICT(cast_hash, fid, action_ts)
