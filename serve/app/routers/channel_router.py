@@ -489,7 +489,8 @@ async def get_channel_casts_scores(
         metadata = ScoresMetadata.validate_json(md_str)
       except ValidationError as e:
         logger.error(f"Error while validating provider metadata: {e}")
-        raise HTTPException(status_code=400, detail="Error while validating provider metadata")
+        logger.error(f"errors(): {e.errors()}")
+        raise HTTPException(status_code=400, detail=f"Error while validating provider metadata: {e.errors()}")
     else:
       # default this api to Search
       md_json = {"scoreType": "search"}
@@ -503,6 +504,7 @@ async def get_channel_casts_scores(
         channel_id=channel,
         channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS],
         agg=metadata.agg,
+        score_threshold=metadata.score_threshold,
         weights=Weights.from_str(metadata.weights),
         time_decay=metadata.time_decay,
         normalize=metadata.normalize,
