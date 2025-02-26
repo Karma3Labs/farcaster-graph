@@ -20,7 +20,8 @@ with DAG(
     default_args=default_args,
     description='Every hour, try running personal graph script on eigen7 replica. Script has internal check for 36 hours',
     start_date=datetime(2024, 7, 9, 18),
-    schedule_interval='0 * * * *',
+    # schedule_interval='0 * * * *',
+    schedule_interval=None,
     catchup=False,
 ) as dag:
     ssh_hook = SSHHook(ssh_conn_id='eigen7', keepalive_interval=60, cmd_timeout=None)
