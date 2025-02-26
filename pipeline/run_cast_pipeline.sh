@@ -26,28 +26,34 @@ function validate_date() {
     fi
 }
 
-while getopts dv:f:t: flag
+while getopts dv:f:t:p: flag
 do
     case "${flag}" in
         d) DAEMON_FLAG="--daemon";;
         v) VENV=${OPTARG};;
         f) FILL_TYPE=${OPTARG};;
         t) TARGET_DATE=${OPTARG};;
+        p) POSTGRES=${OPTARG};;
     esac
 done
 
 if [ -z "$VENV" ]; then
-  echo "Usage:   $0 -v [venv] -d -t [fill_type]"
+  echo "Usage:   $0 -v [venv]  -p [postgres] -d -t [fill_type]"
   echo ""
   echo "Example: $0 -v /home/ubuntu/venvs/fc-graph-env3/"
-  echo "Example: $0 -v /home/ubuntu/venvs/fc-graph-env3/ -d -t backfill"
+  echo "Example: $0 -v /home/ubuntu/venvs/fc-graph-env3/  -p eigen8 -d -t backfill"
   echo ""
   echo "Params:"
   echo "  [venv] The path where a python3 virtualenv has been created."
+  echo "  [postgres] 'eigen2' or 'eigen8'"
   echo "  [daemon] Run in daemon mode."
   echo "  [fill_type] Run in 'default' or 'backfill' or 'gapfill' mode."
   echo ""
   exit
+fi
+
+if [ ! -z "$POSTGRES" ]; then
+  PG_OPTION="--postgres $POSTGRES"
 fi
 
 FILL_TYPE=${FILL_TYPE:-default}
@@ -75,5 +81,5 @@ function log() {
 
 source $VENV/bin/activate
 # pip install -r requirements.txt
-python3 -m casts.main $DAEMON_FLAG -f $FILL_TYPE $DATE_OPTION
+python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE $DATE_OPTION
 deactivate

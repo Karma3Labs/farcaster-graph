@@ -30,12 +30,10 @@ with DAG(
         bash_command='cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ '
     )
 
-    # analyze = BashOperator(
-    #     task_id='analyze_cast_actions',
-    #     bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-    #     ANALYZE k3l_cast_action;"
-    #     '''
-    # )
+    insert8 = BashOperator(
+        task_id='insert_cast_actions_e8',
+        bash_command='cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ -p eigen8 '
+    )
 
     refresh = BashOperator(
         task_id='refresh_parent_casts_view',
@@ -65,4 +63,5 @@ with DAG(
     #     '''
     # )
 
-    insert >> refresh >> refresh8
+    insert >> refresh 
+    insert8 >> refresh8

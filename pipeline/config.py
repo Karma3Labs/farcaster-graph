@@ -1,7 +1,12 @@
 from functools import cached_property
+from enum import Enum
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
+
+class Database(str, Enum):
+    EIGEN2 = "eigen2"
+    EIGEN8 = "eigen8"
 
 class Settings(BaseSettings):
     DB_USER:str = 'postgres'
@@ -9,6 +14,12 @@ class Settings(BaseSettings):
     DB_NAME:str = 'postgres'
     DB_PORT:int = 5432
     DB_HOST:str = '127.0.0.1'
+
+    ALT_DB_USER:str = 'postgres'
+    ALT_DB_PASSWORD:SecretStr = 'password'
+    ALT_DB_NAME:str = 'postgres'
+    ALT_DB_HOST:str = '127.0.0.1'
+    ALT_DB_PORT:int = 9541
 
     DB_CHANNEL_FIDS:str = 'k3l_channel_fids'
 
@@ -66,6 +77,8 @@ class Settings(BaseSettings):
                             " | {level} | <level>{message}</level>" )
     LOG_PATH: str = '/tmp/'
 
+   # useful only if source db and destination db are different
+   # ... for example, globaltrust calculation can read from replica and write to the primary
     REMOTE_DB_USER:str = 'postgres'
     REMOTE_DB_PASSWORD:SecretStr = 'password'
     REMOTE_DB_NAME:str = 'postgres'
@@ -132,11 +145,11 @@ class Settings(BaseSettings):
 
     @computed_field
     def ALT_POSTGRES_DSN(self) -> SecretStr:
-      return SecretStr(f" dbname={self.ALT_REMOTE_DB_NAME}"
-                       f" user={self.ALT_REMOTE_DB_USER}"
-                       f" host={self.ALT_REMOTE_DB_HOST}"
-                       f" port={self.ALT_REMOTE_DB_PORT}"
-                       f" password={self.ALT_REMOTE_DB_PASSWORD.get_secret_value()}")
+      return SecretStr(f" dbname={self.ALT_DB_NAME}"
+                       f" user={self.ALT_DB_USER}"
+                       f" host={self.ALT_DB_HOST}"
+                       f" port={self.ALT_DB_PORT}"
+                       f" password={self.ALT_DB_PASSWORD.get_secret_value()}")
 
     @computed_field
     def POSTGRES_URL(self) -> SecretStr:
@@ -147,8 +160,8 @@ class Settings(BaseSettings):
     @computed_field
     def ALT_POSTGRES_URL(self) -> SecretStr:
       return SecretStr(f"postgresql+psycopg2://"
-                       f"{self.ALT_REMOTE_DB_USER}:{self.ALT_REMOTE_DB_PASSWORD.get_secret_value()}@"
-                       f"{self.ALT_REMOTE_DB_HOST}:{self.ALT_REMOTE_DB_PORT}/{self.ALT_REMOTE_DB_NAME}")
+                       f"{self.ALT_DB_USER}:{self.ALT_DB_PASSWORD.get_secret_value()}@"
+                       f"{self.ALT_DB_HOST}:{self.ALT_DB_PORT}/{self.ALT_DB_NAME}")
 
     @computed_field
     def POSTGRES_ASYNC_URI(self) -> SecretStr:

@@ -6,7 +6,7 @@ import asyncio
 from enum import Enum
 
 # local dependencies
-from config import settings
+from config import settings, Database
 from . import cast_db_utils
 
 # 3rd party dependencies
@@ -30,43 +30,34 @@ logger.add(sys.stdout,
            filter=level_per_module,
            level=0)
 
-async def main(daemon: bool, fill_type: FillType, target_date: str):
+async def main(database: Database, daemon: bool, fill_type: FillType, target_date: str):
   while True:
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    alt_pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
+    match database:
+      case Database.EIGEN2:
+        pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+        pg_host = settings.DB_HOST
+      case Database.EIGEN8:
+        pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
+        pg_host = settings.ALT_DB_HOST
+      case _:
+        raise ValueError(f"Unknown database: {database}")
 
     match fill_type:
       case FillType.default:
-        logger.info(f"inserting k3l_cast_action into {settings.DB_HOST}")
+        logger.info(f"inserting k3l_cast_action into {pg_host}")
         cast_db_utils.insert_cast_action(logger,
                                               pg_dsn,
                                               settings.CASTS_BATCH_LIMIT)
-
-        logger.info(f"inserting k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
-        cast_db_utils.insert_cast_action(logger,
-                                              alt_pg_dsn,
-                                              settings.CASTS_BATCH_LIMIT)
-
       case FillType.backfill:
-        logger.info(f"backfilling k3l_cast_action into {settings.DB_HOST}")
+        logger.info(f"backfilling k3l_cast_action into {pg_host}")
         cast_db_utils.backfill_cast_action(logger,
                                               pg_dsn,
                                               settings.CASTS_BATCH_LIMIT)
 
-        logger.info(f"backfilling k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
-        cast_db_utils.backfill_cast_action(logger,
-                                              alt_pg_dsn,
-                                              settings.CASTS_BATCH_LIMIT)
       case FillType.gapfill:
-        logger.info(f"gapfilling k3l_cast_action into {settings.DB_HOST}")
+        logger.info(f"gapfilling k3l_cast_action into {pg_host}")
         cast_db_utils.gapfill_cast_action(logger,
                                               pg_dsn,
-                                              settings.CASTS_BATCH_LIMIT,
-                                              target_date)
-
-        logger.info(f"gapfilling k3l_cast_action into {settings.ALT_REMOTE_DB_HOST}")
-        cast_db_utils.gapfill_cast_action(logger,
-                                              alt_pg_dsn,
                                               settings.CASTS_BATCH_LIMIT,
                                               target_date)
 
@@ -83,10 +74,11 @@ async def main(daemon: bool, fill_type: FillType, target_date: str):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-d", "--daemon",
-                   help="set or not",
-                   action="store_true")
-  
+  parser.add_argument(
+    "-d", "--daemon",
+    help="set or not",
+    action="store_true"
+  )
   parser.add_argument(
     "-f",
     "--fill-type",
@@ -94,6 +86,15 @@ if __name__ == "__main__":
     default=FillType.default,
     type=FillType,
     help="fill type",
+    required=False,
+  )
+  parser.add_argument(
+    "-p",
+    "--postgres",
+    choices=list(Database),
+    default=Database.EIGEN2,
+    type=Database,
+    help="eigen2 or eigen8",
     required=False,
   )
   parser.add_argument(
@@ -118,4 +119,4 @@ if __name__ == "__main__":
       target_date = args.target_date.strftime("%Y-%m-%d")
 
   logger.info('hello hello')
-  asyncio.run(main(args.daemon, args.fill_type, target_date))
+  asyncio.run(main(args.postgres, args.daemon, args.fill_type, target_date))
