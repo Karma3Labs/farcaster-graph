@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.decorators import task
 
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
@@ -49,19 +50,14 @@ with DAG(
         '''
     )
 
-    # vacuum = BashOperator(
-    #     task_id='vacuum_k3l_recent_parent_casts_v0',
-    #     bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-    #     VACUUM ANALYZE k3l_recent_parent_casts;"
-    #     '''
-    # )
+    @task.bash
+    def gapfill_task(db: str) -> str:
+        yesterday = datetime.now(timezone.utc) - timedelta(hours=25)
+        return f"cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/"\
+            f" -f gapfill -p {db} -t '{yesterday.strftime('%Y-%m-%d %H:%M:%S')}'"
 
-    # vacuum8 = BashOperator(
-    #     task_id='vacuum_k3l_recent_parent_casts_v0_e8',
-    #     bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
-    #     VACUUM ANALYZE k3l_recent_parent_casts;"
-    #     '''
-    # )
+    gapfill = gapfill_task('eigen2')
+    gapfill8 = gapfill_task('eigen8')
 
-    insert >> refresh 
-    insert8 >> refresh8
+    insert >> refresh >> gapfill
+    insert8 >> refresh8 >> gapfill8

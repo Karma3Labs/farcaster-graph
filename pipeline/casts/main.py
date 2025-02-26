@@ -100,9 +100,9 @@ if __name__ == "__main__":
   parser.add_argument(
     "-t",
     "--target-date",
-    help="Date condition for the queries, format: YYYY-MM-DD",
+    help="Date condition for the queries, format: YYYY-MM-DD HH:MM:SS",
     required=False,
-    type=lambda d: datetime.strptime(d, "%Y-%m-%d"),
+    type=lambda d: datetime.strptime(d, "%Y-%m-%d %H:%M:%S"),
   )
 
   args = parser.parse_args()
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     if args.target_date is None:
       raise ValueError("target-date is required for gapfill")
     if args.target_date:
-      target_date = args.target_date.strftime("%Y-%m-%d")
+      target_date = args.target_date.strftime("%Y-%m-%d %H:%M:%S")
 
   logger.info('hello hello')
   asyncio.run(main(args.postgres, args.daemon, args.fill_type, target_date))

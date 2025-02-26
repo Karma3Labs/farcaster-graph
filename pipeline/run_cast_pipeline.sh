@@ -1,9 +1,10 @@
 #!/bin/bash
 
+date_format='%Y-%m-%d %H:%M:%S'
+
 # Function to validate date format
 function validate_date() {
     date_to_check=$1
-    date_format='%Y-%m-%d'
 
     # Check if the date matches the format YYYY-mm-dd
     if [[ $(uname) == "Darwin" ]]; then
@@ -57,18 +58,14 @@ if [ ! -z "$POSTGRES" ]; then
 fi
 
 FILL_TYPE=${FILL_TYPE:-default}
-OPT_DATE_SUFFIX=""
-TARGET_DATE_SUFFIX=""
 if [ ! -z "$TARGET_DATE" ]; then
   validate_date $TARGET_DATE
   if [[ $(uname) == "Darwin" ]]; then
-    FORMATTED_TARGET_DATE=$(date -j -f %Y-%m-%d $TARGET_DATE +"%Y%m%d" )
+    FORMATTED_TARGET_DATE=$(date -j -f "$date_format" "$TARGET_DATE" +"$date_format" )
   else
-    FORMATTED_TARGET_DATE=$(date -d $TARGET_DATE +"%Y%m%d")
+    FORMATTED_TARGET_DATE=$(date -d "$TARGET_DATE" +"$date_format")
   fi
-  OPT_DATE_SUFFIX="_$FORMATTED_TARGET_DATE"
-  TARGET_DATE_SUFFIX="_$TARGET_DATE"
-  DATE_OPTION="--target-date $TARGET_DATE"
+  DATE_OPTION=(--target-date "$TARGET_DATE")
 fi
 
 # set -x
@@ -81,5 +78,5 @@ function log() {
 
 source $VENV/bin/activate
 # pip install -r requirements.txt
-python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE $DATE_OPTION
+python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}"
 deactivate
