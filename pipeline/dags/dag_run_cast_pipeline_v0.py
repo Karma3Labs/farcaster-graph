@@ -56,8 +56,8 @@ with DAG(
         return f"cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/"\
             f" -f gapfill -p {db} -t '{yesterday.strftime('%Y-%m-%d %H:%M:%S')}'"
 
-    gapfill = gapfill_task('eigen2')
-    gapfill8 = gapfill_task('eigen8')
+    gapfill = gapfill_task.override(task_id='gapfill_cast_actions')('eigen2')
+    gapfill8 = gapfill_task.override(task_id='gapfill_cast_actions_e8')('eigen8')
 
     insert >> refresh >> gapfill
     insert8 >> refresh8 >> gapfill8
