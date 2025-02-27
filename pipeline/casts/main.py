@@ -56,15 +56,22 @@ async def main(
                 )
             case FillType.backfill:
                 logger.info(f"backfilling k3l_cast_action into {pg_host}")
-                cast_db_utils.backfill_cast_action(
+                row_count = cast_db_utils.backfill_cast_action(
                     logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_month
                 )
-
+                logger.info(f"backfilled {row_count} rows")
+                if row_count < settings.CASTS_BATCH_LIMIT:
+                    logger.info("no more rows to backfill")
+                    break # even if daemon flag is on, we don't want to continue
             case FillType.gapfill:
                 logger.info(f"gapfilling k3l_cast_action into {pg_host}")
-                cast_db_utils.gapfill_cast_action(
+                row_count =cast_db_utils.gapfill_cast_action(
                     logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_date
                 )
+                logger.info(f"gapfilled {row_count} rows")
+                if row_count < settings.CASTS_BATCH_LIMIT:
+                    logger.info("no more rows to gapfill")
+                    break # even if daemon flag is on, we don't want to continue
 
         sleep_duration = settings.CASTS_SLEEP_SECS
         if daemon:

@@ -114,19 +114,21 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       logger.info(f"Inserted {rows} rows into k3l_cast_action")
 
 @Timer(name="backfill_cast_action")
-def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_month: datetime):
-  
-  target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
-  table_name = f"k3l_cast_action_{target_month.strftime("y%Ym%m")}"
+def backfill_cast_action(
+    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_month: datetime
+) -> int:
+    target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
+    table_name = f"k3l_cast_action_{target_month.strftime('y%Ym%m')}"
 
-  logger.info(f"backfilling {table_name}")
+    logger.info(f"backfilling {table_name}")
 
-  insert_sql = f"""
+    insert_sql = f"""
     INSERT INTO {table_name}
     WITH
       min_cast_action AS (
         SELECT
-          COALESCE(min(created_at), {target_month_str}) as min_at
+          COALESCE(min(created_at), '{target_month_str}'::timestamp) as min_at, 
+          '{target_month_str}'::timestamp - interval '1 month' as cutoff_ts
         FROM {table_name}
       )
     SELECT
@@ -140,8 +142,10 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int,
       casts.created_at
     FROM casts, min_cast_action
     WHERE
+      casts.timestamp > min_cast_action.cutoff_ts
+      AND
       casts.created_at
-        BETWEEN min_cast_action.min_at - interval '5 days'
+        BETWEEN min_cast_action.min_at - interval '1 days'
                 AND min_cast_action.min_at
       AND casts.deleted_at IS NULL
     UNION ALL
@@ -156,10 +160,12 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int,
       casts.created_at
     FROM casts CROSS JOIN min_cast_action
     WHERE
+      casts.timestamp > min_cast_action.cutoff_ts
+      AND
       casts.parent_hash IS NOT NULL
       AND
       casts.created_at
-        BETWEEN min_cast_action.min_at - interval '5 days'
+        BETWEEN min_cast_action.min_at - interval '1 days'
                 AND min_cast_action.min_at
       AND casts.deleted_at IS NULL
     UNION ALL
@@ -174,8 +180,10 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int,
       reactions.created_at
     FROM reactions CROSS JOIN min_cast_action
     WHERE
+      reactions.timestamp > min_cast_action.cutoff_ts
+      AND
       reactions.created_at
-        BETWEEN min_cast_action.min_at - interval '5 days'
+        BETWEEN min_cast_action.min_at - interval '1 days'
                 AND min_cast_action.min_at
       AND
       reactions.reaction_type IN (1,2)
@@ -187,21 +195,23 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int,
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """
-  with psycopg2.connect(
-    pg_dsn,
-    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
-  ) as conn:
-    with conn.cursor() as cursor:
-      logger.info(f"Executing: {insert_sql}")
-      cursor.execute(insert_sql)
-      rows = cursor.rowcount
-      logger.info(f"Backfilled {rows} rows into {table_name}")
+    with psycopg2.connect(
+        pg_dsn,
+        connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+    ) as conn:
+        with conn.cursor() as cursor:
+            logger.info(f"Executing: {insert_sql}")
+            cursor.execute(insert_sql)
+            rows = cursor.rowcount
+            logger.info(f"Backfilled {rows} rows into {table_name}")
+            return rows
 
 @Timer(name="gapfill_cast_action")
-def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime):
-
-  target_date_str = target_date.strftime("%Y-%m-%d %H:%M:%S")
-  insert_sql = f"""
+def gapfill_cast_action(
+    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime
+) -> int:
+    target_date_str = target_date.strftime("%Y-%m-%d %H:%M:%S")
+    insert_sql = f"""
     INSERT INTO k3l_cast_action
     WITH
       missing_casts AS (
@@ -223,7 +233,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
           BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
         AND casts.deleted_at IS NULL
         AND ca.cast_hash IS NULL
-        LIMIT {insert_limit/4}
+        LIMIT {insert_limit / 4}
       ),
       missing_replies AS (
         SELECT
@@ -246,7 +256,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
             BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND casts.deleted_at IS NULL
           AND ca.cast_hash IS NULL
-        LIMIT {insert_limit/4}
+        LIMIT {insert_limit / 4}
       ),
       missing_reactions AS (
         SELECT
@@ -270,7 +280,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
             BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND reactions.deleted_at IS NULL
           AND ca.cast_hash IS NULL
-        LIMIT {insert_limit/2}
+        LIMIT {insert_limit / 2}
       )
     SELECT * FROM missing_casts
     UNION ALL
@@ -280,15 +290,16 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
   """
-  with psycopg2.connect(
-    pg_dsn,
-    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
-  ) as conn:
-    with conn.cursor() as cursor:
-      logger.info(f"Executing: {insert_sql}")
-      cursor.execute(insert_sql)
-      rows = cursor.rowcount
-      logger.info(f"Gapfilled {rows} rows into k3l_cast_action")
+    with psycopg2.connect(
+        pg_dsn,
+        connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+    ) as conn:
+        with conn.cursor() as cursor:
+            logger.info(f"Executing: {insert_sql}")
+            cursor.execute(insert_sql)
+            rows = cursor.rowcount
+            logger.info(f"Gapfilled {rows} rows into k3l_cast_action")
+            return rows
 
 
 @Timer(name="fetch_top_casters_df")
