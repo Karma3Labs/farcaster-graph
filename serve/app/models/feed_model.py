@@ -73,7 +73,7 @@ class SearchScores(BaseModel):
     score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
+    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
     normalize: bool = True
 
 class ReplyScores(BaseModel):
