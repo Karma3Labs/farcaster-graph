@@ -461,7 +461,7 @@ async def get_channel_casts_scores(
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
       "weights": "L1C1R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score", # score is default \n
-      "timeDecay": "minute" | "hour" | "day" | "never", # "hour" is default \n
+      "timeDecay": "minute" | "hour" | "day" | "never", # "never" is default \n
       "normalize": true | false, # true is default \n
     } \n
   provider_metadata is a **URI encoded JSON string**
