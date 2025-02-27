@@ -114,14 +114,20 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
       logger.info(f"Inserted {rows} rows into k3l_cast_action")
 
 @Timer(name="backfill_cast_action")
-def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
+def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_month: datetime):
+  
+  target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
+  table_name = f"k3l_cast_action_{target_month.strftime("y%Ym%m")}"
+
+  logger.info(f"backfilling {table_name}")
+
   insert_sql = f"""
-    INSERT INTO k3l_cast_action
+    INSERT INTO {table_name}
     WITH
       min_cast_action AS (
         SELECT
-          min(created_at) as min_at
-        FROM k3l_cast_action
+          COALESCE(min(created_at), {target_month_str}) as min_at
+        FROM {table_name}
       )
     SELECT
       casts.fid as fid,
@@ -189,10 +195,12 @@ def backfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int)
       logger.info(f"Executing: {insert_sql}")
       cursor.execute(insert_sql)
       rows = cursor.rowcount
-      logger.info(f"Backfilled {rows} rows into k3l_cast_action")
+      logger.info(f"Backfilled {rows} rows into {table_name}")
 
 @Timer(name="gapfill_cast_action")
-def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: str):
+def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime):
+
+  target_date_str = target_date.strftime("%Y-%m-%d %H:%M:%S")
   insert_sql = f"""
     INSERT INTO k3l_cast_action
     WITH
@@ -212,7 +220,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
             casts.hash = ca.cast_hash
           )
         WHERE casts.created_at
-          BETWEEN '{target_date}'::timestamp AND ('{target_date}'::timestamp + interval '1 day')
+          BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
         AND casts.deleted_at IS NULL
         AND ca.cast_hash IS NULL
         LIMIT {insert_limit/4}
@@ -235,7 +243,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
         WHERE
           casts.parent_hash IS NOT NULL
           AND casts.created_at
-            BETWEEN '{target_date}'::timestamp AND ('{target_date}'::timestamp + interval '1 day')
+            BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND casts.deleted_at IS NULL
           AND ca.cast_hash IS NULL
         LIMIT {insert_limit/4}
@@ -259,7 +267,7 @@ def gapfill_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int, 
           reactions.reaction_type IN (1,2)
           AND reactions.target_hash IS NOT NULL
           AND reactions.created_at
-            BETWEEN '{target_date}'::timestamp AND ('{target_date}'::timestamp + interval '1 day')
+            BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND reactions.deleted_at IS NULL
           AND ca.cast_hash IS NULL
         LIMIT {insert_limit/2}
