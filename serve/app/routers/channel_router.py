@@ -477,7 +477,7 @@ async def get_channel_casts_scores(
     } \n
   By default, `provider_metadata` is Search.
   """
-    if not (1 <= len(cast_hashes) <= 100):
+    if not (1 <= len(cast_hashes) <= 1_000):
       raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
 
     metadata = None
