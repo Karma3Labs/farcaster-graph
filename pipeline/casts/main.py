@@ -60,7 +60,7 @@ async def main(
                     logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_month
                 )
                 logger.info(f"backfilled {row_count} rows")
-                if row_count < settings.CASTS_BATCH_LIMIT:
+                if row_count == 0:
                     logger.info("no more rows to backfill")
                     break # even if daemon flag is on, we don't want to continue
             case FillType.gapfill:
@@ -69,7 +69,7 @@ async def main(
                     logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_date
                 )
                 logger.info(f"gapfilled {row_count} rows")
-                if row_count < settings.CASTS_BATCH_LIMIT:
+                if row_count == 0:
                     logger.info("no more rows to gapfill")
                     break # even if daemon flag is on, we don't want to continue
 
