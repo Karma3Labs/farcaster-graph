@@ -6,7 +6,7 @@ import requests
 from timer import Timer
 import time
 from config import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
@@ -117,18 +117,22 @@ def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
 def backfill_cast_action(
     logger: logging.Logger, pg_dsn: str, insert_limit: int, target_month: datetime
 ) -> int:
+    # Example, if target month is 2024-11, we want to backfill 
+    # ... from 2024-11-30T23:59:59 to 2024-11-01T00:00:00
+    start_at = target_month - timedelta(seconds=1)
+    start_at_str = start_at.strftime("%Y-%m-%d %H:%M:%S")
     target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
     table_name = f"k3l_cast_action_{target_month.strftime('y%Ym%m')}"
 
-    logger.info(f"backfilling {table_name}")
+    logger.info(f"backfilling {table_name} from {start_at_str} to {target_month_str}")
 
     insert_sql = f"""
     INSERT INTO {table_name}
     WITH
       min_cast_action AS (
         SELECT
-          COALESCE(min(created_at), '{target_month_str}'::timestamp) as min_at, 
-          '{target_month_str}'::timestamp - interval '1 month' as cutoff_ts
+          COALESCE(min(action_ts), '{start_at_str}'::timestamp + interval '1 month') as min_ts, 
+          '{target_month_str}'::timestamp as cutoff_ts
         FROM {table_name}
       )
     SELECT
@@ -142,11 +146,11 @@ def backfill_cast_action(
       casts.created_at
     FROM casts, min_cast_action
     WHERE
-      casts.timestamp > min_cast_action.cutoff_ts
+      casts.timestamp >= min_cast_action.cutoff_ts
       AND
-      casts.created_at
-        BETWEEN min_cast_action.min_at - interval '1 days'
-                AND min_cast_action.min_at
+      casts.timestamp
+        BETWEEN min_cast_action.min_ts - interval '12 hours'
+                AND min_cast_action.min_ts
       AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
@@ -160,13 +164,13 @@ def backfill_cast_action(
       casts.created_at
     FROM casts CROSS JOIN min_cast_action
     WHERE
-      casts.timestamp > min_cast_action.cutoff_ts
+      casts.timestamp >= min_cast_action.cutoff_ts
       AND
       casts.parent_hash IS NOT NULL
       AND
-      casts.created_at
-        BETWEEN min_cast_action.min_at - interval '1 days'
-                AND min_cast_action.min_at
+      casts.timestamp
+        BETWEEN min_cast_action.min_ts - interval '12 hours'
+                AND min_cast_action.min_ts
       AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
@@ -180,17 +184,17 @@ def backfill_cast_action(
       reactions.created_at
     FROM reactions CROSS JOIN min_cast_action
     WHERE
-      reactions.timestamp > min_cast_action.cutoff_ts
+      reactions.timestamp >= min_cast_action.cutoff_ts
       AND
-      reactions.created_at
-        BETWEEN min_cast_action.min_at - interval '1 days'
-                AND min_cast_action.min_at
+      reactions.timestamp
+        BETWEEN min_cast_action.min_ts - interval '12 hours'
+                AND min_cast_action.min_ts
       AND
       reactions.reaction_type IN (1,2)
       AND
       reactions.target_hash IS NOT NULL
       AND reactions.deleted_at IS NULL
-    ORDER BY created_at DESC
+    ORDER BY action_ts DESC
     LIMIT {insert_limit}
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
