@@ -85,3 +85,5 @@ source $VENV/bin/activate
 # pip install -r requirements.txt
 python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}" $MONTH_OPTION
 deactivate
+
+log "Done"

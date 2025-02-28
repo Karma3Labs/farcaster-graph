@@ -86,3 +86,5 @@ while [[ $START_DATE < $END_DATE ]]; do
   START_DATE=$(date -I -d "$START_DATE + 1 day")
 done
 deactivate
+
+log "Done"
