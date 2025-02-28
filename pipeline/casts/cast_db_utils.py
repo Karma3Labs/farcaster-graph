@@ -233,7 +233,7 @@ def gapfill_cast_action(
           AS ca ON (
             casts.hash = ca.cast_hash
           )
-        WHERE casts.created_at
+        WHERE casts.timestamp
           BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
         AND casts.deleted_at IS NULL
         AND ca.cast_hash IS NULL
@@ -256,7 +256,7 @@ def gapfill_cast_action(
           )
         WHERE
           casts.parent_hash IS NOT NULL
-          AND casts.created_at
+          AND casts.timestamp
             BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND casts.deleted_at IS NULL
           AND ca.cast_hash IS NULL
@@ -280,7 +280,7 @@ def gapfill_cast_action(
         WHERE
           reactions.reaction_type IN (1,2)
           AND reactions.target_hash IS NOT NULL
-          AND reactions.created_at
+          AND reactions.timestamp
             BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
           AND reactions.deleted_at IS NULL
           AND ca.cast_hash IS NULL

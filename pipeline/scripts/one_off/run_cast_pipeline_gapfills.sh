@@ -80,7 +80,7 @@ while [[ $START_DATE < $END_DATE ]]; do
   FILL_TYPE="gapfill"
   DAEMON_FLAG=""
   log "Running gapfill for $START_DATE"
-  # python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}"
+  python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}"
   log "Sleeping for $SLEEP_TIME"
   sleep $SLEEP_TIME
   START_DATE=$(date -I -d "$START_DATE + 1 day")
