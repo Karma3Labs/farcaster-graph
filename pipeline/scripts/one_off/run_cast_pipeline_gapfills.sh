@@ -27,19 +27,20 @@ function validate_date() {
     fi
 }
 
-while getopts v:s:p:e: flag
+while getopts v:s:p:e:l: flag
 do
     case "${flag}" in
         v) VENV=${OPTARG};;
         s) START_DATE=${OPTARG};;
         e) END_DATE=${OPTARG};;
         p) POSTGRES=${OPTARG};;
+        l) SLEEP_TIME=${OPTARG};;
     esac
 done
 
 if [ -z "$VENV" ] || [ -z "$START_DATE" ] || [ -z "$END_DATE" ]; then
   echo "Usage:   $0 -v [venv] -s [start_date] -e [end_date]"
-  echo "Usage:   $0 -v [venv] -s [start_date] -e [end_date] -p [postgres] "
+  echo "Usage:   $0 -v [venv] -s [start_date] -e [end_date] -p [postgres] -l [sleep_time]"
   echo ""
   echo "Example: $0 -v /home/ubuntu/venvs/fc-graph-env3/ -s 2025-02-01 -e 2025-02-05"
   echo "Example: $0 -v /home/ubuntu/venvs/fc-graph-env3/ -s 2025-02-01 -e 2025-02-05 -p eigen8"
@@ -49,6 +50,7 @@ if [ -z "$VENV" ] || [ -z "$START_DATE" ] || [ -z "$END_DATE" ]; then
   echo "  [start_date] The date to start the gapfilling process."
   echo "  [end_date] The date to end the gapfilling process."
   echo "  [postgres] 'eigen2' or 'eigen8'"
+  echo "  [sleep_time] The amount of time to sleep between gapfill runs."
   echo ""
   exit
 fi
@@ -60,6 +62,7 @@ fi
 validate_date $START_DATE
 validate_date $END_DATE
 
+SLEEP_TIME=${SLEEP_TIME:-30s}
 
 
 # set -x
@@ -77,7 +80,9 @@ while [[ $START_DATE < $END_DATE ]]; do
   FILL_TYPE="gapfill"
   DAEMON_FLAG=""
   log "Running gapfill for $START_DATE"
-  python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}"
+  # python3 -m casts.main $PG_OPTION $DAEMON_FLAG -f $FILL_TYPE "${DATE_OPTION[@]}"
+  log "Sleeping for $SLEEP_TIME"
+  sleep $SLEEP_TIME
   START_DATE=$(date -I -d "$START_DATE + 1 day")
 done
 deactivate
