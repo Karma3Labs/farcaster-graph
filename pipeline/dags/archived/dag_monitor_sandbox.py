@@ -29,7 +29,8 @@ with DAG(
     default_args=default_args,
     description="Monitor the status of sandbox and \
                 raise alerts if there are significant lags",
-    schedule_interval=timedelta(minutes=10),
+    # schedule_interval=timedelta(minutes=10),
+    schedule_interval=None,
     start_date=datetime(2024, 8, 1),
     is_paused_upon_creation=True,
     max_active_runs=1,
