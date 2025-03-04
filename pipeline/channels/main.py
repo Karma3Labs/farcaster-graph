@@ -52,7 +52,7 @@ def process_channel_df(
     if len(scores) == 0:
         if interval > 0:
             logger.info(f"No globaltrust for channel {cid} for interval {interval}")
-            return {cid: []}
+            return None
         else:
             logger.error(f"No globaltrust for channel {cid} for lifetime engagement")
             raise Exception(f"No globaltrust for channel {cid} for lifetime engagement")
@@ -124,9 +124,9 @@ def process_channels(
                 pretrust_fids=pretrust_fids,
                 interval=interval,
             )
-
-            insert_channel_scores_df(cid=cid, scores_df=df, pg_url=pg_url)
-            insert_channel_scores_df(cid=cid, scores_df=df, pg_url=alt_pg_url)
+            if df:
+                insert_channel_scores_df(cid=cid, scores_df=df, pg_url=pg_url)
+                insert_channel_scores_df(cid=cid, scores_df=df, pg_url=alt_pg_url)
 
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
