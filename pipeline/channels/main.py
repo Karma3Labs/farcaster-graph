@@ -124,7 +124,7 @@ def process_channels(
                 pretrust_fids=pretrust_fids,
                 interval=interval,
             )
-            if df:
+            if df is not None:
                 insert_channel_scores_df(cid=cid, scores_df=df, pg_url=pg_url)
                 insert_channel_scores_df(cid=cid, scores_df=df, pg_url=alt_pg_url)
 
