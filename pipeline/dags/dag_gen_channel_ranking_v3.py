@@ -187,18 +187,16 @@ def create_dag():
 
         refresh_db = BashOperator(
             task_id='refresh_ch_rank',
-            bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-            REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;
-            VACUUM ANALYZE k3l_channel_rank;"
+            bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w .
+             "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;"
             ''',
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
 
         refresh_db8 = BashOperator(
             task_id='refresh_ch_rank8',
-            bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
-            REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;
-            VACUUM ANALYZE k3l_channel_rank;"
+            bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w .
+             "REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;"
             ''',
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
