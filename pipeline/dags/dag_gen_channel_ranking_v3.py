@@ -123,8 +123,8 @@ def create_dag():
         # .. except for 'k3l_channel_rank' materialized view which 
         # .. does not get refreshed until the very end and only 
         # .. after an additional sanity check
-        sanitycheck_before_truncate >> truncate_ch_fids
-        sanitycheck_before_truncate8 >> truncate_ch_fids8
+        [sanitycheck_before_truncate, sanitycheck_before_truncate8] >> truncate_ch_fids
+        [sanitycheck_before_truncate, sanitycheck_before_truncate8] >> truncate_ch_fids8
 
     @task_group(group_id='compute_group')
     def tg_compute():
