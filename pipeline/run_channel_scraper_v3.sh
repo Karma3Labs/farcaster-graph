@@ -50,12 +50,12 @@ log "Starting script with parameters: WORK_DIR=${WORK_DIR},\
 
 source $WORK_DIR/.env
 
-DB_HOST=${DB_HOST:-127.0.0.1}
-DB_PORT=${DB_PORT:-5432}
-DB_USER=${DB_USER:-replicator}
-DB_NAME=${DB_NAME:-replicator}
-DB_PASSWORD=${DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
-DB_CHANNEL_RANK_TABLE=k3l_channel_rank
+# DB_HOST=${DB_HOST:-127.0.0.1}
+# DB_PORT=${DB_PORT:-5432}
+# DB_USER=${DB_USER:-replicator}
+# DB_NAME=${DB_NAME:-replicator}
+# DB_PASSWORD=${DB_PASSWORD:-password} # psql requires PGPASSWORD to be set
+# DB_CHANNEL_RANK_TABLE=k3l_channel_rank
 
 set -e
 set -o pipefail
@@ -81,16 +81,16 @@ elif [ "$TASK" = "process" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main -c "$CSV_PATH" -b "$BOTS_CSV" -t process --interval "$INTERVAL" --channel_ids "$CHANNEL_IDS"
   deactivate
-elif [ "$TASK" = "refresh" ]; then
-  log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
-  PGPASSWORD=$DB_PASSWORD \
-  $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE;"
+# elif [ "$TASK" = "refresh" ]; then
+#   log "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE"
+#   PGPASSWORD=$DB_PASSWORD \
+#   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+#     -c "REFRESH MATERIALIZED VIEW CONCURRENTLY $DB_CHANNEL_RANK_TABLE;"
 
-  log "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE"
-  PGPASSWORD=$DB_PASSWORD \
-  $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE;"
+#   log "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE"
+#   PGPASSWORD=$DB_PASSWORD \
+#   $PSQL -e -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
+#     -c "VACUUM ANALYZE $DB_CHANNEL_RANK_TABLE;"
 else
   echo "Invalid task specified. Use 'fetch' or 'process' or 'refresh'."
   exit 1

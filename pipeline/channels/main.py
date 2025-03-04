@@ -35,13 +35,12 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def process_channel_goserver(
+def process_channel_df(
         cid: str,
         channel_lt_df: pd.DataFrame,
         pretrust_fids: pd.DataFrame,
-        pg_url: str,
         interval: int,
-) -> dict:
+) -> pd.DataFrame:
     try:
         scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
@@ -70,7 +69,9 @@ def process_channel_goserver(
     scores_df['strategy_name'] = f'{interval}d_engagement' if interval > 0 else 'channel_engagement' 
     logger.info(utils.df_info_to_string(scores_df, with_sample=True))
     utils.log_memusage(logger)
+    return scores_df
 
+def insert_channel_scores_df(cid: str, scores_df: pd.DataFrame, pg_url: str):
     try:
         if settings.IS_TEST:
             logger.warning(f"Skipping database insertion for channel {cid}")
@@ -93,6 +94,7 @@ def process_channels(
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
+    alt_pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
@@ -116,13 +118,16 @@ def process_channels(
             # Future Feature: keep track and clean up seed fids that have had no engagement in channel
             missing_seed_fids.append({cid: absent_fids})
                 
-            process_channel_goserver(
+            df = process_channel_df(
                 cid=cid,
                 channel_lt_df=channel_lt_df,
                 pretrust_fids=pretrust_fids,
-                pg_url=pg_url,
                 interval=interval,
             )
+
+            insert_channel_scores_df(cid=cid, scores_df=df, pg_url=pg_url)
+            insert_channel_scores_df(cid=cid, scores_df=df, pg_url=alt_pg_url)
+
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
             raise e
