@@ -224,13 +224,13 @@ def create_dag():
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
         )
 
-        trigger_sync_sandbox = TriggerDagRunOperator(
-            task_id="trigger_sync_sandbox",
-            trigger_dag_id="sync_sandbox_channel_fids",
-            conf={"trigger": "gen_channel_ranking_v3"},
-        )
+        # trigger_sync_sandbox = TriggerDagRunOperator(
+        #     task_id="trigger_sync_sandbox",
+        #     trigger_dag_id="sync_sandbox_channel_fids",
+        #     conf={"trigger": "gen_channel_ranking_v3"},
+        # )
 
-        push_to_dune >> push_to_s3 >> trigger_sync_sandbox
+        push_to_dune >> push_to_s3 # >> trigger_sync_sandbox
 
     tg_prep_db() >> tg_compute() >> tg_db() >> tg_sync()
 
