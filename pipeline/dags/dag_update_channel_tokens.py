@@ -47,6 +47,12 @@ with DAG(
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
             dag=dag)
 
+        prepare_weekly8 = BashOperator(
+            task_id="prepare_weekly8",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv"\
+                            " -t prep -s weekly -r {{ run_id }} -p eigen8",
+            dag=dag)
+
         distribute = BashOperator(
             task_id="distribute",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t distrib",
@@ -76,6 +82,12 @@ with DAG(
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
             dag=dag)
 
+        prepare_airdrop8 = BashOperator(
+            task_id="prepare_airdrop8",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv"\
+                         " -t prep -s airdrop -r {{ run_id }} -p eigen8",
+            dag=dag)
+
         distribute = BashOperator(
             task_id="distribute",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t distrib",
@@ -85,7 +97,7 @@ with DAG(
             task_id="verify",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
             dag=dag)
-        prepare_airdrop >> distribute >> verify
+        prepare_airdrop >> prepare_airdrop8 >> distribute >> verify
 
     def get_last_successful_dag_run(dag_id):
         dag_runs = DagRun.find(dag_id=dag_id, state=DagRunState.SUCCESS)

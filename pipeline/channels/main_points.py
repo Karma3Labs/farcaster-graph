@@ -5,7 +5,7 @@ from enum import StrEnum
 
 
 # local dependencies
-from config import settings
+from config import settings, Database
 from . import channel_db_utils
 import utils
 import db_utils
@@ -52,9 +52,16 @@ class Task(StrEnum):
     compute = "compute"
     update = "update"
 
-def main(task: Task):
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    pg_url = settings.POSTGRES_URL.get_secret_value()
+def main(database: Database, task: Task):
+    match database:
+        case Database.EIGEN2:
+            pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+            pg_url = settings.POSTGRES_URL.get_secret_value()
+        case Database.EIGEN8:
+            pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
+            pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
+        case _:
+            raise ValueError(f"Unknown database: {database}")
 
     sql_timeout_ms = 120_000
 
@@ -145,9 +152,18 @@ if __name__ == "__main__":
         help="task to perform",
         required=True,
     )
+    parser.add_argument(
+        "-p",
+        "--postgres",
+        choices=list(Database),
+        default=Database.EIGEN2,
+        type=Database,
+        help="eigen2 or eigen8",
+        required=False,
+    )
 
     args = parser.parse_args()
     print(args)
     logger.info(settings)
 
-    main(args.task)
+    main(args.postgres, args.task)

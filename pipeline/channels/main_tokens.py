@@ -7,7 +7,7 @@ from urllib3.util import Retry
 import random
 
 # local dependencies
-from config import settings
+from config import settings, Database
 from . import channel_db_utils
 from .channel_db_utils import TokenDistStatus
 
@@ -40,8 +40,14 @@ class Task(Enum):
   distrib = 'distrib'
   verify = 'verify'
 
-def prepare_for_distribution(scope: Scope, reason: str):
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+def prepare_for_distribution(database: Database, scope: Scope, reason: str):
+    match database:
+        case Database.EIGEN2:
+            pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+        case Database.EIGEN8:
+            pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
+        case _:
+            raise ValueError(f"Unknown database: {database}")
     insert_timeout_ms = 120_000
     channels_list = channel_db_utils.fetch_rewards_config_list(logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS)
     logger.debug(f"Channel token status: {channels_list}")
@@ -346,6 +352,15 @@ if __name__ == "__main__":
         required=False,
         type=str,
     )
+    parser.add_argument(
+        "-p",
+        "--postgres",
+        choices=list(Database),
+        default=Database.EIGEN2,
+        type=Database,
+        help="eigen2 or eigen8",
+        required=False,
+    )
     args = parser.parse_args()
     print(args)
     logger.info(settings)
@@ -355,7 +370,7 @@ if __name__ == "__main__":
         if not hasattr(args, "scope") or not hasattr(args, "reason"):
             logger.error("Scope and reason are required for preparing distribution.")
             sys.exit(1)
-        prepare_for_distribution(args.scope, args.reason)
+        prepare_for_distribution(args.postgres, args.scope, args.reason)
     elif args.task == Task.distrib:
         logger.info('hello distribute')
         distribute_tokens()
