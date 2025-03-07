@@ -392,6 +392,24 @@ CREATE UNIQUE INDEX idx_warpcast_channels_data_ch_id_idx ON public.warpcast_chan
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
 
+-------------------------------------------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.warpcast_channels_data AS
+    SELECT
+    channel_id AS id,
+    url,
+    description,
+    image_url AS imageurl,
+    lead_fid AS leadfid,
+    moderator_fids AS moderatorfids,
+    created_at AS createdat,
+    follower_count AS followercount,
+    "timestamp" AS insert_ts
+    FROM
+    neynarv2.channels;
+
+GRANT SELECT, REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
+
 ----------------------------------------------
 CREATE TABLE public.k3l_top_casters (
 	i int8 NOT NULL,
@@ -494,6 +512,18 @@ CREATE INDEX warpcast_followers_fid_idx ON public.warpcast_followers USING btree
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
 -------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.warpcast_followers AS
+    SELECT
+        fid,
+        ROUND(EXTRACT(EPOCH FROM (timestamp)),0) AS followedAt,
+        timestamp AS insert_ts,
+        channel_id
+    FROM
+        neynarv2.channel_follows;
+
+GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
+-------------------------------------------------
 CREATE TABLE public.warpcast_members (
   fid int8 NOT NULL,
   memberAt bigint NOT NULL,
@@ -508,6 +538,18 @@ CREATE INDEX warpcast_members_fid_idx ON public.warpcast_members USING btree (fi
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 
+-------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.warpcast_members AS
+    SELECT
+        fid,
+        ROUND(EXTRACT(EPOCH FROM (timestamp)),0) AS memberAt,
+        timestamp AS insert_ts,
+        channel_id
+    FROM
+        neynarv2.channel_members;
+
+GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_points_bal (
 	fid int8 NOT NULL,
