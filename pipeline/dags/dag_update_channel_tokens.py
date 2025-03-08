@@ -42,6 +42,12 @@ with DAG(
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
             dag=dag)
 
+        prepare_airdrop8 = BashOperator(
+            task_id="prepare_airdrop8",
+            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv"\
+                            " -t prep -s airdrop -r {{ run_id }} -p eigen8",
+            dag=dag)
+
         prepare_weekly = BashOperator(
             task_id="prepare_weekly",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
@@ -71,7 +77,7 @@ with DAG(
         )
 
         prepare_airdrop >> prepare_weekly >> distribute >> verify >> trigger_notify_dag
-
+        prepare_airdrop8 >> prepare_weekly8
 
     @task_group(group_id='tg_skip_weekly')
     def tg_skip_weekly():
@@ -97,7 +103,8 @@ with DAG(
             task_id="verify",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
             dag=dag)
-        prepare_airdrop >> prepare_airdrop8 >> distribute >> verify
+        prepare_airdrop >> distribute >> verify
+        prepare_airdrop8
 
     def get_last_successful_dag_run(dag_id):
         dag_runs = DagRun.find(dag_id=dag_id, state=DagRunState.SUCCESS)
