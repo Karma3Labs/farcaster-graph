@@ -550,6 +550,22 @@ CREATE VIEW public.warpcast_members AS
         neynarv2.channel_members;
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
+
+-------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.verifications AS
+    SELECT
+        id,
+        created_at,
+        updated_at,
+        deleted_at,
+        timestamp,
+        fid,
+        json_build_object('address', '0x' || encode(address, 'hex')) as claim
+    FROM
+        neynarv3.verifications;
+
+GRANT SELECT,REFERENCES ON TABLE public.verifications TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_points_bal (
 	fid int8 NOT NULL,
