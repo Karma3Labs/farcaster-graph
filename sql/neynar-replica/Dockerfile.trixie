@@ -1,0 +1,30 @@
+# Use a base image with glibc 2.39
+FROM debian:trixie
+
+# Install necessary packages
+RUN apt-get update && \
+    apt-get install -y sudo wget gnupg lsb-release && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Add PostgreSQL repository
+RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+
+
+# Install PostgreSQL
+RUN apt-get update && \
+    apt-get install -y postgresql-17.2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set up sudo for postgres user
+RUN echo "postgres ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/postgres && \
+    chmod 440 /etc/sudoers.d/postgres
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the entrypoint script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+    

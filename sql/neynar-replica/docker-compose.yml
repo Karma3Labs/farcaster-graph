@@ -1,0 +1,39 @@
+services:
+  postgres:
+    restart: unless-stopped
+    container_name: neynar-replica
+    shm_size: '1gb'
+    build:
+      context: .
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    environment:
+      POSTGRES_DB: ${POSTGRES_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: ${PRIMARY_HOST}
+      PRIMARY_PORT: ${PRIMARY_PORT}
+      PRIMARY_USER: ${PRIMARY_USER}
+      PRIMARY_PASSWORD: ${PRIMARY_PASSWORD}
+      PRIMARY_SLOT_NAME: ${PRIMARY_SLOT_NAME}
+      PGDATA: ${PGDATA}
+    volumes:
+      - /data/pgdata:/var/lib/postgresql/data
+      - ${PWD}/postgresql.conf:/usr/local/bin/postgresql.conf
+      - ${PWD}/pg_hba.conf:/usr/local/bin/pg_hba.conf
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready --dbname=${POSTGRES_NAME} -U ${PRIMARY_USER}']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - farcaster-network
+
+networks:
+  farcaster-network:
+    external: true
+    name: farcaster-network
+
+volumes:
+  postgres-data:
+    name: neynar-replica

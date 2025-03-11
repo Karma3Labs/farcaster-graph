@@ -1,0 +1,11 @@
+FROM postgres:17.2-alpine
+
+# Install sudo and configure it for passwordless operation
+RUN apk add --no-cache sudo && \
+    echo "postgres ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/postgres
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the entrypoint script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
