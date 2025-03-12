@@ -21,7 +21,7 @@ services:
       PRIMARY_SLOT_NAME: ${PRIMARY_SLOT_NAME}
       PGDATA: ${PGDATA}
     volumes:
-      - /data/pgdata:/var/lib/postgresql/data
+      - ${HOST_VOLUME}:/var/lib/postgresql/data
       - ${PWD}/postgresql.conf:/usr/local/bin/postgresql.conf
       - ${PWD}/pg_hba.conf:/usr/local/bin/pg_hba.conf
     healthcheck:
