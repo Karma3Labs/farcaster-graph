@@ -19,10 +19,12 @@ RUN	echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; \
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
 
+ARG GID
+ARG UID
 # Force postgres installation to use uid=999 and gid=999
 RUN set -eux; \
-	groupadd -r postgres --gid=999; \
-	useradd -r -g postgres --uid=999 --home-dir=/var/lib/postgresql --shell=/bin/bash postgres;
+	groupadd -r postgres --gid=${GID}; \
+	useradd -r -g postgres --uid=${UID} --home-dir=/var/lib/postgresql --shell=/bin/bash postgres;
 
 # Install PostgreSQL
 RUN apt-get update
