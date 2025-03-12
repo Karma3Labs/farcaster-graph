@@ -1,7 +1,7 @@
 services:
   postgres:
     restart: unless-stopped
-    container_name: neynar-replica
+    container_name: eigen8-replica-postgres
     shm_size: '1gb'
     build:
       context: .

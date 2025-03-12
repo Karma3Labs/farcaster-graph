@@ -1,31 +1,47 @@
 # Use a base image with glibc 2.39
-FROM debian:trixie
+FROM ubuntu:noble
 
 # Install necessary packages
 RUN apt-get update && \
-    apt-get install -y sudo wget gnupg lsb-release && \
+    apt-get install -y sudo curl gnupg lsb-release && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*;
+
+# Install locales
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends locales && \
+	rm -rf /var/lib/apt/lists/*;
+RUN	echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; \
+	locale-gen; \
+	locale -a | grep 'en_US.utf8'
 
 # Add PostgreSQL repository
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
 
-
+# Force postgres installation to use uid=999 and gid=999
+RUN set -eux; \
+	groupadd -r postgres --gid=999; \
+	useradd -r -g postgres --uid=999 --home-dir=/var/lib/postgresql --shell=/bin/bash postgres;
 
 # Install PostgreSQL
-RUN apt-get update && \
-    apt-get install -y postgresql-17.2 && \
-    apt-get clean && \
+RUN apt-get update
+RUN apt-get install -y postgresql-17
+RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Set up sudo for postgres user
 RUN echo "postgres ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/postgres && \
     chmod 440 /etc/sudoers.d/postgres
 
+ENV PG_MAJOR=17
+ENV PATH=$PATH:/usr/lib/postgresql/$PG_MAJOR/bin
+
+RUN echo 'Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/17/bin"' \
+    >> /etc/sudoers.d/postgres
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Set the entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-    
