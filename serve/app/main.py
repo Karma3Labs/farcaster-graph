@@ -110,6 +110,13 @@ async def lifespan(app: FastAPI):
     """Automatically called by FastAPI when server is started"""
     logger.warning(f"{settings}")
 
+    # create a DB connection pool
+    logger.info("Creating DB pool")
+    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
+                                         min_size=1,
+                                         max_size=settings.POSTGRES_POOL_SIZE)
+    logger.info("DB pool created")
+
     logger.info("Loading graphs")
     # Create a singleton instance of GraphLoader
     # ... load graphs from disk immediately
@@ -122,12 +129,6 @@ async def lifespan(app: FastAPI):
         _check_and_reload_models(app_state['graph_loader'])
     )
     logger.info("Graphs loaded")
-    logger.info("Creating DB pool")
-    # create a DB connection pool
-    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
-                                         min_size=1,
-                                         max_size=settings.POSTGRES_POOL_SIZE)
-    logger.info("DB pool created")
 
     yield
     """Execute when server is shutdown"""
