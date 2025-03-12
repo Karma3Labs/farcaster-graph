@@ -1,1 +1,1 @@
-sql/neynar-replica/Dockerfile.noble
+Dockerfile.alpine
