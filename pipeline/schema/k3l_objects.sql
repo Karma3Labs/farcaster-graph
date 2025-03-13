@@ -520,7 +520,9 @@ CREATE VIEW public.warpcast_followers AS
         timestamp AS insert_ts,
         channel_id
     FROM
-        neynarv2.channel_follows;
+        neynarv2.channel_follows
+    WHERE
+        deleted_at IS NULL;
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
 -------------------------------------------------
@@ -547,7 +549,9 @@ CREATE VIEW public.warpcast_members AS
         timestamp AS insert_ts,
         channel_id
     FROM
-        neynarv2.channel_members;
+        neynarv2.channel_members
+    WHERE
+        deleted_at IS NULL;
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 
@@ -563,7 +567,9 @@ CREATE VIEW public.verifications AS
         fid,
         json_build_object('address', '0x' || encode(address, 'hex')) as claim
     FROM
-        neynarv3.verifications;
+        neynarv3.verifications
+    WHERE
+        deleted_at IS NULL;
 
 GRANT SELECT,REFERENCES ON TABLE public.verifications TO k3l_readonly;
 -------------------------------------------------
