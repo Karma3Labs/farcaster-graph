@@ -321,7 +321,8 @@ CREATE TABLE k3l_cast_action_y2025m02 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
 CREATE TABLE k3l_cast_action_y2025m03 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
-
+CREATE TABLE k3l_cast_action_y2025m04 PARTITION OF k3l_cast_action
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
 ------------------------------------------------------------------------------------
 
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
