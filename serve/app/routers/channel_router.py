@@ -545,6 +545,7 @@ async def get_trending_casts(
         max_cast_age=f"{max_cast_age} days",
         agg=agg,
         score_threshold=0.000000001,
+        cutoff_ptile=100,
         weights=weights,
         shuffle=False,
         time_decay=time_decay,
