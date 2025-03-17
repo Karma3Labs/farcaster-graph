@@ -6,11 +6,9 @@ from enum import Enum
 from pathlib import Path
 
 # local dependencies
-import utils
-import db_utils
-import go_eigentrust
 from config import settings
 from . import channel_utils
+from . import channel_db_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -35,55 +33,6 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def process_channel_df(
-        cid: str,
-        channel_lt_df: pd.DataFrame,
-        pretrust_fids: pd.DataFrame,
-        interval: int,
-) -> pd.DataFrame:
-    try:
-        scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
-    except Exception as e:
-        logger.error(f"Failed to compute EigenTrust scores for channel {cid}: {e}")
-        raise e
-
-    logger.info(f"go_eigentrust returned {len(scores)} entries")
-
-    if len(scores) == 0:
-        if interval > 0:
-            logger.info(f"No globaltrust for channel {cid} for interval {interval}")
-            return None
-        else:
-            logger.error(f"No globaltrust for channel {cid} for lifetime engagement")
-            raise Exception(f"No globaltrust for channel {cid} for lifetime engagement")
-
-    logger.debug(f"Channel user scores: {scores}")
-
-    scores_df = pd.DataFrame(data=scores)
-    scores_df['channel_id'] = cid
-    scores_df.rename(columns={'i': 'fid', 'v': 'score'}, inplace=True)
-    scores_df['rank'] = scores_df['score'].rank(
-        ascending=False,
-        method='first'
-    ).astype(int)
-    scores_df['strategy_name'] = f'{interval}d_engagement' if interval > 0 else 'channel_engagement' 
-    logger.info(utils.df_info_to_string(scores_df, with_sample=True))
-    utils.log_memusage(logger)
-    return scores_df
-
-def insert_channel_scores_df(cid: str, scores_df: pd.DataFrame, pg_url: str):
-    try:
-        if settings.IS_TEST:
-            logger.warning(f"Skipping database insertion for channel {cid}")
-        else:
-            logger.info(f"Inserting data into the database for channel {cid}")
-            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
-    except Exception as e:
-        logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
-        raise e
-    return 
-
-
 def process_channels(
     channel_seeds_csv: Path,
     channel_bots_csv: Path,
@@ -94,7 +43,6 @@ def process_channels(
 
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
-    alt_pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
@@ -118,15 +66,16 @@ def process_channels(
             # Future Feature: keep track and clean up seed fids that have had no engagement in channel
             missing_seed_fids.append({cid: absent_fids})
                 
-            df = process_channel_df(
+            df = channel_utils.compute_goeigentrust(
                 cid=cid,
                 channel_lt_df=channel_lt_df,
                 pretrust_fids=pretrust_fids,
                 interval=interval,
             )
             if df is not None:
-                insert_channel_scores_df(cid=cid, scores_df=df, pg_url=pg_url)
-                insert_channel_scores_df(cid=cid, scores_df=df, pg_url=alt_pg_url)
+                channel_db_utils.insert_channel_scores_df(
+                    logger=logger, cid=cid, scores_df=df, pg_url=pg_url
+                )
 
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
@@ -175,6 +124,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print(args)
+    logger.info(settings)
 
     logger.debug('hello main')
 

@@ -18,7 +18,6 @@ default_args = {
 }
 
 _CONN_ID = "eig2_k3l_user"
-_ALT_CONN_ID = "eig8_k3l_user"
 N_CHUNKS = 100  # Define the number of chunks
 
 CHECK_QUERY = """
@@ -92,26 +91,9 @@ def create_dag():
         )
         # sanitycheck_before_truncate = EmptyOperator(task_id='sanitycheck_before_truncate')
 
-        sanitycheck_before_truncate8 = SQLCheckOperator(
-            task_id='sanitycheck_before_truncate8',
-            sql=CHECK_QUERY,
-            conn_id=_ALT_CONN_ID
-        )
-        # sanitycheck_before_truncate8 = EmptyOperator(task_id='sanitycheck_before_truncate8')
-
         truncate_ch_fids = BashOperator(
             task_id='truncate_ch_fids',
             bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-            BEGIN;
-            DROP TABLE IF EXISTS k3l_channel_fids_old;
-            CREATE UNLOGGED TABLE k3l_channel_fids_old AS SELECT * FROM k3l_channel_fids;
-            TRUNCATE TABLE k3l_channel_fids;
-            COMMIT;"
-            '''
-        )
-        truncate_ch_fids8 = BashOperator(
-            task_id='truncate_ch_fids8',
-            bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
             BEGIN;
             DROP TABLE IF EXISTS k3l_channel_fids_old;
             CREATE UNLOGGED TABLE k3l_channel_fids_old AS SELECT * FROM k3l_channel_fids;
@@ -123,8 +105,7 @@ def create_dag():
         # .. except for 'k3l_channel_rank' materialized view which 
         # .. does not get refreshed until the very end and only 
         # .. after an additional sanity check
-        [sanitycheck_before_truncate, sanitycheck_before_truncate8] >> truncate_ch_fids
-        [sanitycheck_before_truncate, sanitycheck_before_truncate8] >> truncate_ch_fids8
+        sanitycheck_before_truncate >> truncate_ch_fids
 
     @task_group(group_id='compute_group')
     def tg_compute():
@@ -179,12 +160,6 @@ def create_dag():
             conn_id=_CONN_ID
         )
 
-        sanitycheck_before_refresh8 = SQLCheckOperator(
-            task_id='sanitycheck_before_refresh8',
-            sql=CHECK_QUERY,
-            conn_id=_ALT_CONN_ID
-        )
-
         refresh_db = BashOperator(
             task_id='refresh_ch_rank',
             bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
@@ -193,23 +168,14 @@ def create_dag():
             trigger_rule=TriggerRule.ALL_SUCCESS
         )
 
-        refresh_db8 = BashOperator(
-            task_id='refresh_ch_rank8',
-            bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
-            REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;"
-            ''',
-            trigger_rule=TriggerRule.ALL_SUCCESS
-        )
+        # trigger_openrank = TriggerDagRunOperator(
+        #     task_id="trigger_openrank",
+        #     trigger_dag_id="gen_channel_openrank",
+        #     conf={"trigger": "gen_channel_ranking_v3"},
+        #     wait_for_completion=False,
+        # )
 
-        trigger_openrank = TriggerDagRunOperator(
-            task_id="trigger_openrank",
-            trigger_dag_id="gen_channel_openrank",
-            conf={"trigger": "gen_channel_ranking_v3"},
-            wait_for_completion=False,
-        )
-
-        sanitycheck_before_refresh >> refresh_db >> trigger_openrank
-        sanitycheck_before_refresh8 >> refresh_db8
+        sanitycheck_before_refresh >> refresh_db # >> trigger_openrank
 
     @task_group(group_id='sync_data')
     def tg_sync():
@@ -224,13 +190,7 @@ def create_dag():
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
         )
 
-        # trigger_sync_sandbox = TriggerDagRunOperator(
-        #     task_id="trigger_sync_sandbox",
-        #     trigger_dag_id="sync_sandbox_channel_fids",
-        #     conf={"trigger": "gen_channel_ranking_v3"},
-        # )
-
-        push_to_dune >> push_to_s3 # >> trigger_sync_sandbox
+        push_to_dune >> push_to_s3
 
     tg_prep_db() >> tg_compute() >> tg_db() >> tg_sync()
 
