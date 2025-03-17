@@ -102,6 +102,7 @@ def main(csv_path: Path) -> pd.DataFrame:
             connect_args={"connect_timeout": 1000},
         )
         with postgres_engine.begin() as conn:
+            # within transaction boundary
             conn.execute(text(f"TRUNCATE TABLE {table_name};"))
             df.to_sql(table_name, con=conn, if_exists='append', index=False)
     except Exception as e:
