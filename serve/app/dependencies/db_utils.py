@@ -2173,6 +2173,7 @@ async def get_top_channel_holders(
             klcr.score as channel_score,
             k3l_rank.rank as global_rank,
             warpcast_members.memberat,
+            warpcast_followers.followedat,
             bal.balance as balance,
             tok.balance as token_balance,
             CASE
@@ -2212,6 +2213,7 @@ async def get_top_channel_holders(
             LEFT JOIN k3l_channel_rank klcr 
                 on (bal.fid = klcr.fid and bal.channel_id = klcr.channel_id and klcr.strategy_name = $2)
             LEFT JOIN warpcast_members on (warpcast_members.fid = bal.fid and warpcast_members.channel_id = bal.channel_id)
+            LEFT JOIN warpcast_followers on (warpcast_followers.fid = bal.fid and warpcast_followers.channel_id = bal.channel_id)
             LEFT JOIN k3l_channel_tokens_bal as tok 
                 on (tok.channel_id=bal.channel_id and tok.fid=bal.fid)
             LEFT JOIN k3l_channel_rewards_config as config
@@ -2229,7 +2231,8 @@ async def get_top_channel_holders(
             any_value(case when user_data.type = 6 then user_data.value end) as username,
             any_value(case when user_data.type = 1 then user_data.value end) as pfp,
             any_value(case when user_data.type = 3 then user_data.value end) as bio,
-            ARRAY_AGG(DISTINCT v.claim->>'address') as address
+            ARRAY_AGG(DISTINCT v.claim->>'address') as address,
+            min(user_data.timestamp) as approx_fid_originat
         FROM balance_data
         LEFT JOIN fnames on (fnames.fid = balance_data.fid)
         LEFT JOIN user_data on (user_data.fid = balance_data.fid and user_data.type in (6,1,3))
@@ -2259,7 +2262,9 @@ async def get_top_channel_holders(
         max(bal_update_ts) as bal_update_ts,
         bool_or(is_points_launched) as is_points_launched,
         bool_or(is_tokens_launched) as is_tokens_launched,
-        min(memberat) as memberat
+        min(memberat) as memberat,
+        min(followedat) as followedat,
+        EXTRACT(EPOCH FROM (min(approx_fid_originat))) as approx_fid_originat
     FROM balance_data
     LEFT JOIN bio_data ON (bio_data.fid=balance_data.fid)
     GROUP BY balance_data.fid,channel_id,channel_rank,global_rank
