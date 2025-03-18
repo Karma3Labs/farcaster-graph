@@ -1681,6 +1681,8 @@ async def get_popular_channel_casts_lite(
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+            LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
+            WHERE md.affected_userid IS NULL AND hids.hidden_fid IS NULL
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts DESC
             LIMIT 100000
@@ -1790,6 +1792,8 @@ async def get_popular_channel_casts_heavy(
             INNER JOIN k3l_channel_rank as fids 
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
+            LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
+            WHERE md.affected_userid IS NULL AND hids.hidden_fid IS NULL
             GROUP BY casts.hash, ci.fid
             ORDER BY cast_ts desc
             LIMIT 100000
@@ -2453,7 +2457,9 @@ async def get_trending_channel_casts_heavy(
                 AND casts.root_parent_url = $2)
         INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
         LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
+        WHERE md.affected_userid IS NULL AND hids.hidden_fid IS NULL
+        AND casts.timestamp > now() - interval '{max_cast_age}'
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
     ), 
@@ -2611,7 +2617,9 @@ async def get_trending_channel_casts_lite(
                 AND casts.root_parent_url = $2)
         INNER JOIN k3l_channel_rank as fids ON (fids.channel_id=$1 AND fids.fid = ci.fid and fids.strategy_name = $3)
         LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
-        WHERE casts.timestamp > now() - interval '{max_cast_age}'
+        LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
+        WHERE md.affected_userid IS NULL AND hids.hidden_fid IS NULL
+        AND casts.timestamp > now() - interval '{max_cast_age}'
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
     ), 
