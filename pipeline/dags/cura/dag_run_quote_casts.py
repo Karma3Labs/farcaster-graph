@@ -17,6 +17,8 @@ default_args = {
     "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
+HOST_REPO_URL='cura-bot-1'
+
 with DAG(
     dag_id="cura_run_quote_casts",
     default_args=default_args,
@@ -32,14 +34,14 @@ with DAG(
 
     eigen1_install_dependencies = SSHOperator(
         task_id="cura_eigen1_install_deps",
-        command="cd cura-bot && flock . git reset --hard HEAD && flock . git pull origin main && flock . pnpm i",
+        command=f"cd {HOST_REPO_URL} && git reset --hard HEAD && git pull origin main && pnpm i",
         ssh_hook=ssh_hook,
         dag=dag,
     )
 
     eigen1_run_quote_casts = SSHOperator(
         task_id="cura_eigen1_run_quote_casts",
-        command="cd cura-bot && npm run script:quote_casts",
+        command=f"cd {HOST_REPO_URL} && npm run script:quote_casts",
         ssh_hook=ssh_hook,
         dag=dag,
     )
