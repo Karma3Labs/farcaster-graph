@@ -123,10 +123,10 @@ def create_dag():
             return list(range(1,N_CHUNKS+1))
 
         @task(max_active_tis_per_dagrun=8)
-        def process_channel_chunk(batch_id: int, interval: int):
+        def process_channel_chunk(batch_id: int, interval: int, run_id):
             bash_command = (
                 "cd /pipeline && ./run_channel_scraper_v4.sh -w . -v .venv"
-                " -t process -r {{ run_id }} -n 60"
+                f" -t process -r {run_id} -n 60"
                 " -s channels/Seed_Fids.csv -b channels/Bot_Fids.csv"
                 f" -i {batch_id}"
             )
