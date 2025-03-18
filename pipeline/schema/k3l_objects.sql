@@ -267,6 +267,30 @@ CREATE INDEX k3l_channel_fids_ch_strat_ts_idx ON public.k3l_channel_fids USING b
 
 CREATE INDEX k3l_channel_fids_strat_ts_idx ON public.k3l_channel_fids USING btree (strategy_name, compute_ts)
 
+------------------------------------------------------------------------------------
+CREATE TYPE channel_rank_status AS ENUM ('pending', 'inprogress', 'completed', 'errored', 'terminated');
+
+CREATE TABLE public.k3l_channel_rank_log (
+  run_id text NOT NULL,
+  num_days int2 NOT NULL,
+  channel_id text NOT NULL,
+  batch_id int2 NOT NULL,
+  rank_status channel_rank_status DEFAULT 'pending',
+  num_fids int4 NULL,
+  inactive_seeds int8[] NULL,
+  elapsed_time_ms bigint NULL,
+  run_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+) PARTITION BY RANGE (run_ts);
+
+CREATE INDEX k3l_channel_rank_log_run_idx ON public.k3l_channel_rank_log USING btree (run_id);
+
+CREATE TABLE k3l_channel_rank_log_y2025m03 PARTITION OF k3l_channel_rank_log
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+
+
+CREATE TABLE k3l_channel_rank_log_y2025m04 PARTITION OF k3l_channel_rank_log
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
+
 
 ------------------------------------------------------------------------------------
 
@@ -277,7 +301,7 @@ CREATE TABLE k3l_cast_action (
   replied int NOT NULL,
   recasted int NOT NULL,
   liked int NOT NULL,
-	action_ts timestamp without time zone NOT NULL,
+  action_ts timestamp without time zone NOT NULL,
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 )
 PARTITION BY RANGE (action_ts);
@@ -573,6 +597,23 @@ CREATE VIEW public.verifications AS
         deleted_at IS NULL;
 
 GRANT SELECT,REFERENCES ON TABLE public.verifications TO k3l_readonly;
+-------------------------------------------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.links AS
+    SELECT
+      id,
+      fid,
+      target_fid,
+      timestamp,
+      created_at,
+      updated_at,
+      deleted_at,
+      'follow' as type,
+      display_timestamp
+    FROM
+        neynarv3.follows;
+
+GRANT SELECT, REFERENCES ON TABLE public.links TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_points_bal (
 	fid int8 NOT NULL,
@@ -617,6 +658,9 @@ CREATE TABLE k3l_channel_points_log_y2025m02 PARTITION OF k3l_channel_points_log
 
 CREATE TABLE k3l_channel_points_log_y2025m03 PARTITION OF k3l_channel_points_log
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+
+CREATE TABLE k3l_channel_points_log_y2025m04 PARTITION OF k3l_channel_points_log
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_tokens_bal (
 	fid int8 NOT NULL,
@@ -680,6 +724,10 @@ CREATE TABLE k3l_channel_tokens_log_y2025m02 PARTITION OF k3l_channel_tokens_log
 
 CREATE TABLE k3l_channel_tokens_log_y2025m03 PARTITION OF k3l_channel_tokens_log
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+
+CREATE TABLE k3l_channel_tokens_log_y2025m04 PARTITION OF k3l_channel_tokens_log
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
+
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_log TO k3l_readonly;
 -------------------------------------------------

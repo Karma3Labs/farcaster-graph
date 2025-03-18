@@ -8,6 +8,7 @@ import datetime
 from timer import Timer
 import pytz
 from config import settings
+import db_utils
 from asyncpg.pool import Pool
 import asyncpg
 import psycopg2
@@ -157,6 +158,188 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
    
+def prep_channel_rank_log(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    run_id: str,
+    num_days: int,
+    num_batches: int
+) -> int:
+
+    lock_sql = """
+        SELECT
+            1
+        FROM k3l_channel_rank_log
+        WHERE rank_status = 'inprogress'
+        LIMIT 1
+        FOR UPDATE
+    """
+
+    update_sql = """
+        UPDATE k3l_channel_rank_log
+        SET rank_status = 'terminated'
+        WHERE rank_status = 'pending'
+    """
+
+    insert_sql = f"""
+    WITH batches AS (
+        SELECT
+            NTILE({num_batches}) OVER( ORDER BY random() ) as batch_id,
+            id as channel_id
+        FROM
+            warpcast_channels_data
+    )
+    INSERT INTO k3l_channel_rank_log (run_id, num_days, channel_id, batch_id, rank_status)
+    SELECT
+        '{run_id}',
+        {num_days},
+        channel_id,
+        batch_id,
+        'pending'
+    FROM
+        batches
+    """
+
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn,
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn:
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {lock_sql}")
+                cursor.execute(lock_sql)
+                rows = cursor.fetchall()
+                if len(rows) > 0:
+                    logger.info("Channel rank log already in progress")
+                    raise Exception("Channel ranking already in progress")
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {update_sql}")
+                cursor.execute(update_sql)
+                num_rows = cursor.rowcount
+                logger.info(f"Expired rows: {num_rows}")
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {insert_sql}")
+                cursor.execute(insert_sql)
+                num_rows = cursor.rowcount
+                logger.info(f"Inserted rows: {num_rows}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return num_rows
+
+def update_channel_rank_batch_inprogress(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    run_id: str,
+    num_days: int,
+    batch_id: int,
+) -> list[str]:
+    update_sql = f"""
+        UPDATE k3l_channel_rank_log
+        SET rank_status = 'inprogress'
+        WHERE
+        rank_status = 'pending'
+        AND run_id = '{run_id}'
+        AND num_days = {num_days}
+        AND batch_id = {batch_id}
+        RETURNING channel_id
+    """
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn,
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn:
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {update_sql}")
+                cursor.execute(update_sql)
+                channel_ids = cursor.fetchall()
+                logger.info(f"Updated rows: {len(channel_ids)}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return [channel_id[0] for channel_id in channel_ids] if channel_ids else []
+
+def update_channel_rank_for_cid(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    run_id: str,
+    num_days: int,
+    batch_id: int,
+    channel_id: str,
+    num_fids: int,
+    inactive_seeds: list[int],
+    elapsed_time_ms: int,
+    is_error: bool
+) -> list[str]:
+
+    if is_error:
+        status = 'errored'
+    else:
+        status = 'completed'
+    update_sql = f"""
+        UPDATE k3l_channel_rank_log
+        SET
+            rank_status = '{status}',
+            num_fids = %(num_fids)s,
+            inactive_seeds = %(inactive_seeds)s,
+            elapsed_time_ms = %(elapsed_time_ms)s
+        WHERE
+        rank_status = 'inprogress'
+        AND run_id = '{run_id}'
+        AND num_days = {num_days}
+        AND batch_id = {batch_id}
+        AND channel_id = '{channel_id}'
+        RETURNING channel_id
+    """
+    update_data = {
+        'num_fids': num_fids,
+        'inactive_seeds': inactive_seeds,
+        'elapsed_time_ms': elapsed_time_ms
+    }
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn,
+            options=f"-c statement_timeout={timeout_ms}"
+        )  as conn:
+            with conn.cursor() as cursor:
+                logger.info(f"Executing: {update_sql}")
+                cursor.execute(update_sql, update_data)
+                channel_ids = cursor.fetchall()
+                logger.info(f"Updated rows: {len(channel_ids)}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return [channel_id[0] for channel_id in channel_ids] if channel_ids else []
+
+def insert_channel_scores_df(
+    logger: logging.Logger, cid: str, scores_df: pd.DataFrame, pg_url: str
+):
+    try:
+        if settings.IS_TEST:
+            logger.warning(f"Skipping database insertion for channel {cid}")
+        else:
+            logger.info(f"Inserting data into the database for channel {cid}")
+            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
+    except Exception as e:
+        logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
+        raise e
+    return
+
 def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
