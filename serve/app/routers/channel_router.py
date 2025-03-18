@@ -545,6 +545,7 @@ async def get_trending_casts(
         max_cast_age=f"{max_cast_age} days",
         agg=agg,
         score_threshold=0.000000001,
+        cutoff_ptile=100,
         weights=weights,
         shuffle=False,
         time_decay=time_decay,
@@ -645,7 +646,8 @@ async def get_leaderboard_rank_for_fids(
   """
     if not (1 <= len(fids) <= 100):
         raise HTTPException(status_code=400, detail="Input should have between 1 and 100 entries")
-    # TODO replace this with a materialized view
+    # TODO replace this with a materialized view or some other cache
+    # WARNING - very inefficient and only works for now because channel leaderboards are small
     holders = await db_utils.get_top_channel_holders(
         channel_id=channel,
         strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[ChannelRankingsTimeframe.SIXTY_DAYS],
