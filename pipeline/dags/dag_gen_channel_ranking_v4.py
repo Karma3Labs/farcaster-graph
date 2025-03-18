@@ -140,7 +140,7 @@ def create_dag():
         extract_ids = extract_batch_ids()
 
         # Create dynamic tasks
-        process_60d_tasks = process_channel_chunk.partial(interval=60).expand(chunk=extract_ids)
+        process_60d_tasks = process_channel_chunk.partial(interval=60).expand(batch_id=extract_ids)
 
         prep_channel_data >> extract_ids >> process_60d_tasks 
 
