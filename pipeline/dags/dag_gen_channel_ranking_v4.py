@@ -16,7 +16,7 @@ default_args = {
     'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
 }
 
-_ALT_CONN_ID = "eig8_k3l_user"
+CONN_ID = "eig8_k3l_user"
 N_CHUNKS = 100  # Define the number of chunks
 
 CHECK_QUERY = """
@@ -86,7 +86,7 @@ def create_dag():
         sanitycheck_before_truncate8 = SQLCheckOperator(
             task_id='sanitycheck_before_truncate8',
             sql=CHECK_QUERY,
-            conn_id=_ALT_CONN_ID
+            conn_id=CONN_ID
         )
         # sanitycheck_before_truncate8 = EmptyOperator(task_id='sanitycheck_before_truncate8')
 
@@ -156,7 +156,7 @@ def create_dag():
         sanitycheck_before_refresh8 = SQLCheckOperator(
             task_id='sanitycheck_before_refresh8',
             sql=CHECK_QUERY,
-            conn_id=_ALT_CONN_ID
+            conn_id=CONN_ID
         )
 
         refresh_db8 = BashOperator(
