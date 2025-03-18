@@ -2146,7 +2146,6 @@ async def get_top_channel_holders(
         limit: int,
         pool: Pool
 ):
-    
     if orderby == ChannelEarningsOrderBy.WEEKLY :    
         orderby_clause = "ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.DAILY:
@@ -2165,6 +2164,14 @@ async def get_top_channel_holders(
     
     sql_query = f"""
     WITH
+    total_balances as (
+        SELECT
+            count(*) as num_holders
+        FROM
+            k3l_channel_points_bal
+        WHERE
+            channel_id = $1
+    ),
     balance_data as (
         SELECT
             bal.fid,
@@ -2232,43 +2239,49 @@ async def get_top_channel_holders(
             any_value(case when user_data.type = 1 then user_data.value end) as pfp,
             any_value(case when user_data.type = 3 then user_data.value end) as bio,
             ARRAY_AGG(DISTINCT v.claim->>'address') as address,
-            min(user_data.timestamp) as approx_fid_originat
+            min(user_data.timestamp) as approx_fid_origints
         FROM balance_data
         LEFT JOIN fnames on (fnames.fid = balance_data.fid)
         LEFT JOIN user_data on (user_data.fid = balance_data.fid and user_data.type in (6,1,3))
         LEFT JOIN verifications v on (v.fid = balance_data.fid AND v.deleted_at IS NULL)
         GROUP BY balance_data.fid
+    ),
+    leaderboard AS (
+        SELECT
+            balance_data.fid,
+            any_value(fname) as fname,
+            any_value(username) as username,
+            any_value(pfp) as pfp,
+            any_value(bio) as bio,
+            channel_id,
+            channel_rank as rank,
+            max(channel_score) as score,
+            global_rank,
+            any_value(address) as addresses,
+            max(balance) as balance,
+            max(token_balance) as token_balance,
+            max(daily_earnings) as daily_earnings,
+            max(token_daily_earnings) as token_daily_earnings,
+            bool_and(is_weekly_earnings_available) as is_weekly_earnings_available,
+            sum(latest_earnings) as latest_earnings,
+            max(token_latest_earnings) as token_latest_earnings,
+            sum(weekly_earnings) as weekly_earnings,
+            max(token_weekly_earnings) as token_weekly_earnings,
+            max(bal_update_ts) as bal_update_ts,
+            bool_or(is_points_launched) as is_points_launched,
+            bool_or(is_tokens_launched) as is_tokens_launched,
+            min(memberat) as memberat,
+            min(followedat) as followedat,
+            EXTRACT(EPOCH FROM (min(approx_fid_origints))) as approx_fid_originat
+        FROM balance_data
+        LEFT JOIN bio_data ON (bio_data.fid=balance_data.fid)
+        GROUP BY balance_data.fid,channel_id,channel_rank,global_rank
+        {orderby_clause}
     )
-    SELECT 
-        balance_data.fid,
-        any_value(fname) as fname,
-        any_value(username) as username,
-        any_value(pfp) as pfp,
-        any_value(bio) as bio,
-        channel_id,
-        channel_rank as rank,
-        max(channel_score) as score,
-        global_rank,
-        any_value(address) as addresses,
-        max(balance) as balance,
-        max(token_balance) as token_balance,
-        max(daily_earnings) as daily_earnings,
-        max(token_daily_earnings) as token_daily_earnings,
-        bool_and(is_weekly_earnings_available) as is_weekly_earnings_available,
-        sum(latest_earnings) as latest_earnings,
-        max(token_latest_earnings) as token_latest_earnings,
-        sum(weekly_earnings) as weekly_earnings,
-        max(token_weekly_earnings) as token_weekly_earnings,
-        max(bal_update_ts) as bal_update_ts,
-        bool_or(is_points_launched) as is_points_launched,
-        bool_or(is_tokens_launched) as is_tokens_launched,
-        min(memberat) as memberat,
-        min(followedat) as followedat,
-        EXTRACT(EPOCH FROM (min(approx_fid_originat))) as approx_fid_originat
-    FROM balance_data
-    LEFT JOIN bio_data ON (bio_data.fid=balance_data.fid)
-    GROUP BY balance_data.fid,channel_id,channel_rank,global_rank
-    {orderby_clause}
+    SELECT
+        100-((total_balances.num_holders - (row_number() over()))*100 / total_balances.num_holders) as top_ptile,
+        leaderboard.*
+    FROM leaderboard, total_balances
     OFFSET $3
     LIMIT $4
     """
