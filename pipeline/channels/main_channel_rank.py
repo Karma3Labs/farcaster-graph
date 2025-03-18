@@ -1,15 +1,10 @@
 # standard dependencies
 import sys
 import argparse
-import random
-from enum import Enum
 from pathlib import Path
 import time
 
 # local dependencies
-import utils
-import db_utils
-import go_eigentrust
 from config import settings
 from . import channel_utils
 from . import channel_db_utils
@@ -191,6 +186,7 @@ if __name__ == "__main__":
         if not args.num_batches:
             logger.error("Number of batches is required for prep task.")
             sys.exit(1)
+        logger.info(f"Prepping channels: {args.run_id} num_days: {args.num_days} num_batches: {args.num_batches}")
         prep_channels(
             run_id=args.run_id,
             num_days=args.num_days,
@@ -200,6 +196,7 @@ if __name__ == "__main__":
         if not args.seeds or not args.bots or not args.batch_id:
                 logger.error("Channel Seed Peers CSV, Bot FIDs CSV and Batch ID are required for processing.")
                 sys.exit(1)
+        logger.info(f"Processing channels: {args.run_id} num_days: {args.num_days} seeds: {args.seeds} bots: {args.bots} batch_id: {args.batch_id}")
         process_channels(
             run_id=args.run_id,
             num_days=args.num_days,
