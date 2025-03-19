@@ -147,22 +147,22 @@ def create_dag():
     @task_group(group_id='refesh_db')
     def tg_db():
 
-        # sanitycheck_before_refresh8 = SQLCheckOperator(
-        #     task_id='sanitycheck_before_refresh8',
-        #     sql=CHECK_QUERY,
-        #     conn_id=CONN_ID
-        # )
+        sanitycheck_before_refresh8 = SQLCheckOperator(
+            task_id='sanitycheck_before_refresh8',
+            sql=CHECK_QUERY,
+            conn_id=CONN_ID
+        )
 
-        sanitycheck_before_refresh8 = EmptyOperator(task_id='sanitycheck_before_refresh8')
+        # sanitycheck_before_refresh8 = EmptyOperator(task_id='sanitycheck_before_refresh8')
 
-        # refresh_ch_rank8 = BashOperator(
-        #     task_id='refresh_ch_rank8',
-        #     bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
-        #     REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;"
-        #     ''',
-        #     trigger_rule=TriggerRule.ALL_SUCCESS
-        # )
-        refresh_ch_rank8 = EmptyOperator(task_id='refresh_ch_rank8')
+        refresh_ch_rank8 = BashOperator(
+            task_id='refresh_ch_rank8',
+            bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
+            REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_channel_rank;"
+            ''',
+            trigger_rule=TriggerRule.ALL_SUCCESS
+        )
+        # refresh_ch_rank8 = EmptyOperator(task_id='refresh_ch_rank8')
 
         sanitycheck_before_refresh8 >> refresh_ch_rank8
 
