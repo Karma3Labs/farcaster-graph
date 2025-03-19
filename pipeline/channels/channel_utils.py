@@ -147,7 +147,7 @@ def prep_trust_data(
         raise e
 
     pretrust_fids = list(set(host_fids).intersection(channel_lt_df['i'].values))
-    absent_fids = set(host_fids) - set(channel_lt_df['i'].values)
+    absent_fids = list(set(host_fids) - set(channel_lt_df['i'].values))
     logger.info(f"Absent Host Fids for the channel: {absent_fids}")
     logger.info(f"Pretrust FIDs: {pretrust_fids}")
 
