@@ -86,6 +86,8 @@ def process_channels(
             channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(
                 cid, channel_seeds_df, channel_bots_df, pg_dsn, pg_url, num_days
             )
+            num_fids = 0
+            inactive_seeds = pretrust_fids
             if len(channel_lt_df) > 0:
                 scores_df = channel_utils.compute_goeigentrust(
                     cid=cid,
@@ -93,18 +95,14 @@ def process_channels(
                     pretrust_fids=pretrust_fids,
                     interval=num_days,
                 )
-                num_fids = len(scores_df)
-                inactive_seeds = absent_fids
                 if scores_df is not None:
+                    num_fids = len(scores_df)
+                    inactive_seeds = absent_fids
                     channel_db_utils.insert_channel_scores_df(
                         logger=logger, cid=cid, scores_df=scores_df, pg_url=pg_url
                     )
             else:
                 logger.warning(f"No local trust for channel {cid} in last {num_days} days")
-                num_fids = 0
-                inactive_seeds = pretrust_fids
-            num_fids = None
-            inactive_seeds = None
 
             elapsed_time_ms = int((time.perf_counter() - start_time) * 1_000)
             channel_db_utils.update_channel_rank_for_cid(
