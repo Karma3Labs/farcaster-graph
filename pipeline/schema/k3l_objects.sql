@@ -1,3 +1,16 @@
+-- *****IMPORTANT NOTE****: ON EIGEN8
+SET ROLE neynar;
+CREATE INDEX CONCURRENTLY casts_timestamp_index ON neynarv2.casts USING btree ("timestamp");
+CREATE INDEX CONCURRENTLY casts_root_parent_url_idx ON neynarv2.casts USING btree (root_parent_url);
+CREATE INDEX CONCURRENTLY casts_deleted_at_idx ON neynarv2.casts USING btree (deleted_at);
+CREATE INDEX CONCURRENTLY follows_fid_target_timestamp_idx ON neynarv3.follows(fid, target_fid, timestamp) WHERE deleted_at IS NULL;
+CREATE INDEX CONCURRENTLY reactions_type_target_timestamp_idx ON neynarv2.reactions(reaction_type, target_fid, timestamp) WHERE target_fid IS NOT NULL;
+CREATE INDEX CONCURRENTLY reactions_timestamp_type_idx ON neynarv2.reactions("timestamp", reaction_type) WHERE target_fid IS NOT NULL;
+CREATE INDEX CONCURRENTLY reactions_target_hash_deleted_at_timestamp_idx ON neynarv2.reactions 
+				USING btree (target_hash, deleted_at, "timestamp" DESC) WITH (deduplicate_items='false');
+----------------------------------------------------------------------------------------------------------------
+
+
 SET ROLE k3l_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,REFERENCES ON TABLES TO k3l_readonly;
 ----------------------------------------------------------------------------------------------------------------
@@ -812,3 +825,4 @@ CREATE TABLE k3l_channel_openrank_results_y2025m03 PARTITION OF k3l_channel_open
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
 -------------------------------------------------
+
