@@ -9,7 +9,7 @@ services:
       PORT: 8000
     ports:
       - '8000:8000'
-    restart: "no"
+    restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
