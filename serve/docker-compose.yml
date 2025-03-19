@@ -12,7 +12,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 32G
+          memory: 64G
     restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"
