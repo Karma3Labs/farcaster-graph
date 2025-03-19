@@ -17,7 +17,7 @@ default_args = {
 }
 
 CONN_ID = "eig8_k3l_user"
-N_CHUNKS = 100  # Define the number of chunks
+N_CHUNKS = 200  # Define the number of chunks
 
 CHECK_QUERY = """
     WITH 
