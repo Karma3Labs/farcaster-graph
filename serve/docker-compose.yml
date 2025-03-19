@@ -9,6 +9,10 @@ services:
       PORT: 8000
     ports:
       - '8000:8000'
+    deploy:
+      resources:
+        limits:
+          memory: 32G
     restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"

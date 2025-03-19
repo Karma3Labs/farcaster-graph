@@ -2,7 +2,7 @@ services:
   postgres:
     restart: unless-stopped
     container_name: eigen8-replica-postgres
-    shm_size: '1gb'
+    shm_size: '8gb'
     build:
       context: .
       args:
