@@ -1,6 +1,7 @@
 import os
 import math
 import time
+import gc
 
 from . import utils, main
 from .config import settings
@@ -83,6 +84,8 @@ class GraphLoader:
           main.get_pause()
           time.sleep(settings.PAUSE_BEFORE_RELOAD_SECS)
           logger.info("reload graphs")
+          del self.graphs
+          gc.collect()
           self.graphs = self.load_graphs()
           main.get_resume() # start accepting new requests
           break
