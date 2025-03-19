@@ -88,6 +88,12 @@ def process_channels(
             )
             num_fids = 0
             inactive_seeds = pretrust_fids
+            if len(pretrust_fids) == 0:
+                logger.info(f"No pretrust for channel {cid} in last {num_days} days")
+                # product decision to allow channels with no pretrust
+                # ie., trust all channel users equally if mods are not doing their job
+                pass
+
             if len(channel_lt_df) > 0:
                 scores_df = channel_utils.compute_goeigentrust(
                     cid=cid,
@@ -103,6 +109,9 @@ def process_channels(
                     )
             else:
                 logger.warning(f"No local trust for channel {cid} in last {num_days} days")
+
+            # convert from np.int32 to int
+            inactive_seeds = [int(fid) for fid in inactive_seeds]
 
             elapsed_time_ms = int((time.perf_counter() - start_time) * 1_000)
             channel_db_utils.update_channel_rank_for_cid(

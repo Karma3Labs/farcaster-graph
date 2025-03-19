@@ -13,6 +13,10 @@ def get_scores(lt_df: pd.DataFrame, pt_ids: List[int]) -> List[Dict[str, float]]
 
     # Filter out entries where i == j
     lt_df = lt_df[lt_df['i'] != lt_df['j']]
+    if lt_df.empty:
+        logger.warning("No localtrust after filtering out i==j")
+        logger.warning("Skipping eigentrust calculation")
+        return []
 
     # Convert pt_ids to set to remove duplicates
     pt_ids_set = set(pt_ids)
