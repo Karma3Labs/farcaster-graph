@@ -1599,6 +1599,22 @@ async def get_popular_degen_casts(
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_channel_ids_for_fid(
+    fid: int,
+    limit: int,
+    pool: Pool
+):
+    sql_query = """
+        SELECT
+            channel_id
+        FROM
+            warpcast_followers
+        WHERE
+            fid=$1
+        ORDER BY RANDOM()
+        LIMIT $2
+    """
+    return await fetch_rows(fid, limit, sql_query=sql_query, pool=pool)
 
 async def get_popular_channel_casts_lite(
         channel_id: str,
