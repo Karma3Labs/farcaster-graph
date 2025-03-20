@@ -1,18 +1,24 @@
 from typing import Annotated, List
+import urllib.parse
+import asyncio
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
+from pydantic_core import ValidationError
 
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
+from ..models.feed_model import FeedMetadata
+from ..models.channel_model import ChannelRankingsTimeframe
 from ..dependencies import graph, db_pool, db_utils
 from ..config import settings
+from . import channel_router
 
 router = APIRouter(tags=["Casts"])
 
 
-@router.get("/personalized/popular/{fid}")
+@router.get("/personalized/popular/{fid}", tags=["For You Feed", "Neynar For You Feed"])
 async def get_popular_casts_for_fid(
     fid: int,
     agg: Annotated[
@@ -28,6 +34,7 @@ async def get_popular_casts_for_fid(
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
     timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
+    provider_metadata: Annotated[str | None, Query()] = None,
     pool: Pool = Depends(db_pool.get_db),
     lifetime_model: Graph = Depends(graph.get_engagement_graph),
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
@@ -51,32 +58,69 @@ async def get_popular_casts_for_fid(
       limit=25, graph_limit=100 and lite=true
       i.e., returns recent 25 popular casts.
     """
-    try:
-        weights = Weights.from_str(weights)
-    except:
-        raise HTTPException(
-            status_code=400, detail="Weights should be of the form 'LxxCxxRxx'"
+    if provider_metadata:
+        logger.info(f"Ignoring parameters and using metadata {provider_metadata}")
+        # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
+        md_str = urllib.parse.unquote(provider_metadata)
+        logger.info(f"Provider metadata: {md_str}")
+        try:
+            metadata = FeedMetadata.validate_json(md_str)
+        except ValidationError as e:
+            logger.error(f"Error while validating provider metadata: {e}")
+            logger.error(f"errors(): {e.errors()}")
+            raise HTTPException(status_code=400, detail=f"Error while validating provider metadata: {e.errors()}")
+
+        channel_ids = await db_utils.get_channel_ids_for_fid(
+            fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
+        )
+        logger.info(f"channel_ids: {channel_ids}")
+        channel_tasks = []
+        for channel_id in channel_ids:
+            channel_tasks.append(
+                channel_router.get_popular_channel_casts(
+                    channel=channel_id['channel_id'],
+                    rank_timeframe=ChannelRankingsTimeframe.SIXTY_DAYS,
+                    offset=0,
+                    limit=25,
+                    lite=True,
+                    provider_metadata=provider_metadata,
+                    pool=pool
+                )
+            )
+        result_list = await asyncio.wait_for(asyncio.gather(*channel_tasks, return_exceptions=True), timeout=5)
+        casts = []
+        for result in result_list:
+            if not isinstance(result, Exception):
+                casts.extend(result['result'])
+        sorted_casts = sorted(casts, key=lambda d: d['age_hours'])
+        return {"result": sorted_casts}
+    else:
+        try:
+            weights = Weights.from_str(weights)
+        except:
+            raise HTTPException(
+                status_code=400, detail="Weights should be of the form 'LxxCxxRxx'"
+            )
+
+        # compute eigentrust on the neighbor graph using fids
+        trust_scores = await graph.get_neighbors_scores(
+            [fid],
+            ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
+            k,
+            graph_limit,
         )
 
-    # compute eigentrust on the neighbor graph using fids
-    trust_scores = await graph.get_neighbors_scores(
-        [fid],
-        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
-        k,
-        graph_limit,
-    )
-
-    # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
-    casts = await db_utils.get_popular_neighbors_casts(
-        agg,
-        weights,
-        trust_scores=trust_scores,
-        offset=offset,
-        limit=limit,
-        lite=lite,
-        pool=pool,
-    )
-    return {"result": casts}
+        # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
+        casts = await db_utils.get_popular_neighbors_casts(
+            agg,
+            weights,
+            trust_scores=trust_scores,
+            offset=offset,
+            limit=limit,
+            lite=lite,
+            pool=pool,
+        )
+        return {"result": casts}
 
 
 @router.get("/personalized/recent/{fid}")

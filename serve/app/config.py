@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     CURA_SCMGR_URL: str = 'changeme'
     CURA_SCMGR_USERNAME: str = 'changeme'
     CURA_SCMGR_PASSWORD: SecretStr = 'changeme'
+    
+    MAX_CHANNELS_PER_USER: int = 50
 
     USE_PANDAS_PERF: bool
     LOG_LEVEL: str = 'INFO'
