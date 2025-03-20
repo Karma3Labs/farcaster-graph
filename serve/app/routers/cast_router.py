@@ -80,8 +80,8 @@ async def get_popular_casts_for_fid(
                 channel_router.get_popular_channel_casts(
                     channel=channel_id['channel_id'],
                     rank_timeframe=ChannelRankingsTimeframe.SIXTY_DAYS,
-                    offset=0,
-                    limit=25,
+                    offset=offset,
+                    limit=limit,
                     lite=True,
                     provider_metadata=provider_metadata,
                     pool=pool
