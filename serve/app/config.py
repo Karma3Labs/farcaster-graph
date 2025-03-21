@@ -10,6 +10,17 @@ class Settings(BaseSettings):
     POSTGRES_POOL_SIZE: int = 5
     POSTGRES_ECHO: bool = False
     POSTGRES_TIMEOUT_SECS: int = 60
+
+    CACHE_DB_USERNAME:str = 'postgres'
+    CACHE_DB_PASSWORD:SecretStr = 'postgres'
+    CACHE_DB_NAME:str = 'postgres'
+    CACHE_DB_PORT:int = 5432
+    CACHE_DB_HOST:str = '127.0.0.1'
+    CACHE_POSTGRES_POOL_SIZE: int = 5
+    CACHE_POSTGRES_ECHO: bool = False
+    CACHE_POSTGRES_TIMEOUT_SECS: int = 60
+
+
     GO_EIGENTRUST_URL:str = 'http://localhost:8080'
     GO_EIGENTRUST_TIMEOUT_MS:int = 3000
     EIGENTRUST_ALPHA:float = 0.5
@@ -52,6 +63,18 @@ class Settings(BaseSettings):
     def POSTGRES_ASYNC_URI(self) -> SecretStr:
         return SecretStr(f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"\
                          f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                            f"?random_page_cost=1.1")
+
+    @computed_field
+    def CACHE_POSTGRES_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql://{self.CACHE_DB_USERNAME}:{self.CACHE_DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.CACHE_DB_HOST}:{self.CACHE_DB_PORT}/{self.CACHE_DB_NAME}"\
+                        f"?random_page_cost=1.1")
+
+    @computed_field
+    def CACHE_POSTGRES_ASYNC_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql+asyncpg://{self.CACHE_DB_USERNAME}:{self.CACHE_DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.CACHE_DB_HOST}:{self.CACHE_DB_PORT}/{self.CACHE_DB_NAME}"\
                             f"?random_page_cost=1.1")
 
 settings = Settings()

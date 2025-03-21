@@ -10,9 +10,20 @@ CREATE INDEX CONCURRENTLY reactions_target_hash_deleted_at_timestamp_idx ON neyn
 				USING btree (target_hash, deleted_at, "timestamp" DESC) WITH (deduplicate_items='false');
 ----------------------------------------------------------------------------------------------------------------
 
-
 SET ROLE k3l_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,REFERENCES ON TABLES TO k3l_readonly;
+----------------------------------------------------------------------------------------------------------------
+
+CREATE UNLOGGED TABLE public.cache (
+    cache_key varchar(255),
+    cache_value jsonb,
+    expires_at timestamp with time zone,
+    insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT cache_pkey PRIMARY KEY (cache_key)
+);
+GRANT SELECT,INSERT, UPDATE, DELETE, REFERENCES ON public.k3l_recent_frame_interaction TO k3l_readonly;
+
 ----------------------------------------------------------------------------------------------------------------
 
 CREATE UNLOGGED TABLE public.localtrust (

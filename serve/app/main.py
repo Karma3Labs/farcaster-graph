@@ -117,6 +117,12 @@ async def lifespan(app: FastAPI):
                                          max_size=settings.POSTGRES_POOL_SIZE)
     logger.info("DB pool created")
 
+    logger.info("Creating Cache DB pool")
+    app_state['cache_db_pool'] = await asyncpg.create_pool(settings.CACHE_POSTGRES_URI.get_secret_value(),
+                                         min_size=1,
+                                         max_size=settings.CACHE_POSTGRES_POOL_SIZE)
+    logger.info("Cache DB pool created")
+
     logger.info("Loading graphs")
     # Create a singleton instance of GraphLoader
     # ... load graphs from disk immediately
@@ -134,6 +140,9 @@ async def lifespan(app: FastAPI):
     """Execute when server is shutdown"""
     logger.info("Closing DB pool")
     await app_state['db_pool'].close()
+
+    logger.info("Closing Cache DB pool")
+    await app_state['cache_db_pool'].close()
 
     logger.info("Closing graph loader")
     app_state['graph_loader_task'].cancel()
@@ -179,7 +188,8 @@ async def session_middleware(request: Request, call_next):
     response = Response("Internal server error", status_code=500)
     request.state.graphs = app_state['graph_loader'].get_graphs()
     request.state.db_pool = app_state['db_pool']
-    # call_next is a built-in FastAPI function that calls the actual API
+    request.state.cache_db_pool = app_state['cache_db_pool']
+   # call_next is a built-in FastAPI function that calls the actual API
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
     logger.info(f"{request.url} took {elapsed_time} secs")
