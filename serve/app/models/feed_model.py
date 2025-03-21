@@ -57,7 +57,7 @@ class TrendingFeed(BaseModel):
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
     normalize: bool = True
     shuffle: bool = False
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=0, le=30)] = settings.FEED_TIMEOUT_SECS
+    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = settings.FEED_TIMEOUT_SECS
     session_id: Annotated[str, Field(alias="sessionId")] = None
 
 class PopularFeed(BaseModel):
@@ -69,7 +69,7 @@ class PopularFeed(BaseModel):
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
     normalize: bool = True
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=0, le=30)] = settings.FEED_TIMEOUT_SECS
+    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = settings.FEED_TIMEOUT_SECS
     session_id: Annotated[str, Field(alias="sessionId")] = None
 
 class SearchScores(BaseModel):
