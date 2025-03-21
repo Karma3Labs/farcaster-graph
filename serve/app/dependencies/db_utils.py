@@ -1616,6 +1616,20 @@ async def get_channel_ids_for_fid(
     """
     return await fetch_rows(fid, limit, sql_query=sql_query, pool=pool)
 
+async def get_channel_url_for_channel_id(
+    channel_id: int,
+    pool: Pool
+):
+    sql_query = """
+        SELECT
+            url
+        FROM
+            warpcast_channels_data
+        WHERE
+            id=$1
+    """
+    return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
+
 async def get_popular_channel_casts_lite(
         channel_id: str,
         channel_url: str,

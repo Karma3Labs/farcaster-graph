@@ -371,11 +371,18 @@ async def get_popular_channel_casts(
 
     logger.info(f"Feed params: {metadata}")
 
+    channel_urls = await db_utils.get_channel_url_for_channel_id(channel_id=channel, pool=pool)
+    if len(channel_urls) == 0:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    
+    channel_url = fetch_channel(channel_id=channel)
+    channel_url = channel_urls[0]['url']
+
     if metadata and type(metadata) is PopularFeed:
         if lite:
             casts = await db_utils.get_popular_channel_casts_lite(
                 channel_id=channel,
-                channel_url=fetch_channel(channel_id=channel),
+                channel_url=channel_url,
                 strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
@@ -392,7 +399,7 @@ async def get_popular_channel_casts(
             # TODO get rid of the heavy version if all clients are going to come through Neynar
             casts = await db_utils.get_popular_channel_casts_heavy(
                 channel_id=channel,
-                channel_url=fetch_channel(channel_id=channel),
+                channel_url=channel_url,
                 strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
@@ -410,7 +417,7 @@ async def get_popular_channel_casts(
       if lite:
         casts = await db_utils.get_trending_channel_casts_lite(
           channel_id=channel,
-          channel_url=fetch_channel(channel_id=channel),
+          channel_url=channel_url,
           channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
@@ -429,7 +436,7 @@ async def get_popular_channel_casts(
         # TODO get rid of the heavy version if all clients are going to come through Neynar
         casts = await db_utils.get_trending_channel_casts_heavy(
           channel_id=channel,
-          channel_url=fetch_channel(channel_id=channel),
+          channel_url=channel_url,
           channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
