@@ -1,6 +1,7 @@
 from typing import Annotated, List
 import urllib.parse
 import asyncio
+from asyncio import TimeoutError
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
@@ -17,6 +18,12 @@ from . import channel_router
 
 router = APIRouter(tags=["Casts"])
 
+async def task_with_timeout(task_id, task_coroutine, task_timeout):
+    try:
+        result = await asyncio.wait_for(task_coroutine, timeout=task_timeout)
+        return (task_id, result)
+    except TimeoutError:
+        return (task_id, None)
 
 @router.get("/personalized/popular/{fid}", tags=["For You Feed", "Neynar For You Feed"])
 async def get_popular_casts_for_fid(
@@ -74,24 +81,48 @@ async def get_popular_casts_for_fid(
             fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
         )
         logger.info(f"channel_ids: {channel_ids}")
+        if len(channel_ids) == 0:
+            logger.info(f"No channels found for fid: {fid}")
+            return {"result": []}
+
         channel_tasks = []
         for channel_id in channel_ids:
             channel_tasks.append(
-                channel_router.get_popular_channel_casts(
-                    channel=channel_id['channel_id'],
-                    rank_timeframe=ChannelRankingsTimeframe.SIXTY_DAYS,
-                    offset=offset,
-                    limit=limit,
-                    lite=True,
-                    provider_metadata=provider_metadata,
-                    pool=pool
+                task_with_timeout(
+                    task_id=channel_id['channel_id'],
+                    task_coroutine=channel_router.get_popular_channel_casts(
+                        channel=channel_id['channel_id'],
+                        rank_timeframe=ChannelRankingsTimeframe.SIXTY_DAYS,
+                        offset=offset,
+                        limit=limit,
+                        lite=True,
+                        provider_metadata=provider_metadata,
+                        pool=pool
+                    ), 
+                    task_timeout=metadata.timeout_secs
                 )
             )
-        result_list = await asyncio.wait_for(asyncio.gather(*channel_tasks, return_exceptions=True), timeout=5)
+        result_list = await asyncio.gather(*channel_tasks, return_exceptions=True)
+
+        timedout_channel_ids = []
+        error_channel_ids = []
+        success_channel_ids = []
         casts = []
-        for result in result_list:
-            if not isinstance(result, Exception):
+        for task_id, result in result_list:
+            if result is None:
+                timedout_channel_ids.append(task_id)
+            elif isinstance(result, Exception):
+                error_channel_ids.append(task_id)
+            else:
+                success_channel_ids.append(task_id)
                 casts.extend(result['result'])
+        if len(timedout_channel_ids) > 0:
+            logger.error(f"timedout_channel_ids: {timedout_channel_ids}")
+        if len(error_channel_ids) > 0:
+            logger.error(f"error_channel_ids: {error_channel_ids}")
+        if len(success_channel_ids) == 0:
+            raise HTTPException(status_code=500, detail="Errors and or timeoutswhile fetching casts")
+
         sorted_casts = sorted(casts, key=lambda d: d['age_hours'])
         return {"result": sorted_casts}
     else:

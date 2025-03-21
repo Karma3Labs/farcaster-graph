@@ -327,6 +327,8 @@ async def get_popular_channel_casts(
       "timeDecay": "minute" | "hour" | "day" | "never", , # "hour" is default \n
       "normalize": true | false, # true is default \n
       "shuffle": true | false # false is default \n
+      "timeoutSecs": 0-30, # 30 is default \n
+      "sessionId": "string" # optional field \n
     } \n
   provider_metadata is a **URI encoded JSON string** 
     that contains the following for **Popular Feed**: \n
@@ -339,6 +341,8 @@ async def get_popular_channel_casts(
       "sortingOrder": "day" | "hour" | "score", # score is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", # "never" is default \n
       "normalize": true | false, # true is default \n
+      "timeoutSecs": 0-30, # 30 is default \n
+      "sessionId": "string" # optional field \n
     } \n
   Parameter 'limit' is used to specify the number of results to return. \n
   By default, offset=0, limit=25, and lite=true

@@ -2,6 +2,7 @@ from enum import StrEnum
 from typing import Annotated, Literal, Union
 
 from .score_model import ScoreAgg
+from ..config import settings
 
 from pydantic import BaseModel, Field, TypeAdapter
 
@@ -56,6 +57,8 @@ class TrendingFeed(BaseModel):
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
     normalize: bool = True
     shuffle: bool = False
+    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=0, le=30)] = settings.FEED_TIMEOUT_SECS
+    session_id: Annotated[str, Field(alias="sessionId")] = None
 
 class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
@@ -66,6 +69,8 @@ class PopularFeed(BaseModel):
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.SCORE
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.NEVER
     normalize: bool = True
+    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=0, le=30)] = settings.FEED_TIMEOUT_SECS
+    session_id: Annotated[str, Field(alias="sessionId")] = None
 
 class SearchScores(BaseModel):
     score_type: Annotated[Literal['search'], Field(alias="scoreType")]

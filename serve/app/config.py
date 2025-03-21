@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER:int = 50
     EIGENTRUST_FLAT_TAIL:int = 2
 
+    FEED_TIMEOUT_SECS: int = 30
+
     CURA_SCMGR_URL: str = 'changeme'
     CURA_SCMGR_USERNAME: str = 'changeme'
     CURA_SCMGR_PASSWORD: SecretStr = 'changeme'
