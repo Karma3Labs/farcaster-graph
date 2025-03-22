@@ -375,7 +375,7 @@ async def get_popular_channel_casts(
     if len(channel_urls) == 0:
         raise HTTPException(status_code=404, detail="Channel not found")
     
-    channel_url = fetch_channel(channel_id=channel)
+    # channel_url = fetch_channel(channel_id=channel)
     channel_url = channel_urls[0]['url']
 
     if metadata and type(metadata) is PopularFeed:
