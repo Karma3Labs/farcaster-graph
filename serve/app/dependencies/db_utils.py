@@ -82,20 +82,18 @@ async def fetch_rows(
     logger.debug(f"Execute query: {sql_query}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
-        # Open a transaction.
-        async with connection.transaction():
-            with connection.query_logger(logger.trace):
-                # Run the query passing the request argument.
-                try:
-                    rows = await connection.fetch(
-                        sql_query,
-                        *args,
-                        timeout=settings.POSTGRES_TIMEOUT_SECS
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to execute query: {sql_query}")
-                    logger.error(f"{e}")
-                    return [{"Unknown error. Contact K3L team"}]
+        logger.info(f"db took {time.perf_counter() - start_time} secs for acquiring connection")
+        # Run the query passing the request argument.
+        try:
+            rows = await connection.fetch(
+                sql_query,
+                *args,
+                timeout=settings.POSTGRES_TIMEOUT_SECS
+            )
+        except Exception as e:
+            logger.error(f"Failed to execute query: {sql_query}")
+            logger.error(f"{e}")
+            return [{"Unknown error. Contact K3L team"}]
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
 
