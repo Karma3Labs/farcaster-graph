@@ -38,9 +38,10 @@ class Model(StrEnum):
     reddit = "reddit"
 
 class WeightedModel(StrEnum):
-    default = "default"
-    sqrt_weighted = "sqrt_weighted"
+    # default = "default"
+    # sqrt_weighted = "sqrt_weighted"
     cbrt_weighted = "cbrt_weighted"
+    # logeps_weighted = "logeps_weighted"
 
 class RedditModel(StrEnum):
     pass
@@ -72,6 +73,7 @@ def main(database: Database, task: Task):
 
         # Reddit-style Karma Points
         for model in RedditModel:
+            # RedditModel has no models anymore. This code block is left for reference.
             if model == RedditModel.reddit_cast_weighted:
                 cast_wt = 2
             else:
@@ -108,12 +110,12 @@ def main(database: Database, task: Task):
         df = df[df['percent_rank'] > PERCENTILE_CUTOFF] # drop bottom 10%
 
         for model in WeightedModel:
-            if model == WeightedModel.sqrt_weighted:
-                transformed = np.sqrt(df['score'])
-            elif model == WeightedModel.cbrt_weighted:
+            if model == WeightedModel.cbrt_weighted:
                 transformed = np.cbrt(df['score'])
-            elif model == WeightedModel.default: 
-                transformed = df['score']
+            # elif model == WeightedModel.sqrt_weighted:
+            #     transformed = np.sqrt(df['score'])
+            # elif model == WeightedModel.default: 
+            #     transformed = df['score']
             # elif model == WeightedModel.logeps_weighted:
             #     epsilon = 1e-10
             #     transformed = np.log(df['score'] + epsilon)

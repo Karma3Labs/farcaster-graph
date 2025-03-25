@@ -423,7 +423,7 @@ def fetch_weighted_fid_scores_df(
                 ) as cast_score,
             actions.channel_id as channel_id
         FROM eligible_casts as actions
-        INNER JOIN k3l_channel_rank as ranks
+        INNER JOIN k3l_channel_rank as ranks -- cura_hidden_fids already excluded in channel_rank
             ON (ranks.fid = actions.fid 
                 AND ranks.channel_id=actions.channel_id 
                 AND ranks.strategy_name='{STRATEGY}')
@@ -623,7 +623,7 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 rk.score as score,
                 rk.channel_id,
                 rk.score * {GENESIS_BUDGET} as earnings
-            FROM k3l_channel_rank as rk
+            FROM k3l_channel_rank as rk -- cura_hidden_fids already excluded in channel_rank
             INNER JOIN k3l_channel_rewards_config as config
                 ON (config.channel_id = rk.channel_id AND config.is_points = true)
             LEFT JOIN excluded_channels as excl
