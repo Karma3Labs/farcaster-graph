@@ -86,6 +86,7 @@ async def get_popular_casts_for_fid(
             return {"result": []}
 
         channel_tasks = []
+
         for channel_id in channel_ids:
             channel_tasks.append(
                 task_with_timeout(

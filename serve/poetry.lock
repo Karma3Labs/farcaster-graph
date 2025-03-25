@@ -1328,6 +1328,20 @@ files = [
 test = ["enum34", "ipaddress", "mock", "pywin32", "wmi"]
 
 [[package]]
+name = "py-memoize"
+version = "3.1.1"
+description = "Caching library for asynchronous Python applications (both based on asyncio and Tornado) that handles dogpiling properly and provides a configurable & extensible API."
+optional = false
+python-versions = "*"
+files = [
+    {file = "py-memoize-3.1.1.tar.gz", hash = "sha256:e06627a68917b14e5af878e491ea154e3580db0494b449d2d1144f135d38d569"},
+    {file = "py_memoize-3.1.1-py3-none-any.whl", hash = "sha256:8ccfa67e70ef14b5df56ce3fa309b649810fd28dd5cf58feb95a5099d246f338"},
+]
+
+[package.extras]
+ujson = ["ujson (>=1.35,<2)"]
+
+[[package]]
 name = "pydantic"
 version = "2.10.4"
 description = "Data validation using Python type hints"
@@ -2060,4 +2074,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3fc6e7a7ad35d3ee4605e60353326742ecd419fd3096885ea330da774148aa46"
+content-hash = "e5d4e44ea36417608ec638c061b35805639ba43e81294613be6b57cd1181d36b"
