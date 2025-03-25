@@ -75,6 +75,7 @@ async def get_popular_casts_for_fid(
         )
         logger.info(f"channel_ids: {channel_ids}")
         channel_tasks = []
+
         for channel_id in channel_ids:
             channel_tasks.append(
                 channel_router.get_popular_channel_casts(

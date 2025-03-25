@@ -13,11 +13,14 @@ from app.models.channel_model import (
     ChannelEarningsScope,
 )
 from app.models.feed_model import SortingOrder, CastsTimeDecay
+from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
 from loguru import logger
+from memoize.wrapper import memoize
+from memoize.configuration import MutableCacheConfiguration, DefaultInMemoryCacheConfiguration
 
 class DOW(Enum):
     MONDAY = 0
@@ -1616,6 +1619,15 @@ async def get_channel_ids_for_fid(
     """
     return await fetch_rows(fid, limit, sql_query=sql_query, pool=pool)
 
+@memoize(
+    configuration=MutableCacheConfiguration.initialized_with(
+        DefaultInMemoryCacheConfiguration()
+    ).set_key_extractor(
+        EncodedMethodNameAndArgsExcludedKeyExtractor(
+            skip_first_arg_as_self=False, skip_args=[12], skip_kwargs=["pool"]
+        )
+    )
+)
 async def get_popular_channel_casts_lite(
         channel_id: str,
         channel_url: str,
@@ -1632,6 +1644,7 @@ async def get_popular_channel_casts_lite(
         pool: Pool
 ):
     logger.info("get_popular_channel_casts_lite")
+
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
@@ -2543,6 +2556,15 @@ async def get_trending_channel_casts_heavy(
 
     return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
 
+@memoize(
+    configuration=MutableCacheConfiguration.initialized_with(
+        DefaultInMemoryCacheConfiguration()
+    ).set_key_extractor(
+        EncodedMethodNameAndArgsExcludedKeyExtractor(
+            skip_first_arg_as_self=False, skip_args=[14], skip_kwargs=["pool"]
+        )
+    )
+)
 async def get_trending_channel_casts_lite(
         channel_id: str,
         channel_url: str,
@@ -2561,6 +2583,7 @@ async def get_trending_channel_casts_lite(
         pool: Pool
 ):
     logger.info("get_trending_channel_casts_lite")
+
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'

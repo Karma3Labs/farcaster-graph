@@ -117,11 +117,14 @@ async def lifespan(app: FastAPI):
                                          max_size=settings.POSTGRES_POOL_SIZE)
     logger.info("DB pool created")
 
-    logger.info("Creating Cache DB pool")
-    app_state['cache_db_pool'] = await asyncpg.create_pool(settings.CACHE_POSTGRES_URI.get_secret_value(),
-                                         min_size=1,
-                                         max_size=settings.CACHE_POSTGRES_POOL_SIZE)
-    logger.info("Cache DB pool created")
+    if settings.CACHE_DB_ENABLED:
+        logger.info("Creating Cache DB pool")
+        app_state['cache_db_pool'] = await asyncpg.create_pool(settings.CACHE_POSTGRES_URI.get_secret_value(),
+                                            min_size=1,
+                                            max_size=settings.CACHE_POSTGRES_POOL_SIZE)
+        logger.info("Cache DB pool created")
+    else:
+        app_state['cache_db_pool'] = None
 
     logger.info("Loading graphs")
     # Create a singleton instance of GraphLoader
@@ -141,8 +144,9 @@ async def lifespan(app: FastAPI):
     logger.info("Closing DB pool")
     await app_state['db_pool'].close()
 
-    logger.info("Closing Cache DB pool")
-    await app_state['cache_db_pool'].close()
+    if settings.CACHE_DB_ENABLED:
+        logger.info("Closing Cache DB pool")
+        await app_state['cache_db_pool'].close()
 
     logger.info("Closing graph loader")
     app_state['graph_loader_task'].cancel()

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     POSTGRES_ECHO: bool = False
     POSTGRES_TIMEOUT_SECS: int = 60
 
+    CACHE_DB_ENABLED:bool = False
     CACHE_DB_USERNAME:str = 'postgres'
     CACHE_DB_PASSWORD:SecretStr = 'postgres'
     CACHE_DB_NAME:str = 'postgres'
