@@ -33,7 +33,7 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def fetch_cura_hide_list(channel_ids: list[str]) -> pd.DataFrame:
+def fetch_cura_hide_list() -> pd.DataFrame:
     retries = Retry(
         total=3,
         backoff_factor=0.1,
@@ -56,31 +56,21 @@ def fetch_cura_hide_list(channel_ids: list[str]) -> pd.DataFrame:
         url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/channel-hide-list")
         logger.info(f"url: {url}")   
         # TODO parallelize this
-        for channel_id in channel_ids:
-            req = {"channelId": channel_id,}
-            logger.info(f"Fetching channel-hide-list for channel {channel_id}")
-            response = session.post(url, json=req, timeout=timeouts)
-            res_json = response.json()
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch channel-hide-list: {res_json}")
-                raise Exception(f"Failed to fetch channel-hide-list: {res_json}")
-            else:
-                logger.trace(f"channel-hide-list: {res_json}")
-                # Read the response content into a pandas DataFrame
-                data = pd.DataFrame.from_records(res_json.get('data'))
-                print(len(data))
-                df = pd.concat([df, data], axis=0)
+        response = session.post(url, json={}, timeout=timeouts)
+        res_json = response.json()
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch channel-hide-list: {res_json}")
+            raise Exception(f"Failed to fetch channel-hide-list: {res_json}")
+        else:
+            logger.trace(f"channel-hide-list: {res_json}")
+            # Read the response content into a pandas DataFrame
+            data = pd.DataFrame.from_records(res_json.get('data'))
+            print(len(data))
+            df = pd.concat([df, data], axis=0)
     return df
 
-def main(csv_path: Path) -> pd.DataFrame:
-    logger.info(f"Reading all top channels from CSV:{csv_path}")
-    channel_ids = channel_utils.read_channel_ids_csv(csv_path)
-    random.shuffle(channel_ids)
-    logger.info(f"Total number of top channels: {len(channel_ids)}")
-    logger.info(f"First 10 top channel ids: {channel_ids[:10]}")
-    if settings.IS_TEST:
-        channel_ids = channel_ids[:settings.TEST_CHANNEL_LIMIT]
-    df = fetch_cura_hide_list(channel_ids)
+def main() -> pd.DataFrame:
+    df = fetch_cura_hide_list()
     rename_cols = {
         'channelId': 'channel_id',
         'hiddenFid': 'hidden_fid',
@@ -96,6 +86,9 @@ def main(csv_path: Path) -> pd.DataFrame:
         logger.info(f"Skipping replace data in the database: {table_name}")
         return
     logger.info(f"Replacing data in the database: {table_name}")
+    if settings.IS_TEST:
+        logger.warning(f"Skipping replace data in the database: {table_name}")
+        return
     try:
         postgres_engine = create_engine(
             settings.POSTGRES_URL.get_secret_value(),
@@ -125,14 +118,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-c",
-        "--csv",
-        type=lambda f: Path(f).expanduser().resolve(),
-        help="path to the CSV file. For example, -c /path/to/file.csv",
-        required=True,
+        "-r",
+        "--run",
+        action="store_true",
+        help="dummy arg to prevent accidental execution",
+        required=True
+    )
+    parser.add_argument(
+        "--dry-run",
+        help="indicate dry-run mode",
+        action="store_true"
     )
     args = parser.parse_args()
     print(args)
     logger.info(settings)
 
-    main(csv_path=args.csv)
+    if args.dry_run:
+        settings.IS_TEST = True
+    main()

@@ -1,23 +1,26 @@
 #!/bin/bash
 
-while getopts w:v:c: flag
+while getopts w:v:rd flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
         v) VENV=${OPTARG};;
-        c) CSV_FILE=${OPTARG};;
+        r) RUN_FLAG="--run";;
+        d) DRYRUN_FLAG="--dry-run";;
     esac
 done
 
-if [ -z "$VENV" ]  || [ -z "$WORK_DIR" ] || [ -z "$CSV_FILE" ]; then
-  echo "Usage:   $0 -w [work_dir] -v [venv] -c [csv_file] "
+if [ -z "$VENV" ]  || [ -z "$WORK_DIR" ] || [ -z "$RUN_FLAG" ]; then
+  echo "Usage:   $0 -w [work_dir] -v [venv] -r -d "
   echo ""
-  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/publisher/.venv -c channels/Top_Channels.csv"
+  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/publisher/.venv -r"
+  echo "Example: $0 -w . -v /home/ubuntu/farcaster-graph/publisher/.venv -r -d"
   echo ""
   echo "Params:"
   echo "  [work_dir]  The working directory to read .env file and execute scripts from."
   echo "  [venv]      The path where a python3 virtualenv has been created."
-  echo "  [csv_file]  The path where a csv file has list of top channel ids"
+  echo "  [run] Flag to run the script."
+  echo "  [dryrun] Flag to run the script in dry-run mode."
   echo ""
   exit
 fi
@@ -38,8 +41,8 @@ echo "Installing requirements"
 #pip install -r requirements.txt
 
 # Run
-echo "Running cura channel mod data extractor with flags $CSV_FILE"
-/usr/bin/env python3 -m extractors.cura_mod_extractor -c "$CSV_FILE"   
+echo "Running cura channel mod data extractor with flags"
+/usr/bin/env python3 -m extractors.cura_mod_extractor $RUN_FLAG $DRYRUN_FLAG
 
 if [ $? -ne 0 ]; then
   echo "Failed to run script"
