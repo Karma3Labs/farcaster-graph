@@ -321,6 +321,7 @@ async def get_popular_channel_casts(
       "lookback": "day" | "week" | "month" | "three_months" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
+      "reactionsThreshold": 0-infinity, # 0 is default \n
       "cutoffPtile": 0-100, # 100 is default \n
       "weights": "L1C0R1Y1", # default \n
       "sortingOrder": "day" | "hour" | "score" | "reactions", # day is default \n
@@ -337,8 +338,9 @@ async def get_popular_channel_casts(
       "lookback": "day" | "week" | "month" | "three_months" | "six_months", # week is default \n
       "agg": "sum" | "rms" | "sumsquare", # sum is default \n
       "scoreThreshold": 0.000000001, # 0.000000001 is default \n
+      "reactionsThreshold": 0-infinity, # 10 is default \n
       "weights": "L1C1R1Y1", # default \n
-      "sortingOrder": "day" | "hour" | "score", # score is default \n
+      "sortingOrder": "day" | "hour" | "score" | "reactions", # score is default \n
       "timeDecay": "minute" | "hour" | "day" | "never", # "never" is default \n
       "normalize": true | false, # true is default \n
       "timeoutSecs": 3-30, # 30 is default \n
@@ -387,6 +389,7 @@ async def get_popular_channel_casts(
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
                 score_threshold=metadata.score_threshold,
+                reactions_threshold=metadata.reactions_threshold,
                 weights=parsed_weights,
                 time_decay=metadata.time_decay,
                 normalize=metadata.normalize,
@@ -404,6 +407,7 @@ async def get_popular_channel_casts(
                 max_cast_age=CASTS_AGE[metadata.lookback],
                 agg=metadata.agg,
                 score_threshold=metadata.score_threshold,
+                reactions_threshold=metadata.reactions_threshold,
                 weights=parsed_weights,
                 time_decay=metadata.time_decay,
                 normalize=metadata.normalize,
@@ -422,6 +426,7 @@ async def get_popular_channel_casts(
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
           score_threshold=metadata.score_threshold,
+          reactions_threshold=metadata.reactions_threshold,
           cutoff_ptile=metadata.cutoff_ptile,
           weights=parsed_weights,
           shuffle=metadata.shuffle,
@@ -441,6 +446,7 @@ async def get_popular_channel_casts(
           max_cast_age=CASTS_AGE[metadata.lookback], 
           agg=metadata.agg, 
           score_threshold=metadata.score_threshold,
+          reactions_threshold=metadata.reactions_threshold,
           cutoff_ptile=metadata.cutoff_ptile,
           weights=parsed_weights,
           shuffle=metadata.shuffle,
@@ -556,6 +562,7 @@ async def get_trending_casts(
         max_cast_age=f"{max_cast_age} days",
         agg=agg,
         score_threshold=0.000000001,
+        reactions_threshold=0,
         cutoff_ptile=100,
         weights=weights,
         shuffle=False,

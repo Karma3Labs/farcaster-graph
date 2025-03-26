@@ -1636,7 +1636,7 @@ async def get_channel_url_for_channel_id(
         DefaultInMemoryCacheConfiguration()
     ).set_key_extractor(
         EncodedMethodNameAndArgsExcludedKeyExtractor(
-            skip_first_arg_as_self=False, skip_args=[12], skip_kwargs=["pool"]
+            skip_first_arg_as_self=False, skip_args=[13], skip_kwargs=["pool"]
         )
     )
 )
@@ -1647,6 +1647,7 @@ async def get_popular_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        reactions_threshold: int,
         weights: Weights,
         time_decay: CastsTimeDecay,
         normalize: bool,
@@ -1666,7 +1667,7 @@ async def get_popular_channel_casts_lite(
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
     match sorting_order:
-        case SortingOrder.SCORE | SortingOrder.POPULAR | SortingOrder.REACTIONS:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
@@ -1674,6 +1675,8 @@ async def get_popular_channel_casts_lite(
             order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
             order_sql = "age_days ASC, cast_score DESC"
+        case SortingOrder.REACTIONS:
+            order_sql = "reaction_count DESC, cast_score DESC"
 
     match time_decay:
         case CastsTimeDecay.NEVER:
@@ -1732,7 +1735,8 @@ async def get_popular_channel_casts_lite(
             SELECT
                 cast_hash,
                 {agg_sql} as cast_score,
-                MIN(cast_ts) as cast_ts
+                MIN(cast_ts) as cast_ts,
+                COUNT (*) - 1 as reaction_count
             FROM fid_cast_scores
             GROUP BY cast_hash
         )
@@ -1743,7 +1747,9 @@ async def get_popular_channel_casts_lite(
         cast_ts, 
         cast_score
     FROM scores
-    WHERE cast_score > {score_threshold}
+    WHERE
+        cast_score > {score_threshold}
+        AND reaction_count > {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -1759,6 +1765,7 @@ async def get_popular_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        reactions_threshold: int,
         weights: Weights,
         time_decay: CastsTimeDecay,
         normalize: bool,
@@ -1777,7 +1784,7 @@ async def get_popular_channel_casts_heavy(
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
     match sorting_order:
-        case SortingOrder.SCORE | SortingOrder.POPULAR | SortingOrder.REACTIONS:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
         case SortingOrder.RECENT:
             order_sql = 'cast_ts DESC'
@@ -1785,6 +1792,8 @@ async def get_popular_channel_casts_heavy(
             order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
             order_sql = "age_days ASC, cast_score DESC"
+        case SortingOrder.REACTIONS:
+            order_sql = "reaction_count DESC, cast_score DESC"
 
     match time_decay:
         case CastsTimeDecay.NEVER:
@@ -1842,10 +1851,11 @@ async def get_popular_channel_casts_heavy(
         , scores AS (
             SELECT
                 cast_hash,
-                {agg_sql} as cast_score
-                FROM fid_cast_scores
-                GROUP BY cast_hash
-            )
+                {agg_sql} as cast_score,
+                COUNT (*) - 1 as reaction_count
+            FROM fid_cast_scores
+            GROUP BY cast_hash
+        )
     SELECT
         '0x' || encode(casts.hash, 'hex') as cast_hash,
         FLOOR(EXTRACT(EPOCH FROM (now() - casts.timestamp))/3600) as age_hours,
@@ -1855,10 +1865,13 @@ async def get_popular_channel_casts_heavy(
         casts.mentions,
         casts.fid,
         casts.timestamp as cast_ts,
-        cast_score
+        cast_score,
+        reaction_count
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
-    WHERE cast_score > {score_threshold}
+    WHERE
+        cast_score > {score_threshold}
+        AND reaction_count > {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2415,6 +2428,7 @@ async def get_trending_channel_casts_heavy(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        reactions_threshold: int,
         cutoff_ptile: int,
         weights: Weights,
         shuffle: bool,
@@ -2534,6 +2548,7 @@ async def get_trending_channel_casts_heavy(
         WHERE
             ci.timestamp > now() - interval '{max_cast_age}'
             AND scores.cast_score > {score_threshold}
+            AND scores.reaction_count > {reactions_threshold}
     ),
     feed AS (
         SELECT
@@ -2573,7 +2588,7 @@ async def get_trending_channel_casts_heavy(
         DefaultInMemoryCacheConfiguration()
     ).set_key_extractor(
         EncodedMethodNameAndArgsExcludedKeyExtractor(
-            skip_first_arg_as_self=False, skip_args=[14], skip_kwargs=["pool"]
+            skip_first_arg_as_self=False, skip_args=[15], skip_kwargs=["pool"]
         )
     )
 )
@@ -2584,6 +2599,7 @@ async def get_trending_channel_casts_lite(
         max_cast_age: str,
         agg: ScoreAgg,
         score_threshold: float,
+        reactions_threshold: int,
         cutoff_ptile: int,
         weights: Weights,
         shuffle: bool,
@@ -2692,7 +2708,9 @@ async def get_trending_channel_casts_lite(
             cast_score,
             NTILE(100) OVER (ORDER BY cast_score DESC) as ptile
         FROM scores
-        WHERE cast_score > {score_threshold}
+        WHERE
+            cast_score > {score_threshold}
+            AND reaction_count > {reactions_threshold}
     )
     SELECT
         *

@@ -17,7 +17,7 @@ with DAG(
     "extract_cura_mod",
     default_args=default_args,
     description="Fetch hidden fids from CURA API and load into DB daily",
-    schedule_interval=timedelta(days=1),
+    schedule_interval=timedelta(minutes=5),
     # schedule_interval=None,
     start_date=datetime(2024, 8, 1),
     is_paused_upon_creation=True,
@@ -27,8 +27,7 @@ with DAG(
 
     fetch_task = BashOperator(
         task_id='extract_cura_hidden_fids',
-        bash_command="cd /pipeline; extractors/extract_cura_mod.sh" 
-                        " -w . -v .venv -c channels/Top_Channels.csv ",
+        bash_command="cd /pipeline; extractors/extract_cura_mod.sh -w . -v .venv -r ",
         dag=dag
     )
 
