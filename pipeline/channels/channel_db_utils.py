@@ -364,7 +364,8 @@ def fetch_weighted_fid_scores_df(
     recast_wt: int,
     like_wt:int,
     cast_wt:int,
-    model_names: list[str]
+    model_names: list[str],
+    allowlisted_only: bool
 ) -> pd.DataFrame:
     
     STRATEGY = "60d_engagement"
@@ -387,7 +388,7 @@ def fetch_weighted_fid_scores_df(
                 OR  
                 (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '1 day')
             )
-            AND model_name IN {tuple(model_names)}
+            AND model_name = ANY(ARRAY{model_names})
     ),
     eligible_casts AS (
         SELECT
@@ -406,8 +407,12 @@ def fetch_weighted_fid_scores_df(
                     )
         INNER JOIN warpcast_channels_data as channels
             ON (channels.url = casts.root_parent_url)
-        INNER JOIN k3l_channel_rewards_config as config
-            ON (config.channel_id = channels.id AND config.is_points = true)
+        {
+            ("INNER JOIN k3l_channel_rewards_config as config"
+             " ON (config.channel_id = channels.id AND config.is_points = true)")
+             if allowlisted_only
+             else ""
+        }
         LEFT JOIN excluded_channels as excl
             ON (excl.channel_id = channels.id)
         WHERE excl.channel_id IS NULL

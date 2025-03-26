@@ -26,10 +26,10 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    # run_genesis = BashOperator(
-    #     task_id="run_genesis",
-    #     bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis",
-    #     dag=dag)
+    run_genesis = BashOperator(
+        task_id="run_genesis",
+        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis",
+        dag=dag)
     
     daily_calc = BashOperator(
         task_id="daily_calc",
@@ -61,7 +61,6 @@ with DAG(
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_points_bal "
         )
 
-    # run_genesis >> daily_calc >> balance_update >> backup_to_s3
-    daily_calc >> balance_update >> backup_to_s3
+    run_genesis >> daily_calc >> balance_update >> backup_to_s3
     # run_genesis8 >> daily_calc8 >> balance_update8
     daily_calc8 >> balance_update8
