@@ -364,7 +364,8 @@ def fetch_weighted_fid_scores_df(
     recast_wt: int,
     like_wt:int,
     cast_wt:int,
-    model_names: list[str]
+    model_names: list[str],
+    allowlisted_only: bool
 ) -> pd.DataFrame:
     
     STRATEGY = "60d_engagement"
@@ -387,7 +388,7 @@ def fetch_weighted_fid_scores_df(
                 OR  
                 (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '1 day')
             )
-            AND model_name IN {tuple(model_names)}
+            AND model_name = ANY(ARRAY{model_names})
     ),
     eligible_casts AS (
         SELECT
@@ -406,8 +407,12 @@ def fetch_weighted_fid_scores_df(
                     )
         INNER JOIN warpcast_channels_data as channels
             ON (channels.url = casts.root_parent_url)
-        INNER JOIN k3l_channel_rewards_config as config
-            ON (config.channel_id = channels.id AND config.is_points = true)
+        {
+            ("INNER JOIN k3l_channel_rewards_config as config"
+             " ON (config.channel_id = channels.id AND config.is_points = true)")
+             if allowlisted_only
+             else ""
+        }
         LEFT JOIN excluded_channels as excl
             ON (excl.channel_id = channels.id)
         WHERE excl.channel_id IS NULL
@@ -423,7 +428,7 @@ def fetch_weighted_fid_scores_df(
                 ) as cast_score,
             actions.channel_id as channel_id
         FROM eligible_casts as actions
-        INNER JOIN k3l_channel_rank as ranks
+        INNER JOIN k3l_channel_rank as ranks -- cura_hidden_fids already excluded in channel_rank
             ON (ranks.fid = actions.fid 
                 AND ranks.channel_id=actions.channel_id 
                 AND ranks.strategy_name='{STRATEGY}')
@@ -623,7 +628,7 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 rk.score as score,
                 rk.channel_id,
                 rk.score * {GENESIS_BUDGET} as earnings
-            FROM k3l_channel_rank as rk
+            FROM k3l_channel_rank as rk -- cura_hidden_fids already excluded in channel_rank
             INNER JOIN k3l_channel_rewards_config as config
                 ON (config.channel_id = rk.channel_id AND config.is_points = true)
             LEFT JOIN excluded_channels as excl

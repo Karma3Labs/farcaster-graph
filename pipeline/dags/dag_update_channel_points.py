@@ -41,10 +41,10 @@ with DAG(
         bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t update",
         dag=dag)
 
-    run_genesis8 = BashOperator(
-        task_id="run_genesis8",
-        bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis -p eigen8",
-        dag=dag)
+    # run_genesis8 = BashOperator(
+    #     task_id="run_genesis8",
+    #     bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis -p eigen8",
+    #     dag=dag)
     
     daily_calc8 = BashOperator(
         task_id="daily_calc8",
@@ -62,4 +62,5 @@ with DAG(
         )
 
     run_genesis >> daily_calc >> balance_update >> backup_to_s3
-    run_genesis8 >> daily_calc8 >> balance_update8
+    # run_genesis8 >> daily_calc8 >> balance_update8
+    daily_calc8 >> balance_update8
