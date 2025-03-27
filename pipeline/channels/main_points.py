@@ -141,7 +141,7 @@ def main(database: Database, task: Task):
     elif task == Task.update:
         # uses the default weighted model to update points balances
         logger.info("Updating points balances with cbrt_weighted model")
-        channel_db_utils.update_points_balance_v5(logger, pg_dsn, sql_timeout_ms)
+        channel_db_utils.update_points_balance_v5(logger, pg_dsn, sql_timeout_ms, allowlisted_only)
             
 
 
