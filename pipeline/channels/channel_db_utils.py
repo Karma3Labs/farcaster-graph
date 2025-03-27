@@ -658,7 +658,9 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
 
 
 @Timer(name="update_points_balance_v5")
-def update_points_balance_v5(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
+def update_points_balance_v5(
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int, allowlisted_only: bool
+):
     OLD_TBL = "k3l_channel_points_bal_old"
     LIVE_TBL = "k3l_channel_points_bal"
     NEW_TBL = "k3l_channel_points_bal_new"
@@ -669,12 +671,26 @@ def update_points_balance_v5(logger: logging.Logger, pg_dsn: str, timeout_ms: in
         f"CREATE TABLE {NEW_TBL} (LIKE {LIVE_TBL} INCLUDING ALL);"
     )
 
-    insert_sql = f"""
-        WITH 
-        last_channel_bal_ts AS (
+    if allowlisted_only:
+        balance_baseline_check = f"""
             SELECT max(update_ts) as update_ts, channel_id
             FROM {LIVE_TBL}
             GROUP BY channel_id
+        """
+    else:
+        balance_baseline_check = f"""
+            SELECT
+                coalesce(max(bal.update_ts), to_timestamp(0)) as update_ts,
+                ch.id as channel_id
+            FROM warpcast_channels_data as ch
+            LEFT JOIN {LIVE_TBL} as bal on (bal.channel_id=ch.id)
+            GROUP BY ch.id
+        """
+
+    insert_sql = f"""
+        WITH
+        last_channel_bal_ts AS (
+            {balance_baseline_check}
         ),
         eligible_fids AS (
             SELECT 
@@ -728,6 +744,12 @@ def update_points_balance_v5(logger: logging.Logger, pg_dsn: str, timeout_ms: in
         f"ALTER TABLE {LIVE_TBL} RENAME TO {OLD_TBL};"
         f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
     )
+    if settings.IS_TEST:
+        logger.info("Skipping update_points_balance_v5 in test mode")
+        logger.info(f"Test Mode: create_sql: {create_sql}")
+        logger.info(f"Test Mode: insert_sql: {insert_sql}")
+        logger.info(f"Test Mode: replace_sql: {replace_sql}")
+        return
 
     start_time = time.perf_counter()
     try:
