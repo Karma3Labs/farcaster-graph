@@ -8,7 +8,7 @@ sqlalchemy==1.4.52
 requests==2.31.0
 loguru==0.7.2
 beautifulsoup4==4.12.3
-aiohttp==3.9.3
+aiohttp==3.10.11
 tldextract==5.1.1
 niquests==3.5.5
 polars==0.20.27
