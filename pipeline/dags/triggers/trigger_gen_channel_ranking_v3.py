@@ -18,7 +18,7 @@ FREQUENCY_H = 12  # Define the frequency in hours
     dag_id='trigger_gen_channel_ranking_v3',
     default_args=default_args,
     start_date=datetime(2024, 10, 1),
-    schedule_interval=timedelta(hours=3),
+    schedule_interval=timedelta(hours=6),
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False  # To avoid backfilling if not required
