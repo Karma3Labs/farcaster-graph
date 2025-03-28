@@ -1,4 +1,5 @@
 import logging
+import time
 
 from timer import Timer
 import pandas as pd
@@ -178,10 +179,16 @@ def fetch_interactions_df(
         "channel_id": channel_id
     }
     with Timer(name=f"fetch_interactions_{channel_url}"):
+        start_time = time.perf_counter()
         channel_interactions_df = db_utils.ijv_df_read_sql_tmpfile(
             pg_dsn,
             INTERACTIONS_SQL,
             **query_args,
+        )
+        logger.info(
+            f"Fetching interactions for channel_id {channel_id} for interval {interval}"
+            f" took {time.perf_counter() - start_time} seconds"
+            f" for {len(channel_interactions_df)} rows"
         )
     logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
     utils.log_memusage(logger)
