@@ -330,6 +330,7 @@ CREATE TABLE k3l_cast_action (
 )
 PARTITION BY RANGE (action_ts);
 
+
 CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action 
 USING btree(fid);
 
@@ -371,6 +372,10 @@ CREATE TABLE k3l_cast_action_y2025m03 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 CREATE TABLE k3l_cast_action_y2025m04 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
+
+-- Added on 2025-04-02 - Vj
+ALTER TABLE k3l_cast_action ADD COLUMN channel_id TEXT NULL;
+
 ------------------------------------------------------------------------------------
 
 CREATE TABLE public.k3l_cast_action_v1 (
