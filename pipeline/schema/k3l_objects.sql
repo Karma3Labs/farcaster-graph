@@ -373,6 +373,46 @@ CREATE TABLE k3l_cast_action_y2025m04 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
 ------------------------------------------------------------------------------------
 
+CREATE TABLE public.k3l_cast_action_v1 (
+    channel_id TEXT NULL,
+    fid bigint NOT NULL,
+    cast_hash bytea NOT NULL,
+    casted integer NOT NULL,
+    replied integer NOT NULL,
+    recasted integer NOT NULL,
+    liked integer NOT NULL,
+    action_ts timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	UNIQUE(cast_hash, fid, action_ts)
+)
+PARTITION BY RANGE (action_ts);
+
+CREATE INDEX k3l_cast_action_v1_covering_idx ON k3l_cast_action_v1
+    USING btree (cast_hash, action_ts, fid) INCLUDE (casted, replied, recasted, liked);
+CREATE INDEX k3l_cast_action_v1_fid_idx ON k3l_cast_action_v1 USING btree (fid);
+CREATE INDEX k3l_cast_action_v1_fid_ts_idx ON k3l_cast_action_v1 USING btree (fid, action_ts);
+CREATE INDEX k3l_cast_action_v1_timestamp_idx ON k3l_cast_action_v1 USING btree (action_ts);
+CREATE INDEX k3l_cast_action_v1_ch_idx ON k3l_cast_action_v1 USING btree (channel_id);
+GRANT SELECT,REFERENCES ON TABLE public.k3l_cast_action_v1 TO k3l_readonly;
+
+CREATE TABLE k3l_cast_action_v1_y2024m09 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2024-09-01') TO ('2024-10-01');
+CREATE TABLE k3l_cast_action_v1_y2024m10 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2024-10-01') TO ('2024-11-01');
+CREATE TABLE k3l_cast_action_v1_y2024m11 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
+CREATE TABLE k3l_cast_action_v1_y2024m12 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+CREATE TABLE k3l_cast_action_v1_y2025m01 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE k3l_cast_action_v1_y2025m02 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+CREATE TABLE k3l_cast_action_v1_y2025m03 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+CREATE TABLE k3l_cast_action_v1_y2025m04 PARTITION OF k3l_cast_action_v1
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
+------------------------------------------------------------------------------------
+
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
 SELECT
  	row_number() OVER () AS pseudo_id,
