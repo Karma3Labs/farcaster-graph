@@ -31,103 +31,119 @@ def fetch_rows_df(*args, logger: logging.Logger, sql_query: str, pg_dsn: str):
 
 
 @Timer(name="insert_cast_action")
-def insert_cast_action(logger: logging.Logger, pg_dsn: str, insert_limit: int):
-  insert_sql = f"""
-    INSERT INTO k3l_cast_action
-    WITH max_cast_action AS (
-      SELECT
-        coalesce(max(created_at), now() - interval '5 days')  as max_at
-      FROM k3l_cast_action
-    )
-    SELECT
-      casts.fid as fid,
-      casts.hash as cast_hash,
-      1 as casted,
-      0 as replied,
-      0 as recasted,
-      0 as liked,
-      casts.timestamp as action_ts,
-      casts.created_at
-    FROM casts, max_cast_action
-    WHERE
-      casts.timestamp > now() - interval '5 days'
-      AND
-      casts.created_at
-        BETWEEN max_cast_action.max_at
-        AND now()
-      AND casts.deleted_at IS NULL
-    UNION ALL
-    SELECT
-      casts.fid as fid,
-      casts.parent_hash as cast_hash,
-      0 as casted,
-      1 as replied,
-      0 as recasted,
-      0 as liked,
-      casts.timestamp as action_ts,
-      casts.created_at
-    FROM casts CROSS JOIN max_cast_action
-    WHERE
-      casts.timestamp > now() - interval '5 days'
-      AND
-      casts.parent_hash IS NOT NULL
-      AND
-      casts.created_at
-        BETWEEN max_cast_action.max_at
-          AND now()
-      AND casts.deleted_at IS NULL
-    UNION ALL
-    SELECT
-      reactions.fid as fid,
-      reactions.target_hash as cast_hash,
-      0 as casted,
-      0 as replied,
-      CASE reactions.reaction_type WHEN 2 THEN 1 ELSE 0 END as recasted,
-      CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
-      reactions.timestamp as action_ts,
-      reactions.created_at
-    FROM reactions CROSS JOIN max_cast_action
-    WHERE
-      reactions.timestamp > now() - interval '5 days'
-      AND
-      reactions.created_at
-        BETWEEN max_cast_action.max_at
-          AND now()
-      AND
-      reactions.reaction_type IN (1,2)
-      AND
-      reactions.target_hash IS NOT NULL
-      AND reactions.deleted_at IS NULL
-    ORDER BY created_at ASC
-    LIMIT {insert_limit}
-    ON CONFLICT(cast_hash, fid, action_ts)
-    DO NOTHING -- expect duplicates because of between clause
-  """
-  with psycopg2.connect(
+def insert_cast_action(
+    logger: logging.Logger, pg_dsn: str, insert_limit: int, is_v1: bool = False
+):
+    tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
+    insert_sql = f"""
+        INSERT INTO {tbl_name}
+            (channel_id, fid, cast_hash, casted, replied, recasted, liked, action_ts, created_at)
+        WITH max_cast_action AS (
+            SELECT
+            coalesce(max(created_at), now() - interval '5 days')  as max_at
+            FROM {tbl_name}
+        )
+        SELECT
+            ch.id as channel_id,
+            casts.fid as fid,
+            casts.hash as cast_hash,
+            1 as casted,
+            0 as replied,
+            0 as recasted,
+            0 as liked,
+            casts.timestamp as action_ts,
+            casts.created_at
+        FROM casts CROSS JOIN max_cast_action
+        LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
+        WHERE
+            casts.timestamp > now() - interval '5 days'
+            AND
+            casts.created_at
+            BETWEEN max_cast_action.max_at
+            AND now()
+            AND casts.deleted_at IS NULL
+        UNION ALL
+        SELECT
+            ch.id as channel_id,
+            casts.fid as fid,
+            casts.parent_hash as cast_hash,
+            0 as casted,
+            1 as replied,
+            0 as recasted,
+            0 as liked,
+            casts.timestamp as action_ts,
+            casts.created_at
+        FROM casts CROSS JOIN max_cast_action
+        LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
+        WHERE
+            casts.timestamp > now() - interval '5 days'
+            AND
+            casts.parent_hash IS NOT NULL
+            AND
+            casts.created_at
+            BETWEEN max_cast_action.max_at
+                AND now()
+            AND casts.deleted_at IS NULL
+        UNION ALL
+        SELECT
+            ch.id as channel_id,
+            reactions.fid as fid,
+            reactions.target_hash as cast_hash,
+            0 as casted,
+            0 as replied,
+            CASE reactions.reaction_type WHEN 2 THEN 1 ELSE 0 END as recasted,
+            CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
+            reactions.timestamp as action_ts,
+            reactions.created_at
+        FROM reactions CROSS JOIN max_cast_action
+        INNER JOIN casts as casts on (casts.hash = reactions.target_hash)
+        LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
+        WHERE
+            reactions.timestamp > now() - interval '5 days'
+            AND
+            reactions.created_at
+            BETWEEN max_cast_action.max_at
+                AND now()
+            AND
+            reactions.reaction_type IN (1,2)
+            AND
+            reactions.target_hash IS NOT NULL
+            AND reactions.deleted_at IS NULL
+        ORDER BY created_at ASC
+        LIMIT {insert_limit}
+        ON CONFLICT(cast_hash, fid, action_ts)
+        DO NOTHING -- expect duplicates because of between clause
+    """
+    with psycopg2.connect(
     pg_dsn,
     connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
-  ) as conn:
-    with conn.cursor() as cursor:
-      logger.info(f"Executing: {insert_sql}")
-      cursor.execute(insert_sql)
-      rows = cursor.rowcount
-      logger.info(f"Inserted {rows} rows into k3l_cast_action")
+    ) as conn:
+        with conn.cursor() as cursor:
+            logger.info(f"Executing: {insert_sql}")
+            cursor.execute(insert_sql)
+            rows = cursor.rowcount
+            logger.info(f"Inserted {rows} rows into {tbl_name}")
 
 @Timer(name="backfill_cast_action")
 def backfill_cast_action(
-    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_month: datetime
+    logger: logging.Logger,
+    pg_dsn: str,
+    insert_limit: int,
+    target_month: datetime,
+    is_v1: bool = False,
 ) -> int:
     # Example, if target month is 2024-11, we want to backfill 
     # ... from 2024-11-30T23:59:59 to 2024-11-01T00:00:00
     start_at = target_month - timedelta(seconds=1)
     start_at_str = start_at.strftime("%Y-%m-%d %H:%M:%S")
     target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
-    table_name = f"k3l_cast_action_{target_month.strftime('y%Ym%m')}"
+    table_name = f"k3l_cast_action_{'v1_' if is_v1 else ''}{target_month.strftime('y%Ym%m')}"
 
     logger.info(f"backfilling {table_name} from {start_at_str} to {target_month_str}")
 
     insert_sql = f"""
     INSERT INTO {table_name}
+        (channel_id, fid, cast_hash, casted, replied, recasted, liked, action_ts, created_at)
     WITH
       min_cast_action AS (
         SELECT
@@ -136,6 +152,7 @@ def backfill_cast_action(
         FROM {table_name}
       )
     SELECT
+      ch.id as channel_id,
       casts.fid as fid,
       casts.hash as cast_hash,
       1 as casted,
@@ -144,7 +161,8 @@ def backfill_cast_action(
       0 as liked,
       casts.timestamp as action_ts,
       casts.created_at
-    FROM casts, min_cast_action
+    FROM casts CROSS JOIN min_cast_action
+    LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
     WHERE
       casts.timestamp >= min_cast_action.cutoff_ts
       AND
@@ -154,6 +172,7 @@ def backfill_cast_action(
       AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
+      ch.id as channel_id,
       casts.fid as fid,
       casts.parent_hash as cast_hash,
       0 as casted,
@@ -163,6 +182,7 @@ def backfill_cast_action(
       casts.timestamp as action_ts,
       casts.created_at
     FROM casts CROSS JOIN min_cast_action
+    LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
     WHERE
       casts.timestamp >= min_cast_action.cutoff_ts
       AND
@@ -174,6 +194,7 @@ def backfill_cast_action(
       AND casts.deleted_at IS NULL
     UNION ALL
     SELECT
+      ch.id as channel_id,
       reactions.fid as fid,
       reactions.target_hash as cast_hash,
       0 as casted,
@@ -183,6 +204,8 @@ def backfill_cast_action(
       reactions.timestamp as action_ts,
       reactions.created_at
     FROM reactions CROSS JOIN min_cast_action
+    INNER JOIN casts as casts on (casts.hash = reactions.target_hash)
+    LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
     WHERE
       reactions.timestamp >= min_cast_action.cutoff_ts
       AND
@@ -212,14 +235,17 @@ def backfill_cast_action(
 
 @Timer(name="gapfill_cast_action")
 def gapfill_cast_action(
-    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime
+    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime, is_v1: bool = False
 ) -> int:
     target_date_str = target_date.strftime("%Y-%m-%d %H:%M:%S")
+    tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
     insert_sql = f"""
-    INSERT INTO k3l_cast_action
+    INSERT INTO {tbl_name}
+        (channel_id, fid, cast_hash, casted, replied, recasted, liked, action_ts, created_at)
     WITH
       missing_casts AS (
         SELECT
+          ch.id as channel_id,
           casts.fid as fid,
           casts.hash as cast_hash,
           1 as casted,
@@ -229,10 +255,11 @@ def gapfill_cast_action(
           casts.timestamp as action_ts,
           casts.created_at
         FROM casts
-        LEFT JOIN k3l_cast_action
+        LEFT JOIN {tbl_name}
           AS ca ON (
             casts.hash = ca.cast_hash
           )
+        LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE casts.timestamp
           BETWEEN '{target_date_str}'::timestamp AND ('{target_date_str}'::timestamp + interval '1 day')
         AND casts.deleted_at IS NULL
@@ -241,6 +268,7 @@ def gapfill_cast_action(
       ),
       missing_replies AS (
         SELECT
+          ch.id as channel_id,
           casts.fid as fid,
           casts.parent_hash as cast_hash,
           0 as casted,
@@ -250,10 +278,11 @@ def gapfill_cast_action(
           casts.timestamp as action_ts,
           casts.created_at
         FROM casts
-        LEFT JOIN k3l_cast_action
+        LEFT JOIN {tbl_name}
           AS ca ON (
             casts.parent_hash = ca.cast_hash
           )
+        LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE
           casts.parent_hash IS NOT NULL
           AND casts.timestamp
@@ -264,6 +293,7 @@ def gapfill_cast_action(
       ),
       missing_reactions AS (
         SELECT
+          ch.id as channel_id,
           reactions.fid as fid,
           reactions.target_hash as cast_hash,
           0 as casted,
@@ -273,10 +303,12 @@ def gapfill_cast_action(
           reactions.timestamp as action_ts,
           reactions.created_at
         FROM reactions
-        LEFT JOIN k3l_cast_action
+        LEFT JOIN {tbl_name}
           AS ca ON (
             reactions.target_hash = ca.cast_hash
           )
+        INNER JOIN casts on (casts.hash = reactions.target_hash)
+        LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
         WHERE
           reactions.reaction_type IN (1,2)
           AND reactions.target_hash IS NOT NULL
@@ -302,85 +334,86 @@ def gapfill_cast_action(
             logger.info(f"Executing: {insert_sql}")
             cursor.execute(insert_sql)
             rows = cursor.rowcount
-            logger.info(f"Gapfilled {rows} rows into k3l_cast_action")
+            logger.info(f"Gapfilled {rows} rows into {tbl_name}")
             return rows
 
 
 @Timer(name="fetch_top_casters_df")
-def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str):
-  sql = """
-    with
-        latest_global_rank as (
-          SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=9
-          AND date in (select max(date) from k3l_rank)
-        ),
-        new_fids AS (
-          SELECT fid
-          FROM fids
-          WHERE registered_at::date BETWEEN (now() - interval '30 days') AND now()
-          ORDER BY registered_at DESC
-        ),
-        fid_cast_scores as (
-            SELECT
-                hash as cast_hash,
-                SUM(
-                    (
-                        (10 * fids.score * ci.casted)
-                        + (1 * fids.score * ci.replied)
-                        + (5 * fids.score * ci.recasted)
-                        + (1 * fids.score * ci.liked)
-                    )
-                    *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
-                ) as cast_score,
-                MIN(ci.action_ts) as cast_ts
-            FROM k3l_recent_parent_casts as casts
-            INNER JOIN k3l_cast_action as ci
-                ON (ci.cast_hash = casts.hash
-                    AND ci.action_ts BETWEEN now() - interval '3 days'
-                    AND now() - interval '10 minutes')
-            INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
-            WHERE casts.created_at BETWEEN (now() - interval '1 day') AND now()
-            AND casts.fid IN (SELECT fid FROM new_fids)
-            GROUP BY casts.hash, ci.fid
-            ORDER BY cast_ts desc
-            -- LIMIT 100000
+def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str, is_v1: bool = False):
+    tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
+    sql = f"""
+        with
+            latest_global_rank as (
+            SELECT profile_id as fid, rank, score from k3l_rank g where strategy_id=9
+            AND date in (select max(date) from k3l_rank)
+            ),
+            new_fids AS (
+            SELECT fid
+            FROM fids
+            WHERE registered_at::date BETWEEN (now() - interval '30 days') AND now()
+            ORDER BY registered_at DESC
+            ),
+            fid_cast_scores as (
+                SELECT
+                    hash as cast_hash,
+                    SUM(
+                        (
+                            (10 * fids.score * ci.casted)
+                            + (1 * fids.score * ci.replied)
+                            + (5 * fids.score * ci.recasted)
+                            + (1 * fids.score * ci.liked)
+                        )
+                        *
+                        power(
+                            1-(1/(365*24)::numeric),
+                            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
+                        )
+                    ) as cast_score,
+                    MIN(ci.action_ts) as cast_ts
+                FROM k3l_recent_parent_casts as casts
+                INNER JOIN {tbl_name} as ci
+                    ON (ci.cast_hash = casts.hash
+                        AND ci.action_ts BETWEEN now() - interval '3 days'
+                        AND now() - interval '10 minutes')
+                INNER JOIN latest_global_rank as fids ON (fids.fid = ci.fid )
+                WHERE casts.created_at BETWEEN (now() - interval '1 day') AND now()
+                AND casts.fid IN (SELECT fid FROM new_fids)
+                GROUP BY casts.hash, ci.fid
+                ORDER BY cast_ts desc
+                -- LIMIT 100000
+            )
+            , scores AS (
+                SELECT
+                    cast_hash,
+                    sum(power(fid_cast_scores.cast_score,2)) as cast_score,
+                    MIN(cast_ts) as cast_ts
+                FROM fid_cast_scores
+                GROUP BY cast_hash
+            ),
+        cast_details as (
+        SELECT
+            '0x' || encode(casts.hash, 'hex') as cast_hash,
+            DATE_TRUNC('hour', casts.timestamp) as cast_hour,
+            casts.text,
+            casts.embeds,
+            casts.mentions,
+            casts.fid,
+            casts.timestamp,
+            cast_score,
+            row_number() over(partition by DATE_TRUNC('hour', casts.timestamp) order by random()) as rn,
+                    fids_global_rank.rank AS global_rank
+        FROM k3l_recent_parent_casts as casts
+        INNER JOIN scores on casts.hash = scores.cast_hash
+        INNER JOIN latest_global_rank AS fids_global_rank ON casts.fid = fids_global_rank.fid  -- Joining to get the rank
+        WHERE casts.timestamp BETWEEN CURRENT_TIMESTAMP - INTERVAL '1 day' AND CURRENT_TIMESTAMP
+        ORDER BY cast_score DESC
+        OFFSET 0
         )
-        , scores AS (
-            SELECT
-                cast_hash,
-                sum(power(fid_cast_scores.cast_score,2)) as cast_score,
-                MIN(cast_ts) as cast_ts
-            FROM fid_cast_scores
-            GROUP BY cast_hash
-        ),
-    cast_details as (
-    SELECT
-        '0x' || encode(casts.hash, 'hex') as cast_hash,
-        DATE_TRUNC('hour', casts.timestamp) as cast_hour,
-        casts.text,
-        casts.embeds,
-        casts.mentions,
-        casts.fid,
-        casts.timestamp,
-        cast_score,
-        row_number() over(partition by DATE_TRUNC('hour', casts.timestamp) order by random()) as rn,
-				fids_global_rank.rank AS global_rank
-    FROM k3l_recent_parent_casts as casts
-    INNER JOIN scores on casts.hash = scores.cast_hash
-    INNER JOIN latest_global_rank AS fids_global_rank ON casts.fid = fids_global_rank.fid  -- Joining to get the rank
-    WHERE casts.timestamp BETWEEN CURRENT_TIMESTAMP - INTERVAL '1 day' AND CURRENT_TIMESTAMP
-    ORDER BY cast_score DESC
-    OFFSET 0
-    )
-    select cast_hash,fid as i, cast_score as v from cast_details
-    WHERE fid not in (select fid from pretrust_v2)
-    order by cast_score DESC
-  """
-  return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
+        select cast_hash,fid as i, cast_score as v from cast_details
+        WHERE fid not in (select fid from pretrust_v2)
+        order by cast_score DESC
+    """
+    return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
 
 
 @Timer(name="fetch_top_spammers_df")
