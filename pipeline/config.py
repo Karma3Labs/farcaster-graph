@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     ALT_DB_HOST:str = '127.0.0.1'
     ALT_DB_PORT:int = 9541
 
-    DB_CHANNEL_FIDS:str = 'k3l_channel_fids'
+    TBL_CHANNEL_FIDS:str = 'k3l_channel_fids'
+
 
     POSTGRES_POOL_SIZE: int = 10
     POSTGRES_TIMEOUT_SECS: int = 60

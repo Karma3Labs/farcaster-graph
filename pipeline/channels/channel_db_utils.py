@@ -334,7 +334,7 @@ def insert_channel_scores_df(
             logger.warning(f"Skipping database insertion for channel {cid}")
         else:
             logger.info(f"Inserting data into the database for channel {cid}")
-            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.DB_CHANNEL_FIDS)
+            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.TBL_CHANNEL_FIDS)
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
