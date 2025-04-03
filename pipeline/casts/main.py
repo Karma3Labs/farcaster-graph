@@ -37,6 +37,7 @@ async def main(
     target_date: datetime,
     target_month: datetime,
 ):
+    is_v1 = True if database == Database.EIGEN8 else False
     while True:
         match database:
             case Database.EIGEN2:
@@ -52,12 +53,12 @@ async def main(
             case FillType.default:
                 logger.info(f"inserting k3l_cast_action into {pg_host}")
                 cast_db_utils.insert_cast_action(
-                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT
+                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT, is_v1=is_v1
                 )
             case FillType.backfill:
                 logger.info(f"backfilling k3l_cast_action into {pg_host}")
                 row_count = cast_db_utils.backfill_cast_action(
-                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_month
+                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_month, is_v1=is_v1
                 )
                 logger.info(f"backfilled {row_count} rows")
                 if row_count == 0:
@@ -66,7 +67,7 @@ async def main(
             case FillType.gapfill:
                 logger.info(f"gapfilling k3l_cast_action into {pg_host}")
                 row_count =cast_db_utils.gapfill_cast_action(
-                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_date
+                    logger, pg_dsn, settings.CASTS_BATCH_LIMIT, target_date, is_v1=is_v1
                 )
                 logger.info(f"gapfilled {row_count} rows")
                 if row_count == 0:
