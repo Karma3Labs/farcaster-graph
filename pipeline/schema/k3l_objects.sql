@@ -684,6 +684,20 @@ CREATE VIEW public.links AS
 
 GRANT SELECT, REFERENCES ON TABLE public.links TO k3l_readonly;
 -------------------------------------------------
+
+CREATE TABLE k3l_channel_metrics (
+    metric_ts   timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    channel_id  TEXT NOT NULL,
+    metric      TEXT NOT NULL,
+    int_value   INT8,
+    float_value NUMERIC,
+    insert_ts 	timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(metric_ts, channel_id, metric)
+) PARTITION BY RANGE (metric_ts);
+
+GRANT SELECT, REFERENCES ON TABLE public.links TO k3l_readonly;
+-------------------------------------------------
+
 CREATE TABLE public.k3l_channel_points_bal (
 	fid int8 NOT NULL,
     channel_id text NOT NULL,
