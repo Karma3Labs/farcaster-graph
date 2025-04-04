@@ -692,10 +692,28 @@ CREATE TABLE k3l_channel_metrics (
     int_value   INT8,
     float_value NUMERIC,
     insert_ts 	timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(metric_ts, channel_id, metric)
+  	UNIQUE(metric_ts, channel_id, metric)
 ) PARTITION BY RANGE (metric_ts);
 
 GRANT SELECT, REFERENCES ON TABLE public.links TO k3l_readonly;
+
+CREATE OR REPLACE FUNCTION end_week_9amoffset(timestamp, interval)
+  RETURNS timestamptz AS $$ 
+    SELECT 
+            date_trunc('week', $1 + $2 - '9 hours'::interval)  -- force to monday 9am
+            - $2 + '9 hours'::interval -- revert force
+            + '7 days'::interval - '1 seconds'::interval -- end of week
+    $$
+  LANGUAGE sql 
+  IMMUTABLE;
+
+GRANT EXECUTE ON FUNCTION end_week_9amoffset(timestamp, interval) TO k3l_readonly;
+
+
+CREATE TABLE k3l_channel_metrics_y2025m01 PARTITION OF k3l_channel_metrics FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE k3l_channel_metrics_y2025m02 PARTITION OF k3l_channel_metrics FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+CREATE TABLE k3l_channel_metrics_y2025m03 PARTITION OF k3l_channel_metrics FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+CREATE TABLE k3l_channel_metrics_y2025m04 PARTITION OF k3l_channel_metrics FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
 -------------------------------------------------
 
 CREATE TABLE public.k3l_channel_points_bal (
