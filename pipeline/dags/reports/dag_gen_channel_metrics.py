@@ -31,5 +31,5 @@ with DAG(
 
     gen_channel_metrics = BashOperator(
         task_id='gen_channel_metrics',
-        bash_command='cd /pipeline/ && ./run_channel_metrics.sh -w . -v ./.venv/ '
+        bash_command='cd /pipeline/ && ./run_channel_metrics.sh -w . -v ./.venv/ -r '
     )
