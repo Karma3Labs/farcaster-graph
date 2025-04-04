@@ -62,11 +62,11 @@ with DAG(
         conf={"trigger": "gen_globaltrust_v1"},
     )
 
-    trigger_sync_sandbox = TriggerDagRunOperator(
-        task_id="trigger_sync_sandbox",
-        trigger_dag_id="sync_sandbox_globaltrust",
-        conf={"trigger": "gen_globaltrust_v1"},
-    )
+    # trigger_sync_sandbox = TriggerDagRunOperator(
+    #     task_id="trigger_sync_sandbox",
+    #     trigger_dag_id="sync_sandbox_globaltrust",
+    #     conf={"trigger": "gen_globaltrust_v1"},
+    # )
 
     (
         mkdir_tmp
@@ -75,5 +75,5 @@ with DAG(
         >> insert_db
         >> upload_to_dune
         >> trigger_refresh_views
-        >> trigger_sync_sandbox
+        # >> trigger_sync_sandbox
     )
