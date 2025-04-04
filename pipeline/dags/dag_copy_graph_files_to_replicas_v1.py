@@ -47,12 +47,12 @@ with DAG(
             dag=dag,
         )
 
-        gen_engagement_graph = BashOperator(
-            task_id="gen_engagement_graph",
-            bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
-                            " -i tmp/graph_files/localtrust.engagement.csv -o tmp/graph_files/ -p fc_engagement_fid ",
-            dag=dag,
-        )
+        # gen_engagement_graph = BashOperator(
+        #     task_id="gen_engagement_graph",
+        #     bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
+        #                     " -i tmp/graph_files/localtrust.engagement.csv -o tmp/graph_files/ -p fc_engagement_fid ",
+        #     dag=dag,
+        # )
 
         gen_90day_graph = BashOperator(
             task_id="gen_90day_graph",
@@ -61,7 +61,8 @@ with DAG(
             dag=dag,
         )
 
-        gen_following_graph >> gen_engagement_graph >> gen_90day_graph
+        # gen_following_graph >> gen_engagement_graph >> gen_90day_graph
+        gen_following_graph >> gen_90day_graph
 
     # end tg_gen_graphs
 
