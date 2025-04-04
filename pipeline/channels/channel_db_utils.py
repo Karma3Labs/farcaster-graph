@@ -1302,3 +1302,65 @@ def update_token_bal(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
+
+class Metric(StrEnum):
+    WEEKLY_NUM_CASTS = "weekly_num_casts"
+    WEEKLY_UNIQUE_CASTERS = "weekly_unique_casters"
+
+@Timer(name="upsert_weekly_metrics")
+def upsert_weekly_metrics(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    metric: Metric,
+):
+    match metric:
+        case Metric.WEEKLY_NUM_CASTS:
+            metric_sql = "count(1) as int_value"
+        case Metric.WEEKLY_UNIQUE_CASTERS:
+            metric_sql = "count(distinct fid) as int_value"
+        case _:
+            raise ValueError(f"Unknown metric: {metric}")
+
+    sql = f"""
+        INSERT INTO k3l_channel_metrics (metric_ts, channel_id, metric, int_value)
+        WITH time_vars as (
+        SELECT
+            utc_offset,
+            end_week_9amoffset(now()::timestamp - '2 week'::interval, utc_offset) as start_excl_ts
+        FROM pg_timezone_names WHERE LOWER(name) = 'america/los_angeles'
+        )
+        SELECT
+            end_week_9amoffset(action_ts, time_vars.utc_offset) as metric_ts,
+            channel_id,
+            '{metric.value}' as metric,
+            {metric_sql}
+        FROM k3l_cast_action_v1 CROSS JOIN time_vars
+        WHERE
+            casted=1
+            AND channel_id IS NOT NULL
+            AND action_ts > time_vars.start_excl_ts
+        GROUP BY channel_id, metric_ts
+        ON CONFLICT (metric_ts, channel_id, metric)
+        DO UPDATE SET
+            int_value = EXCLUDED.int_value
+    """
+    if settings.IS_TEST:
+        logger.info("Skipping upsert_weekly_metrics in test mode")
+        logger.info(f"Test Mode: sql: {sql}")
+        return
+    logger.info(f"Executing: {sql}")
+    start_time = time.perf_counter()
+    try:
+        with psycopg2.connect(
+                pg_dsn,
+                options=f"-c statement_timeout={timeout_ms}"
+            )  as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(sql)
+                    logger.info(f"Upserted rows: {cursor.rowcount}")
+    except Exception as e:
+        logger.error(e)
+        raise e
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+    return
