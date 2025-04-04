@@ -19,8 +19,8 @@ from ..models.graph_model import Graph, GraphType
 def get_following_graph(request: Request) -> Graph:
     return request.state.graphs[GraphType.following]
 
-def get_engagement_graph(request: Request) -> Graph:
-    return request.state.graphs[GraphType.engagement]
+# def get_engagement_graph(request: Request) -> Graph:
+#     return request.state.graphs[GraphType.engagement]
 
 def get_ninetydays_graph(request: Request) -> Graph:
     return request.state.graphs[GraphType.ninetydays]

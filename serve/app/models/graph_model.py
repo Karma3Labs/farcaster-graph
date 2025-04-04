@@ -7,12 +7,12 @@ import pandas
 
 class GraphType(Enum):
   following = 1
-  engagement = 3
-  v3engagement = 9
+#   engagement = 3
+#   v3engagement = 9
   ninetydays = 5
 
 class GraphTimeframe(str, Enum):
-  lifetime = "lifetime"
+#   lifetime = "lifetime"
   ninetydays = "90d"
 
 class Graph(NamedTuple):
