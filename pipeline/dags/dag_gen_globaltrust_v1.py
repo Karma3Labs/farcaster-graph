@@ -98,11 +98,11 @@ with DAG(
         conf={"trigger": "gen_globaltrust_v1"},
     )
 
-    trigger_sync_sandbox = TriggerDagRunOperator(
-        task_id="trigger_sync_sandbox",
-        trigger_dag_id="sync_sandbox_globaltrust",
-        conf={"trigger": "gen_globaltrust_v1"},
-    )
+    # trigger_sync_sandbox = TriggerDagRunOperator(
+    #     task_id="trigger_sync_sandbox",
+    #     trigger_dag_id="sync_sandbox_globaltrust",
+    #     conf={"trigger": "gen_globaltrust_v1"},
+    # )
     # TODO do we need to backup every 6 hours ? Revisit this later.
     # trigger_backup = TriggerDagRunOperator(
     #     task_id="trigger_backup",
@@ -122,6 +122,6 @@ with DAG(
         >> upload_to_s3
         >> trigger_refresh_views
         >> trigger_copy_to_replica
-        >> trigger_sync_sandbox
+        # >> trigger_sync_sandbox
         >> rmdir_tmp
     )

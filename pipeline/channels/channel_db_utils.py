@@ -1343,7 +1343,8 @@ def upsert_weekly_metrics(
         GROUP BY channel_id, metric_ts
         ON CONFLICT (metric_ts, channel_id, metric)
         DO UPDATE SET
-            int_value = EXCLUDED.int_value
+            int_value = EXCLUDED.int_value,
+            insert_ts = DEFAULT
     """
     if settings.IS_TEST:
         logger.info("Skipping upsert_weekly_metrics in test mode")

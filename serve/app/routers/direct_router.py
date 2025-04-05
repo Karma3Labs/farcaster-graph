@@ -26,7 +26,7 @@ async def get_direct_engagement_for_handles(
   )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  graph_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
   """
   Given a list of input handles, return a list of handles
@@ -96,7 +96,7 @@ async def get_direct_engagement_for_fids(
   )],
   limit: Annotated[int | None, Query(le=1000)] = 100,
   pool: Pool = Depends(db_pool.get_db),
-  graph_model: Graph = Depends(graph.get_engagement_graph),
+  graph_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
   """
   Given a list of input fids, return a list of fids

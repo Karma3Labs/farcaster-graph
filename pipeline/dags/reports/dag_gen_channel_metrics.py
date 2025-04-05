@@ -19,7 +19,7 @@ default_args = {
 with DAG(
     dag_id='report_gen_metrics',
     default_args=default_args,
-    description='This fetches spammers and save the list into s3',
+    description='this generates channel metrics',
     start_date=datetime(2024, 8, 15),
     schedule_interval='0 * * * *',
     is_paused_upon_creation=True,
@@ -31,5 +31,5 @@ with DAG(
 
     gen_channel_metrics = BashOperator(
         task_id='gen_channel_metrics',
-        bash_command='cd /pipeline/ && ./run_channel_metrics.sh -w . -v ./.venv/ '
+        bash_command='cd /pipeline/ && ./run_channel_metrics.sh -w . -v ./.venv/ -r '
     )

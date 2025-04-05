@@ -40,10 +40,9 @@ async def get_popular_casts_for_fid(
     limit: Annotated[int | None, Query(le=50)] = 25,
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
     provider_metadata: Annotated[str | None, Query()] = None,
     pool: Pool = Depends(db_pool.get_db),
-    lifetime_model: Graph = Depends(graph.get_engagement_graph),
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
     """
@@ -137,7 +136,7 @@ async def get_popular_casts_for_fid(
         # compute eigentrust on the neighbor graph using fids
         trust_scores = await graph.get_neighbors_scores(
             [fid],
-            ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
+            ninetyday_model,
             k,
             graph_limit,
         )
@@ -163,9 +162,8 @@ async def get_personalized_casts_for_fid(
     limit: Annotated[int | None, Query(le=50)] = 25,
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.lifetime),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
     pool: Pool = Depends(db_pool.get_db),
-    lifetime_model: Graph = Depends(graph.get_engagement_graph),
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
     """
@@ -185,7 +183,7 @@ async def get_personalized_casts_for_fid(
     # compute eigentrust on the neighbor graph using fids
     trust_scores = await graph.get_neighbors_scores(
         [fid],
-        ninetyday_model if timeframe == GraphTimeframe.ninetydays else lifetime_model,
+        ninetyday_model,
         k,
         graph_limit,
     )

@@ -58,8 +58,8 @@ class GraphLoader:
     graphs[GraphType.following] = self.load_graph(settings.FOLLOW_GRAPH_PATHPREFIX, GraphType.following)
     logger.info(f"loaded {graphs[GraphType.following]}")
 
-    graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATHPREFIX, GraphType.engagement)
-    logger.info(f"loaded {graphs[GraphType.engagement]}")
+    # graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATHPREFIX, GraphType.engagement)
+    # logger.info(f"loaded {graphs[GraphType.engagement]}")
 
     graphs[GraphType.ninetydays] = self.load_graph(settings.NINETYDAYS_GRAPH_PATHPREFIX, GraphType.ninetydays)
     logger.info(f"loaded {graphs[GraphType.ninetydays]}")

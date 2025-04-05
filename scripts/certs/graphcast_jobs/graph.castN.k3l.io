@@ -18,19 +18,25 @@ limit_req_zone $limit_key zone=graph_castN_zone:10m rate=5r/s;
 server {
     server_name graph.castN.k3l.io;
 
+    location ~* \.(env|git|bak|config|log|sh).* {
+        deny all;
+        return 404;
+    }
+
+
     location ~ ^/(_pause|_resume) {
-	return 404;
+        return 404;
     }
 
     location / {
-	# apply rate limit
-	limit_req zone=graph_castN_zone burst=10;
-	proxy_pass http://localhost:8000;
-	proxy_http_version 1.1;
-	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection 'upgrade';
-	proxy_set_header Host $host;
-	proxy_cache_bypass $http_upgrade;
+        # apply rate limit
+        limit_req zone=graph_castN_zone burst=10;
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 
 }
