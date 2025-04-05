@@ -475,6 +475,27 @@ async def get_channel_stats(
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
+async def get_channel_metrics(
+    channel_id: str,
+    limit: int,
+    pool: Pool
+):
+    sql_query = """
+    SELECT
+        metric,
+	    JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'as_of_utc', metric_ts,
+                'value', COALESCE(int_value, float_value)
+            ) ORDER BY metric_ts DESC
+        ) as values
+    FROM k3l_channel_metrics
+    WHERE channel_id = $1
+    GROUP BY metric
+    LIMIT $2
+    """
+    return await fetch_rows(channel_id, limit, sql_query=sql_query, pool=pool)
+
 async def get_top_openrank_channel_profiles(
         channel_id: str,
         category: str,

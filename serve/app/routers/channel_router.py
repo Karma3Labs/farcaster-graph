@@ -220,7 +220,7 @@ async def get_top_channel_profiles(
         pool=pool)
     return {"result": ranks}
 
-@router.get("/rankings/{channel}/stats", tags=["Leaderboard"])
+@router.get("/rankings/{channel}/stats", tags=["Leaderboard", "Metrics"])
 async def get_channel_stats(
         channel: str,
         rank_timeframe: ChannelRankingsTimeframe = Query(ChannelRankingsTimeframe.SIXTY_DAYS),
@@ -228,14 +228,27 @@ async def get_channel_stats(
 ):
     """
   Get basic statistics about the rankings in a channel. \n
-  Specify one of the following as channel_id:
-    `degen`, `base`, `optimism`, `founders`, `farcaster`, `op-stack`, `new-york`
   """
     stats = await db_utils.get_channel_stats(
         channel_id=channel,
         strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
         pool=pool)
     return {"result": stats}
+
+@router.get("/rankings/{channel}/metrics", tags=["Channel Feed", "Metrics"])
+async def get_channel_metrics(
+    channel: str,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    """
+    Get basic metrics about a channel. \n
+    """
+    metrics = await db_utils.get_channel_metrics(
+        channel_id=channel,
+        limit=100_000,
+        pool=pool,
+    )
+    return {"result": metrics}
 
 @router.post("/rankings/{channel}/fids", tags=["Deprecated"])
 async def get_channel_rank_for_fids(
