@@ -739,7 +739,8 @@ CREATE TABLE public.k3l_channel_points_log (
   channel_id text NOT NULL,
  	earnings numeric NOT NULL,
   model_name text NOT NULL,
-  insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+  insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  notes TEXT NULL
 ) PARTITION BY RANGE (insert_ts);
 
 CREATE INDEX k3l_channel_points_log_ch_fid_idx ON public.k3l_channel_points_log USING btree (channel_id, fid);

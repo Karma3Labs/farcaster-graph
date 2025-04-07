@@ -340,9 +340,12 @@ def insert_channel_scores_df(
         raise e
     return
 
-def _9ampacific_in_utc_time():
+def _9ampacific_in_utc_time(date_str:str = None):
     pacific_tz = pytz.timezone('US/Pacific')
-    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    if date_str:
+        pacific_9am_str = ' '.join([date_str,'09:00:00'])
+    else:
+        pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
     pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
@@ -366,7 +369,9 @@ def fetch_weighted_fid_scores_df(
     cast_wt:int,
     model_names: list[str],
     allowlisted_only: bool,
-    is_v1: bool
+    is_v1: bool,
+    gapfill: bool,
+    date_str: str,
 ) -> pd.DataFrame:
     
     STRATEGY = "60d_engagement"
@@ -374,22 +379,35 @@ def fetch_weighted_fid_scores_df(
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
 
     CUTOFF_UTC_TIMESTAMP = (
-        f"TO_TIMESTAMP('{_9ampacific_in_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')" 
+        f"TO_TIMESTAMP('{_9ampacific_in_utc_time(date_str).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
         " AT TIME ZONE 'UTC'"
     )
 
+    if not gapfill:
+        exclude_condition = f"""
+            (
+                -- IMPORTANT: don't generate points within last 23 hours
+                (now() > {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                OR
+                (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '{INTERVAL}')
+            )
+        """
+    else:
+        # if gapfill is 2025-04-04, skip channels that have been inserted between 2025-04-04 and 2025-04-05
+        exclude_condition = f"""
+            (
+                -- IMPORTANT: don't generate points if distribution happened that day or gapfill happened
+                ( insert_ts > {CUTOFF_UTC_TIMESTAMP} AND insert_ts <= {CUTOFF_UTC_TIMESTAMP} + interval '{INTERVAL}')
+                OR notes = 'GAPFILL-{date_str}'
+            )
+        """
     sql_query = f"""
     WITH 
     excluded_channels AS (
-        -- IMPORTANT: don't generate points within last 23 hours
         SELECT distinct(channel_id) as channel_id 
         FROM k3l_channel_points_log
         WHERE 
-            (
-                (now() > {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP})
-                OR  
-                (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '1 day')
-            )
+            {exclude_condition}
             AND model_name = ANY(ARRAY{model_names})
     ),
     eligible_casts AS (
