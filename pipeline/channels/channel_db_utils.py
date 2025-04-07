@@ -365,11 +365,13 @@ def fetch_weighted_fid_scores_df(
     like_wt:int,
     cast_wt:int,
     model_names: list[str],
-    allowlisted_only: bool
+    allowlisted_only: bool,
+    is_v1: bool
 ) -> pd.DataFrame:
     
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
+    tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
 
     CUTOFF_UTC_TIMESTAMP = (
         f"TO_TIMESTAMP('{_9ampacific_in_utc_time().strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')" 
@@ -399,8 +401,8 @@ def fetch_weighted_fid_scores_df(
                 actions.recasted,
                 actions.fid,
                 channels.id as channel_id
-        FROM k3l_cast_action as actions 
-            INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
+        FROM {tbl_name} as actions
+        INNER JOIN k3l_recent_parent_casts as casts -- to be able to join with warpcast_channels_data
             ON (actions.cast_hash = casts.hash
                 AND actions.action_ts >= {CUTOFF_UTC_TIMESTAMP} - interval '{INTERVAL}'
                 AND actions.action_ts < {CUTOFF_UTC_TIMESTAMP}

@@ -55,12 +55,14 @@ class Task(StrEnum):
 
 def main(database: Database, task: Task):
     allowlisted_only = True
+    is_v1 = False
     match database:
         case Database.EIGEN2:
             pg_dsn = settings.POSTGRES_DSN.get_secret_value()
             pg_url = settings.POSTGRES_URL.get_secret_value()
         case Database.EIGEN8:
             allowlisted_only = False
+            is_v1 = True
             pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
             pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
         case _:
@@ -102,6 +104,7 @@ def main(database: Database, task: Task):
             cast_wt=0,
             model_names=[e.value for e in WeightedModel],
             allowlisted_only=allowlisted_only,
+            is_v1=is_v1
         )
         logger.info(utils.df_info_to_string(df, with_sample=True, head=True))
         if len(df) == 0:
