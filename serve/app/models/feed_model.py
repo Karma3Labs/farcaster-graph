@@ -60,7 +60,7 @@ class TrendingFeed(BaseModel):
     shuffle: bool = False
     timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = settings.FEED_TIMEOUT_SECS
     session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotate[list[str], Field(alias="channels")] = None
+    channels: Annotated[list[str], Field(alias="channels")] = None
 
 class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
@@ -74,7 +74,7 @@ class PopularFeed(BaseModel):
     normalize: bool = True
     timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = settings.FEED_TIMEOUT_SECS
     session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotate[list[str], Field(alias="channels")] = None
+    channels: Annotated[list[str], Field(alias="channels")] = None
 
 class SearchScores(BaseModel):
     score_type: Annotated[Literal['search'], Field(alias="scoreType")]
