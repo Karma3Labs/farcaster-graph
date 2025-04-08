@@ -1,5 +1,6 @@
 from typing import Annotated
 import urllib.parse
+import json
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
@@ -235,7 +236,7 @@ async def get_channel_stats(
         pool=pool)
     return {"result": stats}
 
-@router.get("/rankings/{channel}/metrics", tags=["Channel Feed", "Metrics"])
+@router.get("/casts/{channel}/metrics", tags=["Channel Feed", "Metrics"])
 async def get_channel_metrics(
     channel: str,
     pool: Pool = Depends(db_pool.get_db),
@@ -248,7 +249,10 @@ async def get_channel_metrics(
         limit=100_000,
         pool=pool,
     )
-    return {"result": metrics}
+    result = []
+    for m in metrics:
+        result.append({"metric": m[0], "value": json.loads(m[1])})
+    return {"result": result}
 
 @router.post("/rankings/{channel}/fids", tags=["Deprecated"])
 async def get_channel_rank_for_fids(
