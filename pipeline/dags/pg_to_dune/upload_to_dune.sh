@@ -61,6 +61,16 @@ export_to_csv() {
   log "Exported $table to $csv_file"
 }
 
+export_alt_to_csv() {
+  local table="$1"
+  local csv_file="$2"
+  local query="$3"
+
+  log "Exporting $table to CSV..."
+  PGPASSWORD=$ALT_DB_PASSWORD  psql -e -h $ALT_DB_HOST -U $ALT_DB_USERNAME -d $ALT_DB_NAME -p $ALT_DB_PORT -c "$query"
+  log "Exported $table to $csv_file"
+}
+
 publish_to_s3() {
   local csv_file="$1"
   local s3_bucket="s3://$S3_BUCKET_NAME_CONSTANT/"
@@ -245,7 +255,7 @@ backup_all_channel_rank_to_private_s3() {
 backup_channel_points_bal_to_private_s3() {
   filename="k3l_channel_points_bal"
   csv_file="${WORK_DIR}/$filename.csv"
-  export_to_csv \
+  export_alt_to_csv \
   "k3l_channel_points_bal" \
    "$csv_file" \
    "\COPY (SELECT fid, channel_id, balance, latest_earnings,\
