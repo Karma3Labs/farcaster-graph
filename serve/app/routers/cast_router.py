@@ -76,9 +76,13 @@ async def get_popular_casts_for_fid(
             logger.error(f"errors(): {e.errors()}")
             raise HTTPException(status_code=400, detail=f"Error while validating provider metadata: {e.errors()}")
 
-        channel_ids = await db_utils.get_channel_ids_for_fid(
-            fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
-        )
+        if metadata.channels is not None:
+            # TODO(ek): validate channel IDs?
+            channel_ids = [{'channel_id': ch} for ch in metadata.channels]
+        else:
+            channel_ids = await db_utils.get_channel_ids_for_fid(
+                fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
+            )
         logger.info(f"channel_ids: {channel_ids}")
         if len(channel_ids) == 0:
             logger.info(f"No channels found for fid: {fid}")
