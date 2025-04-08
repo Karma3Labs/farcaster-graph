@@ -416,7 +416,15 @@ CREATE TABLE k3l_cast_action_v1_y2025m03 PARTITION OF k3l_cast_action_v1
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 CREATE TABLE k3l_cast_action_v1_y2025m04 PARTITION OF k3l_cast_action_v1
     FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
+
+-------------------------------------------------
+-- *****IMPORTANT NOTE****: ON EIGEN8
+CREATE VIEW public.k3l_cast_action AS
+    SELECT * FROM k3l_cast_action_v1;
+
+GRANT SELECT,REFERENCES ON VIEW public.k3l_cast_action TO k3l_readonly;
 ------------------------------------------------------------------------------------
+
 
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
 SELECT
@@ -610,13 +618,15 @@ GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
 CREATE VIEW public.warpcast_followers AS
     SELECT
         fid,
-        ROUND(EXTRACT(EPOCH FROM (timestamp)),0) AS followedAt,
-        timestamp AS insert_ts,
+        max(ROUND(EXTRACT(EPOCH FROM (timestamp)),0)) AS followedAt,
+        max(timestamp) AS insert_ts,
         channel_id
     FROM
         neynarv2.channel_follows
     WHERE
-        deleted_at IS NULL;
+        deleted_at IS NULL
+    GROUP BY
+		fid, channel_id;
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_followers TO k3l_readonly;
 -------------------------------------------------
@@ -639,13 +649,15 @@ GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 CREATE VIEW public.warpcast_members AS
     SELECT
         fid,
-        ROUND(EXTRACT(EPOCH FROM (timestamp)),0) AS memberAt,
-        timestamp AS insert_ts,
+        max(ROUND(EXTRACT(EPOCH FROM (timestamp)),0)) AS memberAt,
+        max(timestamp) AS insert_ts,
         channel_id
     FROM
         neynarv2.channel_members
     WHERE
-        deleted_at IS NULL;
+        deleted_at IS NULL
+    GROUP BY
+		fid, channel_id;
 
 GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 
