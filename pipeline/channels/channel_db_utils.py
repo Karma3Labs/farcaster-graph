@@ -396,8 +396,11 @@ def fetch_weighted_fid_scores_df(
         # if gapfill is 2025-04-04, skip channels that have been inserted between 2025-04-04 and 2025-04-05
         exclude_condition = f"""
             (
-                -- IMPORTANT: don't generate points if distribution happened that day or gapfill happened
-                ( insert_ts > {CUTOFF_UTC_TIMESTAMP} AND insert_ts <= {CUTOFF_UTC_TIMESTAMP} + interval '{INTERVAL}')
+                -- IMPORTANT: don't generate points if normal distribution happened for that day
+                -- or if gapfill has already happened
+                ( insert_ts > {CUTOFF_UTC_TIMESTAMP}
+                AND insert_ts <= {CUTOFF_UTC_TIMESTAMP} + interval '{INTERVAL}'
+                AND notes IS NULL)
                 OR notes = 'GAPFILL-{date_str}'
             )
         """
