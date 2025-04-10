@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (serve)" project-jdk-type="Python SDK" />
   <component name="ProjectUserFactors">
     <factor id="completionFinishedType">
       <dailyData date="14-06-2024">
