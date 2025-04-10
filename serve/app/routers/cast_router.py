@@ -3,7 +3,7 @@ import urllib.parse
 from asyncio import TimeoutError
 from typing import Annotated, List
 
-import httpx
+import niquests
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
@@ -22,17 +22,16 @@ router = APIRouter(tags=["Casts"])
 
 async def get_user_pinned_channels(fid: int) -> list[str]:
     endpoint = f"{settings.CURA_API_ENDPOINT}/internal/user-pinned-channels"
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            endpoint,
-            headers={"Authorization": f"Bearer {settings.CURA_API_KEY}"},
-            json={"fid": fid},
-        )
-        resp.raise_for_status()
-        try:
-            return resp.json()["data"]
-        except KeyError:
-            return []
+    resp = await niquests.apost(
+        endpoint,
+        headers={"Authorization": f"Bearer {settings.CURA_API_KEY}"},
+        json={"fid": fid},
+    )
+    resp.raise_for_status()
+    try:
+        return resp.json()["data"]
+    except KeyError:
+        return []
 
 
 async def task_with_timeout(task_id, task_coroutine, task_timeout):
