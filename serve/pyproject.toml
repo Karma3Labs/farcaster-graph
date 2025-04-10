@@ -27,6 +27,7 @@ asgi-correlation-id = "^4.3.1"
 niquests = "3.5.5"
 py-memoize = "^3.1.1"
 httpx = "^0.28.1"
+black = "^25.1.0"
 
 [build-system]
 requires = ["poetry-core"]
