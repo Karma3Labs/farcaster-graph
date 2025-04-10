@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     RELOAD_FREQ_SECS: int = 3600
     PAUSE_BEFORE_RELOAD_SECS: int = 300
 
+    CURA_API_ENDPOINT: str = "https://cura.network/api"
+    CURA_API_KEY: str
+
+
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
         env_file=(".env", ".env.prod")

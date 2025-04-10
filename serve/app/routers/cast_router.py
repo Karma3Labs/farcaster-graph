@@ -3,6 +3,7 @@ import urllib.parse
 from asyncio import TimeoutError
 from typing import Annotated, List
 
+import httpx
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
@@ -17,6 +18,21 @@ from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
 
 router = APIRouter(tags=["Casts"])
+
+
+async def get_user_pinned_channels(fid: int) -> list[str]:
+    endpoint = f"{settings.CURA_API_ENDPOINT}/internal/user-pinned-channels"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            endpoint,
+            headers={"Authorization": f"Bearer {settings.CURA_API_KEY}"},
+            json={"fid": fid},
+        )
+        resp.raise_for_status()
+        try:
+            return resp.json()["data"]
+        except KeyError:
+            return []
 
 
 async def task_with_timeout(task_id, task_coroutine, task_timeout):
@@ -83,11 +99,14 @@ async def get_popular_casts_for_fid(
 
         if metadata.channels is not None:
             # TODO(ek): validate channel IDs?
-            channel_ids = [{"channel_id": ch} for ch in metadata.channels]
+            channel_ids = set(metadata.channels)
         else:
-            channel_ids = await db_utils.get_channel_ids_for_fid(
+            rows = await db_utils.get_channel_ids_for_fid(
                 fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
             )
+            channel_ids = {row["channel_id"] for row in rows}
+        pinned_channels = set(await get_user_pinned_channels(fid))
+        channel_ids |= pinned_channels
         logger.info(f"channel_ids: {channel_ids}")
         if len(channel_ids) == 0:
             logger.info(f"No channels found for fid: {fid}")
@@ -98,9 +117,9 @@ async def get_popular_casts_for_fid(
         for channel_id in channel_ids:
             channel_tasks.append(
                 task_with_timeout(
-                    task_id=channel_id["channel_id"],
+                    task_id=channel_id,
                     task_coroutine=channel_router.get_popular_channel_casts(
-                        channel=channel_id["channel_id"],
+                        channel=channel_id,
                         rank_timeframe=ChannelRankingsTimeframe.SIXTY_DAYS,
                         offset=offset,
                         limit=limit,
@@ -118,13 +137,14 @@ async def get_popular_casts_for_fid(
         success_channel_ids = []
         casts = []
         for task_id, result in result_list:
+            extra = {"channel_id": task_id}
             if result is None:
                 timedout_channel_ids.append(task_id)
             elif isinstance(result, Exception):
                 error_channel_ids.append(task_id)
             else:
                 success_channel_ids.append(task_id)
-                casts.extend(result["result"])
+                casts.extend(cast | extra for cast in result["result"])
         if len(timedout_channel_ids) > 0:
             logger.error(f"timedout_channel_ids: {timedout_channel_ids}")
         if len(error_channel_ids) > 0:
@@ -134,7 +154,10 @@ async def get_popular_casts_for_fid(
                 status_code=500, detail="Errors and or timeoutswhile fetching casts"
             )
 
-        sorted_casts = sorted(casts, key=lambda d: d["age_hours"])
+        def cast_key(d):
+            return (0 if d["channel_id"] in pinned_channels else 1, d["age_hours"])
+
+        sorted_casts = sorted(casts, key=cast_key)
         return {"result": sorted_casts}
     else:
         try:
