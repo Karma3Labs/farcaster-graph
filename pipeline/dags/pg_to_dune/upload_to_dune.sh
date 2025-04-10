@@ -66,7 +66,7 @@ export_alt_to_csv() {
   local csv_file="$2"
   local query="$3"
 
-  log "Exporting $table to CSV..."
+  log "Exporting $table from $ALT_DB_HOST to CSV..."
   PGPASSWORD=$ALT_DB_PASSWORD  psql -e -h $ALT_DB_HOST -U $ALT_DB_USERNAME -d $ALT_DB_NAME -p $ALT_DB_PORT -c "$query"
   log "Exported $table to $csv_file"
 }
