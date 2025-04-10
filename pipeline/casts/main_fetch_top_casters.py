@@ -24,7 +24,7 @@ logger.add(sys.stdout,
            level=0)
 
 def main():
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     df = cast_db_utils.fetch_top_casters_df(logger, pg_dsn)
     # top_casters = []
     # for caster in casters:
@@ -35,7 +35,7 @@ def main():
     logger.info(utils.df_info_to_string(df, with_sample=True))
 
     postgres_engine = create_engine(
-        settings.POSTGRES_URL.get_secret_value(),
+        settings.ALT_POSTGRES_URL.get_secret_value(),
         connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000},
     )
     logger.info(postgres_engine)

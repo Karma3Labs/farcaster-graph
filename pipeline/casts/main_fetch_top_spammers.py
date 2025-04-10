@@ -24,7 +24,7 @@ logger.add(sys.stdout,
            level=0)
 
 def main():
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
 
     now = datetime.now()
     thirty_days_ago = now - timedelta(days=30)
@@ -70,7 +70,7 @@ def main():
     # df["date_iso"] = date.today()
     # logger.info(df.head())
 
-    postgres_engine = create_engine(settings.POSTGRES_URL.get_secret_value(), connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000})
+    postgres_engine = create_engine(settings.ALT_POSTGRES_URL.get_secret_value(), connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000})
     logger.info(postgres_engine)
     with postgres_engine.connect() as connection:
         df.to_sql('k3l_top_spammers', con=connection, if_exists='append', index=False)
