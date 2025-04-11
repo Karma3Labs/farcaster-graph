@@ -69,6 +69,11 @@ with DAG(
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
             dag=dag)
 
+        backup_to_s3 = BashOperator(
+            task_id='backup_channel_tokens',
+            bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh backup_channel_tokens "
+        )
+
         trigger_notify_dag = TriggerDagRunOperator(
             task_id='trigger_notify_dag',
             trigger_dag_id='update_channel_notify',
@@ -77,7 +82,7 @@ with DAG(
         )
 
         # prepare_airdrop >> prepare_weekly >> distribute >> verify >> trigger_notify_dag
-        prepare_airdrop8 >> prepare_weekly8 >> distribute >> verify >> trigger_notify_dag
+        prepare_airdrop8 >> prepare_weekly8 >> distribute >> verify >> trigger_notify_dag >> backup_to_s3
 
     @task_group(group_id='tg_skip_weekly')
     def tg_skip_weekly():
