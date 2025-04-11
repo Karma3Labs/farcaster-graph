@@ -79,7 +79,7 @@ def group_and_chunk_df(
     return df.groupby(group_by_columns)[collect_column].agg(list).apply(chunk_list)
 
 def notify():
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     (cutoff_time, entries_df) = channel_db_utils.fetch_notify_entries(
         logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS,
     )
