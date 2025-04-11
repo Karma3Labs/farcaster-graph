@@ -268,6 +268,39 @@ backup_channel_points_bal_to_private_s3() {
   backup_to_s3_and_cleanup "$csv_file" "$filename"
 }
 
+backup_channel_tokens_bal_to_private_s3() {
+  filename="k3l_channel_tokens_bal"
+  csv_file="${WORK_DIR}/$filename.csv"
+  export_alt_to_csv \
+  "k3l_channel_tokens_bal" \
+   "$csv_file" \
+   "\COPY (SELECT fid, channel_id, balance, latest_earnings,\
+    insert_ts, update_ts\
+    FROM k3l_channel_tokens_bal)\
+    TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
+  /usr/bin/gzip -f $csv_file
+
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
+backup_channel_tokens_log_to_private_s3() {
+  filename="k3l_channel_tokens_log"
+  csv_file="${WORK_DIR}/$filename.csv"
+  export_alt_to_csv \
+  "k3l_channel_tokens_log" \
+   "$csv_file" \
+   "\COPY (SELECT fid, channel_id, amt, latest_points,\
+    points_ts, dist_id, dist_status, insert_ts, update_ts,\
+    fid_address, dist_reason, txn_hash, batch_id\
+    FROM k3l_channel_tokens_log)\
+    TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+
+  /usr/bin/gzip -f $csv_file
+
+  backup_to_s3_and_cleanup "$csv_file" "$filename"
+}
+
 # DEPRECATED
 insert_globaltrust_to_dune_v2() {
   filename="k3l_cast_globaltrust_incremental"
@@ -436,6 +469,10 @@ case "$1" in
         ;;
     backup_channel_points_bal)
         backup_channel_points_bal_to_private_s3
+        ;;
+    backup_channel_tokens)
+        backup_channel_tokens_bal_to_private_s3
+        backup_channel_tokens_log_to_private_s3
         ;;
     overwrite_globaltrust_in_dune_v3)
         overwrite_globaltrust_in_dune_v3
