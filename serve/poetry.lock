@@ -762,17 +762,6 @@ files = [
 ]
 
 [[package]]
-name = "kiss-headers"
-version = "2.4.3"
-description = "Object-oriented HTTP and IMAP (structured) headers."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "kiss_headers-2.4.3-py3-none-any.whl", hash = "sha256:9d800b77532068e8748be9f96f30eaeb547cdc5345e4689ddf07b77071256239"},
-    {file = "kiss_headers-2.4.3.tar.gz", hash = "sha256:70c689ce167ac83146f094ea916b40a3767d67c2e05a4cb95b0fd2e33bf243f1"},
-]
-
-[[package]]
 name = "llvmlite"
 version = "0.43.0"
 description = "lightweight wrapper around basic LLVM functionality"
@@ -833,27 +822,29 @@ files = [
 
 [[package]]
 name = "niquests"
-version = "3.5.5"
+version = "3.14.0"
 description = "Niquests is a simple, yet elegant, HTTP library. It is a drop-in replacement for Requests, which is under feature freeze."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "niquests-3.5.5-py3-none-any.whl", hash = "sha256:bd134c7cbc414661840e73bebe0b766c16321558b3c444efb3f63aad9189e308"},
-    {file = "niquests-3.5.5.tar.gz", hash = "sha256:5b52183cd4ee16f360de1e5b97bc266b933e8603320102d10d17f68a95e926ba"},
+    {file = "niquests-3.14.0-py3-none-any.whl", hash = "sha256:68e0a7e9f338466b3606945fffd11f75e3c90af7498aa9336ef03812323b7e36"},
+    {file = "niquests-3.14.0.tar.gz", hash = "sha256:86e484c2c60444aa96069c15f6295af6e25a8bad50781e1326df1b5c7ab48339"},
 ]
 
 [package.dependencies]
 charset-normalizer = ">=2,<4"
-idna = ">=2.5,<4"
-kiss-headers = ">=2,<4"
-urllib3-future = ">=2.7.900,<3"
+urllib3-future = ">=2.12.900,<3"
 wassima = ">=1.0.1,<2"
 
 [package.extras]
+brotli = ["urllib3-future[brotli]"]
+full = ["orjson (>=3,<4)", "urllib3-future[brotli,socks,ws,zstd]"]
 http3 = ["urllib3-future[qh3]"]
-ocsp = ["cryptography (>=41.0.0,<43.0.0)"]
+ocsp = ["urllib3-future[qh3]"]
 socks = ["urllib3-future[socks]"]
 speedups = ["orjson (>=3,<4)", "urllib3-future[brotli,zstd]"]
+ws = ["urllib3-future[ws]"]
+zstd = ["urllib3-future[zstd]"]
 
 [[package]]
 name = "numba"
@@ -2156,4 +2147,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "223b4ae3e3dad0bbf5fe72a9603ea8659c685f02686e6dec436115de02ed3d5a"
+content-hash = "8cdd7c0ba1e244f3be0cf23b4682b0c50361409f5c8c1bca98df31f50f16316b"
