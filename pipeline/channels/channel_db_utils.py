@@ -1115,9 +1115,9 @@ def fetch_notify_entries(
         SELECT 
             plog.fid, 
             plog.channel_id,
-            bool_or(config.is_tokens) as is_token
+            coalesce(bool_or(config.is_tokens), false) as is_token
         FROM k3l_channel_points_log AS plog
-        INNER JOIN k3l_channel_rewards_config AS config 
+        LEFT JOIN k3l_channel_rewards_config AS config
             ON (config.channel_id = plog.channel_id)
         WHERE 
             plog.model_name='cbrt_weighted'
