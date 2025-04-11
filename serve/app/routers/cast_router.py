@@ -22,6 +22,7 @@ router = APIRouter(tags=["Casts"])
 
 async def get_user_pinned_channels(fid: int) -> list[str]:
     endpoint = f"{settings.CURA_API_ENDPOINT}/internal/user-pinned-channels"
+    logger.info(f"Getting pinned channels for fid {fid}")
     resp = await niquests.apost(
         endpoint,
         headers={"Authorization": f"Bearer {settings.CURA_API_KEY}"},
@@ -105,8 +106,9 @@ async def get_popular_casts_for_fid(
             )
             channel_ids = {row["channel_id"] for row in rows}
         pinned_channels = set(await get_user_pinned_channels(fid))
+        logger.info(f"Pinned channel_ids for fid {fid}: {pinned_channels}")
         channel_ids |= pinned_channels
-        logger.info(f"channel_ids: {channel_ids}")
+        logger.info(f"channel_ids for fid {fid}: {channel_ids}")
         if len(channel_ids) == 0:
             logger.info(f"No channels found for fid: {fid}")
             return {"result": []}
@@ -143,7 +145,7 @@ async def get_popular_casts_for_fid(
                 error_channel_ids.append(task_id)
             else:
                 success_channel_ids.append(task_id)
-                casts.extend(cast | extra for cast in result["result"])
+                casts.extend(dict(cast) | extra for cast in result["result"])
         if len(timedout_channel_ids) > 0:
             logger.error(f"timedout_channel_ids: {timedout_channel_ids}")
         if len(error_channel_ids) > 0:
