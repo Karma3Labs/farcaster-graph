@@ -157,6 +157,8 @@ async def get_popular_casts_for_fid(
             return (0 if d["channel_id"] in pinned_channels else 1, d["age_hours"])
 
         sorted_casts = sorted(casts, key=cast_key)
+        for cast in sorted_casts:
+            del cast['channel_id']
         return {"result": sorted_casts}
     else:
         try:
