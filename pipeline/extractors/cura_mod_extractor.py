@@ -53,7 +53,7 @@ def fetch_cura_hide_list() -> pd.DataFrame:
             }
         )
         timeouts=(connect_timeout_s, read_timeout_s)
-        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/channel-hide-list")
+        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/channel-hide-list")
         logger.info(f"url: {url}")   
         # TODO parallelize this
         response = session.post(url, json={}, timeout=timeouts)
