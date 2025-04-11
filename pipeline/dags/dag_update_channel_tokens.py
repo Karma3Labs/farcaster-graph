@@ -37,10 +37,10 @@ with DAG(
     @task_group(group_id='tg_all')
     def tg_all():
 
-        prepare_airdrop = BashOperator(
-            task_id="prepare_airdrop",
-            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
-            dag=dag)
+        # prepare_airdrop = BashOperator(
+        #     task_id="prepare_airdrop",
+        #     bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
+        #     dag=dag)
 
         prepare_airdrop8 = BashOperator(
             task_id="prepare_airdrop8",
@@ -48,10 +48,10 @@ with DAG(
                             " -t prep -s airdrop -r {{ run_id }} -p eigen8",
             dag=dag)
 
-        prepare_weekly = BashOperator(
-            task_id="prepare_weekly",
-            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
-            dag=dag)
+        # prepare_weekly = BashOperator(
+        #     task_id="prepare_weekly",
+        #     bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s weekly -r {{ run_id }}",
+        #     dag=dag)
 
         prepare_weekly8 = BashOperator(
             task_id="prepare_weekly8",
@@ -76,17 +76,17 @@ with DAG(
             conf={"trigger": "update_channel_tokens"},
         )
 
-        prepare_airdrop >> prepare_weekly >> distribute >> verify >> trigger_notify_dag
-        prepare_airdrop8 >> prepare_weekly8
+        # prepare_airdrop >> prepare_weekly >> distribute >> verify >> trigger_notify_dag
+        prepare_airdrop8 >> prepare_weekly8 >> distribute >> verify >> trigger_notify_dag
 
     @task_group(group_id='tg_skip_weekly')
     def tg_skip_weekly():
         # WARNING: DRY principle breaks down in Airflow task definitions
         # ...so unfortunately we have to repeat ourself here
-        prepare_airdrop = BashOperator(
-            task_id="prepare_airdrop",
-            bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
-            dag=dag)
+        # prepare_airdrop = BashOperator(
+        #     task_id="prepare_airdrop",
+        #     bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",
+        #     dag=dag)
 
         prepare_airdrop8 = BashOperator(
             task_id="prepare_airdrop8",
@@ -103,8 +103,8 @@ with DAG(
             task_id="verify",
             bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t verify",
             dag=dag)
-        prepare_airdrop >> distribute >> verify
-        prepare_airdrop8
+        # prepare_airdrop >> distribute >> verify
+        prepare_airdrop8 >> distribute >> verify
 
     def get_last_successful_dag_run(dag_id):
         dag_runs = DagRun.find(dag_id=dag_id, state=DagRunState.SUCCESS)

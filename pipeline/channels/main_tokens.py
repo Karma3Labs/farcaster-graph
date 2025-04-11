@@ -162,9 +162,9 @@ def distribute_tokens():
     # logger.error("Short-circuiting token distribution.")
     # return
     if settings.IS_TEST:
-        logger.warning("Skipping token distribution in test mode.")
+        logger.warning("Test mode: skipping token distribution.")
         return
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     upsert_timeout_ms = 180_000
     retries = Retry(
         total=3,
@@ -201,6 +201,7 @@ def distribute_tokens():
             tax_pct = channel_config['token_tax_pct']
             tax_amount = int(total_distrib_amt * tax_pct)
             logger.info(f"Total tax amount: {tax_amount}")
+            logger.info(f"Distributing tokens for channel '{channel_id}'")
             scm_distribute(
                 http_session=s,
                 dist_id=dist_id,
@@ -227,6 +228,8 @@ def scm_distributionId(dist_id, batch_id):
     return f"{dist_id}-{batch_id}"
 
 def scm_distribute(http_session, dist_id, batch_id, channel_id, tax_amt, distributions):
+    # logger.error("Short-circuiting token distribution.")
+    # return
     did = scm_distributionId(dist_id, batch_id)
     logger.info(
         f"call smartcontractmgr for distributionId: {did} for channelId: '{channel_id}' with taxAmount: {tax_amt}"
@@ -262,7 +265,7 @@ def scm_distribute(http_session, dist_id, batch_id, channel_id, tax_amt, distrib
         
 
 def verify_distribution():
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     upsert_timeout_ms = 120_000
     submitted_dist_ids_list = channel_db_utils.fetch_distribution_ids(
         logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS, TokenDistStatus.SUBMITTED

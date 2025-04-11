@@ -1082,11 +1082,11 @@ def insert_tokens_log(
                     """ 
                     logger.info(f"Executing: {update_sql}")
                     cursor.execute(update_sql)
-                    logger.info(f"Updated channel rewards config for {channel_id}")
+                    logger.info(f"Updated channel rewards config for channel: {channel_id}")
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
-                logger.info(f"Inserted rows: {cursor.rowcount} for {dist_id}")
+                logger.info(f"Inserted rows: {cursor.rowcount} for dist_id:{dist_id}")
     except Exception as e:
         logger.error(e)
         raise e
