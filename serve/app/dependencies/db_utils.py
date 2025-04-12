@@ -4,13 +4,14 @@ import pytz
 import json
 from enum import Enum
 
-from ..config import settings
+from ..config import settings, DBVersion
 from app.models.score_model import ScoreAgg, Weights, Voting
 from app.models.channel_model import (
     ChannelPointsOrderBy,
     ChannelEarningsOrderBy,
     ChannelEarningsType,
     ChannelEarningsScope,
+    ChannelFidType
 )
 from app.models.feed_model import SortingOrder, CastsTimeDecay
 from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
@@ -475,9 +476,8 @@ async def get_channel_stats(
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
-async def get_channel_metrics(
+async def get_channel_cast_metrics(
     channel_id: str,
-    limit: int,
     pool: Pool
 ):
     sql_query = """
@@ -492,9 +492,54 @@ async def get_channel_metrics(
     FROM k3l_channel_metrics
     WHERE channel_id = $1
     GROUP BY metric
-    LIMIT $2
     """
-    return await fetch_rows(channel_id, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
+
+async def get_channel_fid_metrics(
+    channel_id: str,
+    fid_type: ChannelFidType,
+    pool: Pool
+):
+
+    timestamp_col = 'followedat' if fid_type == ChannelFidType.FOLLOWER else 'memberat'
+    table_name = 'warpcast_followers' if fid_type == ChannelFidType.FOLLOWER \
+                else 'warpcast_members'
+    metric_name = 'cumulative_weekly_followers' if fid_type == ChannelFidType.FOLLOWER \
+                else 'cumulative_weekly_members'
+    sql_query = f"""
+    WITH
+    time_vars as (
+        SELECT
+            utc_offset,
+            end_week_9amoffset(now()::timestamp - '2 week'::interval, utc_offset) as start_excl_ts
+        FROM pg_timezone_names WHERE LOWER(name) = 'america/los_angeles'
+    ),
+    metric as (
+        SELECT
+            channel_id,
+            end_week_9amoffset(to_timestamp({timestamp_col})::timestamp, time_vars.utc_offset) as metric_ts,
+            count(1) as int_value
+        FROM {table_name} CROSS JOIN time_vars
+        WHERE channel_id=$1
+        GROUP BY channel_id, metric_ts
+    ),
+    metric_values as (
+        SELECT
+            metric_ts,
+            sum(int_value) over (order by metric_ts asc rows between unbounded preceding and current row) as int_value
+        FROM metric
+    )
+    SELECT
+        '{metric_name}' as metric,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'as_of_utc', metric_ts,
+                'value', int_value
+            ) ORDER BY metric_ts DESC
+        ) as values
+    FROM metric_values
+    """
+    return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
 
 async def get_top_openrank_channel_profiles(
         channel_id: str,
@@ -2100,8 +2145,9 @@ async def get_top_channel_followers(
         channel_id
     FROM warpcast_followers
     WHERE channel_id = $1
-    AND insert_ts=(select max(insert_ts) 
-            FROM warpcast_followers where channel_id=$1)
+    {"AND insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
+        if settings.DB_VERSION == DBVersion.EIGEN2 else ""
+    }
     ),
     followers_data as (
     SELECT
@@ -2366,7 +2412,7 @@ async def get_top_channel_repliers(
         limit: int,
         pool: Pool
 ):
-    sql_query = """
+    sql_query = f"""
         WITH 
         non_member_followers as (
           SELECT 
@@ -2377,11 +2423,14 @@ async def get_top_channel_repliers(
           LEFT JOIN warpcast_members as wm 
             ON (wm.fid = wf.fid 
                 AND wm.channel_id = wf.channel_id 
-                AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)
+                {"AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)"
+                    if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
                )
           INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
-          AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)
-          AND wm.fid IS NULL
+          WHERE 
+          wm.fid IS NULL
+          {"AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
+                if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
         ), 
         followers_data as (
             SELECT 

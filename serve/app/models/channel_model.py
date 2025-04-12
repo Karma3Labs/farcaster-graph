@@ -37,5 +37,6 @@ class ChannelEarningsType(StrEnum):
     POINTS = 'points'
     TOKENS = 'tokens'
 
-
-
+class ChannelFidType(StrEnum):
+    MEMBER = 'member'
+    FOLLOWER = 'follower'

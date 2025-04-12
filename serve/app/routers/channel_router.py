@@ -16,6 +16,7 @@ from ..models.channel_model import (
     ChannelEarningsOrderBy,
     ChannelEarningsType,
     ChannelEarningsScope,
+    ChannelFidType
 )
 from ..models.feed_model import (
     SortingOrder,
@@ -32,6 +33,7 @@ from ..models.feed_model import (
 from ..dependencies import db_pool, db_utils
 from .. import utils
 from ..utils import fetch_channel
+from ..config import settings, DBVersion
 
 router = APIRouter()
 
@@ -236,7 +238,25 @@ async def get_channel_stats(
         pool=pool)
     return {"result": stats}
 
-@router.get("/casts/{channel}/metrics", tags=["Channel Feed", "Metrics"])
+@router.get("/casts/{channel}/metrics", tags=["Deprecated"])
+async def get_channel_cast_metrics(
+    channel: str,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    """
+    Get basic metrics about a channel. \n
+    """
+    metrics = await db_utils.get_channel_cast_metrics(
+        channel_id=channel,
+        pool=pool,
+    )
+    result = []
+    for m in metrics:
+        result.append({"metric": m[0], "value": json.loads(m[1])})
+    return {"result": result}
+
+
+@router.get("/metrics/{channel}/", tags=["Channel Feed", "Metrics"])
 async def get_channel_metrics(
     channel: str,
     pool: Pool = Depends(db_pool.get_db),
@@ -244,14 +264,29 @@ async def get_channel_metrics(
     """
     Get basic metrics about a channel. \n
     """
-    metrics = await db_utils.get_channel_metrics(
+    metrics = await db_utils.get_channel_cast_metrics(
         channel_id=channel,
-        limit=100_000,
         pool=pool,
     )
     result = []
     for m in metrics:
         result.append({"metric": m[0], "value": json.loads(m[1])})
+    if settings.DB_VERSION == DBVersion.EIGEN8:
+        # TODO: This is a hack to get follower and member metrics. Pre-compute and store in DB.
+        follower_metrics = await db_utils.get_channel_fid_metrics(
+            channel_id=channel,
+            fid_type=ChannelFidType.FOLLOWER,
+            pool=pool
+        )
+        for m in follower_metrics:
+            result.append({"metric": m[0], "value": json.loads(m[1])})
+        member_metrics = await db_utils.get_channel_fid_metrics(
+            channel_id=channel,
+            fid_type=ChannelFidType.MEMBER,
+            pool=pool
+        )
+        for m in member_metrics:
+            result.append({"metric": m[0], "value": json.loads(m[1])})
     return {"result": result}
 
 @router.post("/rankings/{channel}/fids", tags=["Deprecated"])
