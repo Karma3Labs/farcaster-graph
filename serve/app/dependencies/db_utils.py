@@ -2923,8 +2923,8 @@ async def get_trending_channels(
     )
     SELECT
         ch.id,
-        top_channels.score,
-        ch.pinnedcasthash
+        top_channels.score
+        {', ch.pinnedcasthash' if settings.DB_VERSION == DBVersion.EIGEN2 else ''}
     FROM top_channels
     INNER JOIN warpcast_channels_data as ch ON (ch.url = top_channels.url)
     ORDER BY top_channels.score DESC
