@@ -105,9 +105,9 @@ async def get_popular_casts_for_fid(
                 fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
             )
             channel_ids = {row["channel_id"] for row in rows}
-        pinned_channels = set(await get_user_pinned_channels(fid))
-        logger.info(f"Pinned channel_ids for fid {fid}: {pinned_channels}")
-        channel_ids |= pinned_channels
+            pinned_channels = set(await get_user_pinned_channels(fid))
+            logger.info(f"Pinned channel_ids for fid {fid}: {pinned_channels}")
+            channel_ids |= pinned_channels
         logger.info(f"channel_ids for fid {fid}: {channel_ids}")
         if len(channel_ids) == 0:
             logger.info(f"No channels found for fid: {fid}")
