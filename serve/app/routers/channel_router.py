@@ -2,6 +2,7 @@ from typing import Annotated
 import urllib.parse
 import json
 
+from itertools import batched
 from fastapi import APIRouter, Depends, Query, HTTPException
 from loguru import logger
 from asyncpg.pool import Pool
@@ -288,6 +289,34 @@ async def get_channel_metrics(
         for m in member_metrics:
             result.append({"metric": m[0], "value": json.loads(m[1])})
     return {"result": result}
+
+@router.post("/filter/{channel}/fids", tags=["Leaderboard"])
+async def filter_channel_fids(
+        channel: str,
+        fids: list[int],
+        filter: ChannelFidType = Query(ChannelFidType.FOLLOWER),
+        pool: Pool = Depends(db_pool.get_db)
+):
+    """
+  Given a list of input fids, return a list of fids
+    that are filtered by the given filter. \n
+    Example: [1, 2] \n
+  Parameter 'filter' is used to indicate if the list should be filtered by followers or members. \n
+  By default, filter is 'follower'
+  """
+    results = []
+    i = 0
+    for batch in batched(fids, settings.FID_BATCH_SIZE):
+        logger.info(f"Processing batch {i}")
+        filtered_fids = await db_utils.filter_channel_fids(
+            channel_id=channel,
+            fids=batch,
+            filter=filter,
+            pool=pool)
+        results.extend([d['fid'] for d in filtered_fids])
+        i += 1
+    return {"result": results}
+
 
 @router.post("/rankings/{channel}/fids", tags=["Deprecated"])
 async def get_channel_rank_for_fids(

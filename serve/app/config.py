@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     EIGENTRUST_FLAT_TAIL: int = 2
 
     FEED_TIMEOUT_SECS: int = 30
+    FID_BATCH_SIZE: int = 1000
 
     CURA_SCMGR_URL: str = "changeme"
     CURA_SCMGR_USERNAME: str = "changeme"

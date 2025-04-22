@@ -1064,6 +1064,26 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
         """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
+async def filter_channel_fids(
+        channel_id: str,
+        fids: list[int],
+        filter: ChannelFidType,
+        pool: Pool
+):
+    if filter == ChannelFidType.FOLLOWER:
+        table_name = 'warpcast_followers'
+    elif filter == ChannelFidType.MEMBER:
+        table_name = 'warpcast_members'
+    else:
+        return []
+    sql_query = f"""
+    SELECT fid
+    FROM {table_name}
+    WHERE channel_id = $1
+    AND fid = ANY($2::integer[])
+    """
+    return await fetch_rows(channel_id, fids, sql_query=sql_query, pool=pool)
+
 
 async def get_channel_profile_ranks(
         channel_id: str,
