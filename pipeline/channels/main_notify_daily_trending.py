@@ -1,10 +1,12 @@
 # standard dependencies
 import sys
 import argparse
+from pathlib import Path
 
 # local dependencies
 from config import settings
 import cura_utils
+from . import channel_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -24,19 +26,23 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def notify():
+def notify(channels_csv: str):
     fids = cura_utils.fetch_frame_users()
     logger.debug(f"Frame users: {fids}")
+
+    cids = channel_utils.read_trending_channel_ids_csv(channels_csv)
+    logger.debug(f"Trending channels: {cids}")
     return
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--run",
-        action="store_true",
-        help="dummy arg to prevent accidental execution",
-        required=True
+        "-c",
+        "--csv",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
+        required=True,
     )
     parser.add_argument(
         "--dry-run",
@@ -50,4 +56,4 @@ if __name__ == "__main__":
     if args.dry_run:
         settings.IS_TEST = True
 
-    notify()
+    notify(args.csv)
