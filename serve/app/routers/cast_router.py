@@ -100,6 +100,7 @@ async def get_popular_casts_for_fid(
         if metadata.channels is not None:
             # TODO(ek): validate channel IDs?
             channel_ids = set(metadata.channels)
+            pinned_channels = set()
         else:
             rows = await db_utils.get_channel_ids_for_fid(
                 fid=fid, limit=settings.MAX_CHANNELS_PER_USER, pool=pool
