@@ -1,15 +1,13 @@
 # standard dependencies
 import sys
 import argparse
-import urllib.parse
 from urllib3.util import Retry
-import hashlib
-import datetime
 
 # local dependencies
 from config import settings
 from . import channel_db_utils
 import utils
+import cura_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -31,44 +29,6 @@ logger.add(sys.stdout,
            level=0)
 
 load_dotenv()
-
-
-def cura_notify(
-    session: niquests.Session,
-    timeouts: tuple,
-    channel_id: str,
-    is_token: bool,
-    fids: list[int],
-    cutoff_time: datetime.datetime,
-):
-    notification_id = hashlib.sha256(f"{channel_id}-{cutoff_time}".encode("utf-8")).hexdigest()
-    logger.info(f"Sending notification for channel {channel_id}-{cutoff_time}")
-    title = f"/{channel_id} leaderboard updated!"
-    if is_token:
-        body = f"Claim your /{channel_id} tokens!"
-    else:
-        body = f"Check your /{channel_id} rank!"
-    req = {
-        "title": title,
-        "body": body,
-        "notificationId": notification_id,
-        "channelId": channel_id,
-        "fids": fids
-    }
-    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
-    logger.info(f"{url}: {req}")
-    if settings.IS_TEST:
-        logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
-        logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
-        return
-    response = session.post(url, json=req, timeout=timeouts)
-    res_json = response.json()
-    if response.status_code != 200:
-        logger.error(f"Failed to send notification: {res_json}")
-        raise Exception(f"Failed to send notification: {res_json}")
-    else:
-        logger.info(f"Notification sent: {res_json}")
-
    
 def group_and_chunk_df(
     df: pd.DataFrame, group_by_columns: list[str], collect_column: str, chunk_size: int
@@ -113,7 +73,7 @@ def notify():
             for fids_chunk in fids:
                 fids_chunk = fids_chunk.tolist() # convert numpy array to scalar list
                 logger.info(f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_chunk}")
-                cura_notify(session, timeouts, channel_id, is_token, fids_chunk, cutoff_time)
+                cura_utils.leaderboard_notify(session, timeouts, channel_id, is_token, fids_chunk, cutoff_time)
             logger.info(f"Notifications sent for channel '{channel_id}'")
         logger.info("Notifications sent for all channels")    
 

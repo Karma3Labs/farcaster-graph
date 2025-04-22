@@ -1,21 +1,16 @@
 # standard dependencies
 import sys
 import argparse
-from pathlib import Path
-import random
-import urllib.parse
 
 # local dependencies
 from config import settings
-from channels import channel_utils
 import utils
+import cura_utils
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
 import pandas as pd
-from urllib3.util import Retry
-import niquests
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
@@ -33,44 +28,8 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-def fetch_cura_hide_list() -> pd.DataFrame:
-    retries = Retry(
-        total=3,
-        backoff_factor=0.1,
-        status_forcelist=[502, 503, 504],
-        allowed_methods={"GET"},
-    )
-    connect_timeout_s = 5.0
-    read_timeout_s = 30.0
-    df = pd.DataFrame()
-    with niquests.Session(retries=retries) as session:
-        # reuse TCP connection for multiple scm requests
-        session.headers.update(
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
-            }
-        )
-        timeouts=(connect_timeout_s, read_timeout_s)
-        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/channel-hide-list")
-        logger.info(f"url: {url}")   
-        # TODO parallelize this
-        response = session.post(url, json={}, timeout=timeouts)
-        res_json = response.json()
-        if response.status_code != 200:
-            logger.error(f"Failed to fetch channel-hide-list: {res_json}")
-            raise Exception(f"Failed to fetch channel-hide-list: {res_json}")
-        else:
-            logger.trace(f"channel-hide-list: {res_json}")
-            # Read the response content into a pandas DataFrame
-            data = pd.DataFrame.from_records(res_json.get('data'))
-            print(len(data))
-            df = pd.concat([df, data], axis=0)
-    return df
-
 def main() -> pd.DataFrame:
-    df = fetch_cura_hide_list()
+    df = cura_utils.fetch_channel_hide_list()
     rename_cols = {
         'channelId': 'channel_id',
         'hiddenFid': 'hidden_fid',

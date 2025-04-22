@@ -37,5 +37,5 @@ function log() {
 
 source $VENV/bin/activate
 #pip install -r requirements.txt
-python3 -m channels.main_notify $RUN_FLAG $DRYRUN_FLAG 
+python3 -m channels.main_notify_leaderboard $RUN_FLAG $DRYRUN_FLAG
 deactivate
