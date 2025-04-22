@@ -304,6 +304,8 @@ async def filter_channel_fids(
   Parameter 'filter' is used to indicate if the list should be filtered by followers or members. \n
   By default, filter is 'follower'
   """
+    if not (1 <= len(fids) <= 100_000):
+        raise HTTPException(status_code=400, detail="Input should have between 1 and 100,000 entries")
     results = []
     i = 0
     for batch in batched(fids, settings.FID_BATCH_SIZE):
