@@ -84,7 +84,7 @@ class FarconFeed(BaseModel):
     score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.000000001
     reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 0
     cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
-    weights: str = 'L1C0R1Y1'
+    weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = SortingOrder.HOUR  # for fresher posts made during the day
     time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = CastsTimeDecay.HOUR
     normalize: bool = True
