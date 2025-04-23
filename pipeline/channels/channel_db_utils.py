@@ -176,6 +176,46 @@ async def filter_channel_followers(
         """
     return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
 
+@Timer(name="fetch_channels_trend_score")
+async def fetch_channels_trend_score(
+    logger: logging.Logger, 
+    pg_dsn: str, 
+    channel_ids: list[str],
+):
+    pool = await asyncpg.create_pool(pg_dsn,
+                                     min_size=1,
+                                     max_size=5)
+    sql_query = f"""
+        WITH
+        filtered_channels AS (
+            SELECT
+                id,
+                url
+            FROM warpcast_channels_data  
+            WHERE id = ANY(ARRAY{list(channel_ids)})
+        ),
+        top_fids AS (
+            SELECT
+                profile_id as fid, rank
+            FROM
+                k3l_rank
+            WHERE strategy_id=9 AND rank <= 10000
+        )
+        SELECT
+            ch.id,
+            count(*) as score
+        FROM k3l_recent_parent_casts AS casts
+        INNER JOIN filtered_channels AS ch ON (ch.url = casts.root_parent_url)
+        INNER JOIN top_fids ON (top_fids.fid = casts.fid
+            AND casts.timestamp > now() - interval '1 day'
+            AND casts.root_parent_url IS NOT NULL)
+        GROUP BY ch.id
+        ORDER BY score DESC
+        """
+    return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+
+
+
 def prep_channel_rank_log(
     logger: logging.Logger,
     pg_dsn: str,

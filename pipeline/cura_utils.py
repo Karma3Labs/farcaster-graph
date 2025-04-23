@@ -11,6 +11,7 @@ from loguru import logger
 import niquests
 import pandas as pd
 from urllib3.util import Retry
+import pytz
 
 
 def leaderboard_notify(
@@ -48,6 +49,42 @@ def leaderboard_notify(
         raise Exception(f"Failed to send notification: {res_json}")
     else:
         logger.info(f"Notification sent: {res_json}")
+
+def daily_cast_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    fids: list[int],
+):
+    pacific_tz = pytz.timezone('US/Pacific')
+    # hash is based on day so we don't risk sending out more than one notification
+    pacific_9am_str = datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d")
+    notification_id = hashlib.sha256(f"{channel_id}-{pacific_9am_str}".encode("utf-8")).hexdigest()
+    logger.info(f"Sending notification for channel {channel_id}-{pacific_9am_str}")
+    title = f"What's trending on /{channel_id} ?"
+    body = f"See what you missed in /{channel_id} in the last 24 hours"
+    req = {
+        "title": title,
+        "body": body,
+        "notificationId": notification_id,
+        "channelId": channel_id,
+        "fids": fids
+    }
+    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
+    logger.info(f"{url}: {req}")
+    if settings.IS_TEST:
+        logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
+        logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
+        return
+    response = session.post(url, json=req, timeout=timeouts)
+    res_json = response.json()
+    if response.status_code != 200:
+        logger.error(f"Failed to send notification: {res_json}")
+        raise Exception(f"Failed to send notification: {res_json}")
+    else:
+        logger.info(f"Notification sent: {res_json}")
+
+
 
 def fetch_channel_hide_list() -> pd.DataFrame:
     retries = Retry(
@@ -94,7 +131,6 @@ def fetch_frame_users() -> list[int]:
     )
     connect_timeout_s = 5.0
     read_timeout_s = 30.0
-    df = pd.DataFrame()
     with niquests.Session(retries=retries) as session:
         # reuse TCP connection for multiple scm requests
         session.headers.update(

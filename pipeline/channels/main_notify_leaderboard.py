@@ -1,7 +1,6 @@
 # standard dependencies
 import sys
 import argparse
-from urllib3.util import Retry
 
 # local dependencies
 from config import settings
@@ -15,6 +14,8 @@ from loguru import logger
 import niquests
 import numpy as np
 import pandas as pd
+from urllib3.util import Retry
+
 
 # Configure logger
 logger.remove()
