@@ -117,6 +117,8 @@ class Settings(BaseSettings):
     CURA_SCMGR_CONNECT_TIMEOUT_SECS: float = 5.0
     CURA_SCMGR_BATCH_SIZE: int = 250
 
+    FID_BATCH_SIZE: int = 250
+
     CURA_FE_API_URL: str = 'changeme'
     CURA_FE_API_KEY: str = 'changeme'
     CURA_NOTIFY_CHUNK_SIZE: int = 100
@@ -168,6 +170,12 @@ class Settings(BaseSettings):
     def POSTGRES_ASYNC_URI(self) -> SecretStr:
         return SecretStr(f"postgresql://{self.DB_USER}:{self.DB_PASSWORD.get_secret_value()}"\
                          f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"\
+                            f"?random_page_cost=1.1")
+
+    @computed_field
+    def ALT_POSTGRES_ASYNC_URI(self) -> SecretStr:
+        return SecretStr(f"postgresql://{self.ALT_DB_USER}:{self.ALT_DB_PASSWORD.get_secret_value()}"\
+                         f"@{self.ALT_DB_HOST}:{self.ALT_DB_PORT}/{self.ALT_DB_NAME}"\
                             f"?random_page_cost=1.1")
 
 settings = Settings()

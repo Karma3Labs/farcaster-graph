@@ -157,7 +157,25 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         ORDER BY cast_score DESC;
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
-   
+
+@Timer(name="filter_channel_followers")
+async def filter_channel_followers(
+    logger: logging.Logger, 
+    pg_dsn: str, 
+    channel_id: str,
+    fids: list[int],
+):
+    pool = await asyncpg.create_pool(pg_dsn,
+                                     min_size=1,
+                                     max_size=5)
+    sql_query = f"""
+        SELECT fid
+        FROM warpcast_followers
+        WHERE channel_id = '{channel_id}'
+        AND fid = ANY(ARRAY{list(fids)})
+        """
+    return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+
 def prep_channel_rank_log(
     logger: logging.Logger,
     pg_dsn: str,
