@@ -76,7 +76,7 @@ with DAG(
 
         trigger_notify_dag = TriggerDagRunOperator(
             task_id='trigger_notify_dag',
-            trigger_dag_id='update_channel_notify',
+            trigger_dag_id='notify_channel_leaderboard',
             execution_date='{{ macros.datetime.now() }}',
             conf={"trigger": "update_channel_tokens"},
         )
