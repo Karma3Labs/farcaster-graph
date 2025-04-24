@@ -40,13 +40,13 @@ with DAG(
             task_id="notify",
             bash_command=(
                 "cd /pipeline && ./run_notify_channel_daily_trending.sh "
-                " -w . -v .venv -c channels/Trending_Channels.csv -d "),
+                " -w . -v .venv -c channels/Trending_Channels.csv "),
             dag=dag)
     
     @task.branch(task_id="check_last_successful")
     def check_last_successful(**context) -> bool:
         now = datetime.now(pytz.utc)
-        prev_run_date = context['prev_data_interval_start_success']
+        prev_run_date = context['prev_data_interval_end_success']
         daily_run = _9ampacific_in_utc_time()
         print(f"now: {now}, prev_run_date: {prev_run_date}, daily_run: {daily_run}")
         if (
