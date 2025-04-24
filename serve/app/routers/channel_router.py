@@ -26,6 +26,7 @@ from ..models.feed_model import (
     FeedMetadata,
     TrendingFeed,
     PopularFeed,
+    FarconFeed,
     ScoresMetadata,
     SearchScores,
     ChannelTimeframe,
@@ -433,6 +434,7 @@ async def get_popular_channel_casts(
   By default, offset=0, limit=25, and lite=true
     i.e., returns recent 25 **Trending** casts.
   """
+    logger.info(f"get_popular_channel_casts: channel={channel}")
     metadata = None
     if provider_metadata:
       # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
@@ -499,10 +501,29 @@ async def get_popular_channel_casts(
                 sorting_order=metadata.sorting_order,
                 pool=pool,
             )
-    else:
-      # defaults to Trending because Neynar calls this API for Trending feed
-      if lite:
+    elif metadata and type(metadata) is FarconFeed:
         casts = await db_utils.get_trending_channel_casts_lite(
+          channel_id=channel,
+          channel_url=channel_url,
+          channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
+          max_cast_age=CASTS_AGE[metadata.lookback],
+          agg=metadata.agg,
+          score_threshold=metadata.score_threshold,
+          reactions_threshold=metadata.reactions_threshold,
+          cutoff_ptile=metadata.cutoff_ptile,
+          weights=parsed_weights,
+          shuffle=metadata.shuffle,
+          time_decay=metadata.time_decay,
+          normalize=metadata.normalize,
+          offset=offset,
+          limit=limit,
+          sorting_order=metadata.sorting_order,
+          pool=pool
+        )
+    else:
+      # defaults to Trending because Neynar calls this API for Trending Feed
+      if lite:
+        casts = await db_utils.get_trending_channel_casts_lite_memoized(
           channel_id=channel,
           channel_url=channel_url,
           channel_strategy=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],

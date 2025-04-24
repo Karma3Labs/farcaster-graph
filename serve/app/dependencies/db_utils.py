@@ -1827,7 +1827,7 @@ async def get_popular_channel_casts_lite(
     FROM scores
     WHERE
         cast_score >= {score_threshold}
-        AND reaction_count > {reactions_threshold}
+        AND reaction_count >= {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -1949,7 +1949,7 @@ async def get_popular_channel_casts_heavy(
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE
         cast_score >= {score_threshold}
-        AND reaction_count > {reactions_threshold}
+        AND reaction_count >= {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
     LIMIT $5
@@ -2630,7 +2630,7 @@ async def get_trending_channel_casts_heavy(
         WHERE
             ci.timestamp > now() - interval '{max_cast_age}'
             AND scores.cast_score >= {score_threshold}
-            AND scores.reaction_count > {reactions_threshold}
+            AND scores.reaction_count >= {reactions_threshold}
     ),
     feed AS (
         SELECT
@@ -2674,6 +2674,44 @@ async def get_trending_channel_casts_heavy(
         )
     )
 )
+async def get_trending_channel_casts_lite_memoized(
+        channel_id: str,
+        channel_url: str,
+        channel_strategy: str,
+        max_cast_age: str,
+        agg: ScoreAgg,
+        score_threshold: float,
+        reactions_threshold: int,
+        cutoff_ptile: int,
+        weights: Weights,
+        shuffle: bool,
+        time_decay: CastsTimeDecay,
+        normalize: bool,
+        offset: int,
+        limit: int,
+        sorting_order: SortingOrder,
+        pool: Pool,
+):
+    # You can use 'extra_arg' here if needed
+    return await get_trending_channel_casts_lite(
+        channel_id=channel_id,
+        channel_url=channel_url,
+        channel_strategy=channel_strategy,
+        max_cast_age=max_cast_age,
+        agg=agg,
+        score_threshold=score_threshold,
+        reactions_threshold=reactions_threshold,
+        cutoff_ptile=cutoff_ptile,
+        weights=weights,
+        shuffle=shuffle,
+        time_decay=time_decay,
+        normalize=normalize,
+        offset=offset,
+        limit=limit,
+        sorting_order=sorting_order,
+        pool=pool,
+    )
+
 async def get_trending_channel_casts_lite(
         channel_id: str,
         channel_url: str,
@@ -2690,7 +2728,7 @@ async def get_trending_channel_casts_lite(
         offset: int,
         limit: int,
         sorting_order: SortingOrder,
-        pool: Pool
+        pool: Pool,
 ):
     logger.info("get_trending_channel_casts_lite")
 
@@ -2792,7 +2830,7 @@ async def get_trending_channel_casts_lite(
         FROM scores
         WHERE
             cast_score >= {score_threshold}
-            AND reaction_count > {reactions_threshold}
+            AND reaction_count >= {reactions_threshold}
     )
     SELECT
         *
