@@ -1826,7 +1826,7 @@ async def get_popular_channel_casts_lite(
         cast_score
     FROM scores
     WHERE
-        cast_score > {score_threshold}
+        cast_score >= {score_threshold}
         AND reaction_count > {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
@@ -1948,7 +1948,7 @@ async def get_popular_channel_casts_heavy(
     FROM k3l_recent_parent_casts as casts
     INNER JOIN scores on casts.hash = scores.cast_hash
     WHERE
-        cast_score > {score_threshold}
+        cast_score >= {score_threshold}
         AND reaction_count > {reactions_threshold}
     ORDER BY {order_sql}
     OFFSET $4
@@ -2629,7 +2629,7 @@ async def get_trending_channel_casts_heavy(
         INNER JOIN k3l_channel_rank AS fids ON (ci.fid = fids.fid AND fids.channel_id = $1 AND fids.strategy_name = $3)
         WHERE
             ci.timestamp > now() - interval '{max_cast_age}'
-            AND scores.cast_score > {score_threshold}
+            AND scores.cast_score >= {score_threshold}
             AND scores.reaction_count > {reactions_threshold}
     ),
     feed AS (
@@ -2791,7 +2791,7 @@ async def get_trending_channel_casts_lite(
             NTILE(100) OVER (ORDER BY cast_score DESC) as ptile
         FROM scores
         WHERE
-            cast_score > {score_threshold}
+            cast_score >= {score_threshold}
             AND reaction_count > {reactions_threshold}
     )
     SELECT
@@ -2907,7 +2907,7 @@ async def get_channel_casts_scores_lite(
         cast_ts,
         cast_score
     FROM scores
-    WHERE cast_score > {score_threshold}
+    WHERE cast_score >= {score_threshold}
     ORDER BY {order_sql}
     """
 
