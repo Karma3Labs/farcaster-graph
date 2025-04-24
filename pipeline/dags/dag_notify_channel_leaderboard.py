@@ -25,7 +25,7 @@ def _monday_9ampacific_in_utc_time():
     return monday_utc_time
 
 with DAG(
-    dag_id='update_channel_notify',
+    dag_id='notify_channel_leaderboard',
     default_args=default_args,
     description='channel notifications started by trigger dag or manually',
     start_date=datetime(2024, 7, 10, 18),
@@ -39,7 +39,7 @@ with DAG(
 
     notify = BashOperator(
             task_id="notify",
-            bash_command="cd /pipeline && ./run_update_channel_notify.sh  -w . -v .venv -r ",
+            bash_command="cd /pipeline && ./run_notify_channel_leaderboard.sh  -w . -v .venv -r ",
             dag=dag)
     
     @task.branch(task_id="check_last_successful")

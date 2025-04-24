@@ -73,6 +73,7 @@ def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
 
 
 def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None):
+    # TODO remove this function as it is no longer used
     date_setting = "date=now()" if date_str is None else f"date='{date_str}'::date"
     update_sql = f"""
     UPDATE {temp_tbl}
@@ -148,6 +149,7 @@ def _psql_insert_copy(table, conn, keys, data_iter):
 
 @Timer(name="fetch_channel_details")
 def fetch_channel_details(pg_url: str, channel_id: str):
+    # TODO move this to channels/channel_db_utils
     engine = create_engine(pg_url)
     try:
         with engine.connect() as conn:
@@ -165,6 +167,7 @@ def fetch_channel_details(pg_url: str, channel_id: str):
 
 @Timer(name="fetch_all_channel_details")
 def fetch_all_channel_details(pg_url: str):
+    # TODO move this to channels/channel_db_utils
     sql_engine = create_engine(pg_url)
     try:
         with sql_engine.connect() as conn:
@@ -179,6 +182,7 @@ def fetch_all_channel_details(pg_url: str):
 
 @Timer(name="fetch_channel_domains_for_category")
 def fetch_channel_domains_for_category(pg_url: str, category: str):
+    # TODO move this to channels/channel_db_utils
     tmp_sql = f"select * from k3l_channel_domains where category='{category}'"
     sql_engine = create_engine(pg_url)
     try:

@@ -1,0 +1,155 @@
+# standard dependencies
+import urllib.parse
+import hashlib
+import datetime
+
+# local dependencies
+from config import settings
+
+# 3rd party dependencies
+from loguru import logger
+import niquests
+import pandas as pd
+from urllib3.util import Retry
+import pytz
+
+
+def leaderboard_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    is_token: bool,
+    fids: list[int],
+    cutoff_time: datetime.datetime,
+):
+    notification_id = hashlib.sha256(f"{channel_id}-{cutoff_time}".encode("utf-8")).hexdigest()
+    logger.info(f"Sending notification for channel {channel_id}-{cutoff_time}")
+    title = f"/{channel_id} leaderboard updated!"
+    if is_token:
+        body = f"Claim your /{channel_id} tokens!"
+    else:
+        body = f"Check your /{channel_id} rank!"
+    req = {
+        "title": title,
+        "body": body,
+        "notificationId": notification_id,
+        "channelId": channel_id,
+        "fids": fids
+    }
+    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
+    logger.info(f"{url}: {req}")
+    if settings.IS_TEST:
+        logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
+        logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
+        return
+    response = session.post(url, json=req, timeout=timeouts)
+    res_json = response.json()
+    if response.status_code != 200:
+        logger.error(f"Failed to send notification: {res_json}")
+        raise Exception(f"Failed to send notification: {res_json}")
+    else:
+        logger.info(f"Notification sent: {res_json}")
+
+def daily_cast_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    fids: list[int],
+):
+    pacific_tz = pytz.timezone('US/Pacific')
+    # hash is based on day so we don't risk sending out more than one notification
+    pacific_9am_str = datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d")
+    notification_id = hashlib.sha256(f"{channel_id}-{pacific_9am_str}".encode("utf-8")).hexdigest()
+    logger.info(f"Sending notification for channel {channel_id}-{pacific_9am_str}")
+    title = f"What's trending on /{channel_id} ?"
+    body = f"See what you missed in /{channel_id} in the last 24 hours"
+    req = {
+        "title": title,
+        "body": body,
+        "notificationId": notification_id,
+        "channelId": channel_id,
+        "fids": fids
+    }
+    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
+    logger.info(f"{url}: {req}")
+    if settings.IS_TEST:
+        logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
+        logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
+        return
+    response = session.post(url, json=req, timeout=timeouts)
+    res_json = response.json()
+    if response.status_code != 200:
+        logger.error(f"Failed to send notification: {res_json}")
+        raise Exception(f"Failed to send notification: {res_json}")
+    else:
+        logger.info(f"Notification sent: {res_json}")
+
+
+
+def fetch_channel_hide_list() -> pd.DataFrame:
+    retries = Retry(
+        total=3,
+        backoff_factor=0.1,
+        status_forcelist=[502, 503, 504],
+        allowed_methods={"GET"},
+    )
+    connect_timeout_s = 5.0
+    read_timeout_s = 30.0
+    df = pd.DataFrame()
+    with niquests.Session(retries=retries) as session:
+        # reuse TCP connection for multiple scm requests
+        session.headers.update(
+            {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
+            }
+        )
+        timeouts=(connect_timeout_s, read_timeout_s)
+        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/channel-hide-list")
+        logger.info(f"url: {url}")
+        # TODO parallelize this
+        response = session.post(url, json={}, timeout=timeouts)
+        res_json = response.json()
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch channel-hide-list: {res_json}")
+            raise Exception(f"Failed to fetch channel-hide-list: {res_json}")
+        else:
+            logger.trace(f"channel-hide-list: {res_json}")
+            # Read the response content into a pandas DataFrame
+            data = pd.DataFrame.from_records(res_json.get('data'))
+            print(len(data))
+            df = pd.concat([df, data], axis=0)
+    return df
+
+def fetch_frame_users() -> list[int]:
+    retries = Retry(
+        total=3,
+        backoff_factor=0.1,
+        status_forcelist=[502, 503, 504],
+        allowed_methods={"GET"},
+    )
+    connect_timeout_s = 5.0
+    read_timeout_s = 30.0
+    with niquests.Session(retries=retries) as session:
+        # reuse TCP connection for multiple scm requests
+        session.headers.update(
+            {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
+            }
+        )
+        timeouts=(connect_timeout_s, read_timeout_s)
+        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/warpcast-frame-users")
+        logger.info(f"url: {url}")
+        response = session.post(url, json={}, timeout=timeouts)
+        res_json = response.json()
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch warpcast-frame-users: {res_json}")
+            raise Exception(f"Failed to fetch warpcast-frame-users: {res_json}")
+        else:
+            logger.trace(f"warpcast-frame-users: {res_json}")
+            fids = res_json.get('data')
+            print(len(fids))
+    return fids

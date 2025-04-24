@@ -30,11 +30,23 @@ def read_channel_seed_fids_csv(csv_path:Path) -> pd.DataFrame:
 def read_channel_bot_fids_csv(csv_path:Path) -> pd.DataFrame:
     try:
         bots_df = pd.read_csv(csv_path)
-        # csv can have extra columns for comments or other info 
+        # csv can have extra columns for comments or other info
         # ... but channel id should not be empty
         bots_df = bots_df.dropna(subset = ['FID'])
         bots_df = bots_df.drop_duplicates(subset=['FID'], keep='last')
         return bots_df
+    except Exception as e:
+        logger.error(f"Failed to read bot data from CSV: {e}")
+        raise e
+
+def read_trending_channel_ids_csv(csv_path:Path) -> pd.DataFrame:
+    try:
+        # use pandas to read csv for convenience and easy data cleaning
+        cid_df = pd.read_csv(csv_path)
+        # csv can have extra columns for comments or other info 
+        # ... but channel id should not be empty
+        cid_df = cid_df.drop_duplicates(keep='last')
+        return cid_df
     except Exception as e:
         logger.error(f"Failed to read bot data from CSV: {e}")
         raise e
