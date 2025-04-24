@@ -92,7 +92,7 @@ async def notify(channels_csv: str):
                     fids=filtered_fids
                 )
                 notified_fids.extend(filtered_fids)
-            logger.info(f"Sent notifications for channel {cid} to {len(notified_fids)} fids")        
+            logger.info(f"Sent notifications for channel {cid} to {len(notified_fids)} fids")
             fid_set = fid_set - set(notified_fids)
     return
 

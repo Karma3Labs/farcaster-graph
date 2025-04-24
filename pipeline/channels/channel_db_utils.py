@@ -1,5 +1,4 @@
 import logging
-from typing import Callable
 from enum import StrEnum, Enum
 import tempfile
 import time
@@ -160,8 +159,8 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
 
 @Timer(name="filter_channel_followers")
 async def filter_channel_followers(
-    logger: logging.Logger, 
-    pg_dsn: str, 
+    logger: logging.Logger,
+    pg_dsn: str,
     channel_id: str,
     fids: list[int],
 ):
@@ -178,8 +177,8 @@ async def filter_channel_followers(
 
 @Timer(name="fetch_channels_trend_score")
 async def fetch_channels_trend_score(
-    logger: logging.Logger, 
-    pg_dsn: str, 
+    logger: logging.Logger,
+    pg_dsn: str,
     channel_ids: list[str],
 ):
     pool = await asyncpg.create_pool(pg_dsn,
@@ -191,7 +190,7 @@ async def fetch_channels_trend_score(
             SELECT
                 id,
                 url
-            FROM warpcast_channels_data  
+            FROM warpcast_channels_data
             WHERE id = ANY(ARRAY{list(channel_ids)})
         ),
         top_fids AS (

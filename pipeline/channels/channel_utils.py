@@ -43,7 +43,7 @@ def read_trending_channel_ids_csv(csv_path:Path) -> pd.DataFrame:
     try:
         # use pandas to read csv for convenience and easy data cleaning
         cid_df = pd.read_csv(csv_path)
-        # csv can have extra columns for comments or other info 
+        # csv can have extra columns for comments or other info
         # ... but channel id should not be empty
         cid_df = cid_df.drop_duplicates(keep='last')
         return cid_df
