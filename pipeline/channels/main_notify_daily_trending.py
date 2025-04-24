@@ -56,7 +56,7 @@ async def notify(channels_csv: str):
         fid_set = {725, 2025, 2075, 516917, 563958, 17866}
         sorted_cids = ['spih', 'openrank', 'curaverse']
 
-        retries = Retry(
+    retries = Retry(
         total=3,
         backoff_factor=0.1,
         status_forcelist=[502, 503, 504],
