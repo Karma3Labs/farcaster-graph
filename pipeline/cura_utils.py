@@ -5,6 +5,7 @@ import datetime
 
 # local dependencies
 from config import settings
+import utils
 
 # 3rd party dependencies
 from loguru import logger
@@ -29,26 +30,7 @@ def leaderboard_notify(
         body = f"Claim your /{channel_id} tokens!"
     else:
         body = f"Check your /{channel_id} rank!"
-    req = {
-        "title": title,
-        "body": body,
-        "notificationId": notification_id,
-        "channelId": channel_id,
-        "fids": fids
-    }
-    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
-    logger.info(f"{url}: {req}")
-    if settings.IS_TEST:
-        logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
-        logger.warning(f"Test Mode: skipping notifications for fids {fids} ")
-        return
-    response = session.post(url, json=req, timeout=timeouts)
-    res_json = response.json()
-    if response.status_code != 200:
-        logger.error(f"Failed to send notification: {res_json}")
-        raise Exception(f"Failed to send notification: {res_json}")
-    else:
-        logger.info(f"Notification sent: {res_json}")
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
 
 def daily_cast_notify(
     session: niquests.Session,
@@ -63,6 +45,30 @@ def daily_cast_notify(
     logger.info(f"Sending notification for channel {channel_id}-{pacific_9am_str}")
     title = f"What's trending on /{channel_id} ?"
     body = f"See what you missed in /{channel_id} in the last 24 hours"
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
+
+def weekly_mods_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    fids: list[int],
+):
+    current_week = utils.dow_utc_time(utils.DOW.WEDNESDAY)
+    notification_id = hashlib.sha256(f"{channel_id}-{current_week}".encode("utf-8")).hexdigest()
+    logger.info(f"Sending notification for channel {channel_id}-{current_week}")
+    title = "Checkout your channel stats!"
+    body = " "
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
+
+def notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    fids: list[int],
+    notification_id: str,
+    title: str,
+    body: str
+):
     req = {
         "title": title,
         "body": body,
@@ -83,7 +89,7 @@ def daily_cast_notify(
         raise Exception(f"Failed to send notification: {res_json}")
     else:
         logger.info(f"Notification sent: {res_json}")
-
+    return
 
 
 def fetch_channel_hide_list() -> pd.DataFrame:

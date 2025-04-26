@@ -146,7 +146,7 @@ def _psql_insert_copy(table, conn, keys, data_iter):
         sql = 'COPY {} ({}) FROM STDIN WITH CSV'.format(table_name, columns)
         cur.copy_expert(sql=sql, file=s_buf)
 
-
+# DEPRECATED
 @Timer(name="fetch_channel_details")
 def fetch_channel_details(pg_url: str, channel_id: str):
     # TODO move this to channels/channel_db_utils
@@ -164,7 +164,7 @@ def fetch_channel_details(pg_url: str, channel_id: str):
     finally:
         engine.dispose()
 
-
+# DEPRECATED
 @Timer(name="fetch_all_channel_details")
 def fetch_all_channel_details(pg_url: str):
     # TODO move this to channels/channel_db_utils

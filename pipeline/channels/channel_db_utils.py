@@ -13,6 +13,7 @@ import asyncpg
 import psycopg2
 import psycopg2.extras
 import pandas as pd
+from sqlalchemy import create_engine
 
 class TokenDistStatus(StrEnum):
     NULL = 'NULL'
@@ -55,6 +56,27 @@ async def fetch_rows(
                     return [{"Unknown error. Contact K3L team"}]
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
+
+@Timer(name="fetch_all_channel_mods")
+def fetch_all_channel_mods(logger: logging.Logger, pg_url: str):
+    sql_engine = create_engine(pg_url)
+    try:
+        with sql_engine.connect() as conn:
+            tmp_sql = """
+            SELECT
+                id as channel_id,
+	            ARRAY(SELECT DISTINCT fids
+                        FROM unnest(ARRAY[leadfid] || moderatorfids) as fids)
+                    as mods
+            FROM warpcast_channels_data
+            """
+            df = pd.read_sql_query(tmp_sql, conn)
+            return df
+    except Exception as e:
+        logger.error(f"Failed to fetch_all_channel_mods: {e}")
+        raise e
+    finally:
+        sql_engine.dispose()
 
 
 def fetch_channel_casters(logger: logging.Logger, pg_dsn: str, channel_url: str) -> list[int]:
@@ -397,6 +419,7 @@ def insert_channel_scores_df(
         raise e
     return
 
+# DEPRECATED - use utils.py
 def _9ampacific_in_utc_time(date_str:str = None):
     pacific_tz = pytz.timezone('US/Pacific')
     if date_str:
@@ -407,10 +430,12 @@ def _9ampacific_in_utc_time(date_str:str = None):
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
 
+# DEPRECATED - use utils.py
 def _dow_utc_time(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
 
+# DEPRECATED - use utils.py
 def _last_dow_utc_time(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 

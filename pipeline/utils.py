@@ -5,11 +5,22 @@ import io
 import datetime
 import os
 from pathlib import Path
+from enum import Enum
 
 from config import settings
 
 import psutil
 import pandas as pd
+import pytz
+
+class DOW(Enum):
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
 
 def df_info_to_string(df: pd.DataFrame, with_sample:bool = False, head:bool = False):
   buf = io.StringIO()
@@ -58,3 +69,22 @@ def gen_datetime_filepath(prefix, ext, basedir='/tmp/onchain-output'):
   fdatetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
   filename = f"{prefix}_{fdatetime}.{ext}"
   return os.path.join(basedir, filename)
+
+def _9ampacific_in_utc_time(date_str:str = None):
+    # TODO move this to utils
+    pacific_tz = pytz.timezone('US/Pacific')
+    if date_str:
+        pacific_9am_str = ' '.join([date_str,'09:00:00'])
+    else:
+        pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
+    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    utc_time = pacific_time.astimezone(pytz.utc)
+    return utc_time
+
+def dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value)
+
+def last_dow_utc_time(dow: DOW):
+    utc_time = _9ampacific_in_utc_time()
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7)
