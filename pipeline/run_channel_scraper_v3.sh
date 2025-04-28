@@ -26,6 +26,7 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CSV_PATH" ] 
   echo "  [venv] The path where a python3 virtualenv has been created."
   echo "  [task] The task to perform: fetch or process."
   echo "  [csv_path] The path to the CSV file."
+  echo "  [bots_csv] The path to the CSV file that has list of mod bots."
   echo "  [interval] Required parameter for process task indicating the number of days of channel interactions to process. 0 means process lifetime interactions."
   echo "  [channel_ids] Required parameter for process task indicating the channel IDs to process."
   echo ""
