@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import pytz
 
 from airflow import DAG
@@ -22,7 +22,7 @@ def wed_9ampacific_in_utc_time():
     pacific_9am_str = ' '.join([datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
     pacific_time = pacific_tz.localize(datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
     utc_time = pacific_time.astimezone(pytz.utc) 
-    return utc_time - datetime.timedelta(days=utc_time.weekday() - wednesday_dow)
+    return utc_time - timedelta(days=utc_time.weekday() - wednesday_dow)
 
 with DAG(
     dag_id='notify_channel_weekly_mods',
@@ -41,7 +41,7 @@ with DAG(
             task_id="notify",
             bash_command=(
                 "cd /pipeline && ./run_notify_channel_weekly_mods.sh "
-                " -w . -v .venv -b channels/Bot_Fids.csv -d "),
+                " -w . -v .venv -b channels/Bot_Fids.csv "),
             dag=dag)
     
     @task.branch(task_id="check_last_successful")
