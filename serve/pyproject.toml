@@ -31,3 +31,9 @@ black = "^25.1.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project]
+requires-python = ">=3.12"
+
+[tool.black]
+skip-string-normalization = true

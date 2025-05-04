@@ -11,7 +11,7 @@ from app.models.channel_model import (
     ChannelEarningsOrderBy,
     ChannelEarningsType,
     ChannelEarningsScope,
-    ChannelFidType
+    ChannelFidType,
 )
 from app.models.feed_model import SortingOrder, CastsTimeDecay
 from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
@@ -21,7 +21,11 @@ from sqlalchemy.orm import sessionmaker
 from asyncpg.pool import Pool
 from loguru import logger
 from memoize.wrapper import memoize
-from memoize.configuration import MutableCacheConfiguration, DefaultInMemoryCacheConfiguration
+from memoize.configuration import (
+    MutableCacheConfiguration,
+    DefaultInMemoryCacheConfiguration,
+)
+
 
 class DOW(Enum):
     MONDAY = 0
@@ -31,6 +35,7 @@ class DOW(Enum):
     FRIDAY = 4
     SATURDAY = 5
     SUNDAY = 6
+
 
 engine = create_async_engine(
     settings.POSTGRES_ASYNC_URI.get_secret_value(),
@@ -58,41 +63,49 @@ SessionLocal = sessionmaker(
 #         finally:
 #             await session.close()
 
+
 def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
-    pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
-    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+    pacific_9am_str = ' '.join(
+        [datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"), '09:00:00']
+    )
+    pacific_time = pacific_tz.localize(
+        datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S')
+    )
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
 
+
 def _dow_utc_timestamp_str(dow: DOW) -> str:
     utc_time = _9ampacific_in_utc_time()
-    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
-    return (f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')")
+    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value)
+    return (
+        f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
+    )
+
 
 def _last_dow_utc_timestamp_str(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
-    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
-    return (f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-            " AT TIME ZONE 'UTC')")
+    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7)
+    return (
+        f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
+        " AT TIME ZONE 'UTC')"
+    )
 
-async def fetch_rows(
-        *args,
-        sql_query: str,
-        pool: Pool
-):
+
+async def fetch_rows(*args, sql_query: str, pool: Pool):
     start_time = time.perf_counter()
     logger.debug(f"Execute query: {sql_query}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
-        logger.info(f"db took {time.perf_counter() - start_time} secs for acquiring connection")
+        logger.info(
+            f"db took {time.perf_counter() - start_time} secs for acquiring connection"
+        )
         # Run the query passing the request argument.
         try:
             rows = await connection.fetch(
-                sql_query,
-                *args,
-                timeout=settings.POSTGRES_TIMEOUT_SECS
+                sql_query, *args, timeout=settings.POSTGRES_TIMEOUT_SECS
             )
         except Exception as e:
             logger.error(f"Failed to execute query: {sql_query}")
@@ -102,10 +115,7 @@ async def fetch_rows(
     return rows
 
 
-async def get_handle_fid_for_addresses(
-        addresses: list[str],
-        pool: Pool
-):
+async def get_handle_fid_for_addresses(addresses: list[str], pool: Pool):
     sql_query = """
     (
         SELECT
@@ -136,10 +146,7 @@ async def get_handle_fid_for_addresses(
     return await fetch_rows(addresses, sql_query=sql_query, pool=pool)
 
 
-async def get_all_fid_addresses_for_handles(
-        handles: list[str],
-        pool: Pool,
-):
+async def get_all_fid_addresses_for_handles(handles: list[str], pool: Pool):
     sql_query = """
     (
         SELECT
@@ -174,10 +181,7 @@ async def get_all_fid_addresses_for_handles(
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
 
-async def get_unique_fid_metadata_for_handles(
-        handles: list[str],
-        pool: Pool,
-):
+async def get_unique_fid_metadata_for_handles(handles: list[str], pool: Pool):
     sql_query = """
     SELECT
         '0x' || encode(any_value(fids.custody_address), 'hex') as address,
@@ -196,11 +200,9 @@ async def get_unique_fid_metadata_for_handles(
     """
     return await fetch_rows(handles, sql_query=sql_query, pool=pool)
 
-async def get_verified_addresses_for_fids(
-    fids: list[str],
-    pool: Pool,
-):
-    sql_query= """
+
+async def get_verified_addresses_for_fids(fids: list[str], pool: Pool):
+    sql_query = """
     WITH latest_global_rank as (
         select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
                 and date in (select max(date) from k3l_rank)
@@ -233,10 +235,8 @@ async def get_verified_addresses_for_fids(
     """
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
-async def get_all_handle_addresses_for_fids(
-        fids: list[str],
-        pool: Pool,
-):
+
+async def get_all_handle_addresses_for_fids(fids: list[str], pool: Pool):
     sql_query = """
     WITH latest_global_rank as (
     select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
@@ -281,10 +281,7 @@ async def get_all_handle_addresses_for_fids(
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 
-async def get_unique_handle_metadata_for_fids(
-        fids: list[str],
-        pool: Pool,
-):
+async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
     sql_query = """
     WITH 
     latest_global_rank as (
@@ -320,7 +317,9 @@ async def get_unique_handle_metadata_for_fids(
     return await fetch_rows(fids, sql_query=sql_query, pool=pool)
 
 
-async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool, query_type: str):
+async def get_top_profiles(
+    strategy_id: int, offset: int, limit: int, pool: Pool, query_type: str
+):
     if query_type == 'lite':
         sql_query = """
         WITH total AS (
@@ -385,11 +384,8 @@ async def get_top_profiles(strategy_id: int, offset: int, limit: int, pool: Pool
         """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_channel_stats(
-    channel_id: str,
-    strategy_name: str,
-    pool: Pool
-):
+
+async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     sql_query = """
     WITH 
     follower_stats AS (
@@ -476,10 +472,8 @@ async def get_channel_stats(
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
-async def get_channel_cast_metrics(
-    channel_id: str,
-    pool: Pool
-):
+
+async def get_channel_cast_metrics(channel_id: str, pool: Pool):
     sql_query = """
     SELECT
         metric,
@@ -495,17 +489,22 @@ async def get_channel_cast_metrics(
     """
     return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
 
+
 async def get_channel_fid_metrics(
-    channel_id: str,
-    fid_type: ChannelFidType,
-    pool: Pool
+    channel_id: str, fid_type: ChannelFidType, pool: Pool
 ):
 
     timestamp_col = 'followedat' if fid_type == ChannelFidType.FOLLOWER else 'memberat'
-    table_name = 'warpcast_followers' if fid_type == ChannelFidType.FOLLOWER \
-                else 'warpcast_members'
-    metric_name = 'cumulative_weekly_followers' if fid_type == ChannelFidType.FOLLOWER \
-                else 'cumulative_weekly_members'
+    table_name = (
+        'warpcast_followers'
+        if fid_type == ChannelFidType.FOLLOWER
+        else 'warpcast_members'
+    )
+    metric_name = (
+        'cumulative_weekly_followers'
+        if fid_type == ChannelFidType.FOLLOWER
+        else 'cumulative_weekly_members'
+    )
     sql_query = f"""
     WITH
     time_vars as (
@@ -541,12 +540,9 @@ async def get_channel_fid_metrics(
     """
     return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
 
+
 async def get_top_openrank_channel_profiles(
-        channel_id: str,
-        category: str,
-        offset: int,
-        limit: int,
-        pool: Pool
+    channel_id: str, category: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = """
     WITH latest AS (
@@ -573,44 +569,47 @@ async def get_top_openrank_channel_profiles(
     OFFSET $3
     LIMIT $4
     """
-    return await fetch_rows(channel_id, category, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, category, offset, limit, sql_query=sql_query, pool=pool
+    )
+
 
 async def get_top_channel_balances(
-        channel_id: str,
-        offset: int,
-        limit: int,
-        lite: bool,
-        orderby: ChannelPointsOrderBy,
-        pool: Pool
+    channel_id: str,
+    offset: int,
+    limit: int,
+    lite: bool,
+    orderby: ChannelPointsOrderBy,
+    pool: Pool,
 ):
     if orderby == ChannelPointsOrderBy.DAILY_POINTS:
         orderby = ChannelEarningsOrderBy.DAILY
     else:
         orderby = ChannelEarningsOrderBy.TOTAL
     return await get_top_channel_earnings(
-        channel_id=channel_id, 
-        offset=offset, 
-        limit=limit, 
-        lite=lite, 
-        earnings_type=ChannelEarningsType.POINTS, 
-        orderby=orderby, 
+        channel_id=channel_id,
+        offset=offset,
+        limit=limit,
+        lite=lite,
+        earnings_type=ChannelEarningsType.POINTS,
+        orderby=orderby,
         pool=pool,
     )
 
 
 async def get_top_channel_earnings(
-        channel_id: str,
-        offset: int,
-        limit: int,
-        lite: bool,
-        earnings_type: ChannelEarningsType,
-        orderby: ChannelEarningsOrderBy,
-        pool: Pool
+    channel_id: str,
+    offset: int,
+    limit: int,
+    lite: bool,
+    earnings_type: ChannelEarningsType,
+    orderby: ChannelEarningsOrderBy,
+    pool: Pool,
 ):
     orderby_clause = "ORDER BY balance DESC, daily_earnings DESC"
-    if orderby == ChannelEarningsOrderBy.DAILY :    
-        orderby_clause = "ORDER BY daily_earnings DESC, balance DESC" 
-    
+    if orderby == ChannelEarningsOrderBy.DAILY:
+        orderby_clause = "ORDER BY daily_earnings DESC, balance DESC"
+
     table_name = 'k3l_channel_points_bal'
     if earnings_type == ChannelEarningsType.TOKENS:
         table_name = 'k3l_channel_tokens_bal'
@@ -689,18 +688,16 @@ async def get_top_channel_earnings(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_tokens_distrib_details(
-        channel_id: str,
-        dist_id: int,
-        batch_id: int,
-        offset: int,
-        limit: int,
-        pool: Pool
-): 
+    channel_id: str, dist_id: int, batch_id: int, offset: int, limit: int, pool: Pool
+):
     # asyncpg does not support named parameters
     # ... so optional params is not pretty
     # ... sanitize int input and just use pyformat
-    dist_filter = f' AND dist_id = {int(dist_id)} ' if dist_id else ' ORDER BY insert_ts DESC'
+    dist_filter = (
+        f' AND dist_id = {int(dist_id)} ' if dist_id else ' ORDER BY insert_ts DESC'
+    )
 
     sql_query = f"""
     WITH 
@@ -752,14 +749,13 @@ async def get_tokens_distrib_details(
     OFFSET $3
     LIMIT $4
     """
-    return await fetch_rows(channel_id, batch_id, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, batch_id, offset, limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_tokens_distrib_overview(
-    channel_id: str,
-    offset: int,
-    limit: int,
-    pool: Pool
+    channel_id: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = """
     SELECT 
@@ -795,12 +791,9 @@ async def get_tokens_distrib_overview(
     """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_fid_channel_token_balance(
-        channel_id: str,
-        fid: int,
-        pool: Pool
-):  
-    sql_query="""
+
+async def get_fid_channel_token_balance(channel_id: str, fid: int, pool: Pool):
+    sql_query = """
         SELECT
 		    fid,
             channel_id,
@@ -821,11 +814,9 @@ async def get_fid_channel_token_balance(
         return res[0]
     return None
 
+
 async def get_points_distrib_preview(
-        channel_id: str,
-        offset: int,
-        limit: int,
-        pool: Pool
+    channel_id: str, offset: int, limit: int, pool: Pool
 ):
 
     sql_query = """
@@ -862,17 +853,14 @@ async def get_points_distrib_preview(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_tokens_distrib_preview(
-        channel_id: str,
-        offset: int,
-        limit: int,
-        scope: ChannelEarningsScope,
-        pool: Pool
+    channel_id: str, offset: int, limit: int, scope: ChannelEarningsScope, pool: Pool
 ):
-    if scope==ChannelEarningsScope.AIRDROP:
+    if scope == ChannelEarningsScope.AIRDROP:
         points_col = "balance"
         interval_condn = ""
-    else: 
+    else:
         points_col = "latest_earnings"
         interval_condn = " AND bal.update_ts > now() - interval '23 hours'"
 
@@ -929,13 +917,9 @@ async def get_tokens_distrib_preview(
         """
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_top_channel_profiles(
-        channel_id: str,
-        strategy_name: str,
-        offset: int,
-        limit: int,
-        lite: bool,
-        pool: Pool
+    channel_id: str, strategy_name: str, offset: int, limit: int, lite: bool, pool: Pool
 ):
     if lite:
         sql_query = """
@@ -1016,7 +1000,9 @@ async def get_top_channel_profiles(
         GROUP BY fid
         ORDER by rank ASC
         """
-    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite: bool):
@@ -1064,11 +1050,9 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
         """
     return await fetch_rows(strategy_id, fids, sql_query=sql_query, pool=pool)
 
+
 async def filter_channel_fids(
-        channel_id: str,
-        fids: list[int],
-        filter: ChannelFidType,
-        pool: Pool
+    channel_id: str, fids: list[int], filter: ChannelFidType, pool: Pool
 ):
     if filter == ChannelFidType.FOLLOWER:
         table_name = 'warpcast_followers'
@@ -1086,11 +1070,7 @@ async def filter_channel_fids(
 
 
 async def get_channel_profile_ranks(
-        channel_id: str,
-        strategy_name: str,
-        fids: list[int],
-        lite: bool,
-        pool: Pool
+    channel_id: str, strategy_name: str, fids: list[int], lite: bool, pool: Pool
 ):
     if lite:
         sql_query = """
@@ -1222,23 +1202,27 @@ async def get_channel_profile_ranks(
         GROUP BY top_records.fid, channel_id, channel_rank, global_rank
         ORDER by channel_rank,global_rank NULLS LAST
         """
-    return await fetch_rows(channel_id, strategy_name, fids, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, strategy_name, fids, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_top_frames(
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        recent: bool,
-        decay: bool,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    offset: int,
+    limit: int,
+    recent: bool,
+    decay: bool,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
         case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
+            agg_sql = (
+                'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
+            )
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
     if recent:
@@ -1290,19 +1274,21 @@ async def get_top_frames(
 
 
 async def get_top_frames_with_cast_details(
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        recent: bool,
-        decay: bool,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    offset: int,
+    limit: int,
+    recent: bool,
+    decay: bool,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
             agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
         case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
+            agg_sql = (
+                'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
+            )
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
     if recent:
@@ -1375,13 +1361,13 @@ async def get_top_frames_with_cast_details(
 
 
 async def get_neighbors_frames(
-        agg: ScoreAgg,
-        weights: Weights,
-        voting: Voting,
-        trust_scores: list[dict],
-        limit: int,
-        recent: bool,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    voting: Voting,
+    trust_scores: list[dict],
+    limit: int,
+    recent: bool,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
@@ -1448,17 +1434,19 @@ async def get_neighbors_frames(
     ORDER by score DESC
     LIMIT $2
     """
-    return await fetch_rows(json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        json.dumps(trust_scores), limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_popular_neighbors_casts(
-        agg: ScoreAgg,
-        weights: Weights,
-        trust_scores: list[dict],
-        offset: int,
-        limit: int,
-        lite: bool,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    trust_scores: list[dict],
+    offset: int,
+    limit: int,
+    lite: bool,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
@@ -1468,8 +1456,10 @@ async def get_popular_neighbors_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    resp_fields = "'0x' || encode(hash, 'hex') as cast_hash," \
-                  "DATE_TRUNC('hour', timestamp) as cast_hour, fid, timestamp, cast_score"
+    resp_fields = (
+        "'0x' || encode(hash, 'hex') as cast_hash,"
+        "DATE_TRUNC('hour', timestamp) as cast_hour, fid, timestamp, cast_score"
+    )
 
     if not lite:
         resp_fields = f"""
@@ -1536,15 +1526,13 @@ async def get_popular_neighbors_casts(
     )
     select {resp_fields} from cast_details
     """
-    return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_recent_neighbors_casts(
-        trust_scores: list[dict],
-        offset: int,
-        limit: int,
-        lite: bool,
-        pool: Pool
+    trust_scores: list[dict], offset: int, limit: int, lite: bool, pool: Pool
 ):
     resp_fields = f"""cast_hash, fid, timestamp"""
     if not lite:
@@ -1586,14 +1574,13 @@ async def get_recent_neighbors_casts(
         )
         select {resp_fields} from cast_details order by rn
     """
-    return await fetch_rows(json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        json.dumps(trust_scores), offset, limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_recent_casts_by_fids(
-        fids: list[int],
-        offset: int,
-        limit: int,
-        pool: Pool
+    fids: list[int], offset: int, limit: int, pool: Pool
 ):
     sql_query = """
         SELECT
@@ -1610,11 +1597,7 @@ async def get_recent_casts_by_fids(
 
 
 async def get_recent_casts_by_token_holders(
-        token_address: bytes,
-        max_cast_age: str,
-        offset: int,
-        limit: int,
-        pool: Pool
+    token_address: bytes, max_cast_age: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = f"""
                 SELECT
@@ -1631,16 +1614,18 @@ async def get_recent_casts_by_token_holders(
                     LIMIT $3 \
                 """
 
-    return await fetch_rows(token_address, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        token_address, offset, limit, sql_query=sql_query, pool=pool
+    )
 
 
 async def get_popular_degen_casts(
-        agg: ScoreAgg,
-        weights: Weights,
-        offset: int,
-        limit: int,
-        sorting_order: str,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    offset: int,
+    limit: int,
+    sorting_order: str,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
@@ -1650,7 +1635,11 @@ async def get_popular_degen_casts(
         case ScoreAgg.SUM | _:
             agg_sql = 'sum(fid_cast_scores.cast_score)'
 
-    ordering = "casts.timestamp DESC" if sorting_order == 'recent' else "date_trunc('day',c.timestamp) DESC, cast_score DESC"
+    ordering = (
+        "casts.timestamp DESC"
+        if sorting_order == 'recent'
+        else "date_trunc('day',c.timestamp) DESC, cast_score DESC"
+    )
 
     sql_query = f"""
         WITH fid_cast_scores AS (
@@ -1703,11 +1692,8 @@ async def get_popular_degen_casts(
     """
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_channel_ids_for_fid(
-    fid: int,
-    limit: int,
-    pool: Pool
-):
+
+async def get_channel_ids_for_fid(fid: int, limit: int, pool: Pool):
     sql_query = """
         SELECT
             channel_id
@@ -1720,10 +1706,8 @@ async def get_channel_ids_for_fid(
     """
     return await fetch_rows(fid, limit, sql_query=sql_query, pool=pool)
 
-async def get_channel_url_for_channel_id(
-    channel_id: int,
-    pool: Pool
-):
+
+async def get_channel_url_for_channel_id(channel_id: int, pool: Pool):
     sql_query = """
         SELECT
             url
@@ -1733,6 +1717,7 @@ async def get_channel_url_for_channel_id(
             id=$1
     """
     return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
+
 
 @memoize(
     configuration=MutableCacheConfiguration.initialized_with(
@@ -1744,20 +1729,20 @@ async def get_channel_url_for_channel_id(
     )
 )
 async def get_popular_channel_casts_lite(
-        channel_id: str,
-        channel_url: str,
-        strategy_name: str,
-        max_cast_age: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        reactions_threshold: int,
-        weights: Weights,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        offset: int,
-        limit: int,
-        sorting_order: SortingOrder,
-        pool: Pool
+    channel_id: str,
+    channel_url: str,
+    strategy_name: str,
+    max_cast_age: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    reactions_threshold: int,
+    weights: Weights,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    offset: int,
+    limit: int,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
     logger.info("get_popular_channel_casts_lite")
 
@@ -1803,7 +1788,6 @@ async def get_popular_channel_casts_lite(
         fidscore_sql = 'cbrt(fids.score)'
     else:
         fidscore_sql = 'fids.score'
-
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1857,25 +1841,33 @@ async def get_popular_channel_casts_lite(
     OFFSET $4
     LIMIT $5
     """
-    return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id,
+        channel_url,
+        strategy_name,
+        offset,
+        limit,
+        sql_query=sql_query,
+        pool=pool,
+    )
 
 
 # TODO deprecate in favor of get_popular_channel_casts_lite
 async def get_popular_channel_casts_heavy(
-        channel_id: str,
-        channel_url: str,
-        strategy_name: str,
-        max_cast_age: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        reactions_threshold: int,
-        weights: Weights,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        offset: int,
-        limit: int,
-        sorting_order: SortingOrder,
-        pool: Pool
+    channel_id: str,
+    channel_url: str,
+    strategy_name: str,
+    max_cast_age: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    reactions_threshold: int,
+    weights: Weights,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    offset: int,
+    limit: int,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
     logger.info("get_popular_channel_casts_heavy")
     match agg:
@@ -1920,7 +1912,6 @@ async def get_popular_channel_casts_heavy(
         fidscore_sql = 'cbrt(fids.score)'
     else:
         fidscore_sql = 'fids.score'
-
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -1979,16 +1970,24 @@ async def get_popular_channel_casts_heavy(
     OFFSET $4
     LIMIT $5
     """
-    return await fetch_rows(channel_id, channel_url, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id,
+        channel_url,
+        strategy_name,
+        offset,
+        limit,
+        sql_query=sql_query,
+        pool=pool,
+    )
 
 
 async def get_trending_casts_lite(
-        agg: ScoreAgg,
-        weights: Weights,
-        score_threshold_multiplier: int,
-        offset: int,
-        limit: int,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    score_threshold_multiplier: int,
+    offset: int,
+    limit: int,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
@@ -2056,12 +2055,12 @@ async def get_trending_casts_lite(
 
 
 async def get_trending_casts_heavy(
-        agg: ScoreAgg,
-        weights: Weights,
-        score_threshold_multiplier: int,
-        offset: int,
-        limit: int,
-        pool: Pool
+    agg: ScoreAgg,
+    weights: Weights,
+    score_threshold_multiplier: int,
+    offset: int,
+    limit: int,
+    pool: Pool,
 ):
     match agg:
         case ScoreAgg.RMS:
@@ -2135,11 +2134,7 @@ async def get_trending_casts_heavy(
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_top_casters(
-        offset: int,
-        limit: int,
-        pool: Pool
-):
+async def get_top_casters(offset: int, limit: int, pool: Pool):
     sql_query = """ select cast_hash, i as fid, v as score from k3l_top_casters 
                     where date_iso = (select max(date_iso) from k3l_top_casters)
                     order by v desc
@@ -2147,11 +2142,7 @@ async def get_top_casters(
     return await fetch_rows(offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_top_spammers(
-        offset: int,
-        limit: int,
-        pool: Pool
-):
+async def get_top_spammers(offset: int, limit: int, pool: Pool):
     sql_query = """ select 
                     fid,
                     display_name,
@@ -2170,17 +2161,13 @@ async def get_top_spammers(
 
 
 async def get_top_channel_followers(
-        channel_id: str,
-        strategy_name: str,
-        offset: int,
-        limit: int,
-        pool: Pool
+    channel_id: str, strategy_name: str, offset: int, limit: int, pool: Pool
 ):
-    
+
     MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
     TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
     LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
-    
+
     sql_query = f"""
     WITH 
     distinct_warpcast_followers as (
@@ -2298,32 +2285,37 @@ async def get_top_channel_followers(
     LIMIT $4
     """
 
-    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool
+    )
+
 
 async def get_top_channel_holders(
-        channel_id: str,
-        strategy_name: str,
-        orderby: ChannelEarningsOrderBy,
-        offset: int,
-        limit: int,
-        pool: Pool
+    channel_id: str,
+    strategy_name: str,
+    orderby: ChannelEarningsOrderBy,
+    offset: int,
+    limit: int,
+    pool: Pool,
 ):
-    if orderby == ChannelEarningsOrderBy.WEEKLY :    
+    if orderby == ChannelEarningsOrderBy.WEEKLY:
         orderby_clause = "ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.DAILY:
         orderby_clause = "ORDER BY daily_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.LATEST:
         orderby_clause = "ORDER BY latest_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.TOTAL:
-        orderby_clause = "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+        orderby_clause = (
+            "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+        )
     else:
         orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
-    
+
     # CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
     MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
     TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
     LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
-    
+
     sql_query = f"""
     WITH
     total_balances as (
@@ -2448,14 +2440,13 @@ async def get_top_channel_holders(
     LIMIT $4
     """
 
-    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool
+    )
+
 
 async def get_top_channel_repliers(
-        channel_id: str,
-        strategy_name: str,
-        offset: int,
-        limit: int,
-        pool: Pool
+    channel_id: str, strategy_name: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = f"""
         WITH 
@@ -2525,26 +2516,29 @@ async def get_top_channel_repliers(
    
     """
 
-    return await fetch_rows(channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool
+    )
+
 
 # TODO deprecate in favor of get_trending_channel_casts_lite
 async def get_trending_channel_casts_heavy(
-        channel_id: str,
-        channel_url: str,
-        channel_strategy: str,
-        max_cast_age: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        reactions_threshold: int,
-        cutoff_ptile: int,
-        weights: Weights,
-        shuffle: bool,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        offset: int,
-        limit: int,
-        sorting_order: SortingOrder,
-        pool: Pool
+    channel_id: str,
+    channel_url: str,
+    channel_strategy: str,
+    max_cast_age: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    reactions_threshold: int,
+    cutoff_ptile: int,
+    weights: Weights,
+    shuffle: bool,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    offset: int,
+    limit: int,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
     logger.info("get_trending_channel_casts_heavy")
     match agg:
@@ -2688,7 +2682,16 @@ async def get_trending_channel_casts_heavy(
     LIMIT $5
     """
 
-    return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id,
+        channel_url,
+        channel_strategy,
+        offset,
+        limit,
+        sql_query=sql_query,
+        pool=pool,
+    )
+
 
 @memoize(
     configuration=MutableCacheConfiguration.initialized_with(
@@ -2700,22 +2703,22 @@ async def get_trending_channel_casts_heavy(
     )
 )
 async def get_trending_channel_casts_lite_memoized(
-        channel_id: str,
-        channel_url: str,
-        channel_strategy: str,
-        max_cast_age: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        reactions_threshold: int,
-        cutoff_ptile: int,
-        weights: Weights,
-        shuffle: bool,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        offset: int,
-        limit: int,
-        sorting_order: SortingOrder,
-        pool: Pool,
+    channel_id: str,
+    channel_url: str,
+    channel_strategy: str,
+    max_cast_age: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    reactions_threshold: int,
+    cutoff_ptile: int,
+    weights: Weights,
+    shuffle: bool,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    offset: int,
+    limit: int,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
     # You can use 'extra_arg' here if needed
     return await get_trending_channel_casts_lite(
@@ -2737,23 +2740,24 @@ async def get_trending_channel_casts_lite_memoized(
         pool=pool,
     )
 
+
 async def get_trending_channel_casts_lite(
-        channel_id: str,
-        channel_url: str,
-        channel_strategy: str,
-        max_cast_age: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        reactions_threshold: int,
-        cutoff_ptile: int,
-        weights: Weights,
-        shuffle: bool,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        offset: int,
-        limit: int,
-        sorting_order: SortingOrder,
-        pool: Pool,
+    channel_id: str,
+    channel_url: str,
+    channel_strategy: str,
+    max_cast_age: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    reactions_threshold: int,
+    cutoff_ptile: int,
+    weights: Weights,
+    shuffle: bool,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    offset: int,
+    limit: int,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
     logger.info("get_trending_channel_casts_lite")
 
@@ -2866,19 +2870,28 @@ async def get_trending_channel_casts_lite(
     LIMIT $5
     """
 
-    return await fetch_rows(channel_id, channel_url, channel_strategy, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id,
+        channel_url,
+        channel_strategy,
+        offset,
+        limit,
+        sql_query=sql_query,
+        pool=pool,
+    )
+
 
 async def get_channel_casts_scores_lite(
-        cast_hashes: list[bytes],
-        channel_id: str,
-        channel_strategy: str,
-        agg: ScoreAgg,
-        score_threshold: float,
-        weights: Weights,
-        time_decay: CastsTimeDecay,
-        normalize: bool,
-        sorting_order: SortingOrder,
-        pool: Pool
+    cast_hashes: list[bytes],
+    channel_id: str,
+    channel_strategy: str,
+    agg: ScoreAgg,
+    score_threshold: float,
+    weights: Weights,
+    time_decay: CastsTimeDecay,
+    normalize: bool,
+    sorting_order: SortingOrder,
+    pool: Pool,
 ):
 
     logger.info("get_channel_casts_scores_lite")
@@ -2974,14 +2987,13 @@ async def get_channel_casts_scores_lite(
     ORDER BY {order_sql}
     """
 
-    return await fetch_rows(channel_id, channel_strategy,cast_hashes,  sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id, channel_strategy, cast_hashes, sql_query=sql_query, pool=pool
+    )
+
 
 async def get_trending_channels(
-        max_cast_age: str,
-        rank_threshold: int,
-        offset: int,
-        limit: int,
-        pool: Pool
+    max_cast_age: str, rank_threshold: int, offset: int, limit: int, pool: Pool
 ):
     logger.info("get_trending_channels")
 
@@ -3015,4 +3027,6 @@ async def get_trending_channels(
     LIMIT $3
     """
 
-    return await fetch_rows(rank_threshold, offset, limit, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        rank_threshold, offset, limit, sql_query=sql_query, pool=pool
+    )

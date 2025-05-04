@@ -99,11 +99,20 @@ async def get_popular_casts_for_fid(
 
         if isinstance(metadata, TokenFeed):
             try:
-                token_address = bytes.fromhex(metadata.token_address.lower().removeprefix("0x"))
+                token_address = bytes.fromhex(
+                    metadata.token_address.lower().removeprefix("0x")
+                )
             except ValueError as e:
-                raise HTTPException(status_code=400, detail=f"Invalid token address") from e
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid token address"
+                ) from e
             rows = await db_utils.get_recent_casts_by_token_holders(
-                token_address=token_address, max_cast_age=CASTS_AGE[metadata.lookback], offset=offset, limit=limit, pool=pool)
+                token_address=token_address,
+                max_cast_age=CASTS_AGE[metadata.lookback],
+                offset=offset,
+                limit=limit,
+                pool=pool,
+            )
             return {"result": rows}
 
         if metadata.channels is not None:
@@ -182,10 +191,7 @@ async def get_popular_casts_for_fid(
 
         # compute eigentrust on the neighbor graph using fids
         trust_scores = await graph.get_neighbors_scores(
-            [fid],
-            ninetyday_model,
-            k,
-            graph_limit,
+            [fid], ninetyday_model, k, graph_limit
         )
 
         # trust_scores = sorted(trust_scores, key=lambda d: d['score'], reverse=True)
@@ -229,10 +235,7 @@ async def get_personalized_casts_for_fid(
     """
     # compute eigentrust on the neighbor graph using fids
     trust_scores = await graph.get_neighbors_scores(
-        [fid],
-        ninetyday_model,
-        k,
-        graph_limit,
+        [fid], ninetyday_model, k, graph_limit
     )
 
     casts = await db_utils.get_recent_neighbors_casts(
