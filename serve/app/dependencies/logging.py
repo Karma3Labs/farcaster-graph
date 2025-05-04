@@ -2,6 +2,7 @@ import inspect, logging
 from fastapi import Request
 from loguru import logger
 
+
 async def get_logger(request: Request):
     logger.debug(f"{request.method} {request.url}")
     logger.debug("Params:")
@@ -11,11 +12,13 @@ async def get_logger(request: Request):
     for name, value in request.headers.items():
         logger.debug(f"\t{name}: {value}")
 
+
 class InterceptHandler(logging.Handler):
-    """ 
+    """
     This intercept allows loguru to work with Python's standard logging module.
     https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
     """
+
     def emit(self, record: logging.LogRecord) -> None:
         # Get corresponding Loguru level if it exists.
         level: str | int
@@ -30,4 +33,6 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )

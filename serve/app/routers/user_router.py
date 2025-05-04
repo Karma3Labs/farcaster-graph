@@ -9,12 +9,14 @@ from ..dependencies import graph, db_pool, db_utils
 
 router = APIRouter(tags=["User Labels (Requires API Key)"])
 
+
 @router.get("/labels/global/top_casters")
 async def get_top_global_casters(
-        x_api_key: Optional[str] = Header(None), # used only for swagger ui
-        offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=1000)] = 100,
-        pool: Pool = Depends(db_pool.get_db)):
+    x_api_key: Optional[str] = Header(None),  # used only for swagger ui
+    offset: Annotated[int | None, Query()] = 0,
+    limit: Annotated[int | None, Query(le=1000)] = 100,
+    pool: Pool = Depends(db_pool.get_db),
+):
     """
     Get the top global casters
     This API takes optional parameters -
@@ -25,18 +27,17 @@ async def get_top_global_casters(
     Header 'x-api-key' is used to authenticate the user. Please contact hello@karma3labs.com or <a href="https://t.me/Karma3Labs" target=_blank>https://t.me/Karma3Labs</a> to get the trial API key. \n
     """
 
-    top_casters = await db_utils.get_top_casters(offset=offset,
-                                                 limit=limit,
-                                                 pool=pool)
+    top_casters = await db_utils.get_top_casters(offset=offset, limit=limit, pool=pool)
     return {"result": top_casters}
 
 
 @router.get("/labels/global/top_spammers")
 async def get_top_global_spammers(
-        x_api_key: Optional[str] = Header(None), # used only for swagger ui
-        offset: Annotated[int | None, Query()] = 0,
-        limit: Annotated[int | None, Query(le=1000)] = 100,
-        pool: Pool = Depends(db_pool.get_db)):
+    x_api_key: Optional[str] = Header(None),  # used only for swagger ui
+    offset: Annotated[int | None, Query()] = 0,
+    limit: Annotated[int | None, Query(le=1000)] = 100,
+    pool: Pool = Depends(db_pool.get_db),
+):
     """
     Get the top global spammers
     This API takes optional parameters -
@@ -47,7 +48,7 @@ async def get_top_global_spammers(
     Header 'x-api-key' is used to authenticate the user. Please contact hello@karma3labs.com or <a href="https://t.me/Karma3Labs" target=_blank>https://t.me/Karma3Labs</a> to get the trial API key. \n
     """
 
-    top_spammers = await db_utils.get_top_spammers(offset=offset,
-                                                   limit=limit,
-                                                   pool=pool)
+    top_spammers = await db_utils.get_top_spammers(
+        offset=offset, limit=limit, pool=pool
+    )
     return {"result": top_spammers}

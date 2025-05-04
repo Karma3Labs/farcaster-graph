@@ -36,11 +36,12 @@ from .telemetry import PrometheusMiddleware, metrics
 
 logger.remove()
 level_per_module = {
-   "": logger.level(settings.LOG_LEVEL),
-   "app.dependencies.db_utils": logger.level(settings.LOG_LEVEL_CORE),
-   "app.graph_loader": logger.level(settings.LOG_LEVEL_CORE),
-   "uvicorn.access": None
+    "": logger.level(settings.LOG_LEVEL),
+    "app.dependencies.db_utils": logger.level(settings.LOG_LEVEL_CORE),
+    "app.graph_loader": logger.level(settings.LOG_LEVEL_CORE),
+    "uvicorn.access": None,
 }
+
 
 def custom_log_filter(record):
     # Reference https://github.com/Delgan/loguru/blob/master/loguru/_filters.py
@@ -55,12 +56,12 @@ def custom_log_filter(record):
             return False
     return True
 
-logger.add(sys.stdout, 
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=custom_log_filter)
 
-# logger.add(sys.stdout, 
+logger.add(
+    sys.stdout, colorize=True, format=settings.LOGURU_FORMAT, filter=custom_log_filter
+)
+
+# logger.add(sys.stdout,
 #            colorize=True,
 #            format=settings.LOGURU_FORMAT,
 #            filter=level_per_module,
@@ -75,6 +76,7 @@ log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
 # LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
 #     '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
 
+
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -85,25 +87,22 @@ def custom_openapi():
         description="This API provides reputation graphs based on social interactions on the Farcaster Protocol",
         routes=app.routes,
     )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "/static/favicon.png"
-    }
-    openapi_schema["servers"] = [{
-        "url": settings.SWAGGER_BASE_URL
-    }]
+    openapi_schema["info"]["x-logo"] = {"url": "/static/favicon.png"}
+    openapi_schema["servers"] = [{"url": settings.SWAGGER_BASE_URL}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+
 app_state = {}
+
 
 async def _check_and_reload_models(loader: GraphLoader):
     loop = asyncio.get_running_loop()
     logger.info("Starting graph loader loop")
     while True:
         await asyncio.sleep(settings.RELOAD_FREQ_SECS)
-        await loop.run_in_executor(
-            executor=None, func=loader.reload_if_required
-        )
+        await loop.run_in_executor(executor=None, func=loader.reload_if_required)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -112,16 +111,20 @@ async def lifespan(app: FastAPI):
 
     # create a DB connection pool
     logger.info("Creating DB pool")
-    app_state['db_pool'] = await asyncpg.create_pool(settings.POSTGRES_URI.get_secret_value(),
-                                         min_size=1,
-                                         max_size=settings.POSTGRES_POOL_SIZE)
+    app_state['db_pool'] = await asyncpg.create_pool(
+        settings.POSTGRES_URI.get_secret_value(),
+        min_size=1,
+        max_size=settings.POSTGRES_POOL_SIZE,
+    )
     logger.info("DB pool created")
 
     if settings.CACHE_DB_ENABLED:
         logger.info("Creating Cache DB pool")
-        app_state['cache_db_pool'] = await asyncpg.create_pool(settings.CACHE_POSTGRES_URI.get_secret_value(),
-                                            min_size=1,
-                                            max_size=settings.CACHE_POSTGRES_POOL_SIZE)
+        app_state['cache_db_pool'] = await asyncpg.create_pool(
+            settings.CACHE_POSTGRES_URI.get_secret_value(),
+            min_size=1,
+            max_size=settings.CACHE_POSTGRES_POOL_SIZE,
+        )
         logger.info("Cache DB pool created")
     else:
         app_state['cache_db_pool'] = None
@@ -151,10 +154,16 @@ async def lifespan(app: FastAPI):
     logger.info("Closing graph loader")
     app_state['graph_loader_task'].cancel()
 
-# TODO: change this to os env var once blue-green deployment is set up
-APP_NAME = "farcaster-graph-a" #os.environ.get("APP_NAME", "farcaster-graph-a")
 
-app = FastAPI(lifespan=lifespan, dependencies=[Depends(logging.get_logger)], title='Karma3Labs', docs_url=None)
+# TODO: change this to os env var once blue-green deployment is set up
+APP_NAME = "farcaster-graph-a"  # os.environ.get("APP_NAME", "farcaster-graph-a")
+
+app = FastAPI(
+    lifespan=lifespan,
+    dependencies=[Depends(logging.get_logger)],
+    title='Karma3Labs',
+    docs_url=None,
+)
 
 app.add_middleware(CorrelationIdMiddleware)
 # app.add_middleware(
@@ -184,6 +193,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(PrometheusMiddleware, app_name=APP_NAME)
 app.add_route("/metrics", metrics)
 
+
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
     """FastAPI automatically invokes this function for every http call"""
@@ -193,21 +203,23 @@ async def session_middleware(request: Request, call_next):
     request.state.graphs = app_state['graph_loader'].get_graphs()
     request.state.db_pool = app_state['db_pool']
     request.state.cache_db_pool = app_state['cache_db_pool']
-   # call_next is a built-in FastAPI function that calls the actual API
+    # call_next is a built-in FastAPI function that calls the actual API
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
     logger.info(f"{request.url} took {elapsed_time} secs")
     return response
 
+
 @app.get("/_health", include_in_schema=False)
 def get_health(response: Response):
     app_status = app_state.get('app_status', 'accept')
-    logger.info(f"health: {app_status}") 
+    logger.info(f"health: {app_status}")
     if app_status != 'accept':
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        response.headers["Retry-After"] = "300" #retry after 5 mins
+        response.headers["Retry-After"] = "300"  # retry after 5 mins
         return {'detail': 'Service Unavailable'}
     return {'status': 'ok'}
+
 
 @app.get("/_pause", status_code=200, include_in_schema=False)
 def get_pause():
@@ -215,19 +227,22 @@ def get_pause():
     app_state['app_status'] = 'reject'
     return {'status': 'ok'}
 
+
 @app.get("/_resume", status_code=200, include_in_schema=False)
 def get_resume():
     logger.info("resuming app")
     app_state['app_status'] = 'accept'
     return {'status': 'ok'}
 
+
 @app.get("/docs", include_in_schema=False)
 async def swagger_ui_html():
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
         title="Farcaster Graph by Karma3Labs",
-        swagger_favicon_url="/static/favicon.png"
+        swagger_favicon_url="/static/favicon.png",
     )
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,9 +3,11 @@ from enum import StrEnum
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, SecretStr
 
+
 class DBVersion(StrEnum):
     EIGEN8 = "eigen8"
     EIGEN2 = "eigen2"
+
 
 class Settings(BaseSettings):
     DB_USERNAME: str = "postgres"
@@ -62,7 +64,6 @@ class Settings(BaseSettings):
     CURA_API_ENDPOINT: str = "https://cura.network/api"
     CURA_API_KEY: str
     DB_VERSION: DBVersion = DBVersion.EIGEN2
-
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`

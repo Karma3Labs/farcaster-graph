@@ -83,4 +83,3 @@ async def fetch_channel_token(channel_id: str) -> dict:
         else:
             logger.error(f"Server error: {response.status_code}:{response.reason}")
             raise Exception(f"Server error: {response.status_code}:{response.reason}")
-    
