@@ -34,6 +34,7 @@ def fetch_rows_df(*args, logger: logging.Logger, sql_query: str, pg_dsn: str):
 def insert_cast_action(
     logger: logging.Logger, pg_dsn: str, insert_limit: int, is_v1: bool = False
 ):
+    # TODO different max_at for casts and replies, and different for likes and recasts
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
     insert_sql = f"""
         INSERT INTO {tbl_name}
@@ -56,11 +57,11 @@ def insert_cast_action(
         FROM casts CROSS JOIN max_cast_action
         LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE
-            casts.timestamp > now() - interval '5 days'
+            (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
             AND
-            casts.created_at
+            (casts.created_at
             BETWEEN max_cast_action.max_at
-            AND now()
+            AND now())
             AND casts.deleted_at IS NULL
         UNION ALL
         SELECT
@@ -76,7 +77,7 @@ def insert_cast_action(
         FROM casts CROSS JOIN max_cast_action
         LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE
-            casts.timestamp > now() - interval '5 days'
+            (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
             AND
             casts.parent_hash IS NOT NULL
             AND
@@ -99,7 +100,7 @@ def insert_cast_action(
         INNER JOIN casts as casts on (casts.hash = reactions.target_hash)
         LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
         WHERE
-            reactions.timestamp > now() - interval '5 days'
+            (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
             AND
             reactions.created_at
             BETWEEN max_cast_action.max_at
@@ -132,24 +133,54 @@ def backfill_cast_action(
     target_month: datetime,
     is_v1: bool = False,
 ) -> int:
-    # Example, if target month is 2024-11, we want to backfill 
-    # ... from 2024-11-30T23:59:59 to 2024-11-01T00:00:00
+    """
+    This function performs backfilling of cast actions for a specified month.
+    Parameters:
+    - logger (logging.Logger): The logger for logging information.
+    - pg_dsn (str): The PostgreSQL data source name for connection.
+    - insert_limit (int): The maximum number of rows to insert.
+    - target_month (datetime): The month for which to backfill data.
+    - is_v1 (bool, optional): A flag indicating versioning. Defaults to False.
+
+    Returns:
+    - int: The number of rows inserted.
+
+    The function starts from the end of the month and works backwards
+    inserting cast actions into the database.
+    It handles both primary and parent cast actions,
+    ensuring no duplicates are inserted due to the constraints.
+    """
+    # Example:
+    # program args: 2024-11
+    # target_month = datetime(2024, 11, 1, 0, 0, 0)
+    # start_at = datetime(2024, 10, 31, 23, 59, 59)
+    # target_month_str = "2024-11-01 00:00:00"
+    # partition_name = "k3l_cast_action_v1_y2024m11"
+    # first time invocation:
+    # # min_ts = null or "2024-11-30 23:59:59"
+    # # cutoff_ts = "2024-11-01 00:00:00"
+    # eligible actions are: between min_ts and cutoff_ts ordered by ts desc
+    # second time invocation:
+    # # min_ts = "2024-11-28 18:29:05"
+    # # cutoff_ts = "2024-11-01 00:00:00"
+    # eligible actions are: between min_ts and cutoff_ts ordered by ts desc
+
     start_at = target_month - timedelta(seconds=1)
     start_at_str = start_at.strftime("%Y-%m-%d %H:%M:%S")
     target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
-    table_name = f"k3l_cast_action_{'v1_' if is_v1 else ''}{target_month.strftime('y%Ym%m')}"
+    partition_name = f"k3l_cast_action_{'v1_' if is_v1 else ''}{target_month.strftime('y%Ym%m')}"
 
-    logger.info(f"backfilling {table_name} from {start_at_str} to {target_month_str}")
+    logger.info(f"backfilling {partition_name} from {start_at_str} to {target_month_str}")
 
     insert_sql = f"""
-    INSERT INTO {table_name}
+    INSERT INTO {partition_name}
         (channel_id, fid, cast_hash, casted, replied, recasted, liked, action_ts, created_at)
     WITH
       min_cast_action AS (
         SELECT
           COALESCE(min(action_ts), '{start_at_str}'::timestamp + interval '1 month') as min_ts, 
           '{target_month_str}'::timestamp as cutoff_ts
-        FROM {table_name}
+        FROM {partition_name}
       )
     SELECT
       ch.id as channel_id,
@@ -230,7 +261,7 @@ def backfill_cast_action(
             logger.info(f"Executing: {insert_sql}")
             cursor.execute(insert_sql)
             rows = cursor.rowcount
-            logger.info(f"Backfilled {rows} rows into {table_name}")
+            logger.info(f"Backfilled {rows} rows into {partition_name}")
             return rows
 
 @Timer(name="gapfill_cast_action")
