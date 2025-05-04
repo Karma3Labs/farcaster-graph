@@ -1,11 +1,10 @@
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, Query, Header
-from loguru import logger
 from asyncpg.pool import Pool
-from typing import Optional
+from fastapi import APIRouter, Depends, Header, Query
+from loguru import logger
 
-from ..dependencies import graph, db_pool, db_utils
+from ..dependencies import db_pool, db_utils, graph
 
 router = APIRouter(tags=["User Labels (Requires API Key)"])
 

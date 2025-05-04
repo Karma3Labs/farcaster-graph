@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, HTTPException
-from loguru import logger
 from asyncpg.pool import Pool
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from loguru import logger
 
+from ..dependencies import db_pool, db_utils, graph
 from ..models.graph_model import Graph
-from ..models.score_model import ScoreAgg, Weights, Voting
-from ..dependencies import graph, db_pool, db_utils
+from ..models.score_model import ScoreAgg, Voting, Weights
 
 router = APIRouter(tags=["Frames"])
 

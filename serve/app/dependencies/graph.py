@@ -1,14 +1,14 @@
-from typing import Annotated
 import itertools
-import time
-import requests
 import random
+import time
+from typing import Annotated
 
-import pandas
-import numpy as np
 import igraph
+import numpy as np
+import pandas
+import requests
+from fastapi import HTTPException, Query, Request
 from loguru import logger
-from fastapi import Request, Query, HTTPException
 
 from ..config import settings
 from ..models.graph_model import Graph, GraphType

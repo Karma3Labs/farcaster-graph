@@ -1,7 +1,7 @@
 import json
 
-from loguru import logger
 from asyncpg.pool import Pool
+from loguru import logger
 
 
 async def set_homefeed_for_fid(

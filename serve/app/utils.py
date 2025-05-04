@@ -1,14 +1,14 @@
 import io
-
-from .config import settings
+import urllib.parse
 
 import niquests
-from niquests.auth import HTTPBasicAuth
-import urllib.parse
-from urllib3.util import Retry
-from loguru import logger
-import psutil
 import pandas as pd
+import psutil
+from loguru import logger
+from niquests.auth import HTTPBasicAuth
+from urllib3.util import Retry
+
+from .config import settings
 
 
 def log_memusage(logger: logger):

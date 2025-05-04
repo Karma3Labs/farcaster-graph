@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, HTTPException
-from loguru import logger
 from asyncpg.pool import Pool
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from loguru import logger
 
-from ..models.graph_model import GraphType
-from ..models.score_model import QueryType, EngagementType, engagement_ids
 from ..dependencies import db_pool, db_utils
+from ..models.graph_model import GraphType
+from ..models.score_model import EngagementType, QueryType, engagement_ids
 
 router = APIRouter(tags=["Global OpenRank Scores"])
 

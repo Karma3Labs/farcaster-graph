@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Dict
+from typing import Any, Dict, Tuple
 
 from memoize.key import KeyExtractor
 

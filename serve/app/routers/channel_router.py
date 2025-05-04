@@ -1,41 +1,41 @@
-from typing import Annotated
-import urllib.parse
 import json
-
+import urllib.parse
 from itertools import batched
-from fastapi import APIRouter, Depends, Query, HTTPException
-from loguru import logger
+from typing import Annotated
+
 from asyncpg.pool import Pool
+from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
 from pydantic_core import ValidationError
 
-from ..models.score_model import ScoreAgg, Weights
+from .. import utils
+from ..config import DBVersion, settings
+from ..dependencies import db_pool, db_utils
 from ..models.channel_model import (
-    ChannelRankingsTimeframe,
     CHANNEL_RANKING_STRATEGY_NAMES,
-    OpenrankCategory,
-    ChannelPointsOrderBy,
     ChannelEarningsOrderBy,
-    ChannelEarningsType,
     ChannelEarningsScope,
+    ChannelEarningsType,
     ChannelFidType,
+    ChannelPointsOrderBy,
+    ChannelRankingsTimeframe,
+    OpenrankCategory,
 )
 from ..models.feed_model import (
-    SortingOrder,
     CASTS_AGE,
     PARENT_CASTS_AGE,
-    FeedMetadata,
-    TrendingFeed,
-    PopularFeed,
+    CastsTimeDecay,
+    ChannelTimeframe,
     FarconFeed,
+    FeedMetadata,
+    PopularFeed,
     ScoresMetadata,
     SearchScores,
-    ChannelTimeframe,
-    CastsTimeDecay,
+    SortingOrder,
+    TrendingFeed,
 )
-from ..dependencies import db_pool, db_utils
-from .. import utils
+from ..models.score_model import ScoreAgg, Weights
 from ..utils import fetch_channel
-from ..config import settings, DBVersion
 
 router = APIRouter()
 

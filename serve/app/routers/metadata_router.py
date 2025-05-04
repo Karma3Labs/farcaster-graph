@@ -1,9 +1,9 @@
 import time
-
-from fastapi import APIRouter, Body, Depends, Query
 from typing import Annotated
-from loguru import logger
+
 from asyncpg.pool import Pool
+from fastapi import APIRouter, Body, Depends, Query
+from loguru import logger
 
 from ..dependencies import db_pool, db_utils
 

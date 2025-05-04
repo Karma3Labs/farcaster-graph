@@ -5,17 +5,17 @@ from typing import Annotated, List
 
 import niquests
 from asyncpg.pool import Pool
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from pydantic_core import ValidationError
 
-from . import channel_router
 from ..config import settings
-from ..dependencies import graph, db_pool, db_utils
+from ..dependencies import db_pool, db_utils, graph
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import FeedMetadata, TokenFeed, CASTS_AGE
+from ..models.feed_model import CASTS_AGE, FeedMetadata, TokenFeed
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
+from . import channel_router
 
 router = APIRouter(tags=["Casts"])
 

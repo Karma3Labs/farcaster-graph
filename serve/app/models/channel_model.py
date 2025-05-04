@@ -1,4 +1,5 @@
 from enum import Enum, StrEnum
+
 from pydantic import BaseModel
 
 

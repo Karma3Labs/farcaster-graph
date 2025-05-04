@@ -3,8 +3,8 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from .score_model import ScoreAgg
 from ..config import settings
+from .score_model import ScoreAgg
 
 
 class SortingOrder(StrEnum):

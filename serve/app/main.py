@@ -1,38 +1,34 @@
-import sys
-import os
-import time
-import logging as log
-
-from fastapi import FastAPI, Depends, Request, Response, status
-from fastapi.openapi.utils import get_openapi
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-
-from contextlib import asynccontextmanager
-import uvicorn
 import asyncio
+import logging as log
+import os
+import sys
+import time
+from contextlib import asynccontextmanager
+
 import asyncpg
+import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
-
-from .dependencies import logging
-from .config import settings
-from .graph_loader import GraphLoader
-from .routers.direct_router import router as direct_router
-from .routers.graph_router import router as graph_router
-from .routers.metadata_router import router as metadata_router
-from .routers.localtrust_router import router as lt_router
-from .routers.globaltrust_router import router as gt_router
-from .routers.frame_router import router as frame_router
-from .routers.cast_router import router as cast_router
-from .routers.channel_router import router as channel_router
-from .routers.user_router import router as user_router
-
+from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
+from .config import settings
+from .dependencies import logging
+from .graph_loader import GraphLoader
+from .routers.cast_router import router as cast_router
+from .routers.channel_router import router as channel_router
+from .routers.direct_router import router as direct_router
+from .routers.frame_router import router as frame_router
+from .routers.globaltrust_router import router as gt_router
+from .routers.graph_router import router as graph_router
+from .routers.localtrust_router import router as lt_router
+from .routers.metadata_router import router as metadata_router
+from .routers.user_router import router as user_router
 from .telemetry import PrometheusMiddleware, metrics
-
 
 logger.remove()
 level_per_module = {

@@ -1,6 +1,6 @@
+import re
 from enum import StrEnum
 from typing import NamedTuple, Self
-import re
 
 
 class ScoreAgg(StrEnum):

@@ -1,16 +1,15 @@
-import os
-import math
-import time
 import gc
-
-from . import utils, main
-from .config import settings
-from .models.graph_model import Graph, GraphType
-
+import math
+import os
+import time
 
 import igraph
 import pandas
 from loguru import logger
+
+from . import main, utils
+from .config import settings
+from .models.graph_model import Graph, GraphType
 
 
 class GraphLoader:

@@ -1,4 +1,6 @@
-import inspect, logging
+import inspect
+import logging
+
 from fastapi import Request
 from loguru import logger
 
