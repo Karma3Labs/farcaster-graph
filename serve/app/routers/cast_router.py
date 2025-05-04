@@ -13,7 +13,7 @@ from . import channel_router
 from ..config import settings
 from ..dependencies import graph, db_pool, db_utils
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import FeedMetadata
+from ..models.feed_model import FeedMetadata, TokenFeed, CASTS_AGE
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
 
@@ -96,6 +96,15 @@ async def get_popular_casts_for_fid(
                 status_code=400,
                 detail=f"Error while validating provider metadata: {e.errors()}",
             )
+
+        if isinstance(metadata, TokenFeed):
+            try:
+                token_address = bytes.fromhex(metadata.token_address.lower().removeprefix("0x"))
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=f"Invalid token address") from e
+            rows = await db_utils.get_recent_casts_by_token_holders(
+                token_address=token_address, max_cast_age=CASTS_AGE[metadata.lookback], offset=offset, limit=limit, pool=pool)
+            return {"result": rows}
 
         if metadata.channels is not None:
             # TODO(ek): validate channel IDs?

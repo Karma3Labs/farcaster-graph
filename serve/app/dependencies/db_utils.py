@@ -1609,6 +1609,31 @@ async def get_recent_casts_by_fids(
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
 
+async def get_recent_casts_by_token_holders(
+        token_address: bytes,
+        max_cast_age: str,
+        offset: int,
+        limit: int,
+        pool: Pool
+):
+    sql_query = f"""
+                SELECT
+                    '0x' || encode(casts.hash, 'hex') as cast_hash,
+                    fid,
+                    timestamp
+                FROM casts
+                JOIN k3l_token_holding_fids USING (fid)
+                WHERE
+                    k3l_token_holding_fids.token_address = $1::bytea AND
+                    timestamp >= CURRENT_TIMESTAMP - INTERVAL '{max_cast_age}'
+                ORDER BY casts.timestamp DESC
+                OFFSET $2
+                    LIMIT $3 \
+                """
+
+    return await fetch_rows(token_address, offset, limit, sql_query=sql_query, pool=pool)
+
+
 async def get_popular_degen_casts(
         agg: ScoreAgg,
         weights: Weights,

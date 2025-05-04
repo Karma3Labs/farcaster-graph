@@ -15,3 +15,5 @@ pipeline/logs
 **/.vscode
 certificates
 **/tmp
+# Vim swap files
+.*.sw?
