@@ -1610,6 +1610,7 @@ async def get_recent_casts_by_token_holders(
                 WHERE
                     k3l_token_holding_fids.token_address = $1::bytea AND
                     deleted_at IS NULL AND
+                    parent_hash IS NULL AND
                     timestamp >= CURRENT_TIMESTAMP - INTERVAL '{max_cast_age}'
                 ORDER BY casts.timestamp DESC
                 OFFSET $2
