@@ -1006,11 +1006,15 @@ def insert_tokens_log(
         insert_sql = f"""
         WITH 
         latest_verified_address as (
-            SELECT (array_agg(v.claim->>'address' order by timestamp DESC))[1] as address, fid
-            FROM verifications v
-            WHERE deleted_at IS NULL
-            AND claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
-            GROUP BY fid
+            SELECT
+                coalesce('0x' || encode(profiles.primary_eth_address, 'hex'),
+                    (array_agg(v.claim->>'address' order by timestamp DESC))[1]) as address,
+                profiles.fid
+            FROM profiles
+            LEFT JOIN verifications as v ON (v.fid=profiles.fid and v.deleted_at is null)
+            WHERE profiles.deleted_at IS NULL
+            AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$'
+            GROUP BY profiles.fid, profiles.primary_eth_address
         ),
         channel_totals AS (
             SELECT 
