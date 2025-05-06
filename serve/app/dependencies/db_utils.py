@@ -65,6 +65,18 @@ SessionLocal = sessionmaker(
 #             await session.close()
 
 
+def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
+    match agg:
+        case ScoreAgg.SUM:
+            return f"sum({score_expr})"
+        case ScoreAgg.SUMSQUARE:
+            return f"sum(power({score_expr}, 2))"
+        case ScoreAgg.RMS:
+            return f"sqrt(avg(power({score_expr}, 2)))"
+        case _:
+            return f"sum({score_expr})"
+
+
 def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join(
@@ -1217,15 +1229,7 @@ async def get_top_frames(
     decay: bool,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = (
-                'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
-            )
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
+    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight * weights.decay_factor')
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels
@@ -1283,15 +1287,7 @@ async def get_top_frames_with_cast_details(
     decay: bool,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight * weights.decay_factor,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = (
-                'sum(power(weights.score * weights.weight * weights.decay_factor,2))'
-            )
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight * weights.decay_factor)'
+    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight * weights.decay_factor')
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels
@@ -1370,13 +1366,7 @@ async def get_neighbors_frames(
     recent: bool,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(weights.score * weights.weight,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(weights.score * weights.weight,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(weights.score * weights.weight)'
+    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight')
 
     if recent:
         time_filter_sql = """
@@ -1449,13 +1439,7 @@ async def get_popular_neighbors_casts(
     lite: bool,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     resp_fields = (
         "'0x' || encode(hash, 'hex') as cast_hash,"
@@ -1630,13 +1614,7 @@ async def get_popular_degen_casts(
     sorting_order: str,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     ordering = (
         "casts.timestamp DESC"
@@ -1749,13 +1727,7 @@ async def get_popular_channel_casts_lite(
 ):
     logger.info("get_popular_channel_casts_lite")
 
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
@@ -1873,13 +1845,7 @@ async def get_popular_channel_casts_heavy(
     pool: Pool,
 ):
     logger.info("get_popular_channel_casts_heavy")
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
@@ -1992,13 +1958,7 @@ async def get_trending_casts_lite(
     limit: int,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     sql_query = f"""
         with
@@ -2065,13 +2025,7 @@ async def get_trending_casts_heavy(
     limit: int,
     pool: Pool,
 ):
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     sql_query = f"""
         with
@@ -2544,13 +2498,7 @@ async def get_trending_channel_casts_heavy(
     pool: Pool,
 ):
     logger.info("get_trending_channel_casts_heavy")
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     match time_decay:
         case CastsTimeDecay.NEVER:
@@ -2764,13 +2712,7 @@ async def get_trending_channel_casts_lite(
 ):
     logger.info("get_trending_channel_casts_lite")
 
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     match time_decay:
         case CastsTimeDecay.NEVER:
@@ -2898,13 +2840,7 @@ async def get_channel_casts_scores_lite(
 ):
 
     logger.info("get_channel_casts_scores_lite")
-    match agg:
-        case ScoreAgg.RMS:
-            agg_sql = 'sqrt(avg(power(fid_cast_scores.cast_score,2)))'
-        case ScoreAgg.SUMSQUARE:
-            agg_sql = 'sum(power(fid_cast_scores.cast_score,2))'
-        case ScoreAgg.SUM | _:
-            agg_sql = 'sum(fid_cast_scores.cast_score)'
+    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
     match time_decay:
         case CastsTimeDecay.NEVER:
