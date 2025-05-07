@@ -77,6 +77,32 @@ def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
             return f"sum({score_expr})"
 
 
+def sql_for_decay(
+    interval_expr: str,
+    unit: CastsTimeDecay,
+    mag: float = 1.0,
+    base: float = 1-(1/365),
+) -> str:
+    match unit:
+        case CastsTimeDecay.NEVER:
+            return "1"
+        case CastsTimeDecay.MINUTE:
+            decay_time = 60
+        case CastsTimeDecay.HOUR:
+            decay_time = 60 * 60
+        case CastsTimeDecay.DAY:
+            decay_time = 60 * 60 * 24
+        case _:
+            raise ValueError(f"unhandled time decay unit {unit}")
+    decay_time *= mag
+    return f"""
+            power(
+                {base}::numeric,
+                (EXTRACT(EPOCH FROM ({interval_expr})) / ({decay_time}))::numeric
+            )
+    """
+
+
 def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join(
@@ -1238,16 +1264,10 @@ async def get_top_frames(
     else:
         time_filter_sql = ""
 
-    if decay:
-        # WARNING: This is still under development and can lead to high latency
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
+    decay_sql = sql_for_decay(
+        "CURRENT_TIMESTAMP - labels.latest_cast_dt",
+        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER
+    )
 
     sql_query = f"""
     WITH weights AS
@@ -1296,16 +1316,10 @@ async def get_top_frames_with_cast_details(
     else:
         time_filter_sql = ""
 
-    if decay:
-        # WARNING: This is still under development and can lead to high latency
-        decay_sql = """
-            power(
-                1-(1/365::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - labels.latest_cast_dt)) / (60 * 60 * 24))::numeric
-            )
-        """
-    else:
-        decay_sql = "1"
+    decay_sql = sql_for_decay(
+        "CURRENT_TIMESTAMP - labels.latest_cast_dt",
+        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER
+    )
 
     sql_query = f"""
     WITH weights AS
@@ -1469,10 +1483,9 @@ async def get_popular_neighbors_casts(
                         + ({weights.like} * trust.score * ci.liked)
                     )
                     *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - action_ts)) / (60 * 60))::numeric
-                    )
+                    {sql_for_decay("CURRENT_TIMESTAMP - action_ts",
+                                   CastsTimeDecay.HOUR,
+                                   base=(1 - 1 / (365 * 24)))}
                 ) as cast_score
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric)
@@ -1542,10 +1555,10 @@ async def get_recent_neighbors_casts(
             casts.embeds,
             casts.mentions,
             casts.timestamp,
-            power(
-                1-(1/(365*24)::numeric),
-                (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - casts.timestamp)) / (60 * 60))::numeric
-            )* trust.score as cast_score,
+            {sql_for_decay("CURRENT_TIMESTAMP - casts.timestamp",
+                           CastsTimeDecay.HOUR,
+                           base=(1 - 1 / (365 * 24)))}
+            * trust.score as cast_score,
         row_number() over(partition by date_trunc('hour', casts.timestamp) order by random()) as rn
         FROM k3l_recent_parent_casts as casts
         INNER JOIN  json_to_recordset($1::json)
@@ -1687,10 +1700,9 @@ async def get_popular_degen_casts(
                         + ({weights.like} * scores.v * ca.liked)
                     )
                     *
-                    power(
-                        0.99::numeric, -- After 24 hours: 0.78584693
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - dt.parent_timestamp)) / (60 * 60))::numeric
-                    )
+                    {sql_for_decay("CURRENT_TIMESTAMP - dt.parent_timestamp",
+                                   CastsTimeDecay.HOUR,
+                                   base=0.99)} -- After 24 hours: 0.78584693
                 ) as cast_score
             FROM k3l_degen_tips dt
             INNER JOIN k3l_cast_action ca ON (ca.cast_hash = dt.parent_hash AND ca.action_ts = dt.parent_timestamp)
@@ -1794,23 +1806,7 @@ async def get_popular_channel_casts_lite(
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
 
-    match time_decay:
-        case CastsTimeDecay.NEVER:
-            decay_sql = "1"
-        case _:
-            match time_decay:
-                case CastsTimeDecay.MINUTE:
-                    decay_time = 60
-                case CastsTimeDecay.HOUR:
-                    decay_time = 60 * 60
-                case CastsTimeDecay.DAY:
-                    decay_time = 60 * 60 * 24
-            decay_sql = f"""
-                power(
-                    1-(1/365::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
-                )
-            """
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -1912,23 +1908,7 @@ async def get_popular_channel_casts_heavy(
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
 
-    match time_decay:
-        case CastsTimeDecay.NEVER:
-            decay_sql = "1"
-        case _:
-            match time_decay:
-                case CastsTimeDecay.MINUTE:
-                    decay_time = 60
-                case CastsTimeDecay.HOUR:
-                    decay_time = 60 * 60
-                case CastsTimeDecay.DAY:
-                    decay_time = 60 * 60 * 24
-            decay_sql = f"""
-                power(
-                    1-(1/365::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
-                )
-            """
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -2031,10 +2011,9 @@ async def get_trending_casts_lite(
                         + ({weights.like} * fids.score * ci.liked)
                     )
                     *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
+                    {sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts",
+                                   CastsTimeDecay.HOUR,
+                                   base=(1 - 1 / (365 * 24)))}
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -2098,10 +2077,9 @@ async def get_trending_casts_heavy(
                         + ({weights.like} * fids.score * ci.liked)
                     )
                     *
-                    power(
-                        1-(1/(365*24)::numeric),
-                        (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / (60 * 60))::numeric
-                    )
+                    {sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts",
+                                   CastsTimeDecay.HOUR,
+                                   base=(1 - 1 / (365 * 24)))}
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -2553,23 +2531,7 @@ async def get_trending_channel_casts_heavy(
     logger.info("get_trending_channel_casts_heavy")
     agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
-    match time_decay:
-        case CastsTimeDecay.NEVER:
-            decay_sql = "1"
-        case _:
-            match time_decay:
-                case CastsTimeDecay.MINUTE:
-                    decay_time = 60
-                case CastsTimeDecay.HOUR:
-                    decay_time = 60 * 60
-                case CastsTimeDecay.DAY:
-                    decay_time = 60 * 60 * 24
-            decay_sql = f"""
-                power(
-                    1-(1/365::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
-                )
-            """
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -2767,23 +2729,7 @@ async def get_trending_channel_casts_lite(
 
     agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
-    match time_decay:
-        case CastsTimeDecay.NEVER:
-            decay_sql = "1"
-        case _:
-            match time_decay:
-                case CastsTimeDecay.MINUTE:
-                    decay_time = 60
-                case CastsTimeDecay.HOUR:
-                    decay_time = 60 * 60
-                case CastsTimeDecay.DAY:
-                    decay_time = 60 * 60 * 24
-            decay_sql = f"""
-                power(
-                    1-(1/365::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
-                )
-            """
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
@@ -2895,23 +2841,7 @@ async def get_channel_casts_scores_lite(
     logger.info("get_channel_casts_scores_lite")
     agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
-    match time_decay:
-        case CastsTimeDecay.NEVER:
-            decay_sql = "1"
-        case _:
-            match time_decay:
-                case CastsTimeDecay.MINUTE:
-                    decay_time = 60
-                case CastsTimeDecay.HOUR:
-                    decay_time = 60 * 60
-                case CastsTimeDecay.DAY:
-                    decay_time = 60 * 60 * 24
-            decay_sql = f"""
-                power(
-                    1-(1/365::numeric),
-                    (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ci.action_ts)) / ({decay_time}))::numeric
-                )
-            """
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
         fidscore_sql = 'cbrt(fids.score)'
