@@ -1603,6 +1603,7 @@ async def get_token_holder_casts(
                         c.hash,
                         c.fid,
                         c.timestamp,
+                        th.value AS balance_raw,
                         {agg_sql} AS score
                     FROM k3l_recent_parent_casts c
                     JOIN k3l_token_holding_fids th ON
@@ -1619,12 +1620,13 @@ async def get_token_holder_casts(
                        cr.strategy_name = '60d_engagement' AND
                        cr.channel_id = ca.channel_id AND
                        cr.fid = ca.fid
-                    GROUP BY c.hash, c.fid, c.timestamp
+                    GROUP BY c.hash, c.fid, c.timestamp, th.value
                 )
                 SELECT
                     '0x' || encode(hash, 'hex') AS cast_hash,
                     fid,
                     timestamp,
+                    balance_raw::text,
                     score AS cast_score
                 FROM c
                 WHERE score >= $4
