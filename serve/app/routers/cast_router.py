@@ -108,18 +108,27 @@ async def get_popular_casts_for_fid(
                 ) from e
             try:
                 weights = Weights.from_str(metadata.weights)
+                value_weights = Weights.from_str(metadata.value_weights)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Invalid weights") from e
 
             rows = await db_utils.get_token_holder_casts(
                 agg=metadata.agg,
                 weights=weights,
+                value_weights=value_weights,
                 token_address=token_address,
                 score_threshold=metadata.score_threshold,
                 offset=offset,
                 limit=limit,
                 pool=pool,
             )
+            rows = [
+                {
+                    k: str(v) if k in ["balance_raw", "value_raw"] else v
+                    for k, v in row.items()
+                }
+                for row in rows
+            ]
             return {"result": rows}
 
         if metadata.channels is not None:

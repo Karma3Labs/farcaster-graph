@@ -4,6 +4,7 @@ import time
 from enum import Enum
 
 import pytz
+from asyncpg import Record as PgRecord
 from asyncpg.pool import Pool
 from loguru import logger
 from memoize.configuration import (
@@ -1583,18 +1584,27 @@ async def get_recent_casts_by_fids(
 async def get_token_holder_casts(
     agg: ScoreAgg,
     weights: Weights,
+    value_weights: Weights,
     score_threshold: float,
     token_address: bytes,
     offset: int,
     limit: int,
     pool: Pool,
-):
+) -> list[PgRecord]:
     agg_sql = sql_for_agg(agg, f"""
         COALESCE(cr.score, gr.score, 0) * (
             {weights.cast}   * ca.casted +
             {weights.recast} * ca.recasted +
             {weights.reply}  * ca.replied +
             {weights.like}   * ca.liked
+        )
+    """)
+    value_sql = sql_for_agg(agg, f"""
+        COALESCE(cah.value, 0) * (
+            {value_weights.cast}   * ca.casted +
+            {value_weights.recast} * ca.recasted +
+            {value_weights.reply}  * ca.replied +
+            {value_weights.like}   * ca.liked
         )
     """)
     sql_query = f"""
@@ -1604,7 +1614,8 @@ async def get_token_holder_casts(
                         c.fid,
                         c.timestamp,
                         th.value AS balance_raw,
-                        {agg_sql} AS score
+                        {agg_sql} AS score,
+                        {value_sql} AS value_raw
                     FROM k3l_recent_parent_casts c
                     JOIN k3l_token_holding_fids th ON
                         c.fid = th.fid AND
@@ -1612,6 +1623,9 @@ async def get_token_holder_casts(
                     JOIN k3l_cast_action ca ON
                         ca.action_ts > CURRENT_TIMESTAMP - INTERVAL '30 days' AND
                         c.hash = ca.cast_hash
+                    LEFT JOIN k3l_token_holding_fids cah ON
+                        ca.fid = cah.fid AND
+                        th.token_address = $1::bytea
                     LEFT JOIN k3l_rank gr ON
                        gr.strategy_name = 'v3engagement' AND
                        ca.channel_id IS NULL AND
@@ -1626,11 +1640,12 @@ async def get_token_holder_casts(
                     '0x' || encode(hash, 'hex') AS cast_hash,
                     fid,
                     timestamp,
-                    balance_raw::text,
-                    score AS cast_score
+                    balance_raw,
+                    score AS cast_score,
+                    value_raw
                 FROM c
                 WHERE score >= $4
-                ORDER BY timestamp DESC
+                ORDER BY value_raw DESC
                 OFFSET $2
                 LIMIT $3
                 """

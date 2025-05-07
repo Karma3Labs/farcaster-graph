@@ -133,6 +133,7 @@ class TokenFeed(BaseModel):
     reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
     cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
     weights: str = 'L1C0R1Y1'
+    value_weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
         SortingOrder.DAY
     )
