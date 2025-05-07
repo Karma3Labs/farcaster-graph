@@ -1624,7 +1624,8 @@ async def get_token_holder_casts(
                 SELECT
                     '0x' || encode(hash, 'hex') AS cast_hash,
                     fid,
-                    timestamp
+                    timestamp,
+                    score AS cast_score
                 FROM c
                 WHERE score >= $4
                 ORDER BY timestamp DESC
