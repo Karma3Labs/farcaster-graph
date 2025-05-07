@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 from typing import Annotated, Literal, Union
 
@@ -43,6 +44,14 @@ CASTS_AGE = {
     CastsTimeframe.MONTH: '1 month',
     CastsTimeframe.THREE_MONTHS: '3 months',
     CastsTimeframe.SIX_MONTHS: '6 months',
+}
+
+CASTS_AGE_TD = {
+    CastsTimeframe.DAY: timedelta(days=1),
+    CastsTimeframe.WEEK: timedelta(days=7),
+    CastsTimeframe.MONTH: timedelta(days=30),
+    CastsTimeframe.THREE_MONTHS: timedelta(days=91),
+    CastsTimeframe.SIX_MONTHS: timedelta(days=183),
 }
 
 

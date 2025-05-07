@@ -1586,6 +1586,7 @@ async def get_token_holder_casts(
     weights: Weights,
     value_weights: Weights,
     score_threshold: float,
+    max_cast_age: datetime.timedelta,
     token_address: bytes,
     offset: int,
     limit: int,
@@ -1607,6 +1608,7 @@ async def get_token_holder_casts(
             {value_weights.like}   * ca.liked
         )
     """)
+    min_timestamp = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - max_cast_age
     sql_query = f"""
                 WITH c AS (
                     SELECT
@@ -1621,7 +1623,7 @@ async def get_token_holder_casts(
                         c.fid = th.fid AND
                         th.token_address = $1::bytea
                     JOIN k3l_cast_action ca ON
-                        ca.action_ts > CURRENT_TIMESTAMP - INTERVAL '30 days' AND
+                        ca.action_ts >= $5::timestamp AND
                         c.hash = ca.cast_hash
                     LEFT JOIN k3l_token_holding_fids cah ON
                         ca.fid = cah.fid AND
@@ -1634,6 +1636,7 @@ async def get_token_holder_casts(
                        cr.strategy_name = '60d_engagement' AND
                        cr.channel_id = ca.channel_id AND
                        cr.fid = ca.fid
+                    WHERE c.timestamp >= $5::timestamp
                     GROUP BY c.hash, c.fid, c.timestamp, th.value
                 )
                 SELECT
@@ -1651,7 +1654,7 @@ async def get_token_holder_casts(
                 """
 
     return await fetch_rows(
-        token_address, offset, limit, score_threshold,
+        token_address, offset, limit, score_threshold, min_timestamp,
         sql_query=sql_query, pool=pool
     )
 
