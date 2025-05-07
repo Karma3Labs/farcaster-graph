@@ -23,9 +23,8 @@ from app.models.channel_model import (
 )
 from app.models.feed_model import CastsTimeDecay, SortingOrder
 from app.models.score_model import ScoreAgg, Voting, Weights
-
-from ..config import DBVersion, settings
 from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
+from ..config import DBVersion, settings
 
 
 class DOW(Enum):
@@ -1581,28 +1580,61 @@ async def get_recent_casts_by_fids(
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_recent_casts_by_token_holders(
-    token_address: bytes, max_cast_age: str, offset: int, limit: int, pool: Pool
+async def get_token_holder_casts(
+    agg: ScoreAgg,
+    weights: Weights,
+    score_threshold: float,
+    token_address: bytes,
+    offset: int,
+    limit: int,
+    pool: Pool,
 ):
+    agg_sql = sql_for_agg(agg, f"""
+        COALESCE(cr.score, gr.score, 0) * (
+            {weights.cast}   * ca.casted +
+            {weights.recast} * ca.recasted +
+            {weights.reply}  * ca.replied +
+            {weights.like}   * ca.liked
+        )
+    """)
     sql_query = f"""
+                WITH c AS (
+                    SELECT
+                        c.hash,
+                        c.fid,
+                        c.timestamp,
+                        {agg_sql} AS score
+                    FROM k3l_recent_parent_casts c
+                    JOIN k3l_token_holding_fids th ON
+                        c.fid = th.fid AND
+                        th.token_address = $1::bytea
+                    JOIN k3l_cast_action ca ON
+                        ca.action_ts > CURRENT_TIMESTAMP - INTERVAL '30 days' AND
+                        c.hash = ca.cast_hash
+                    LEFT JOIN k3l_rank gr ON
+                       gr.strategy_name = 'v3engagement' AND
+                       ca.channel_id IS NULL AND
+                       ca.fid = gr.profile_id
+                    LEFT JOIN k3l_channel_rank cr ON
+                       cr.strategy_name = '60d_engagement' AND
+                       cr.channel_id = ca.channel_id AND
+                       cr.fid = ca.fid
+                    GROUP BY c.hash, c.fid, c.timestamp
+                )
                 SELECT
-                    '0x' || encode(casts.hash, 'hex') as cast_hash,
+                    '0x' || encode(hash, 'hex') AS cast_hash,
                     fid,
                     timestamp
-                FROM casts
-                JOIN k3l_token_holding_fids USING (fid)
-                WHERE
-                    k3l_token_holding_fids.token_address = $1::bytea AND
-                    deleted_at IS NULL AND
-                    parent_hash IS NULL AND
-                    timestamp >= CURRENT_TIMESTAMP - INTERVAL '{max_cast_age}'
-                ORDER BY casts.timestamp DESC
+                FROM c
+                WHERE score >= $4
+                ORDER BY timestamp DESC
                 OFFSET $2
-                    LIMIT $3 \
+                LIMIT $3
                 """
 
     return await fetch_rows(
-        token_address, offset, limit, sql_query=sql_query, pool=pool
+        token_address, offset, limit, score_threshold,
+        sql_query=sql_query, pool=pool
     )
 
 

@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from pydantic_core import ValidationError
 
+from . import channel_router
 from ..config import settings
 from ..dependencies import db_pool, db_utils, graph
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import CASTS_AGE, FeedMetadata, TokenFeed
+from ..models.feed_model import FeedMetadata, TokenFeed
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
-from . import channel_router
 
 router = APIRouter(tags=["Casts"])
 
@@ -106,9 +106,16 @@ async def get_popular_casts_for_fid(
                 raise HTTPException(
                     status_code=400, detail=f"Invalid token address"
                 ) from e
-            rows = await db_utils.get_recent_casts_by_token_holders(
+            try:
+                weights = Weights.from_str(metadata.weights)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid weights") from e
+
+            rows = await db_utils.get_token_holder_casts(
+                agg=metadata.agg,
+                weights=weights,
                 token_address=token_address,
-                max_cast_age=CASTS_AGE[metadata.lookback],
+                score_threshold=metadata.score_threshold,
                 offset=offset,
                 limit=limit,
                 pool=pool,
