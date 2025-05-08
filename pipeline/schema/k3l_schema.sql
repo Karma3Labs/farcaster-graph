@@ -2743,6 +2743,13 @@ CREATE INDEX k3l_channel_rank_rank_idx ON public.k3l_channel_rank USING btree (r
 
 
 --
+-- Name: k3l_channel_rank_strat_ch_ts_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_rank_strat_ch_ts_fid_idx ON public.k3l_channel_rank USING btree (strategy_name, channel_id, compute_ts, fid);
+
+
+--
 -- Name: k3l_channel_rank_unq_idx; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
@@ -2957,6 +2964,13 @@ CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree 
 --
 
 CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id);
+
+
+--
+-- Name: k3l_recent_parent_casts_fid_timestamp_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_recent_parent_casts_fid_timestamp_idx ON public.k3l_recent_parent_casts USING btree (fid, "timestamp");
 
 
 --
