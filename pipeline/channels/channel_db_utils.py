@@ -57,23 +57,33 @@ async def fetch_rows(
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
 
-@Timer(name="fetch_all_channel_mods")
-def fetch_all_channel_mods(logger: logging.Logger, pg_url: str):
+@Timer(name="fetch_channel_mods_with_metrics")
+def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str):
     sql_engine = create_engine(pg_url)
     try:
         with sql_engine.connect() as conn:
-            tmp_sql = """
+            select_sql = """
+            WITH eligible AS (
+                SELECT
+                    channel_id
+                FROM k3l_channel_metrics
+                WHERE metric_ts > GREATEST(now() - '7 days'::interval, '2025-05-07 16:00:00+00:00'::timestamptz)
+                AND int_value > 10
+                GROUP BY channel_id
+            )
             SELECT
-                id as channel_id,
-	            ARRAY(SELECT DISTINCT fids
-                        FROM unnest(ARRAY[leadfid] || moderatorfids) as fids)
-                    as mods
-            FROM warpcast_channels_data
+                ch.id as channel_id,
+                ARRAY(
+                    SELECT DISTINCT fids
+                    FROM unnest(ARRAY[leadfid] || moderatorfids) as fids
+                ) as mods
+            FROM warpcast_channels_data as ch
+            INNER JOIN eligible ON (ch.id = eligible.channel_id)
             """
-            df = pd.read_sql_query(tmp_sql, conn)
+            df = pd.read_sql_query(select_sql, conn)
             return df
     except Exception as e:
-        logger.error(f"Failed to fetch_all_channel_mods: {e}")
+        logger.error(f"Failed to fetch_channel_mods_with_metrics: {e}")
         raise e
     finally:
         sql_engine.dispose()

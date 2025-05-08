@@ -2,7 +2,7 @@
 import sys
 import argparse
 from pathlib import Path
-from itertools import batched
+from datetime import datetime
 import random
 import asyncio
 
@@ -33,7 +33,7 @@ logger.add(sys.stdout,
 
 load_dotenv()
 
-async def notify(channel_bots_csv: str):
+async def notify(channel_bots_csv: str, since: datetime):
     pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
 
     fids = cura_utils.fetch_frame_users()
@@ -47,7 +47,7 @@ async def notify(channel_bots_csv: str):
     logger.info(f"Frame users that are bots: {set.intersection(fid_set, set(bot_fids))}")
     fid_set = fid_set - set(bot_fids)
 
-    channels_df = channel_db_utils.fetch_all_channel_mods(logger, pg_url)
+    channels_df = channel_db_utils.fetch_channel_mods_with_metrics(logger, pg_url)
     logger.info(f"Total number of channels: {len(channels_df)}")
     logger.info(utils.df_info_to_string(channels_df, with_sample=True))
 
@@ -109,6 +109,13 @@ if __name__ == "__main__":
         help="indicate dry-run mode",
         action="store_true"
     )
+    parser.add_argument(
+        "-s",
+        "--since",
+        type=lambda dtstr: datetime.fromisoformat(dtstr),
+        help="datetime in ISO 8601 format since which to fetch notifications",
+        required=True,
+    )
     args = parser.parse_args()
     print(args)
     logger.info(settings)
@@ -116,4 +123,4 @@ if __name__ == "__main__":
     if args.dry_run:
         settings.IS_TEST = True
 
-    asyncio.run(notify(args.bots_csv))
+    asyncio.run(notify(args.bots_csv, args.since))
