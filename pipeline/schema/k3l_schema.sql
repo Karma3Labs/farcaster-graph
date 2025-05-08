@@ -49,16 +49,6 @@ CREATE TYPE public.channel_rank_status AS ENUM (
 ALTER TYPE public.channel_rank_status OWNER TO k3l_user;
 
 --
--- Name: ethereum_address; Type: DOMAIN; Schema: public; Owner: k3l_user
---
-
-CREATE DOMAIN public.ethereum_address AS character(42)
-	CONSTRAINT ethereum_address_check CHECK ((VALUE ~ '^0x[0-9a-f]{40}$'::text));
-
-
-ALTER DOMAIN public.ethereum_address OWNER TO k3l_user;
-
---
 -- Name: tokens_dist_status; Type: TYPE; Schema: public; Owner: k3l_user
 --
 
@@ -1303,19 +1293,6 @@ CREATE TABLE public.k3l_top_spammers (
 ALTER TABLE public.k3l_top_spammers OWNER TO k3l_user;
 
 --
--- Name: k3l_verified_addresses; Type: TABLE; Schema: public; Owner: k3l_user
---
-
-CREATE TABLE public.k3l_verified_addresses (
-    fid bigint NOT NULL,
-    updated_at timestamp with time zone NOT NULL,
-    verified_addresses public.ethereum_address[] NOT NULL
-);
-
-
-ALTER TABLE public.k3l_verified_addresses OWNER TO k3l_user;
-
---
 -- Name: links; Type: VIEW; Schema: public; Owner: k3l_user
 --
 
@@ -1968,14 +1945,6 @@ ALTER TABLE ONLY public.k3l_channel_points_allowlist
 
 ALTER TABLE ONLY public.k3l_channel_rewards_config
     ADD CONSTRAINT k3l_channel_rewards_config_ch_unq UNIQUE (channel_id);
-
-
---
--- Name: k3l_verified_addresses k3l_verified_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: k3l_user
---
-
-ALTER TABLE ONLY public.k3l_verified_addresses
-    ADD CONSTRAINT k3l_verified_addresses_pkey PRIMARY KEY (fid);
 
 
 --
@@ -2971,13 +2940,6 @@ CREATE INDEX k3l_recent_parent_casts_hash_idx ON public.k3l_recent_parent_casts 
 --
 
 CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_casts USING btree (id);
-
-
---
--- Name: k3l_verified_addresses__verified_address__gin; Type: INDEX; Schema: public; Owner: k3l_user
---
-
-CREATE INDEX k3l_verified_addresses__verified_address__gin ON public.k3l_verified_addresses USING gin (verified_addresses);
 
 
 --
@@ -4303,13 +4265,6 @@ GRANT ALL ON TABLE public.k3l_top_casters TO k3l_readonly;
 --
 
 GRANT ALL ON TABLE public.k3l_top_spammers TO k3l_readonly;
-
-
---
--- Name: TABLE k3l_verified_addresses; Type: ACL; Schema: public; Owner: k3l_user
---
-
-GRANT SELECT,REFERENCES ON TABLE public.k3l_verified_addresses TO k3l_readonly;
 
 
 --
