@@ -1259,6 +1259,37 @@ CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
 ALTER MATERIALIZED VIEW public.k3l_recent_parent_casts OWNER TO k3l_user;
 
 --
+-- Name: verified_addresses; Type: VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE VIEW public.verified_addresses AS
+ SELECT fid,
+    "timestamp",
+    address
+   FROM neynarv3.verifications
+  WHERE (deleted_at IS NULL);
+
+
+ALTER VIEW public.verified_addresses OWNER TO k3l_user;
+
+--
+-- Name: k3l_token_holding_fids; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE MATERIALIZED VIEW public.k3l_token_holding_fids AS
+ SELECT va.fid,
+    b.token_address,
+    sum(b.value) AS value
+   FROM (public.balances b
+     JOIN public.verified_addresses va ON ((b.wallet_address = va.address)))
+  GROUP BY va.fid, b.token_address
+ HAVING (sum(b.value) > (0)::numeric)
+  WITH NO DATA;
+
+
+ALTER MATERIALIZED VIEW public.k3l_token_holding_fids OWNER TO k3l_user;
+
+--
 -- Name: k3l_top_casters; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
@@ -2943,6 +2974,20 @@ CREATE UNIQUE INDEX k3l_recent_parent_casts_idx ON public.k3l_recent_parent_cast
 
 
 --
+-- Name: k3l_token_holding_fids_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_token_holding_fids_fid_idx ON public.k3l_token_holding_fids USING btree (fid, token_address);
+
+
+--
+-- Name: k3l_token_holding_fids_token_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_token_holding_fids_token_idx ON public.k3l_token_holding_fids USING btree (token_address, fid);
+
+
+--
 -- Name: k3l_cast_action_v1_y2024m09_action_ts_idx; Type: INDEX ATTACH; Schema: public; Owner: k3l_user
 --
 
@@ -4251,6 +4296,20 @@ GRANT SELECT,REFERENCES ON TABLE public.k3l_rank TO k3l_readonly;
 --
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_recent_parent_casts TO k3l_readonly;
+
+
+--
+-- Name: TABLE verified_addresses; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.verified_addresses TO k3l_readonly;
+
+
+--
+-- Name: TABLE k3l_token_holding_fids; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_token_holding_fids TO k3l_readonly;
 
 
 --
