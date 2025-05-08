@@ -175,6 +175,19 @@ CREATE TABLE public.globaltrust_config (
 ALTER TABLE public.globaltrust_config OWNER TO k3l_user;
 
 --
+-- Name: k3l_action_discounted_fids; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.k3l_action_discounted_fids (
+    fid bigint NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    reason text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE public.k3l_action_discounted_fids OWNER TO k3l_user;
+
+--
 -- Name: k3l_cast_action_v1; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
@@ -1800,6 +1813,14 @@ ALTER TABLE ONLY public.globaltrust_config
 
 ALTER TABLE ONLY public.globaltrust
     ADD CONSTRAINT globaltrust_strategy_name_date_i_unique UNIQUE (strategy_id, date, i);
+
+
+--
+-- Name: k3l_action_discounted_fids k3l_action_discounted_fids_pkey; Type: CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.k3l_action_discounted_fids
+    ADD CONSTRAINT k3l_action_discounted_fids_pkey PRIMARY KEY (fid);
 
 
 --
@@ -3918,6 +3939,13 @@ GRANT SELECT,REFERENCES ON TABLE public.globaltrust TO k3l_readonly;
 --
 
 GRANT SELECT,REFERENCES ON TABLE public.globaltrust_config TO k3l_readonly;
+
+
+--
+-- Name: TABLE k3l_action_discounted_fids; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.k3l_action_discounted_fids TO k3l_readonly;
 
 
 --

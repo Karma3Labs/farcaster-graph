@@ -1640,6 +1640,8 @@ async def get_token_holder_casts(
                     JOIN k3l_cast_action ca ON
                         ca.action_ts >= $5::timestamp AND
                         c.hash = ca.cast_hash
+                    LEFT JOIN k3l_action_discounted_fids dc ON
+                        ca.fid = dc.fid
                     LEFT JOIN k3l_token_holding_fids cah ON
                         ca.fid = cah.fid AND
                         th.token_address = $1::bytea
@@ -1651,7 +1653,9 @@ async def get_token_holder_casts(
                        cr.strategy_name = '60d_engagement' AND
                        cr.channel_id = ca.channel_id AND
                        cr.fid = ca.fid
-                    WHERE c.timestamp >= $5::timestamp
+                    WHERE
+                        c.timestamp >= $5::timestamp AND
+                        dc.fid IS NULL
                     GROUP BY c.hash, c.fid, c.timestamp, th.value
                 )
                 SELECT
