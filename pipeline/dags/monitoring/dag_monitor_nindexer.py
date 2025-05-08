@@ -65,21 +65,21 @@ with DAG(
         max_threshold=600, # fail task if more than 10 minutes of lag
     )
 
-    # lag_reactions_ts = SQLThresholdCheckOperator(
-    #     task_id="lag_reactions_ts",
-    #     conn_id=_ALT_CONN_ID,
-    #     sql="""
-    #     SELECT
-	#         EXTRACT(EPOCH FROM (now() - max(timestamp))) as max_ts_lag_ms
-    #     FROM neynarv2.reactions
-    #     WHERE timestamp > now() - interval '1 days'
-    #     AND timestamp <= now() -- ignore casts with bad timestamp in the future
-    #     """,
-    #     min_threshold=0,
-    #     max_threshold=600, # fail task if more than 10 minutes of lag
-    # )
+    lag_reactions_ts = SQLThresholdCheckOperator(
+        task_id="lag_reactions_ts",
+        conn_id=_ALT_CONN_ID,
+        sql="""
+        SELECT
+	        EXTRACT(EPOCH FROM (now() - max(timestamp))) as max_ts_lag_ms
+        FROM neynarv2.reactions
+        WHERE timestamp > now() - interval '1 days'
+        AND timestamp <= now() -- ignore casts with bad timestamp in the future
+        """,
+        min_threshold=0,
+        max_threshold=600, # fail task if more than 10 minutes of lag
+    )
 
-    lag_reactions_ts = EmptyOperator(task_id="lag_reactions_ts")
+    # lag_reactions_ts = EmptyOperator(task_id="lag_reactions_ts")
 
     end = EmptyOperator(task_id="end")
 
