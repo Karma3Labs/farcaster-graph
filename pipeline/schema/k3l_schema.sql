@@ -92,6 +92,17 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: alembic_version; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.alembic_version (
+    version_num character varying(32) NOT NULL
+);
+
+
+ALTER TABLE public.alembic_version OWNER TO k3l_user;
+
+--
 -- Name: automod_data; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
@@ -108,6 +119,22 @@ CREATE TABLE public.automod_data (
 
 
 ALTER TABLE public.automod_data OWNER TO k3l_user;
+
+--
+-- Name: balances; Type: TABLE; Schema: public; Owner: k3l_user
+--
+
+CREATE TABLE public.balances (
+    chain_id integer NOT NULL,
+    token_address bytea NOT NULL,
+    wallet_address bytea NOT NULL,
+    value numeric(62,0),
+    block_number bigint,
+    log_index bigint
+);
+
+
+ALTER TABLE public.balances OWNER TO k3l_user;
 
 --
 -- Name: cura_hidden_fids; Type: TABLE; Schema: public; Owner: k3l_user
@@ -1469,6 +1496,22 @@ ALTER TABLE ONLY public.k3l_channel_tokens_log ATTACH PARTITION public.k3l_chann
 --
 
 ALTER TABLE ONLY public.k3l_channel_tokens_log ATTACH PARTITION public.k3l_channel_tokens_log_y2025m04 FOR VALUES FROM ('2025-04-01 00:00:00') TO ('2025-05-01 00:00:00');
+
+
+--
+-- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.alembic_version
+    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
+
+
+--
+-- Name: balances balances_pkey; Type: CONSTRAINT; Schema: public; Owner: k3l_user
+--
+
+ALTER TABLE ONLY public.balances
+    ADD CONSTRAINT balances_pkey PRIMARY KEY (chain_id, token_address, wallet_address);
 
 
 --
@@ -3163,10 +3206,24 @@ GRANT ALL ON FUNCTION public.end_week_9amoffset(timestamp without time zone, int
 
 
 --
+-- Name: TABLE alembic_version; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.alembic_version TO k3l_readonly;
+
+
+--
 -- Name: TABLE automod_data; Type: ACL; Schema: public; Owner: k3l_user
 --
 
 GRANT SELECT,REFERENCES ON TABLE public.automod_data TO k3l_readonly;
+
+
+--
+-- Name: TABLE balances; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.balances TO k3l_readonly;
 
 
 --
