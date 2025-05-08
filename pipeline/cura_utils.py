@@ -56,7 +56,7 @@ def weekly_mods_notify(
     current_week = utils.dow_utc_time(utils.DOW.WEDNESDAY)
     notification_id = hashlib.sha256(f"{channel_id}-{current_week}".encode("utf-8")).hexdigest()
     logger.info(f"Sending notification for channel {channel_id}-{current_week}")
-    title = "Check out your channel stats"
+    title = f"Check out your /{channel_id} stats"
     body = "Your top casts and members stats are in, tap to look."
     return notify(session, timeouts, channel_id, fids, notification_id, title, body)
 
