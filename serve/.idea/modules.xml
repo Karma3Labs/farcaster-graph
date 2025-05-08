@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/serve.iml" filepath="$PROJECT_DIR$/.idea/serve.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/farcaster-graph-serve.iml" filepath="$PROJECT_DIR$/.idea/farcaster-graph-serve.iml" />
     </modules>
   </component>
 </project>

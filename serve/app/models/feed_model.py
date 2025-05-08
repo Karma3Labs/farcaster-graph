@@ -61,6 +61,20 @@ class CastsTimeDecay(StrEnum):
     DAY = 'day'
     NEVER = 'never'
 
+    @property
+    def timedelta(self) -> timedelta:
+        try:
+            return CastsTimeDecay._TIMEDELTAS[self]
+        except KeyError:
+            raise ValueError("{self!r} has no equivalent timedelta")
+
+
+CastsTimeDecay._TIMEDELTAS = {
+    CastsTimeDecay.MINUTE: timedelta(minutes=1),
+    CastsTimeDecay.HOUR: timedelta(hours=1),
+    CastsTimeDecay.DAY: timedelta(days=1),
+}
+
 
 class TrendingFeed(BaseModel):
     feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
@@ -146,9 +160,11 @@ class TokenFeed(BaseModel):
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
         SortingOrder.DAY
     )
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.HOUR
-    )
+    # time decay default: depreciates 10% every day, compounded, 7-day cliff
+    # days          1   2   3   4   5   6   7 ->cliff
+    # strength (%)  90  81  73  66  59  53  48->0
+    time_decay_base: Annotated[float, Field(alias="timeDecayBase", gt=0, le=0)] = 0.9
+    time_decay_period: Annotated[timedelta, Field(alias="timeDecayPeriod")] = timedelta(days=1)
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (

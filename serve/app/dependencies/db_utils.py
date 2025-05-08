@@ -79,26 +79,24 @@ def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
 
 def sql_for_decay(
     interval_expr: str,
-    unit: CastsTimeDecay,
-    mag: float = 1.0,
+    period: CastsTimeDecay | datetime.timedelta,
     base: float = 1-(1/365),
 ) -> str:
-    match unit:
-        case CastsTimeDecay.NEVER:
-            return "1"
-        case CastsTimeDecay.MINUTE:
-            decay_time = 60
-        case CastsTimeDecay.HOUR:
-            decay_time = 60 * 60
-        case CastsTimeDecay.DAY:
-            decay_time = 60 * 60 * 24
-        case _:
-            raise ValueError(f"unhandled time decay unit {unit}")
-    decay_time *= mag
+    if isinstance(period, CastsTimeDecay):
+        if period == CastsTimeDecay.NEVER:
+            base = 1
+        else:
+            period = period.timedelta
+    if base == 1:
+        return "1"
+    if not 0 < base <= 1:
+        raise ValueError(f"invalid time decay base {base}")
+    if period < datetime.timedelta():
+        raise ValueError(f"invalid time decay period {period}")
     return f"""
             power(
                 {base}::numeric,
-                (EXTRACT(EPOCH FROM ({interval_expr})) / ({decay_time}))::numeric
+                (EXTRACT(EPOCH FROM ({interval_expr})) / ({period.total_seconds()}))::numeric
             )
     """
 
@@ -1600,19 +1598,21 @@ async def get_token_holder_casts(
     value_weights: Weights,
     score_threshold: float,
     max_cast_age: datetime.timedelta,
-    time_decay: CastsTimeDecay,
+    time_decay_base: float,
+    time_decay_period: datetime.timedelta,
     token_address: bytes,
     offset: int,
     limit: int,
     pool: Pool,
 ) -> list[PgRecord]:
+    decay_sql = sql_for_decay("$6 - ca.action_ts", time_decay_period, base=time_decay_base)
     agg_sql = sql_for_agg(agg, f"""
         COALESCE(cr.score, gr.score, 0) * (
             {weights.cast}   * ca.casted +
             {weights.recast} * ca.recasted +
             {weights.reply}  * ca.replied +
             {weights.like}   * ca.liked
-        ) * {sql_for_decay("$6 - ca.action_ts", time_decay)}
+        ) * {decay_sql}
     """)
     value_sql = sql_for_agg(agg, f"""
         COALESCE(cah.value, 0) * (
@@ -1620,7 +1620,7 @@ async def get_token_holder_casts(
             {value_weights.recast} * ca.recasted +
             {value_weights.reply}  * ca.replied +
             {value_weights.like}   * ca.liked
-        ) * {sql_for_decay("$6 - ca.action_ts", time_decay)}
+        ) * {decay_sql}
     """)
     now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
