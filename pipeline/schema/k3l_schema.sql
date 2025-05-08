@@ -2480,28 +2480,28 @@ CREATE INDEX k3l_channel_openrank_results_y2025m03_fid_idx ON public.k3l_channel
 -- Name: k3l_channel_points_bal_new_channel_id_balance_idx; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
-CREATE INDEX k3l_channel_points_bal_new_channel_id_balance_idx ON public.k3l_channel_points_bal USING btree (channel_id, balance);
+CREATE INDEX k3l_channel_points_bal_new_channel_id_balance_idx ON public.k3l_channel_points_bal_old USING btree (channel_id, balance);
 
 
 --
 -- Name: k3l_channel_points_bal_new_channel_id_balance_idx1; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
-CREATE INDEX k3l_channel_points_bal_new_channel_id_balance_idx1 ON public.k3l_channel_points_bal_old USING btree (channel_id, balance);
+CREATE INDEX k3l_channel_points_bal_new_channel_id_balance_idx1 ON public.k3l_channel_points_bal USING btree (channel_id, balance);
 
 
 --
 -- Name: k3l_channel_points_bal_new_channel_id_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
-CREATE INDEX k3l_channel_points_bal_new_channel_id_fid_idx ON public.k3l_channel_points_bal USING btree (channel_id, fid);
+CREATE INDEX k3l_channel_points_bal_new_channel_id_fid_idx ON public.k3l_channel_points_bal_old USING btree (channel_id, fid);
 
 
 --
 -- Name: k3l_channel_points_bal_new_channel_id_fid_idx1; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
-CREATE INDEX k3l_channel_points_bal_new_channel_id_fid_idx1 ON public.k3l_channel_points_bal_old USING btree (channel_id, fid);
+CREATE INDEX k3l_channel_points_bal_new_channel_id_fid_idx1 ON public.k3l_channel_points_bal USING btree (channel_id, fid);
 
 
 --
