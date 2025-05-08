@@ -74,6 +74,7 @@ with DAG(
         FROM neynarv2.reactions
         WHERE timestamp > now() - interval '1 days'
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
+        AND deleted_at IS NULL
         """,
         min_threshold=0,
         max_threshold=600, # fail task if more than 10 minutes of lag
