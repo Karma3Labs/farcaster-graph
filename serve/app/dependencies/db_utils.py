@@ -1600,6 +1600,7 @@ async def get_token_holder_casts(
     value_weights: Weights,
     score_threshold: float,
     max_cast_age: datetime.timedelta,
+    time_decay: CastsTimeDecay,
     token_address: bytes,
     offset: int,
     limit: int,
@@ -1611,7 +1612,7 @@ async def get_token_holder_casts(
             {weights.recast} * ca.recasted +
             {weights.reply}  * ca.replied +
             {weights.like}   * ca.liked
-        )
+        ) * {sql_for_decay("$6 - ca.action_ts", time_decay)}
     """)
     value_sql = sql_for_agg(agg, f"""
         COALESCE(cah.value, 0) * (
@@ -1619,9 +1620,10 @@ async def get_token_holder_casts(
             {value_weights.recast} * ca.recasted +
             {value_weights.reply}  * ca.replied +
             {value_weights.like}   * ca.liked
-        )
+        ) * {sql_for_decay("$6 - ca.action_ts", time_decay)}
     """)
-    min_timestamp = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - max_cast_age
+    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    min_timestamp = now - max_cast_age
     sql_query = f"""
                 WITH c AS (
                     SELECT
@@ -1667,7 +1669,7 @@ async def get_token_holder_casts(
                 """
 
     return await fetch_rows(
-        token_address, offset, limit, score_threshold, min_timestamp,
+        token_address, offset, limit, score_threshold, min_timestamp, now,
         sql_query=sql_query, pool=pool
     )
 

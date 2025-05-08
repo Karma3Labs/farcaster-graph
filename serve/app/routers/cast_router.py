@@ -120,6 +120,7 @@ async def get_popular_casts_for_fid(
                 token_address=token_address,
                 score_threshold=metadata.score_threshold,
                 max_cast_age=max_cast_age,
+                time_decay=metadata.time_decay,
                 offset=offset,
                 limit=limit,
                 pool=pool,
