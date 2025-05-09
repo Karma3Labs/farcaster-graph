@@ -27,34 +27,41 @@ with DAG(
         start = EmptyOperator(task_id="start")
 
         echo1 =  BashOperator(
-            task_id="echo1", 
+            task_id="echo1",
             bash_command= "echo {{ (logical_date - macros.timedelta(days=90)) | ds }}",
             dag=dag
         )
-        start >> echo1
+
+        echo2 =  BashOperator(
+            task_id="echo2",
+            bash_command= "echo {{ prev_data_interval_end_success }}",
+            dag=dag
+        )
+
+        start >> echo1 >> echo2
         
     @task_group(group_id='my_echo_group')
     def tg_echo():
 
-        echo2 =  BashOperator(
-            task_id="echo2", 
+        echo3 =  BashOperator(
+            task_id="echo3",
             bash_command= "echo {{ macros.ds_add(ds, -90) }}",
             dag=dag
         )
 
-        echo3 =  BashOperator(
-            task_id="echo3", 
+        echo4 =  BashOperator(
+            task_id="echo4",
             bash_command= "echo {{ ds }}",
             dag=dag
         )
 
-        echo4 =  BashOperator(
-            task_id="echo4", 
+        echo5 =  BashOperator(
+            task_id="echo5",
             bash_command= "echo {{ logical_date }}",
             dag=dag
         )
-        echo2 >> echo3
-        echo4
+        echo3 >> echo4
+        echo5
 
     end = EmptyOperator(task_id="end")
 
