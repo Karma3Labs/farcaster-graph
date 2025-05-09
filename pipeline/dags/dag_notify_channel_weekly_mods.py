@@ -41,7 +41,7 @@ with DAG(
             task_id="notify",
             bash_command=(
                 "cd /pipeline && ./run_notify_channel_weekly_mods.sh "
-                " -w . -v .venv -b channels/Bot_Fids.csv -s {{ prev_data_interval_end_success }} -d "),
+                " -w . -v .venv -b channels/Bot_Fids.csv -s '{{ prev_data_interval_end_success }}' -d "),
             dag=dag)
     
     @task.branch(task_id="check_last_successful")

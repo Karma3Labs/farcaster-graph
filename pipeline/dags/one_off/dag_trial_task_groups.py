@@ -34,7 +34,7 @@ with DAG(
 
         echo2 =  BashOperator(
             task_id="echo2",
-            bash_command= "echo {{ prev_data_interval_end_success }}",
+            bash_command= "echo '{{ prev_data_interval_end_success }}'",
             dag=dag
         )
 
