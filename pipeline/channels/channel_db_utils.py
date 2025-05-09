@@ -66,12 +66,11 @@ def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str, since: 
             WITH eligible AS (
                 SELECT
                     channel_id,
-                    max(int_value) as int_value
+                    sum(int_value) as int_value
                 FROM k3l_channel_metrics
                 WHERE metric_ts > GREATEST(now() - '7 days'::interval,
                                             '{since}'::timestamptz)
                 AND metric = 'weekly_num_casts'
-                AND int_value > 10
                 GROUP BY channel_id
             )
             SELECT
@@ -81,7 +80,7 @@ def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str, since: 
                     FROM unnest(ARRAY[leadfid] || moderatorfids) as fids
                 ) as mods
             FROM warpcast_channels_data as ch
-            INNER JOIN eligible ON (ch.id = eligible.channel_id)
+            INNER JOIN eligible ON (ch.id = eligible.channel_id and eligible.int_value > 10)
             ORDER BY eligible.int_value desc
             """
             logger.debug(f"{select_sql}")
