@@ -47,7 +47,7 @@ async def notify(channel_bots_csv: str, since: datetime):
     logger.info(f"Frame users that are bots: {set.intersection(fid_set, set(bot_fids))}")
     fid_set = fid_set - set(bot_fids)
 
-    channels_df = channel_db_utils.fetch_channel_mods_with_metrics(logger, pg_url)
+    channels_df = channel_db_utils.fetch_channel_mods_with_metrics(logger, pg_url, since.isoformat())
     logger.info(f"Total number of channels: {len(channels_df)}")
     logger.info(utils.df_info_to_string(channels_df, with_sample=True))
 
@@ -83,15 +83,21 @@ async def notify(channel_bots_csv: str, since: datetime):
 
         for row in channels_df.itertuples():
             logger.debug(f"Processing channel {row.channel_id}")
-            logger.debug(f"Channel mods: {row.notify_mods}")
+            logger.debug(f"Channel mods before filter: {row.notify_mods}")
+            notify_mods = set(row.notify_mods) & fid_set
+            logger.debug(f"Channel mods after filter: {notify_mods}")
+            if len(notify_mods) == 0:
+                logger.info(f"No mods to notify for channel {row.channel_id}")
+                continue
             cura_utils.weekly_mods_notify(
                 session=session,
                 timeouts=timeouts,
                 channel_id=row.channel_id,
-                fids=row.notify_mods
+                fids=list(notify_mods)
             )
-            # logger.info(f"Sent notifications for channel {cid} to {len(notified_fids)} fids")
-            # fid_set = fid_set - set(notified_fids)
+            logger.info(f"Sent notifications for channel {row.channel_id} to {len(notify_mods)} fids")
+            # shrink filter so we can avoid notifying mods again
+            fid_set = fid_set - set(notify_mods)
     return
 
 if __name__ == "__main__":

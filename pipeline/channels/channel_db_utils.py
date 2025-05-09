@@ -58,16 +58,19 @@ async def fetch_rows(
     return rows
 
 @Timer(name="fetch_channel_mods_with_metrics")
-def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str):
+def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str, since: str):
     sql_engine = create_engine(pg_url)
     try:
         with sql_engine.connect() as conn:
-            select_sql = """
+            select_sql = f"""
             WITH eligible AS (
                 SELECT
-                    channel_id
+                    channel_id,
+                    max(int_value) as int_value
                 FROM k3l_channel_metrics
-                WHERE metric_ts > GREATEST(now() - '7 days'::interval, '2025-05-07 16:00:00+00:00'::timestamptz)
+                WHERE metric_ts > GREATEST(now() - '7 days'::interval,
+                                            '{since}'::timestamptz)
+                AND metric = 'weekly_num_casts'
                 AND int_value > 10
                 GROUP BY channel_id
             )
@@ -79,7 +82,9 @@ def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str):
                 ) as mods
             FROM warpcast_channels_data as ch
             INNER JOIN eligible ON (ch.id = eligible.channel_id)
+            ORDER BY eligible.int_value desc
             """
+            logger.debug(f"{select_sql}")
             df = pd.read_sql_query(select_sql, conn)
             return df
     except Exception as e:
