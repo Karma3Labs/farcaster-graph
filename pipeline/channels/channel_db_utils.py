@@ -58,7 +58,9 @@ async def fetch_rows(
     return rows
 
 @Timer(name="fetch_channel_mods_with_metrics")
-def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str, since: str):
+def fetch_channel_mods_with_metrics(
+    logger: logging.Logger, pg_url: str, since: str, notification_threshold: int
+):
     sql_engine = create_engine(pg_url)
     try:
         with sql_engine.connect() as conn:
@@ -80,7 +82,10 @@ def fetch_channel_mods_with_metrics(logger: logging.Logger, pg_url: str, since: 
                     FROM unnest(ARRAY[leadfid] || moderatorfids) as fids
                 ) as mods
             FROM warpcast_channels_data as ch
-            INNER JOIN eligible ON (ch.id = eligible.channel_id and eligible.int_value > 10)
+            INNER JOIN eligible 
+                    ON (ch.id = eligible.channel_id 
+                        and eligible.int_value > {notification_threshold}
+                    )
             ORDER BY eligible.int_value desc
             """
             logger.debug(f"{select_sql}")
