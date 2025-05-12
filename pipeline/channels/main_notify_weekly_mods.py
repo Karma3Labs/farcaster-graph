@@ -47,7 +47,9 @@ async def notify(channel_bots_csv: str, since: datetime):
     logger.info(f"Frame users that are bots: {set.intersection(fid_set, set(bot_fids))}")
     fid_set = fid_set - set(bot_fids)
 
-    channels_df = channel_db_utils.fetch_channel_mods_with_metrics(logger, pg_url, since.isoformat())
+    channels_df = channel_db_utils.fetch_channel_mods_with_metrics(
+        logger, pg_url, since.isoformat(), notification_threshold=10
+    )
     logger.info(f"Total number of channels: {len(channels_df)}")
     logger.info(utils.df_info_to_string(channels_df, with_sample=True))
 
