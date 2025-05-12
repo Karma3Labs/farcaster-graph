@@ -1154,8 +1154,10 @@ def insert_tokens_log(
             SELECT
                 tokens.fid,
                 COALESCE(
+                        '0x' || encode(any_value(profiles.primary_eth_address), 'hex'),
                         (array_agg(v.claim->>'address' order by timestamp DESC))[1], 
-                        '0x' || encode(any_value(custody_address),'hex')) as fid_address,
+                        '0x' || encode(any_value(custody_address),'hex')
+                ) as fid_address,
                 tokens.channel_id,
                 max(amt) as amt,
                 {dist_id},
@@ -1165,6 +1167,7 @@ def insert_tokens_log(
                 max(points_ts) as points_ts
             FROM tokens
             INNER JOIN numfids ON (numfids.channel_id = tokens.channel_id)
+            LEFT JOIN profiles ON (profiles.fid = tokens.fid AND profiles.deleted_at IS NULL)
             LEFT JOIN verifications as v
                     ON (v.fid=tokens.fid AND v.deleted_at IS NULL 
                         AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
