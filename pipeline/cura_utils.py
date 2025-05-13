@@ -2,6 +2,7 @@
 import urllib.parse
 import hashlib
 import datetime
+from enum import StrEnum
 
 # local dependencies
 from config import settings
@@ -14,6 +15,12 @@ import pandas as pd
 from urllib3.util import Retry
 import pytz
 
+class ScreenName(StrEnum):
+    # feed, leaderboard, token, details
+    WEEKLY_MODS = "details"
+    TOKENS = "token"
+    LEADERBOARD = "leaderboard"
+    DAILY_CAST = "feed"
 
 def leaderboard_notify(
     session: niquests.Session,
@@ -28,9 +35,11 @@ def leaderboard_notify(
     title = f"/{channel_id} leaderboard updated!"
     if is_token:
         body = f"Claim your /{channel_id} tokens!"
+        screen_name = ScreenName.TOKENS.value
     else:
         body = f"Check your /{channel_id} rank!"
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
+        screen_name = ScreenName.LEADERBOARD.value
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
 
 def daily_cast_notify(
     session: niquests.Session,
@@ -45,7 +54,8 @@ def daily_cast_notify(
     logger.info(f"Sending notification for channel {channel_id}-{pacific_9am_str}")
     title = f"What's trending on /{channel_id} ?"
     body = f"See what you missed in /{channel_id} in the last 24 hours"
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
+    screen_name = ScreenName.DAILY_CAST.value
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
 
 def weekly_mods_notify(
     session: niquests.Session,
@@ -58,7 +68,8 @@ def weekly_mods_notify(
     logger.info(f"Sending notification for channel {channel_id}-{current_week}")
     title = f"Check out your /{channel_id} stats"
     body = "Your top casts and members stats are in, tap to look."
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body)
+    screen_name = ScreenName.WEEKLY_MODS.value
+    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
 
 def notify(
     session: niquests.Session,
@@ -67,14 +78,16 @@ def notify(
     fids: list[int],
     notification_id: str,
     title: str,
-    body: str
+    body: str,
+    screen_name: str = None
 ):
     req = {
         "title": title,
         "body": body,
         "notificationId": notification_id,
         "channelId": channel_id,
-        "fids": fids
+        "fids": fids,
+        "screen": screen_name
     }
     url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
     logger.info(f"{url}: {req}")
