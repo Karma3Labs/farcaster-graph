@@ -4,6 +4,7 @@ import time
 from enum import Enum
 
 import pytz
+from async_lru import alru_cache
 from asyncpg import Record as PgRecord
 from asyncpg.pool import Pool
 from loguru import logger
@@ -24,8 +25,9 @@ from app.models.channel_model import (
 )
 from app.models.feed_model import CastsTimeDecay, SortingOrder
 from app.models.score_model import ScoreAgg, Voting, Weights
-from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
+
 from ..config import DBVersion, settings
+from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
 
 
 class DOW(Enum):
@@ -80,7 +82,7 @@ def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
 def sql_for_decay(
     interval_expr: str,
     period: CastsTimeDecay | datetime.timedelta,
-    base: float = 1-(1/365),
+    base: float = 1 - (1 / 365),
 ) -> str:
     if isinstance(period, CastsTimeDecay):
         if period == CastsTimeDecay.NEVER:
@@ -1264,7 +1266,7 @@ async def get_top_frames(
 
     decay_sql = sql_for_decay(
         "CURRENT_TIMESTAMP - labels.latest_cast_dt",
-        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER
+        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER,
     )
 
     sql_query = f"""
@@ -1316,7 +1318,7 @@ async def get_top_frames_with_cast_details(
 
     decay_sql = sql_for_decay(
         "CURRENT_TIMESTAMP - labels.latest_cast_dt",
-        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER
+        CastsTimeDecay.DAY if decay else CastsTimeDecay.NEVER,
     )
 
     sql_query = f"""
@@ -1592,7 +1594,15 @@ async def get_recent_casts_by_fids(
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_token_holder_casts(
+TOKEN_FEED_CACHE_SIZE = 1000
+TOKEN_FEED_CACHE_TTL = datetime.timedelta(minutes=2)
+
+
+@alru_cache(
+    maxsize=TOKEN_FEED_CACHE_SIZE,
+    ttl=TOKEN_FEED_CACHE_TTL.total_seconds(),
+)
+async def get_token_holder_casts_all(
     agg: ScoreAgg,
     weights: Weights,
     value_weights: Weights,
@@ -1601,27 +1611,33 @@ async def get_token_holder_casts(
     time_decay_base: float,
     time_decay_period: datetime.timedelta,
     token_address: bytes,
-    offset: int,
-    limit: int,
     pool: Pool,
 ) -> list[PgRecord]:
-    decay_sql = sql_for_decay("$6 - ca.action_ts", time_decay_period, base=time_decay_base)
-    agg_sql = sql_for_agg(agg, f"""
+    decay_sql = sql_for_decay(
+        "$4 - ca.action_ts", time_decay_period, base=time_decay_base
+    )
+    agg_sql = sql_for_agg(
+        agg,
+        f"""
         COALESCE(cr.score, gr.score, 0) * (
             {weights.cast}   * ca.casted +
             {weights.recast} * ca.recasted +
             {weights.reply}  * ca.replied +
             {weights.like}   * ca.liked
         ) * {decay_sql}
-    """)
-    value_sql = sql_for_agg(agg, f"""
+    """,
+    )
+    value_sql = sql_for_agg(
+        agg,
+        f"""
         COALESCE(cah.value, 0) * (
             {value_weights.cast}   * ca.casted +
             {value_weights.recast} * ca.recasted +
             {value_weights.reply}  * ca.replied +
             {value_weights.like}   * ca.liked
         ) * {decay_sql}
-    """)
+    """,
+    )
     now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
     sql_query = f"""
@@ -1638,7 +1654,7 @@ async def get_token_holder_casts(
                         c.fid = th.fid AND
                         th.token_address = $1::bytea
                     JOIN k3l_cast_action ca ON
-                        ca.action_ts >= $5::timestamp AND
+                        ca.action_ts >= $3::timestamp AND
                         c.hash = ca.cast_hash
                     LEFT JOIN k3l_action_discounted_fids dc ON
                         ca.fid = dc.fid
@@ -1654,7 +1670,7 @@ async def get_token_holder_casts(
                        cr.channel_id = ca.channel_id AND
                        cr.fid = ca.fid
                     WHERE
-                        c.timestamp >= $5::timestamp AND
+                        c.timestamp >= $3::timestamp AND
                         dc.fid IS NULL
                     GROUP BY c.hash, c.fid, c.timestamp, th.value
                 )
@@ -1666,16 +1682,25 @@ async def get_token_holder_casts(
                     score AS cast_score,
                     value_raw
                 FROM c
-                WHERE score >= $4
+                WHERE score >= $2
                 ORDER BY value_raw DESC
-                OFFSET $2
-                LIMIT $3
                 """
 
     return await fetch_rows(
-        token_address, offset, limit, score_threshold, min_timestamp, now,
-        sql_query=sql_query, pool=pool
+        token_address,
+        score_threshold,
+        min_timestamp,
+        now,
+        sql_query=sql_query,
+        pool=pool,
     )
+
+
+async def get_token_holder_casts(
+    *poargs, offset: int, limit: int, **kwargs
+) -> list[PgRecord]:
+    all_casts = await get_token_holder_casts_all(*poargs, **kwargs)
+    return all_casts[offset : (offset + limit)]
 
 
 async def get_popular_degen_casts(
