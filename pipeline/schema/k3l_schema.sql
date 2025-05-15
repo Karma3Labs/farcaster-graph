@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 17.2 (Ubuntu 17.2-1.pgdg24.04+1)
--- Dumped by pg_dump version 17.4 (Ubuntu 17.4-1.pgdg24.10+2)
+-- Dumped by pg_dump version 17.2 (Ubuntu 17.2-1.pgdg24.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1248,24 +1248,26 @@ ALTER MATERIALIZED VIEW public.k3l_rank OWNER TO k3l_user;
 --
 
 CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
- SELECT id,
-    created_at,
-    updated_at,
-    deleted_at,
-    "timestamp",
-    fid,
-    hash,
-    parent_hash,
-    parent_fid,
-    parent_url,
-    text,
-    embeds,
-    mentions,
-    mentions_positions,
-    root_parent_hash,
-    root_parent_url
-   FROM neynarv2.casts
-  WHERE ((parent_hash IS NULL) AND (deleted_at IS NULL) AND (("timestamp" >= (now() - '30 days'::interval)) AND ("timestamp" <= now())))
+ SELECT c.id,
+    c.created_at,
+    c.updated_at,
+    c.deleted_at,
+    c."timestamp",
+    c.fid,
+    c.hash,
+    c.parent_hash,
+    c.parent_fid,
+    c.parent_url,
+    c.text,
+    c.embeds,
+    c.mentions,
+    c.mentions_positions,
+    c.root_parent_hash,
+    c.root_parent_url,
+    ch.id AS channel_id
+   FROM (neynarv2.casts c
+     LEFT JOIN public.warpcast_channels_data ch ON ((c.root_parent_url = ch.url)))
+  WHERE ((c.parent_hash IS NULL) AND (c.deleted_at IS NULL) AND ((c."timestamp" >= (now() - '30 days'::interval)) AND (c."timestamp" <= now())))
   WITH NO DATA;
 
 
