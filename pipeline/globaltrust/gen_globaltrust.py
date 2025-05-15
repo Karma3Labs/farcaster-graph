@@ -245,7 +245,7 @@ if __name__ == '__main__':
 
     main(
         args.step,
-        settings.POSTGRES_DSN.get_secret_value(),
+        settings.ALT_POSTGRES_DSN.get_secret_value(),
         args.ptcsv,
         args.ltcsv,
         args.outdir,

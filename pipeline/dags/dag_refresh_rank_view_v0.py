@@ -25,31 +25,17 @@ with DAG(
 ) as dag:
         
     task1 = BashOperator(
-        task_id='refresh_view_k3l_rank',
-        bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_rank; "
-        '''
-    )
-
-    task2 = BashOperator(
-        task_id='vacuum_k3l_rank',
-        bash_command='''cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        VACUUM ANALYZE k3l_rank; "
-        '''
-    )
-
-    task3 = BashOperator(
         task_id='refresh_view_k3l_rank_e8',
         bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
         REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_rank; "
         '''
     )
 
-    task4 = BashOperator(
+    task2 = BashOperator(
         task_id='vacuum_k3l_rank_e8',
         bash_command='''cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "
         VACUUM ANALYZE k3l_rank; "
         '''
     )
 
-    task1 >> task2 >> task3 >> task4
+    task1 >> task2 

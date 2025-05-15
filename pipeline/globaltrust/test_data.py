@@ -20,7 +20,7 @@ if __name__ == '__main__':
   logger.setLevel(logging.DEBUG)
   utils.setup_consolelogger(logger)
 
-  pg_dsn = settings.POSTGRES_DSN.get_secret_value()
+  pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
 
   df = compute._fetch_interactions_df(logger, pg_dsn)
   logger.info(utils.df_info_to_string(df, with_sample=True))

@@ -187,7 +187,7 @@ process_globaltrust() {
   filename="k3l_cast_globaltrust"
   csv_file="${WORK_DIR}/$filename.csv"
 
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_alt_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
   /usr/bin/gzip -f $csv_file
   # export_csv_to_bq "$csv_file"
@@ -199,7 +199,7 @@ process_globaltrust_config() {
   filename="k3l_cast_globaltrust_config"
   csv_file="${WORK_DIR}/$filename.csv"
 
-  export_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_alt_to_csv "globaltrust_config" "$csv_file" "\COPY (SELECT strategy_id, strategy_name, pretrust, localtrust, alpha, date FROM globaltrust_config) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   # split_and_post_csv "$csv_file" 1 "dataset_k3l_cast_globaltrust_config_v2"
   /usr/bin/gzip -f $csv_file
   # export_csv_to_bq "$csv_file"
@@ -226,7 +226,7 @@ upload_lifetime_channel_rank_to_public_s3() {
   filename="k3l_channel_rankings"
   csv_file="${WORK_DIR}/$filename.csv"
 
-  export_to_csv \
+  export_alt_to_csv \
   "k3l_channel_rank" \
    "$csv_file" \
    "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name\
@@ -240,7 +240,7 @@ upload_lifetime_channel_rank_to_public_s3() {
 backup_all_channel_rank_to_private_s3() {
   filename="k3l_channel_rankings_all"
   csv_file="${WORK_DIR}/$filename.csv"
-  export_to_csv \
+  export_alt_to_csv \
   "k3l_channel_rank" \
    "$csv_file" \
    "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts, strategy_name\
@@ -316,7 +316,7 @@ insert_globaltrust_to_dune_v2() {
   last_date=$(cat globaltrust_v2_last_date)
   rm globaltrust_v2_last_date
 
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date > '${last_date}' ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_alt_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date > '${last_date}' ) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "dataset_k3l_cast_globaltrust_v2"
   rm $csv_file
   rm -rf $tmp_folder
@@ -330,7 +330,7 @@ overwrite_globaltrust_in_dune_v3() {
   shopt -s nullglob
   rm -f "$tmp_folder"/*
 
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_alt_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust WHERE date >= now()-interval '45' day) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
 
   dune_table_name="dataset_k3l_cast_globaltrust"
   _clear_dune_table "openrank" $dune_table_name
@@ -349,7 +349,7 @@ overwrite_global_engagement_rankings_in_s3() {
   rm -f "$tmp_folder"/*
 
   rm -f $csv_file
-  export_to_csv \
+  export_alt_to_csv \
     "k3l_rank" \
     "$csv_file" \
     "\COPY (SELECT profile_id as fid, score FROM k3l_rank WHERE strategy_id = 9)\
@@ -366,7 +366,7 @@ overwrite_channel_rank_in_dune_v3() {
   rm -f "$tmp_folder"/*
 
   rm -f $csv_file
-  export_to_csv \
+  export_alt_to_csv \
     "k3l_channel_rank" \
     "$csv_file" \
     "\COPY (SELECT pseudo_id, channel_id, fid, score, rank, compute_ts,\
@@ -412,7 +412,7 @@ create_dune_globaltrust_table() {
   filename="k3l_cast_globaltrust_full"
   csv_file="${WORK_DIR}/${filename}.csv"
   rm -f "${WORK_DIR}/${filename}.csv"
-  export_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
+  export_alt_to_csv "globaltrust" "$csv_file" "\COPY (SELECT i, v, date, strategy_id FROM globaltrust) TO '${csv_file}' WITH (FORMAT CSV, HEADER)"
   split_and_post_csv "$csv_file" 10 "$dune_table_name"
   rm $csv_file
 
