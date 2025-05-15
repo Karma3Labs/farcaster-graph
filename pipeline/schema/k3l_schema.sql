@@ -1244,6 +1244,25 @@ CREATE MATERIALIZED VIEW public.k3l_rank AS
 ALTER MATERIALIZED VIEW public.k3l_rank OWNER TO k3l_user;
 
 --
+-- Name: warpcast_channels_data; Type: VIEW; Schema: public; Owner: k3l_user
+--
+
+CREATE VIEW public.warpcast_channels_data AS
+ SELECT channel_id AS id,
+    url,
+    description,
+    image_url AS imageurl,
+    lead_fid AS leadfid,
+    moderator_fids AS moderatorfids,
+    created_at AS createdat,
+    follower_count AS followercount,
+    "timestamp" AS insert_ts
+   FROM neynarv2.channels;
+
+
+ALTER VIEW public.warpcast_channels_data OWNER TO k3l_user;
+
+--
 -- Name: k3l_recent_parent_casts; Type: MATERIALIZED VIEW; Schema: public; Owner: k3l_user
 --
 
@@ -1452,25 +1471,6 @@ CREATE VIEW public.verifications AS
 
 
 ALTER VIEW public.verifications OWNER TO k3l_user;
-
---
--- Name: warpcast_channels_data; Type: VIEW; Schema: public; Owner: k3l_user
---
-
-CREATE VIEW public.warpcast_channels_data AS
- SELECT channel_id AS id,
-    url,
-    description,
-    image_url AS imageurl,
-    lead_fid AS leadfid,
-    moderator_fids AS moderatorfids,
-    created_at AS createdat,
-    follower_count AS followercount,
-    "timestamp" AS insert_ts
-   FROM neynarv2.channels;
-
-
-ALTER VIEW public.warpcast_channels_data OWNER TO k3l_user;
 
 --
 -- Name: warpcast_followers; Type: VIEW; Schema: public; Owner: k3l_user
@@ -2717,6 +2717,13 @@ CREATE INDEX k3l_channel_rank_ch_strat_idx ON public.k3l_channel_rank USING btre
 
 
 --
+-- Name: k3l_channel_rank_fid_ch_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_channel_rank_fid_ch_idx ON public.k3l_channel_rank USING btree (fid, channel_id);
+
+
+--
 -- Name: k3l_channel_rank_fid_idx; Type: INDEX; Schema: public; Owner: k3l_user
 --
 
@@ -2987,6 +2994,13 @@ CREATE INDEX k3l_rank_profile_id_strategy_id_idx ON public.k3l_rank USING btree 
 --
 
 CREATE INDEX k3l_rank_strategy_id_idx ON public.k3l_rank USING btree (strategy_id);
+
+
+--
+-- Name: k3l_rank_strategy_id_profile_id_idx; Type: INDEX; Schema: public; Owner: k3l_user
+--
+
+CREATE INDEX k3l_rank_strategy_id_profile_id_idx ON public.k3l_rank USING btree (strategy_id, profile_id);
 
 
 --
@@ -4336,6 +4350,13 @@ GRANT SELECT,REFERENCES ON TABLE public.k3l_rank TO k3l_readonly;
 
 
 --
+-- Name: TABLE warpcast_channels_data; Type: ACL; Schema: public; Owner: k3l_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
+
+
+--
 -- Name: TABLE k3l_recent_parent_casts; Type: ACL; Schema: public; Owner: k3l_user
 --
 
@@ -4410,13 +4431,6 @@ GRANT SELECT,REFERENCES ON TABLE public.tmp_globaltrust_v2 TO k3l_readonly;
 --
 
 GRANT SELECT,REFERENCES ON TABLE public.verifications TO k3l_readonly;
-
-
---
--- Name: TABLE warpcast_channels_data; Type: ACL; Schema: public; Owner: k3l_user
---
-
-GRANT SELECT,REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
 
 
 --
