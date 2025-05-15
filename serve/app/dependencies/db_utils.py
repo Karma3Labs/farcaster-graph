@@ -1682,7 +1682,7 @@ async def get_token_holder_casts_all(
                     score AS cast_score,
                     value_raw
                 FROM c
-                WHERE score >= $2
+                WHERE score >= $2 AND balance_raw > 0
                 ORDER BY value_raw DESC
                 """
 
