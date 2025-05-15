@@ -75,6 +75,8 @@ def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
             return f"sum(power({score_expr}, 2))"
         case ScoreAgg.RMS:
             return f"sqrt(avg(power({score_expr}, 2)))"
+        case ScoreAgg.SUMCUBEROOT:
+            return f"sum(power({score_expr}, 1.0/3))"
         case _:
             return f"sum({score_expr})"
 

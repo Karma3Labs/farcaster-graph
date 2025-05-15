@@ -7,6 +7,7 @@ class ScoreAgg(StrEnum):
     RMS = 'rms'
     SUMSQUARE = 'sumsquare'
     SUM = 'sum'
+    SUMCUBEROOT = 'sumcuberoot'
 
 
 class Voting(StrEnum):

@@ -151,7 +151,7 @@ class TokenFeed(BaseModel):
     feed_type: Annotated[Literal['token'], Field(alias="feedType")]
     token_address: Annotated[str, Field(alias="tokenAddress")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
-    agg: ScoreAgg = ScoreAgg.SUM
+    agg: ScoreAgg = ScoreAgg.SUMCUBEROOT
     score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.00004
     reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
     cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
