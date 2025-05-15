@@ -1660,7 +1660,7 @@ async def get_token_holder_casts_all(
                         ca.fid = dc.fid
                     LEFT JOIN k3l_token_holding_fids cah ON
                         ca.fid = cah.fid AND
-                        th.token_address = $1::bytea
+                        cah.token_address = $1::bytea
                     LEFT JOIN k3l_rank gr ON
                        gr.strategy_name = 'v3engagement' AND
                        ca.channel_id IS NULL AND
