@@ -150,13 +150,12 @@ class FarconFeed(BaseModel):
 class TokenFeed(BaseModel):
     feed_type: Annotated[Literal['token'], Field(alias="feedType")]
     token_address: Annotated[str, Field(alias="tokenAddress")]
-    lookback: CastsTimeframe = CastsTimeframe.WEEK
+    lookback: timedelta = timedelta(days=3)
     agg: ScoreAgg = ScoreAgg.SUMCUBEROOT
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.00004
+    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.9
     reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
     cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
-    weights: str = 'L1C0R1Y1'
-    value_weights: str = 'L1C1R1Y1'
+    weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
         SortingOrder.DAY
     )
@@ -164,7 +163,9 @@ class TokenFeed(BaseModel):
     # days          1   2   3   4   5   6   7 ->cliff
     # strength (%)  90  81  73  66  59  53  48->0
     time_decay_base: Annotated[float, Field(alias="timeDecayBase", gt=0, le=0)] = 0.9
-    time_decay_period: Annotated[timedelta, Field(alias="timeDecayPeriod")] = timedelta(days=1)
+    time_decay_period: Annotated[timedelta, Field(alias="timeDecayPeriod")] = timedelta(
+        days=1
+    )
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (

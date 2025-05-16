@@ -1597,7 +1597,7 @@ async def get_recent_casts_by_fids(
 
 
 TOKEN_FEED_CACHE_SIZE = 1000
-TOKEN_FEED_CACHE_TTL = datetime.timedelta(minutes=2)
+TOKEN_FEED_CACHE_TTL = datetime.timedelta(minutes=5)
 
 
 @alru_cache(
@@ -1607,7 +1607,6 @@ TOKEN_FEED_CACHE_TTL = datetime.timedelta(minutes=2)
 async def get_token_holder_casts_all(
     agg: ScoreAgg,
     weights: Weights,
-    value_weights: Weights,
     score_threshold: float,
     max_cast_age: datetime.timedelta,
     time_decay_base: float,
@@ -1621,7 +1620,7 @@ async def get_token_holder_casts_all(
     agg_sql = sql_for_agg(
         agg,
         f"""
-        COALESCE(cr.score, gr.score, 0) * (
+        h.value * (
             {weights.cast}   * ca.casted +
             {weights.recast} * ca.recasted +
             {weights.reply}  * ca.replied +
@@ -1629,63 +1628,45 @@ async def get_token_holder_casts_all(
         ) * {decay_sql}
     """,
     )
-    value_sql = sql_for_agg(
-        agg,
-        f"""
-        COALESCE(cah.value, 0) * (
-            {value_weights.cast}   * ca.casted +
-            {value_weights.recast} * ca.recasted +
-            {value_weights.reply}  * ca.replied +
-            {value_weights.like}   * ca.liked
-        ) * {decay_sql}
-    """,
-    )
     now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
     sql_query = f"""
-                WITH c AS (
+                WITH cs AS (
                     SELECT
-                        c.hash,
-                        c.fid,
-                        c.timestamp,
-                        th.value AS balance_raw,
-                        {agg_sql} AS score,
-                        {value_sql} AS value_raw
-                    FROM k3l_recent_parent_casts c
-                    JOIN k3l_token_holding_fids th ON
-                        c.fid = th.fid AND
-                        th.token_address = $1::bytea
-                    JOIN k3l_cast_action ca ON
-                        ca.action_ts >= $3::timestamp AND
-                        c.hash = ca.cast_hash
-                    LEFT JOIN k3l_action_discounted_fids dc ON
-                        ca.fid = dc.fid
-                    LEFT JOIN k3l_token_holding_fids cah ON
-                        ca.fid = cah.fid AND
-                        cah.token_address = $1::bytea
-                    LEFT JOIN k3l_rank gr ON
-                       gr.strategy_name = 'v3engagement' AND
-                       ca.channel_id IS NULL AND
-                       ca.fid = gr.profile_id
-                    LEFT JOIN k3l_channel_rank cr ON
-                       cr.strategy_name = '60d_engagement' AND
-                       cr.channel_id = ca.channel_id AND
-                       cr.fid = ca.fid
+                        ca.cast_hash AS hash,
+                        {agg_sql} AS score
+                    FROM k3l_cast_action_v1 AS ca
+                    JOIN k3l_token_holding_fids AS h USING (fid)
                     WHERE
-                        c.timestamp >= $3::timestamp AND
-                        dc.fid IS NULL
-                    GROUP BY c.hash, c.fid, c.timestamp, th.value
+                        action_ts BETWEEN $3::timestamp AND $4::timestamp AND
+                        token_address = $1::bytea AND
+                        value > 0 AND
+                        fid NOT IN (SELECT fid FROM k3l_action_discounted_fids)
+                    GROUP BY ca.cast_hash
+                ),
+                c AS (
+                    SELECT
+                        hash,
+                        fid,
+                        timestamp,
+                        value AS balance_raw,
+                        cs.score AS score
+                    FROM k3l_recent_parent_casts c
+                    JOIN cs USING (hash)
+                    JOIN k3l_token_holding_fids th USING (fid)
+                    WHERE
+                        c.timestamp BETWEEN $3::timestamp AND $4::timestamp AND
+                        th.token_address = $1::bytea AND th.value > 0
                 )
                 SELECT
                     '0x' || encode(hash, 'hex') AS cast_hash,
                     fid,
                     timestamp,
                     balance_raw,
-                    score AS cast_score,
-                    value_raw
+                    score AS cast_score
                 FROM c
-                WHERE score >= $2 AND balance_raw > 0
-                ORDER BY value_raw DESC
+                WHERE score >= (SELECT percentile_cont($2) WITHIN GROUP (ORDER BY score DESC) FROM c)
+                ORDER BY score DESC
                 """
 
     return await fetch_rows(
