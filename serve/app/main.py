@@ -27,6 +27,7 @@ from .routers.globaltrust_router import router as gt_router
 from .routers.graph_router import router as graph_router
 from .routers.localtrust_router import router as lt_router
 from .routers.metadata_router import router as metadata_router
+from .routers.token_router import router as token_router
 from .routers.user_router import router as user_router
 from .telemetry import PrometheusMiddleware, metrics
 
@@ -181,6 +182,7 @@ app.include_router(gt_router, prefix='/scores/global')
 app.include_router(cast_router, prefix='/casts')
 app.include_router(channel_router, prefix='/channels')
 app.include_router(user_router, prefix='/users')
+app.include_router(token_router, prefix='/tokens')
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")

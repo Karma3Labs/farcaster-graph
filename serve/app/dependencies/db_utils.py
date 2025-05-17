@@ -1,6 +1,7 @@
 import datetime
 import json
 import time
+from collections.abc import Iterable, Mapping
 from enum import Enum
 
 import pytz
@@ -1594,6 +1595,17 @@ async def get_recent_casts_by_fids(
         """
 
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
+
+
+async def get_token_balances(
+    token_address: bytes, fids: Iterable[int], pool: Pool
+) -> list[PgRecord]:
+    sql_query = f"""
+        SELECT fid, value
+        FROM k3l_token_holding_fids
+        WHERE token_address = $1::bytea AND fid = ANY($2::bigint[])
+    """
+    return await fetch_rows(token_address, fids, sql_query=sql_query, pool=pool)
 
 
 TOKEN_FEED_CACHE_SIZE = 1000
