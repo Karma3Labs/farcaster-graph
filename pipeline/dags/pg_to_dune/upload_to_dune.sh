@@ -357,9 +357,9 @@ overwrite_global_engagement_rankings_in_s3() {
   publish_to_s3_and_cleanup "$csv_file"
 }
 
-overwrite_channel_rank_in_dune_v3() {
+overwrite_channel_rank_in_dune_v4() {
   filename="k3l_channel_rankings_full"
-  tmp_folder="tmp_insert_channelrank_to_dune_v3"
+  tmp_folder="tmp_insert_channelrank_to_dune_v4"
   csv_file="$tmp_folder/$filename.csv"
   mkdir -p $tmp_folder
   shopt -s nullglob
@@ -446,7 +446,7 @@ _clear_dune_table() {
 
 # Main script execution
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v3}"
+    echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v4}"
     exit 1
 fi
 
@@ -480,14 +480,14 @@ case "$1" in
     overwrite_global_engagement_rankings_in_s3)
         overwrite_global_engagement_rankings_in_s3
         ;;
-    overwrite_channel_rank_in_dune_v3)
-        overwrite_channel_rank_in_dune_v3
+    overwrite_channel_rank_in_dune_v4)
+        overwrite_channel_rank_in_dune_v4
         ;;
     create_dune_globaltrust_table)
         create_dune_globaltrust_table $2
         ;;
     *)
-        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v3}"
+        echo "Usage: $0 {globaltrust|globaltrust_config|localtrust|upload_channel_rank_to_s3|insert_globaltrust_to_dune|overwrite_channel_rank_in_dune_v4}"
         exit 1
         ;;
 esac
