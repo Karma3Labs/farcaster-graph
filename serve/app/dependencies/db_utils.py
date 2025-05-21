@@ -1831,6 +1831,8 @@ async def get_popular_channel_casts_lite(
             order_sql = "age_days ASC, cast_score DESC"
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
+        case _:
+            order_sql = 'cast_score DESC'
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
@@ -1933,6 +1935,8 @@ async def get_popular_channel_casts_heavy(
             order_sql = "age_days ASC, cast_score DESC"
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
+        case _:
+            order_sql = 'cast_score DESC'
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
@@ -2580,6 +2584,8 @@ async def get_trending_channel_casts_heavy(
             order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = f'reaction_count DESC, {shuffle_sql} cast_score DESC'
+        case _:
+            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -2778,6 +2784,8 @@ async def get_trending_channel_casts_lite(
             order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
+        case _:
+            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -2885,6 +2893,8 @@ async def get_channel_casts_scores_lite(
             order_sql = 'age_days ASC, cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
+        case _:
+            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
