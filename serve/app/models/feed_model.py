@@ -15,6 +15,7 @@ class SortingOrder(StrEnum):
     HOUR = 'hour'
     DAY = 'day'
     REACTIONS = 'reactions'
+    BALANCE = 'balance'
 
 
 class ChannelTimeframe(StrEnum):

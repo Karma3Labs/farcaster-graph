@@ -119,6 +119,7 @@ async def get_popular_casts_for_fid(
                 max_cast_age=metadata.lookback,
                 time_decay_base=metadata.time_decay_base,
                 time_decay_period=metadata.time_decay_period,
+                sorting_order=metadata.sorting_order,
                 offset=offset,
                 limit=limit,
                 pool=pool,

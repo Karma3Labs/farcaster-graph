@@ -1624,6 +1624,7 @@ async def get_token_holder_casts_all(
     time_decay_base: float,
     time_decay_period: datetime.timedelta,
     token_address: bytes,
+    sorting_order: SortingOrder,
     pool: Pool,
 ) -> list[PgRecord]:
     decay_sql = sql_for_decay(
@@ -1642,6 +1643,19 @@ async def get_token_holder_casts_all(
     )
     now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
+    match sorting_order:
+        case SortingOrder.SCORE | SortingOrder.POPULAR:
+            order_by = f"ORDER BY score DESC"
+        case SortingOrder.RECENT:
+            order_by = f"ORDER BY timestamp DESC"
+        case SortingOrder.HOUR:
+            order_by = f"ORDER BY floor(extract(epoch from $4 - timestamp) / 3600) ASC, score DESC"
+        case SortingOrder.DAY:
+            order_by = f"ORDER BY floor(extract(epoch from $4 - timestamp) / 86400) ASC, score DESC"
+        case SortingOrder.BALANCE:
+            order_by = f"ORDER BY balance_raw DESC, score DESC"
+        case _:
+            order_by = f"ORDER BY score DESC"
     sql_query = f"""
                 WITH cs AS (
                     SELECT
@@ -1678,7 +1692,7 @@ async def get_token_holder_casts_all(
                     score AS cast_score
                 FROM c
                 WHERE score >= (SELECT percentile_cont($2) WITHIN GROUP (ORDER BY score DESC) FROM c)
-                ORDER BY score DESC
+                {order_by}
                 """
 
     return await fetch_rows(
