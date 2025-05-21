@@ -1,13 +1,16 @@
-import datetime
+import asyncio
 import json
 import time
 from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime, timedelta
 from enum import Enum
+from functools import wraps
+from numbers import Real
+from typing import Any
 
 import pytz
-from async_lru import alru_cache
-from asyncpg import Record as PgRecord
 from asyncpg.pool import Pool
+from cashews import cache
 from loguru import logger
 from memoize.configuration import (
     DefaultInMemoryCacheConfiguration,
@@ -84,7 +87,7 @@ def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
 
 def sql_for_decay(
     interval_expr: str,
-    period: CastsTimeDecay | datetime.timedelta,
+    period: CastsTimeDecay | timedelta,
     base: float = 1 - (1 / 365),
 ) -> str:
     if isinstance(period, CastsTimeDecay):
@@ -96,7 +99,7 @@ def sql_for_decay(
         return "1"
     if not 0 < base <= 1:
         raise ValueError(f"invalid time decay base {base}")
-    if period < datetime.timedelta():
+    if period < timedelta():
         raise ValueError(f"invalid time decay period {period}")
     return f"""
             power(
@@ -109,10 +112,10 @@ def sql_for_decay(
 def _9ampacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join(
-        [datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"), '09:00:00']
+        [datetime.now(pacific_tz).strftime("%Y-%m-%d"), '09:00:00']
     )
     pacific_time = pacific_tz.localize(
-        datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S')
+        datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S')
     )
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
@@ -120,7 +123,7 @@ def _9ampacific_in_utc_time():
 
 def _dow_utc_timestamp_str(dow: DOW) -> str:
     utc_time = _9ampacific_in_utc_time()
-    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value)
+    res = utc_time - timedelta(days=utc_time.weekday() - dow.value)
     return (
         f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
         " AT TIME ZONE 'UTC')"
@@ -129,7 +132,7 @@ def _dow_utc_timestamp_str(dow: DOW) -> str:
 
 def _last_dow_utc_timestamp_str(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
-    res = utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7)
+    res = utc_time - timedelta(days=utc_time.weekday() - dow.value + 7)
     return (
         f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
         " AT TIME ZONE 'UTC')"
@@ -1599,7 +1602,7 @@ async def get_recent_casts_by_fids(
 
 async def get_token_balances(
     token_address: bytes, fids: Iterable[int], pool: Pool
-) -> list[PgRecord]:
+) -> list[dict[str, Any]]:
     sql_query = f"""
         SELECT fid, value
         FROM k3l_token_holding_fids
@@ -1609,24 +1612,26 @@ async def get_token_balances(
 
 
 TOKEN_FEED_CACHE_SIZE = 1000
-TOKEN_FEED_CACHE_TTL = datetime.timedelta(minutes=5)
+TOKEN_FEED_CACHE_TTL = timedelta(minutes=5)
 
 
-@alru_cache(
-    maxsize=TOKEN_FEED_CACHE_SIZE,
-    ttl=TOKEN_FEED_CACHE_TTL.total_seconds(),
-)
-async def get_token_holder_casts_all(
+# TODO(ek) - move setup to somewhere more suitable
+cache.setup("disk://", directory="/tmp/farcaster-serve-diskcache")
+
+token_feed_refresh_tasks: set[asyncio.Task] = set()
+
+
+async def _get_token_holder_casts_all(
     agg: ScoreAgg,
     weights: Weights,
     score_threshold: float,
-    max_cast_age: datetime.timedelta,
+    max_cast_age: timedelta,
     time_decay_base: float,
-    time_decay_period: datetime.timedelta,
+    time_decay_period: timedelta,
     token_address: bytes,
     sorting_order: SortingOrder,
     pool: Pool,
-) -> list[PgRecord]:
+) -> list[dict[str, Any]]:
     decay_sql = sql_for_decay(
         "$4 - ca.action_ts", time_decay_period, base=time_decay_base
     )
@@ -1641,7 +1646,7 @@ async def get_token_holder_casts_all(
         ) * {decay_sql}
     """,
     )
-    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
@@ -1695,19 +1700,52 @@ async def get_token_holder_casts_all(
                 {order_by}
                 """
 
-    return await fetch_rows(
-        token_address,
-        score_threshold,
-        min_timestamp,
-        now,
-        sql_query=sql_query,
-        pool=pool,
-    )
+    return [
+        dict(r)
+        for r in await fetch_rows(
+            token_address,
+            score_threshold,
+            min_timestamp,
+            now,
+            sql_query=sql_query,
+            pool=pool,
+        )
+    ]
+
+
+async def refresh_token_feed(*poargs, **kwargs):
+    await asyncio.sleep(settings.TOKEN_FEED_CACHE_EARLY_TTL.total_seconds())
+    logger.info(f"refreshing token feed {kwargs=}")
+    await get_token_holder_casts_all(*poargs, **kwargs)
+    logger.info(f"refreshed token feed {kwargs=}")
+    try:
+        token_feed_refresh_tasks.remove(asyncio.current_task())
+    except KeyError:
+        pass
+
+
+@cache.early(
+    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
+)
+async def get_token_holder_casts_all(*poargs, **kwargs) -> list[dict[str, Any]]:
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
+    result = [dict(row) for row in await _get_token_holder_casts_all(*poargs, **kwargs)]
+    end_time = loop.time()
+    elapsed = end_time - start_time
+    if timedelta(seconds=elapsed) > settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD:
+        logger.debug(
+            f"slow token feed {kwargs=}, scheduling preemptive refresh in {settings.TOKEN_FEED_CACHE_EARLY_TTL}"
+        )
+        refresh_task = asyncio.create_task(refresh_token_feed(*poargs, **kwargs))
+        token_feed_refresh_tasks.add(refresh_task)
+        refresh_task.add_done_callback(token_feed_refresh_tasks.discard)
+    return result
 
 
 async def get_token_holder_casts(
     *poargs, offset: int, limit: int, **kwargs
-) -> list[PgRecord]:
+) -> list[dict[str, Any]]:
     all_casts = await get_token_holder_casts_all(*poargs, **kwargs)
     return all_casts[offset : (offset + limit)]
 

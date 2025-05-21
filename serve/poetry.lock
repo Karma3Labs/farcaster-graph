@@ -245,6 +245,29 @@ numpy = "*"
 doc = ["gitpython", "numpydoc", "sphinx"]
 
 [[package]]
+name = "cashews"
+version = "7.4.0"
+description = "cache tools with async power"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "cashews-7.4.0-py3-none-any.whl", hash = "sha256:e881cc9b4be05ac9ce2c448784bca2864776b1c13ee262658d7c0ebf0d3d257a"},
+    {file = "cashews-7.4.0.tar.gz", hash = "sha256:c9d22b9b9da567788f232374a5de3b30ceed1e5c24085c96d304b696df0dcbd8"},
+]
+
+[package.dependencies]
+diskcache = {version = ">=5.0.0", optional = true, markers = "extra == \"diskcache\""}
+
+[package.extras]
+dill = ["dill"]
+diskcache = ["diskcache (>=5.0.0)"]
+lint = ["mypy (>=1.5.0)", "types-redis"]
+redis = ["redis (>=4.3.1,!=5.0.1)"]
+speedup = ["bitarray (<4.0.0)", "hiredis", "xxhash (<4.0.0)"]
+tests = ["hypothesis (==6.115.3)", "pytest (==8.3.3)", "pytest-asyncio (==0.24.0)", "pytest-cov (==5.0.0)", "pytest-rerunfailures (==14.0)"]
+
+[[package]]
 name = "certifi"
 version = "2024.12.14"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -533,6 +556,18 @@ wrapt = ">=1.10,<2"
 
 [package.extras]
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "jinja2 (>=3.0.3,<3.1.0)", "setuptools ; python_version >= \"3.12\"", "sphinx (<2)", "tox"]
+
+[[package]]
+name = "diskcache"
+version = "5.6.3"
+description = "Disk Cache -- Disk and file backed persistent cache."
+optional = false
+python-versions = ">=3"
+groups = ["main"]
+files = [
+    {file = "diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"},
+    {file = "diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc"},
+]
 
 [[package]]
 name = "eth-hash"
@@ -2488,4 +2523,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "de38babf02f2ea9c2d7cad571a7209c4511359b907dc3d898b79a87c9bd8b7cf"
+content-hash = "4749674d95b29be259d91716c6ab28ac460a3eb246ae850e2d33deabad623df8"

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 
 from pydantic import SecretStr, computed_field
@@ -64,6 +65,11 @@ class Settings(BaseSettings):
     CURA_API_ENDPOINT: str = "https://cura.network/api"
     CURA_API_KEY: str
     DB_VERSION: DBVersion = DBVersion.EIGEN2
+
+    TOKEN_FEED_CACHE_TTL: timedelta = timedelta(minutes=5)
+    TOKEN_FEED_CACHE_EARLY_TTL: timedelta = timedelta(minutes=4)
+    TOKEN_FEED_CACHE_REFRESH_THRESHOLD: timedelta = timedelta(seconds=3)
+    TOKEN_FEED_CACHE_SIZE: int = 1000
 
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
