@@ -26,10 +26,13 @@ def main():
     message = "These are @osuji.eth's top casts 🚀:\n" + "\n".join([
         f"{i + 1} - {row['url']}" for i, row in df.iterrows()
     ])
+    logger.info(message)
     response = niquests.post(
         "https://top-erc20-tokens.vercel.app/api",
         headers={"Content-Type": "application/json"},
-        json={"message": message}
+        json={"message": message},
+        timeout = 30,
+        allow_redirects=False
     )
     response.raise_for_status()
 
