@@ -22,7 +22,7 @@ logger.add(sys.stdout,
 
 def main():
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
-    df = cast_db_utils.fetch_osuji_top_casts_df(logger, pg_dsn)
+    df = cast_db_utils.fetch_osuji_top_casts_df(logger, pg_dsn).head(10)
     message = "These are @osuji.eth's top casts 🚀:\n" + "\n".join([
         f"{i + 1} - {row['url']}" for i, row in df.iterrows()
     ])
