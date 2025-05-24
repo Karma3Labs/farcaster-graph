@@ -1631,6 +1631,7 @@ async def _get_token_holder_casts_all(
     token_address: bytes,
     sorting_order: SortingOrder,
     time_bucket_length: timedelta,
+    limit_casts: int | None,
     pool: Pool,
 ) -> list[dict[str, Any]]:
     decay_sql = sql_for_decay(
@@ -1666,6 +1667,10 @@ async def _get_token_holder_casts_all(
             order_by = f"ORDER BY balance_raw DESC, score DESC"
         case _:
             order_by = f"ORDER BY score DESC"
+    if limit_casts is None:
+        limit_casts_condition = ""
+    else:
+        limit_casts_condition = f"AND rn <= {limit_casts}"
     sql_query = f"""
                 WITH cs AS (
                     SELECT
@@ -1686,6 +1691,7 @@ async def _get_token_holder_casts_all(
                         fid,
                         timestamp,
                         floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}) AS time_bucket,
+                        row_number() OVER (PARTITION BY floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}), fid ORDER BY score DESC) AS rn,
                         value AS balance_raw,
                         cs.score AS score
                     FROM k3l_recent_parent_casts c
@@ -1702,7 +1708,9 @@ async def _get_token_holder_casts_all(
                     balance_raw,
                     score AS cast_score
                 FROM c
-                WHERE score >= (SELECT percentile_cont($2) WITHIN GROUP (ORDER BY score DESC) FROM c)
+                WHERE
+                    score >= (SELECT percentile_cont($2) WITHIN GROUP (ORDER BY score DESC) FROM c)
+                    {limit_casts_condition}
                 {order_by}
                 """
 

@@ -164,6 +164,13 @@ class TokenFeed(BaseModel):
     time_bucket_length: Annotated[timedelta, Field(alias="timeBucketLength")] = (
         timedelta(hours=8)
     )
+    limit_casts: Annotated[
+        int | None,
+        Field(
+            alias="limitCasts",
+            description="limit number of casts per caster per time bucket; None/null (default) = unlimited",
+        ),
+    ] = None
     # time decay default: depreciates 10% every day, compounded, 7-day cliff
     # days          1   2   3   4   5   6   7 ->cliff
     # strength (%)  90  81  73  66  59  53  48->0
