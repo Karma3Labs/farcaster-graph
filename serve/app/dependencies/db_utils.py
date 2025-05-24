@@ -1664,7 +1664,9 @@ async def _get_token_holder_casts_all(
             order_by = f"ORDER BY time_bucket ASC, score DESC"
             time_bucket_length = timedelta(days=1)
         case SortingOrder.BALANCE:
-            order_by = f"ORDER BY balance_raw DESC, score DESC"
+            order_by = f"ORDER BY time_bucket ASC, balance_raw DESC, score DESC"
+            if limit_casts is None:
+                limit_casts = 3
         case _:
             order_by = f"ORDER BY score DESC"
     if limit_casts is None:
