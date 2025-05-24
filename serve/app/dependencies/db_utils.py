@@ -1630,6 +1630,7 @@ async def _get_token_holder_casts_all(
     time_decay_period: timedelta,
     token_address: bytes,
     sorting_order: SortingOrder,
+    time_bucket_length: timedelta,
     pool: Pool,
 ) -> list[dict[str, Any]]:
     decay_sql = sql_for_decay(
@@ -1653,10 +1654,14 @@ async def _get_token_holder_casts_all(
             order_by = f"ORDER BY score DESC"
         case SortingOrder.RECENT:
             order_by = f"ORDER BY timestamp DESC"
+        case SortingOrder.TIME_BUCKET:
+            order_by = f"ORDER BY time_bucket ASC, score DESC"
         case SortingOrder.HOUR:
-            order_by = f"ORDER BY floor(extract(epoch from $4 - timestamp) / 3600) ASC, score DESC"
+            order_by = f"ORDER BY time_bucket ASC, score DESC"
+            time_bucket_length = timedelta(hours=1)
         case SortingOrder.DAY:
-            order_by = f"ORDER BY floor(extract(epoch from $4 - timestamp) / 86400) ASC, score DESC"
+            order_by = f"ORDER BY time_bucket ASC, score DESC"
+            time_bucket_length = timedelta(days=1)
         case SortingOrder.BALANCE:
             order_by = f"ORDER BY balance_raw DESC, score DESC"
         case _:
@@ -1680,6 +1685,7 @@ async def _get_token_holder_casts_all(
                         hash,
                         fid,
                         timestamp,
+                        floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}) AS time_bucket,
                         value AS balance_raw,
                         cs.score AS score
                     FROM k3l_recent_parent_casts c

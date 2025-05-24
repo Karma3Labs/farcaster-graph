@@ -120,6 +120,7 @@ async def get_popular_casts_for_fid(
                 time_decay_base=metadata.time_decay_base,
                 time_decay_period=metadata.time_decay_period,
                 sorting_order=metadata.sorting_order,
+                time_bucket_length=metadata.time_bucket_length,
                 offset=offset,
                 limit=limit,
                 pool=pool,

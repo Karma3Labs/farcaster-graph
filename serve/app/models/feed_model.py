@@ -12,6 +12,7 @@ class SortingOrder(StrEnum):
     SCORE = 'score'
     POPULAR = 'popular'
     RECENT = 'recent'
+    TIME_BUCKET = 'time_bucket'
     HOUR = 'hour'
     DAY = 'day'
     REACTIONS = 'reactions'
@@ -159,6 +160,9 @@ class TokenFeed(BaseModel):
     weights: str = 'L1C1R1Y1'
     sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
         SortingOrder.DAY
+    )
+    time_bucket_length: Annotated[timedelta, Field(alias="timeBucketLength")] = (
+        timedelta(hours=8)
     )
     # time decay default: depreciates 10% every day, compounded, 7-day cliff
     # days          1   2   3   4   5   6   7 ->cliff
