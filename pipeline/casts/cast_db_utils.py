@@ -446,30 +446,6 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str, is_v1: bool = Fals
     """
     return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
 
-@Timer(name="fetch_osuji_top_casts_df")
-def fetch_osuji_top_casts_df(logger: logging.Logger, pg_dsn: str):
-    sql = """
-        SELECT 
-            CONCAT(
-                'https://farcaster.xyz/osuji.eth/',
-                LEFT('0x' || encode(c.hash, 'hex'), 10)
-            ) AS url
-        FROM 
-            neynarv2.casts c
-        LEFT JOIN 
-            neynarv2.reactions r ON r.target_hash = c.hash
-        WHERE 
-            c.fid = 198522 AND
-            c.deleted_at IS NULL AND
-            r.deleted_at IS NULL AND
-            C.timestamp > NOW() - INTERVAL '365 DAYS'
-        GROUP BY 
-            c.hash
-        ORDER BY 
-            COUNT(r.target_hash) DESC
-    """
-    return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
-
 
 @Timer(name="fetch_top_spammers_df")
 def fetch_top_spammers_df(
