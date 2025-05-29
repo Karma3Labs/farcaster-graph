@@ -78,144 +78,113 @@ CastsTimeDecay._TIMEDELTAS = {
 }
 
 
+ScoreThresholdField = Annotated[float, Field(alias="scoreThreshold", ge=0.0)]
+ReactionsThresholdField = Annotated[int, Field(alias="reactionsThreshold", ge=0)]
+CutoffPtileField = Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)]
+SortingOrderField = Annotated[SortingOrder, Field(alias="sortingOrder")]
+TimeDecayField = Annotated[CastsTimeDecay, Field(alias="timeDecay")]
+TimeDecayBaseField = Annotated[float, Field(alias="timeDecayBase", gt=0, le=0)]
+TimeDecayPeriodField = Annotated[timedelta, Field(alias="timeDecayPeriod")]
+TimeBucketLengthField = Annotated[timedelta, Field(alias="timeBucketLength")]
+TimeoutSecsField = Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)]
+LimitCastsField = Annotated[
+    int | None,
+    Field(
+        alias="limitCasts",
+        description="limit number of casts per caster per time bucket; None/null (default) = unlimited",
+    ),
+]
+SessionIdField = Annotated[str, Field(alias="sessionId")]
+TokenAddressField = Annotated[str, Field(alias="tokenAddress")]
+
+
 class TrendingFeed(BaseModel):
     feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = (
-        0.000000001
-    )
-    reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
-    cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
+    score_threshold: ScoreThresholdField = 0.000000001
+    reactions_threshold: ReactionsThresholdField = 1
+    cutoff_ptile: CutoffPtileField = 100
     weights: str = 'L1C0R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.DAY
-    )
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.HOUR
-    )
+    sorting_order: SortingOrderField = SortingOrder.DAY
+    time_decay: TimeDecayField = CastsTimeDecay.HOUR
     normalize: bool = True
     shuffle: bool = False
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (
-        settings.FEED_TIMEOUT_SECS
-    )
-    session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotated[list[str], Field(alias="channels")] = None
+    timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
+    session_id: SessionIdField = None
+    channels: list[str] | None = None
 
 
 class PopularFeed(BaseModel):
     feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = (
-        0.000000001
-    )
-    reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 10
+    score_threshold: ScoreThresholdField = 0.000000001
+    reactions_threshold: ReactionsThresholdField = 10
     weights: str = 'L1C1R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.SCORE
-    )
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.NEVER
-    )
+    sorting_order: SortingOrderField = SortingOrder.SCORE
+    time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (
-        settings.FEED_TIMEOUT_SECS
-    )
-    session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotated[list[str], Field(alias="channels")] = None
+    timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
+    session_id: SessionIdField = None
+    channels: list[str] = None
 
 
 class FarconFeed(BaseModel):
     feed_type: Annotated[Literal['farcon'], Field(alias="feedType")]
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.0
-    reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
-    cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
+    score_threshold: ScoreThresholdField = 0.0
+    reactions_threshold: ReactionsThresholdField = 1
+    cutoff_ptile: CutoffPtileField = 100
     weights: str = 'L1C1R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.HOUR
-    )  # for fresher posts made during the day
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.HOUR
-    )
+    sorting_order: SortingOrderField = SortingOrder.HOUR
+    time_decay: TimeDecayField = CastsTimeDecay.HOUR
     normalize: bool = True
     shuffle: bool = False
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (
-        settings.FEED_TIMEOUT_SECS
-    )
-    session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotated[list[str], Field(alias="channels")] = ["farcon", "farcon-nyc"]
+    timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
+    session_id: SessionIdField = None
+    channels: list[str] | None = ["farcon", "farcon-nyc"]
 
 
 class TokenFeed(BaseModel):
     feed_type: Annotated[Literal['token'], Field(alias="feedType")]
-    token_address: Annotated[str, Field(alias="tokenAddress")]
+    token_address: TokenAddressField
     lookback: timedelta = timedelta(days=3)
     agg: ScoreAgg = ScoreAgg.SUMCUBEROOT
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = 0.9
-    reactions_threshold: Annotated[int, Field(alias="reactionsThreshold", ge=0)] = 1
-    cutoff_ptile: Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)] = 100
+    score_threshold: ScoreThresholdField = 0.9
+    reactions_threshold: ReactionsThresholdField = 1
+    cutoff_ptile: CutoffPtileField = 100
     weights: str = 'L1C1R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.DAY
-    )
-    time_bucket_length: Annotated[timedelta, Field(alias="timeBucketLength")] = (
-        timedelta(hours=8)
-    )
-    limit_casts: Annotated[
-        int | None,
-        Field(
-            alias="limitCasts",
-            description="limit number of casts per caster per time bucket; None/null (default) = unlimited",
-        ),
-    ] = None
-    # time decay default: depreciates 10% every day, compounded, 7-day cliff
-    # days          1   2   3   4   5   6   7 ->cliff
-    # strength (%)  90  81  73  66  59  53  48->0
-    time_decay_base: Annotated[float, Field(alias="timeDecayBase", gt=0, le=0)] = 0.9
-    time_decay_period: Annotated[timedelta, Field(alias="timeDecayPeriod")] = timedelta(
-        days=1
-    )
+    sorting_order: SortingOrderField = SortingOrder.DAY
+    time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
+    limit_casts: LimitCastsField = None
+    time_decay_base: TimeDecayBaseField = 0.9
+    time_decay_period: TimeDecayPeriodField = timedelta(days=1)
     normalize: bool = True
     shuffle: bool = False
-    timeout_secs: Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)] = (
-        settings.FEED_TIMEOUT_SECS
-    )
-    session_id: Annotated[str, Field(alias="sessionId")] = None
-    channels: Annotated[list[str], Field(alias="channels")] = None
+    timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
+    session_id: SessionIdField = None
+    channels: list[str] | None = None
 
 
 class SearchScores(BaseModel):
     score_type: Annotated[Literal['search'], Field(alias="scoreType")]
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = (
-        0.000000001
-    )
+    score_threshold: ScoreThresholdField = 0.000000001
     weights: str = 'L1C1R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.SCORE
-    )
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.NEVER
-    )
+    sorting_order: SortingOrderField = SortingOrder.SCORE
+    time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
 
 
 class ReplyScores(BaseModel):
     score_type: Annotated[Literal['reply'], Field(alias="scoreType")]
     agg: ScoreAgg = ScoreAgg.SUM
-    score_threshold: Annotated[float, Field(alias="scoreThreshold", ge=0.0)] = (
-        0.000000001
-    )
+    score_threshold: ScoreThresholdField = 0.000000001
     weights: str = 'L1C1R1Y1'
-    sorting_order: Annotated[SortingOrder, Field(alias="sortingOrder")] = (
-        SortingOrder.RECENT
-    )
-    time_decay: Annotated[CastsTimeDecay, Field(alias="timeDecay")] = (
-        CastsTimeDecay.NEVER
-    )
+    sorting_order: SortingOrderField = SortingOrder.RECENT
+    time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
 
 
