@@ -1,7 +1,7 @@
 import asyncio
 import urllib.parse
 from asyncio import TimeoutError
-from typing import Annotated, List
+from typing import Annotated, Any, List
 
 import niquests
 from asyncpg.pool import Pool
@@ -98,41 +98,7 @@ async def get_popular_casts_for_fid(
             )
 
         if isinstance(metadata, TokenFeed):
-            try:
-                token_address = bytes.fromhex(
-                    metadata.token_address.lower().removeprefix("0x")
-                )
-            except ValueError as e:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid token address"
-                ) from e
-            try:
-                weights = Weights.from_str(metadata.weights)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Invalid weights") from e
-
-            rows = await db_utils.get_token_holder_casts(
-                agg=metadata.agg,
-                weights=weights,
-                token_address=token_address,
-                score_threshold=metadata.score_threshold,
-                max_cast_age=metadata.lookback,
-                time_decay_base=metadata.time_decay_base,
-                time_decay_period=metadata.time_decay_period,
-                sorting_order=metadata.sorting_order,
-                time_bucket_length=metadata.time_bucket_length,
-                limit_casts=metadata.limit_casts,
-                offset=offset,
-                limit=limit,
-                pool=pool,
-            )
-            rows = [
-                {
-                    k: str(v) if k in ["balance_raw", "value_raw"] else v
-                    for k, v in row.items()
-                }
-                for row in rows
-            ]
+            rows = await _get_token_feed(metadata, offset, limit, pool)
             return {"result": rows}
 
         if metadata.channels is not None:
@@ -225,6 +191,42 @@ async def get_popular_casts_for_fid(
             pool=pool,
         )
         return {"result": casts}
+
+
+async def _get_token_feed(
+    metadata: TokenFeed,
+    offset: int | None,
+    limit: int | None,
+    pool: Pool,
+) -> list[dict[str, Any]]:
+    try:
+        token_address = bytes.fromhex(metadata.token_address.lower().removeprefix("0x"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid token address") from e
+    try:
+        weights = Weights.from_str(metadata.weights)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid weights") from e
+    rows = await db_utils.get_token_holder_casts(
+        agg=metadata.agg,
+        weights=weights,
+        token_address=token_address,
+        score_threshold=metadata.score_threshold,
+        max_cast_age=metadata.lookback,
+        time_decay_base=metadata.time_decay_base,
+        time_decay_period=metadata.time_decay_period,
+        sorting_order=metadata.sorting_order,
+        time_bucket_length=metadata.time_bucket_length,
+        limit_casts=metadata.limit_casts,
+        offset=offset,
+        limit=limit,
+        pool=pool,
+    )
+    rows = [
+        {k: str(v) if k in ["balance_raw", "value_raw"] else v for k, v in row.items()}
+        for row in rows
+    ]
+    return rows
 
 
 @router.get("/personalized/recent/{fid}")
