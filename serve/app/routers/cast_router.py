@@ -12,7 +12,7 @@ from pydantic_core import ValidationError
 from ..config import settings
 from ..dependencies import db_pool, db_utils, graph
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import CASTS_AGE_TD, FeedMetadata, TokenFeed
+from ..models.feed_model import FeedMetadata, TokenFeed
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
 from . import channel_router
