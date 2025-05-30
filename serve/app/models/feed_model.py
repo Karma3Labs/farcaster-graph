@@ -66,12 +66,12 @@ class CastsTimeDecay(StrEnum):
     @property
     def timedelta(self) -> timedelta:
         try:
-            return CastsTimeDecay._TIMEDELTAS[self]
+            return CASTS_TIME_DECAY_TIMEDELTAS[self]
         except KeyError:
             raise ValueError("{self!r} has no equivalent timedelta")
 
 
-CastsTimeDecay._TIMEDELTAS = {
+CASTS_TIME_DECAY_TIMEDELTAS = {
     CastsTimeDecay.MINUTE: timedelta(minutes=1),
     CastsTimeDecay.HOUR: timedelta(hours=1),
     CastsTimeDecay.DAY: timedelta(days=1),
