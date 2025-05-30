@@ -12,7 +12,7 @@ default_args = {
 }
 
 N_CHUNKS = 100  # Define the number of chunks
-FREQUENCY_H = 12  # Define the frequency in hours
+FREQUENCY_H = 24  # Define the frequency in hours
 
 @dag(
     dag_id='trigger_gen_channel_ranking_v4',
