@@ -168,6 +168,28 @@ class TokenFeed(BaseModel):
     channels: list[str] | None = None
 
 
+class NewUsersFeed(BaseModel):
+    feed_type: Annotated[Literal['newUsers'], Field(alias="feedType")]
+    channel_id: str
+    caster_age: timedelta = timedelta(days=90)
+    lookback: timedelta = timedelta(weeks=1)
+    agg: ScoreAgg = ScoreAgg.SUM
+    score_threshold: ScoreThresholdField = 0.0
+    reaction_threshold: ReactionsThresholdField = 1
+    cutoff_ptile: CutoffPtileField = 90
+    weights: str = 'L1C1R1Y1'
+    sorting_order: SortingOrderField = SortingOrder.RECENT
+    time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
+    limit_casts: LimitCastsField = None
+    time_decay_base: TimeDecayBaseField = 0.9
+    time_decay_period: TimeDecayPeriodField = timedelta(days=1)
+    normalize: bool = True
+    shuffle: bool = False
+    timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
+    # TODO(ek): needed? find out by logging
+    session_id: SessionIdField = None
+
+
 class SearchScores(BaseModel):
     score_type: Annotated[Literal['search'], Field(alias="scoreType")]
     agg: ScoreAgg = ScoreAgg.SUM
@@ -190,7 +212,7 @@ class ReplyScores(BaseModel):
 
 FeedMetadata = TypeAdapter(
     Annotated[
-        Union[TrendingFeed, PopularFeed, FarconFeed, TokenFeed],
+        Union[TrendingFeed, PopularFeed, FarconFeed, TokenFeed, NewUsersFeed],
         Field(discriminator="feed_type"),
     ]
 )

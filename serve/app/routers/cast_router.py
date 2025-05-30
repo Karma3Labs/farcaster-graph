@@ -12,7 +12,7 @@ from pydantic_core import ValidationError
 from ..config import settings
 from ..dependencies import db_pool, db_utils, graph
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import FeedMetadata, TokenFeed
+from ..models.feed_model import FeedMetadata, NewUsersFeed, TokenFeed
 from ..models.graph_model import Graph, GraphTimeframe
 from ..models.score_model import ScoreAgg, Weights
 from . import channel_router
@@ -99,6 +99,10 @@ async def get_popular_casts_for_fid(
 
         if isinstance(metadata, TokenFeed):
             rows = await _get_token_feed(metadata, offset, limit, pool)
+            return {"result": rows}
+
+        if isinstance(metadata, NewUsersFeed):
+            rows = await _get_new_users_feed(metadata, offset, limit, pool)
             return {"result": rows}
 
         if metadata.channels is not None:
@@ -211,6 +215,39 @@ async def _get_token_feed(
         agg=metadata.agg,
         weights=weights,
         token_address=token_address,
+        score_threshold=metadata.score_threshold,
+        max_cast_age=metadata.lookback,
+        time_decay_base=metadata.time_decay_base,
+        time_decay_period=metadata.time_decay_period,
+        sorting_order=metadata.sorting_order,
+        time_bucket_length=metadata.time_bucket_length,
+        limit_casts=metadata.limit_casts,
+        offset=offset,
+        limit=limit,
+        pool=pool,
+    )
+    rows = [
+        {k: str(v) if k in ["balance_raw", "value_raw"] else v for k, v in row.items()}
+        for row in rows
+    ]
+    return rows
+
+
+async def _get_new_users_feed(
+    metadata: NewUsersFeed,
+    offset: int | None,
+    limit: int | None,
+    pool: Pool,
+) -> list[dict[str, Any]]:
+    try:
+        weights = Weights.from_str(metadata.weights)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid weights") from e
+    rows = await db_utils.get_new_user_casts(
+        channel_id=metadata.channel_id,
+        caster_age=metadata.caster_age,
+        agg=metadata.agg,
+        weights=weights,
         score_threshold=metadata.score_threshold,
         max_cast_age=metadata.lookback,
         time_decay_base=metadata.time_decay_base,

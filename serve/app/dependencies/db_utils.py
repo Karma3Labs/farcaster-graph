@@ -1,11 +1,9 @@
 import asyncio
 import json
 import time
-from collections.abc import Iterable, Mapping
+from collections.abc import Awaitable, Iterable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from functools import wraps
-from numbers import Real
 from typing import Any
 
 import pytz
@@ -1618,7 +1616,15 @@ TOKEN_FEED_CACHE_TTL = timedelta(minutes=5)
 # TODO(ek) - move setup to somewhere more suitable
 cache.setup("disk://", directory="/tmp/farcaster-serve-diskcache")
 
-token_feed_refresh_tasks: set[asyncio.Task] = set()
+refresh_tasks: set[asyncio.Task] = set()
+
+
+async def schedule_refresh(aw: Awaitable):
+    try:
+        await asyncio.sleep(settings.TOKEN_FEED_CACHE_EARLY_TTL.total_seconds())
+        await aw
+    finally:
+        refresh_tasks.discard(asyncio.current_task())
 
 
 async def _get_token_holder_casts_all(
@@ -1729,17 +1735,7 @@ async def _get_token_holder_casts_all(
     ]
 
 
-async def refresh_token_feed(*poargs, **kwargs):
-    await asyncio.sleep(settings.TOKEN_FEED_CACHE_EARLY_TTL.total_seconds())
-    logger.info(f"refreshing token feed {kwargs=}")
-    await get_token_holder_casts_all(*poargs, **kwargs)
-    logger.info(f"refreshed token feed {kwargs=}")
-    try:
-        token_feed_refresh_tasks.remove(asyncio.current_task())
-    except KeyError:
-        pass
-
-
+# TODO(ek) fix copy-pastism
 @cache.early(
     ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
 )
@@ -1753,16 +1749,132 @@ async def get_token_holder_casts_all(*poargs, **kwargs) -> list[dict[str, Any]]:
         logger.debug(
             f"slow token feed {kwargs=}, scheduling preemptive refresh in {settings.TOKEN_FEED_CACHE_EARLY_TTL}"
         )
-        refresh_task = asyncio.create_task(refresh_token_feed(*poargs, **kwargs))
-        token_feed_refresh_tasks.add(refresh_task)
-        refresh_task.add_done_callback(token_feed_refresh_tasks.discard)
+        refresh_task = asyncio.create_task(
+            schedule_refresh(get_token_holder_casts_all(*poargs, **kwargs))
+        )
+        refresh_tasks.add(refresh_task)
+        refresh_task.add_done_callback(refresh_tasks.discard)
     return result
 
 
+# TODO(ek) fix copy-pastism
 async def get_token_holder_casts(
     *poargs, offset: int, limit: int, **kwargs
 ) -> list[dict[str, Any]]:
     all_casts = await get_token_holder_casts_all(*poargs, **kwargs)
+    return all_casts[offset : (offset + limit)]
+
+
+async def _get_new_user_casts_all(
+    channel_id: str,
+    caster_age: timedelta,
+    agg: ScoreAgg,
+    weights: Weights,
+    score_threshold: float,
+    max_cast_age: timedelta,
+    time_decay_base: float,
+    time_decay_period: timedelta,
+    sorting_order: SortingOrder,
+    time_bucket_length: timedelta,
+    limit_casts: int | None,
+    pool: Pool,
+) -> list[dict[str, Any]]:
+    decay_sql = sql_for_decay(
+        "$4 - ca.action_ts", time_decay_period, base=time_decay_base
+    )
+    agg_sql = sql_for_agg(
+        agg,
+        f"""
+        car.score * (
+            {weights.cast}   * ca.casted +
+            {weights.recast} * ca.recasted +
+            {weights.reply}  * ca.replied +
+            {weights.like}   * ca.liked
+        ) * {decay_sql}
+    """,
+    )
+    now = datetime.now(UTC).replace(tzinfo=None)
+    min_timestamp = now - max_cast_age
+    if limit_casts is None:  # TODO(ek) remove this
+        limit_casts = 3
+    if limit_casts is None:
+        limit_casts_condition = ""
+    else:
+        limit_casts_condition = f"AND rn <= {limit_casts}"
+    sql_query = f"""
+                WITH new_users AS (
+                    SELECT fid
+                    FROM fids
+                    WHERE created_at >= $4
+                    UNION DISTINCT
+                    SELECT fid
+                    FROM channel_follows
+                    WHERE channel_id = $1
+                    GROUP BY fid
+                    HAVING min(created_at) >= $4
+                ),
+                c AS (
+                    SELECT
+                        hash,
+                        fid,
+                        timestamp,
+                        floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}) AS time_bucket,
+                        row_number() OVER (PARTITION BY floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}), fid ORDER BY timestamp DESC) AS rn
+                    FROM k3l_recent_parent_casts
+                    JOIN new_users USING (fid)
+                    WHERE timestamp BETWEEN $2::timestamp AND $3::timestamp
+                )
+                SELECT
+                    '0x' || encode(hash, 'hex') AS cast_hash,
+                    fid,
+                    timestamp
+                FROM c
+                WHERE
+                    TRUE
+                    {limit_casts_condition}
+                ORDER BY timestamp DESC
+                """
+
+    return [
+        dict(r)
+        for r in await fetch_rows(
+            channel_id,
+            min_timestamp,
+            now,
+            now - caster_age,
+            sql_query=sql_query,
+            pool=pool,
+        )
+    ]
+
+
+# TODO(ek) fix copy-pastism
+@cache.early(
+    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
+)
+async def get_new_user_casts_all(*poargs, **kwargs) -> list[dict[str, Any]]:
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
+    result = [dict(row) for row in await _get_new_user_casts_all(*poargs, **kwargs)]
+    end_time = loop.time()
+    elapsed = end_time - start_time
+    if timedelta(seconds=elapsed) > settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD:
+        logger.debug(
+            f"slow new user feed {kwargs=}, scheduling preemptive refresh in {settings.TOKEN_FEED_CACHE_EARLY_TTL}"
+        )
+        refresh_task = asyncio.create_task(
+            schedule_refresh(get_new_user_casts_all(*poargs, **kwargs))
+        )
+        refresh_tasks.add(refresh_task)
+        refresh_task.add_done_callback(refresh_tasks.discard)
+    return result
+
+
+# TODO(ek) fix copy-pastism
+async def get_new_user_casts(
+    *poargs, offset: int, limit: int, **kwargs
+) -> list[dict[str, Any]]:
+    all_casts = await get_new_user_casts_all(*poargs, **kwargs)
     return all_casts[offset : (offset + limit)]
 
 

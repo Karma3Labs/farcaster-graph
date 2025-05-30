@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     CURA_API_KEY: str
     DB_VERSION: DBVersion = DBVersion.EIGEN2
 
+    # TODO(ek): rename to FEED_CACHE_*
     TOKEN_FEED_CACHE_TTL: timedelta = timedelta(minutes=5)
     TOKEN_FEED_CACHE_EARLY_TTL: timedelta = timedelta(minutes=4)
     TOKEN_FEED_CACHE_REFRESH_THRESHOLD: timedelta = timedelta(seconds=3)
