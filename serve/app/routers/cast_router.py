@@ -68,11 +68,11 @@ async def get_popular_casts_for_fid(
       Get a list of casts that have been interacted with the most
       in a user's extended network. \n
     This API takes optional parameters -
-      agg, weights, k, offset, limit  and lite. \n
+      agg, weights, k, offset, limit, and lite. \n
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
     Parameter `weights` is used to define the weights to be assigned
-      to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+      to the likes (L), casts (C), recasts (R) and replies (Y) by profiles. \n
     Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
     Parameter 'lite' is used to constrain the result to just cast hashes. \n
     Parameter 'offset' is used to specify how many results to skip
@@ -80,8 +80,8 @@ async def get_popular_casts_for_fid(
     Parameter 'limit' is used to specify the number of results to return. \n
     Parameter 'graph_limit' is used to constrain the graph neighborhood. \n
     By default, agg=sumsquare, weights='L1C10R5Y1', k=1, offset=0,
-      limit=25, graph_limit=100 and lite=true
-      i.e., returns recent 25 popular casts.
+      limit=25, graph_limit=100, and lite=true
+      i.e., return recent 25 popular casts.
     """
     if provider_metadata:
         logger.info(f"Ignoring parameters and using metadata {provider_metadata}")
@@ -139,26 +139,26 @@ async def get_popular_casts_for_fid(
             )
         result_list = await asyncio.gather(*channel_tasks, return_exceptions=True)
 
-        timedout_channel_ids = []
+        timed_out_channel_ids = []
         error_channel_ids = []
         success_channel_ids = []
         casts = []
         for task_id, result in result_list:
             extra = {"channel_id": task_id}
             if result is None:
-                timedout_channel_ids.append(task_id)
+                timed_out_channel_ids.append(task_id)
             elif isinstance(result, Exception):
                 error_channel_ids.append(task_id)
             else:
                 success_channel_ids.append(task_id)
                 casts.extend(dict(cast) | extra for cast in result["result"])
-        if len(timedout_channel_ids) > 0:
-            logger.error(f"timedout_channel_ids: {timedout_channel_ids}")
+        if len(timed_out_channel_ids) > 0:
+            logger.error(f"timed_out_channel_ids: {timed_out_channel_ids}")
         if len(error_channel_ids) > 0:
             logger.error(f"error_channel_ids: {error_channel_ids}")
         if len(success_channel_ids) == 0:
             raise HTTPException(
-                status_code=500, detail="Errors and or timeoutswhile fetching casts"
+                status_code=500, detail="Errors and/or timeouts while fetching casts"
             )
 
         def cast_key(d):
@@ -244,7 +244,7 @@ async def get_personalized_casts_for_fid(
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
     """
-      Get a list of casts that have been casted by the
+      Get a list of casts that have been cast by the
         popular profiles in a user's extended network. \n
     This API takes optional parameters -
       k, offset, limit, graph_limit and lite. \n
@@ -255,7 +255,7 @@ async def get_personalized_casts_for_fid(
     Parameter 'graph_limit' is used to constrain the graph neighborhood. \n
     Parameter 'lite' is used to constrain the result to just cast hashes. \n
     By default, k=1, offset=0, limit=25, graph_limit=100 and lite=true
-      i.e., returns recent 25 frame urls casted by extended network.
+      i.e., returns recent 25 frame urls cast by extended network.
     """
     # compute eigentrust on the neighbor graph using fids
     trust_scores = await graph.get_neighbors_scores(
@@ -278,8 +278,8 @@ async def get_curated_casts_for_fid(
     pool: Pool = Depends(db_pool.get_db),
 ):
     """
-      Get a list of casts that have been casted by the
-        an list of FIDs. \n
+      Get a list of casts that have been cast by
+        a list of FIDs. \n
     This API takes optional parameters -
       offset, limit \n
     Parameter 'offset' is used to specify how many results to skip
@@ -325,10 +325,10 @@ async def get_trending_casts(
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
     Parameter 'weights' is used to define the weights to be assigned
-      to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+      to the likes (L), casts (C), recasts (R) and replies (Y) by profiles. \n
     Parameter 'score_mask' is used to define how many decimal places to consider
-      when deciding whether or not to show a cast.
-      The lower this number the higher the score that a cast needs to have
+      when deciding whether to show a cast.
+      The lower this number, the higher the score that a cast needs to have
       to be included in the feed. \n
     Parameter 'lite' is used to constrain the result to just cast hashes. \n
     Parameter 'offset' is used to specify how many results to skip
