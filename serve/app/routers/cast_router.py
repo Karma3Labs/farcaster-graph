@@ -38,11 +38,12 @@ async def get_user_pinned_channels(fid: int) -> list[str]:
 async def task_with_timeout(task_id, task_coroutine, task_timeout):
     try:
         result = await asyncio.wait_for(task_coroutine, timeout=task_timeout)
-        return (task_id, result)
+        return task_id, result
     except TimeoutError:
-        return (task_id, None)
+        return task_id, None
 
 
+# noinspection PyUnusedLocal
 @router.get("/personalized/popular/{fid}", tags=["For You Feed", "Neynar For You Feed"])
 async def get_popular_casts_for_fid(
     fid: int,
@@ -161,7 +162,7 @@ async def get_popular_casts_for_fid(
             )
 
         def cast_key(d):
-            return (0 if d["channel_id"] in pinned_channels else 1, d["age_hours"])
+            return 0 if d["channel_id"] in pinned_channels else 1, d["age_hours"]
 
         sorted_casts = sorted(casts, key=cast_key)
         for cast in sorted_casts:
