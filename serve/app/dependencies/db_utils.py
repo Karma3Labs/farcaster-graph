@@ -1962,7 +1962,7 @@ async def get_channel_ids_for_fid(fid: int, limit: int, pool: Pool):
     return await fetch_rows(fid, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_channel_url_for_channel_id(channel_id: int, pool: Pool):
+async def get_channel_url_for_channel_id(channel_id: str, pool: Pool):
     sql_query = """
         SELECT
             url
