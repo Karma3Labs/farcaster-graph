@@ -126,14 +126,14 @@ async def get_tokens_distribution_preview(
     offset: Annotated[int | None, Query()] = 0,
     limit: Annotated[int | None, Query(le=1000)] = 100,
     scope: ChannelEarningsScope = Query(ChannelEarningsScope.AIRDROP),
-    type: ChannelEarningsType = Query(ChannelEarningsType.TOKENS),
+    type_: ChannelEarningsType = Query(ChannelEarningsType.TOKENS),
     pool: Pool = Depends(db_pool.get_db),
 ):
-    if type == ChannelEarningsType.TOKENS:
+    if type_ == ChannelEarningsType.TOKENS:
         distributions = await db_utils.get_tokens_distrib_preview(
             channel_id=channel, offset=offset, limit=limit, scope=scope, pool=pool
         )
-    elif type == ChannelEarningsType.POINTS:
+    elif type_ == ChannelEarningsType.POINTS:
         if scope == ChannelEarningsScope.AIRDROP:
             raise HTTPException(
                 status_code=400,
