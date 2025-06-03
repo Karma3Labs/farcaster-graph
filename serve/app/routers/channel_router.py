@@ -439,24 +439,7 @@ async def get_popular_channel_casts(
       i.e., for returning recent 25 **Trending** casts.
     """
     logger.info(f"get_popular_channel_casts: channel={channel}")
-    metadata = None
-    if provider_metadata:
-        # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
-        md_str = urllib.parse.unquote(provider_metadata)
-        logger.info(f"Provider metadata: {md_str}")
-        try:
-            metadata = FeedMetadata.validate_json(md_str)
-        except ValidationError as e:
-            logger.error(f"Error while validating provider metadata: {e}")
-            logger.error(f"errors(): {e.errors()}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error while validating provider metadata: {e.errors()}",
-            )
-    else:
-        # default this api to Trending because Neynar uses this for Trending
-        md_json = {"feedType": "trending"}
-        metadata = TrendingFeed.validate(md_json)
+    metadata = parse_provider_metadata(provider_metadata, FeedMetadata, TrendingFeed())
 
     try:
         parsed_weights = Weights.from_str(metadata.weights)
@@ -578,6 +561,25 @@ async def get_popular_channel_casts(
     return {"result": casts}
 
 
+def parse_provider_metadata[T](
+    provider_metadata: str | None, base_model: type[T], default: T
+):
+    if not provider_metadata:
+        return default
+    # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
+    md_str = urllib.parse.unquote(provider_metadata)
+    logger.info(f"Provider metadata: {md_str}")
+    try:
+        return base_model.validate_json(md_str)
+    except ValidationError as e:
+        logger.error(f"Error while validating provider metadata: {e}")
+        logger.error(f"errors(): {e.errors()}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error while validating provider metadata: {e.errors()}",
+        )
+
+
 async def _get_new_users_feed(
     channel: str,
     metadata: NewUsersFeed,
@@ -647,24 +649,9 @@ async def get_channel_casts_scores(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
 
-    metadata = None
-    if provider_metadata:
-        # Example: %7B%22scoreType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
-        md_str = urllib.parse.unquote(provider_metadata)
-        logger.info(f"Provider metadata: {md_str}")
-        try:
-            metadata = ScoresMetadata.validate_json(md_str)
-        except ValidationError as e:
-            logger.error(f"Error while validating provider metadata: {e}")
-            logger.error(f"errors(): {e.errors()}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error while validating provider metadata: {e.errors()}",
-            )
-    else:
-        # default this api to Search
-        md_json = {"scoreType": "search"}
-        metadata = SearchScores.validate(md_json)
+    metadata = parse_provider_metadata(
+        provider_metadata, ScoresMetadata, SearchScores()
+    )
 
     logger.info(f"Feed params: {metadata}")
     cast_hashes = [bytes.fromhex(cast_hash[2:]) for cast_hash in cast_hashes]
