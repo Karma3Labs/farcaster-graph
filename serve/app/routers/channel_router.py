@@ -287,7 +287,7 @@ async def get_channel_metrics(
 async def filter_channel_fids(
     channel: str,
     fids: list[int],
-    filter: ChannelFidType = Query(ChannelFidType.FOLLOWER),
+    filter_: ChannelFidType = Query(ChannelFidType.FOLLOWER),
     pool: Pool = Depends(db_pool.get_db),
 ):
     """
@@ -306,7 +306,7 @@ async def filter_channel_fids(
     for batch in batched(fids, settings.FID_BATCH_SIZE):
         logger.info(f"Processing batch {i}")
         filtered_fids = await db_utils.filter_channel_fids(
-            channel_id=channel, fids=batch, filter=filter, pool=pool
+            channel_id=channel, fids=list(batch), filter=filter_, pool=pool
         )
         results.extend([d['fid'] for d in filtered_fids])
         i += 1
