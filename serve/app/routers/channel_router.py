@@ -49,6 +49,7 @@ async def get_top_openrank_channel_profiles(
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
 ):
+    # noinspection PyTypeChecker
     ranks = await db_utils.get_top_openrank_channel_profiles(
         channel_id=channel,
         category=category.value,
