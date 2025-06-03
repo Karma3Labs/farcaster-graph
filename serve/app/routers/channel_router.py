@@ -131,7 +131,7 @@ async def get_tokens_distribution_preview(
     pool: Pool = Depends(db_pool.get_db),
 ):
     if type_ == ChannelEarningsType.TOKENS:
-        distributions = await db_utils.get_tokens_distrib_preview(
+        distributions = await db_utils.get_tokens_distribution_preview(
             channel_id=channel, offset=offset, limit=limit, scope=scope, pool=pool
         )
     elif type_ == ChannelEarningsType.POINTS:
@@ -140,7 +140,7 @@ async def get_tokens_distribution_preview(
                 status_code=400,
                 detail="Points distribution preview not available for airdrop",
             )
-        distributions = await db_utils.get_points_distrib_preview(
+        distributions = await db_utils.get_points_distribution_preview(
             channel_id=channel, offset=offset, limit=limit, pool=pool
         )
     else:
@@ -155,7 +155,7 @@ async def get_tokens_distribution_overview(
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
 ):
-    distribution_stats = await db_utils.get_tokens_distrib_overview(
+    distribution_stats = await db_utils.get_tokens_distribution_overview(
         channel_id=channel, offset=offset, limit=limit, pool=pool
     )
     return {"result": distribution_stats}
@@ -170,7 +170,7 @@ async def get_tokens_distribution_details(
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
 ):
-    details = await db_utils.get_tokens_distrib_details(
+    details = await db_utils.get_tokens_distribution_details(
         channel_id=channel,
         dist_id=dist_id,
         batch_id=batch_id,

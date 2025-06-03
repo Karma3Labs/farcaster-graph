@@ -108,7 +108,7 @@ def sql_for_decay(
     """
 
 
-def _9ampacific_in_utc_time():
+def _9am_pacific_in_utc_time():
     pacific_tz = pytz.timezone('US/Pacific')
     pacific_9am_str = ' '.join(
         [datetime.now(pacific_tz).strftime("%Y-%m-%d"), '09:00:00']
@@ -121,7 +121,7 @@ def _9ampacific_in_utc_time():
 
 
 def _dow_utc_timestamp_str(dow: DOW) -> str:
-    utc_time = _9ampacific_in_utc_time()
+    utc_time = _9am_pacific_in_utc_time()
     res = utc_time - timedelta(days=utc_time.weekday() - dow.value)
     return (
         f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
@@ -130,7 +130,7 @@ def _dow_utc_timestamp_str(dow: DOW) -> str:
 
 
 def _last_dow_utc_timestamp_str(dow: DOW):
-    utc_time = _9ampacific_in_utc_time()
+    utc_time = _9am_pacific_in_utc_time()
     res = utc_time - timedelta(days=utc_time.weekday() - dow.value + 7)
     return (
         f"(TO_TIMESTAMP('{res.strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
@@ -733,12 +733,12 @@ async def get_top_channel_earnings(
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_tokens_distrib_details(
+async def get_tokens_distribution_details(
     channel_id: str, dist_id: int, batch_id: int, offset: int, limit: int, pool: Pool
 ):
     # asyncpg does not support named parameters
     # ... so optional params is not pretty
-    # ... sanitize int input and just use pyformat
+    # ... sanitize int input and use pyformat
     dist_filter = (
         f' AND dist_id = {int(dist_id)} ' if dist_id else ' ORDER BY insert_ts DESC'
     )
@@ -798,7 +798,7 @@ async def get_tokens_distrib_details(
     )
 
 
-async def get_tokens_distrib_overview(
+async def get_tokens_distribution_overview(
     channel_id: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = """
@@ -859,7 +859,7 @@ async def get_fid_channel_token_balance(channel_id: str, fid: int, pool: Pool):
     return None
 
 
-async def get_points_distrib_preview(
+async def get_points_distribution_preview(
     channel_id: str, offset: int, limit: int, pool: Pool
 ):
 
@@ -898,15 +898,15 @@ async def get_points_distrib_preview(
     return await fetch_rows(channel_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_tokens_distrib_preview(
+async def get_tokens_distribution_preview(
     channel_id: str, offset: int, limit: int, scope: ChannelEarningsScope, pool: Pool
 ):
     if scope == ChannelEarningsScope.AIRDROP:
         points_col = "balance"
-        interval_condn = ""
+        interval_cond = ""
     else:
         points_col = "latest_earnings"
-        interval_condn = " AND bal.update_ts > now() - interval '23 hours'"
+        interval_cond = " AND bal.update_ts > now() - interval '23 hours'"
 
     sql_query = f"""
         WITH latest_log AS (
@@ -942,7 +942,7 @@ async def get_tokens_distrib_preview(
             WHERE 
                 tlog.channel_id IS NULL
                 AND bal.channel_id = $1
-                {interval_condn} 
+                {interval_cond} 
         )
         SELECT
             fid,
@@ -2020,9 +2020,9 @@ async def get_popular_channel_casts_lite(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fidscore_sql = 'cbrt(fids.score)'
+        fid_score_sql = 'cbrt(fids.score)'
     else:
-        fidscore_sql = 'fids.score'
+        fid_score_sql = 'fids.score'
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -2030,10 +2030,10 @@ async def get_popular_channel_casts_lite(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * {fidscore_sql} * ci.casted)
-                        + ({weights.reply} * {fidscore_sql} * ci.replied)
-                        + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                        + ({weights.like} * {fidscore_sql} * ci.liked)
+                        ({weights.cast} * {fid_score_sql} * ci.casted)
+                        + ({weights.reply} * {fid_score_sql} * ci.replied)
+                        + ({weights.recast} * {fid_score_sql} * ci.recasted)
+                        + ({weights.like} * {fid_score_sql} * ci.liked)
                     )
                     *
                     {decay_sql}
@@ -2124,9 +2124,9 @@ async def get_popular_channel_casts_heavy(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fidscore_sql = 'cbrt(fids.score)'
+        fid_score_sql = 'cbrt(fids.score)'
     else:
-        fidscore_sql = 'fids.score'
+        fid_score_sql = 'fids.score'
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -2134,10 +2134,10 @@ async def get_popular_channel_casts_heavy(
                 hash as cast_hash,
                 SUM(
                     (
-                        ({weights.cast} * {fidscore_sql} * ci.casted)
-                        + ({weights.reply} * {fidscore_sql} * ci.replied)
-                        + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                        + ({weights.like} * {fidscore_sql} * ci.liked)
+                        ({weights.cast} * {fid_score_sql} * ci.casted)
+                        + ({weights.reply} * {fid_score_sql} * ci.replied)
+                        + ({weights.recast} * {fid_score_sql} * ci.recasted)
+                        + ({weights.like} * {fid_score_sql} * ci.liked)
                     )
                     *
                     {decay_sql}
@@ -2747,9 +2747,9 @@ async def get_trending_channel_casts_heavy(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fidscore_sql = 'cbrt(fids.score)'
+        fid_score_sql = 'cbrt(fids.score)'
     else:
-        fidscore_sql = 'fids.score'
+        fid_score_sql = 'fids.score'
 
     if shuffle:
         shuffle_sql = 'random(),'
@@ -2777,10 +2777,10 @@ async def get_trending_channel_casts_heavy(
             hash as cast_hash,
             SUM(
                 (
-                    ({weights.cast} * {fidscore_sql} * ci.casted)
-                    + ({weights.reply} * {fidscore_sql} * ci.replied)
-                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                    ({weights.cast} * {fid_score_sql} * ci.casted)
+                    + ({weights.reply} * {fid_score_sql} * ci.replied)
+                    + ({weights.recast} * {fid_score_sql} * ci.recasted)
+                    + ({weights.like} * {fid_score_sql} * ci.liked)
                 )
                 *
                 {decay_sql}
@@ -2947,9 +2947,9 @@ async def get_trending_channel_casts_lite(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fidscore_sql = 'cbrt(fids.score)'
+        fid_score_sql = 'cbrt(fids.score)'
     else:
-        fidscore_sql = 'fids.score'
+        fid_score_sql = 'fids.score'
 
     if shuffle:
         shuffle_sql = 'random(),'
@@ -2977,10 +2977,10 @@ async def get_trending_channel_casts_lite(
             hash as cast_hash,
             SUM(
                 (
-                    ({weights.cast} * {fidscore_sql} * ci.casted)
-                    + ({weights.reply} * {fidscore_sql} * ci.replied)
-                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                    ({weights.cast} * {fid_score_sql} * ci.casted)
+                    + ({weights.reply} * {fid_score_sql} * ci.replied)
+                    + ({weights.recast} * {fid_score_sql} * ci.recasted)
+                    + ({weights.like} * {fid_score_sql} * ci.liked)
                 )
                 *
                 {decay_sql}
@@ -3061,9 +3061,9 @@ async def get_channel_casts_scores_lite(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fidscore_sql = 'cbrt(fids.score)'
+        fid_score_sql = 'cbrt(fids.score)'
     else:
-        fidscore_sql = 'fids.score'
+        fid_score_sql = 'fids.score'
 
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
@@ -3086,10 +3086,10 @@ async def get_channel_casts_scores_lite(
             ci.cast_hash,
             SUM(
                 (
-                    ({weights.cast} * {fidscore_sql} * ci.casted)
-                    + ({weights.reply} * {fidscore_sql} * ci.replied)
-                    + ({weights.recast} * {fidscore_sql} * ci.recasted)
-                    + ({weights.like} * {fidscore_sql} * ci.liked)
+                    ({weights.cast} * {fid_score_sql} * ci.casted)
+                    + ({weights.reply} * {fid_score_sql} * ci.replied)
+                    + ({weights.recast} * {fid_score_sql} * ci.recasted)
+                    + ({weights.like} * {fid_score_sql} * ci.liked)
                 )
                 *
                 {decay_sql}
