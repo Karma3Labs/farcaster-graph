@@ -43,7 +43,6 @@ async def task_with_timeout(task_id, task_coroutine, task_timeout):
         return task_id, None
 
 
-# noinspection PyUnusedLocal
 @router.get("/personalized/popular/{fid}", tags=["For You Feed", "Neynar For You Feed"])
 async def get_popular_casts_for_fid(
     fid: int,
@@ -59,7 +58,6 @@ async def get_popular_casts_for_fid(
     limit: Annotated[int | None, Query(le=50)] = 25,
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
     provider_metadata: Annotated[str | None, Query()] = None,
     pool: Pool = Depends(db_pool.get_db),
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
@@ -239,7 +237,6 @@ async def get_personalized_casts_for_fid(
     limit: Annotated[int | None, Query(le=50)] = 25,
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
     pool: Pool = Depends(db_pool.get_db),
     ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
 ):
