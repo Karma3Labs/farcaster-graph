@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Literal, Union
 
@@ -96,6 +97,7 @@ LimitCastsField = Annotated[
 ]
 SessionIdField = Annotated[str, Field(alias="sessionId")]
 TokenAddressField = Annotated[str, Field(alias="tokenAddress")]
+MinBalanceField = Annotated[Decimal, Field(alias="minBalance")]
 
 
 class TrendingFeed(BaseModel):
@@ -150,6 +152,7 @@ class FarconFeed(BaseModel):
 class TokenFeed(BaseModel):
     feed_type: Annotated[Literal['token'], Field(alias="feedType")]
     token_address: TokenAddressField
+    min_balance: MinBalanceField = Decimal(1)
     lookback: timedelta = timedelta(days=3)
     agg: ScoreAgg = ScoreAgg.SUMCUBEROOT
     score_threshold: ScoreThresholdField = 0.9

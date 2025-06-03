@@ -3,6 +3,7 @@ import json
 import time
 from collections.abc import Awaitable, Iterable
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from enum import Enum
 from typing import Any
 
@@ -1635,6 +1636,7 @@ async def _get_token_holder_casts_all(
     time_decay_base: float,
     time_decay_period: timedelta,
     token_address: bytes,
+    min_balance: Decimal,
     sorting_order: SortingOrder,
     time_bucket_length: timedelta,
     limit_casts: int | None,
@@ -1707,7 +1709,7 @@ async def _get_token_holder_casts_all(
                     JOIN k3l_token_holding_fids th USING (fid)
                     WHERE
                         c.timestamp BETWEEN $3::timestamp AND $4::timestamp AND
-                        th.token_address = $1::bytea AND th.value > 0
+                        th.token_address = $1::bytea AND th.value >= $5
                 )
                 SELECT
                     '0x' || encode(hash, 'hex') AS cast_hash,
@@ -1729,6 +1731,7 @@ async def _get_token_holder_casts_all(
             score_threshold,
             min_timestamp,
             now,
+            min_balance,
             sql_query=sql_query,
             pool=pool,
         )

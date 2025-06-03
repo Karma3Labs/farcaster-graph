@@ -211,6 +211,7 @@ async def _get_token_feed(
         agg=metadata.agg,
         weights=weights,
         token_address=token_address,
+        min_balance=metadata.min_balance,
         score_threshold=metadata.score_threshold,
         max_cast_age=metadata.lookback,
         time_decay_base=metadata.time_decay_base,
