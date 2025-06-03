@@ -101,7 +101,7 @@ async def get_top_token_balances(
 
 @router.get("/tokens/{channel}/claim", tags=["Tokens"])
 async def get_token_claim(channel: str, fid: int, pool: Pool = Depends(db_pool.get_db)):
-    # check local pg database first before calling smart contract manager
+    # check the local pg database first before calling smart contract manager
     balance = await db_utils.get_fid_channel_token_balance(
         channel_id=channel, fid=fid, pool=pool
     )
@@ -141,7 +141,7 @@ async def get_token_claim(channel: str, fid: int, pool: Pool = Depends(db_pool.g
 
 
 @router.get("/distribution/preview/{channel}", tags=["Distribute Rewards"])
-async def get_tokens_distrib_preview(
+async def get_tokens_distribution_preview(
     channel: str,
     offset: Annotated[int | None, Query()] = 0,
     limit: Annotated[int | None, Query(le=1000)] = 100,
@@ -166,20 +166,20 @@ async def get_tokens_distrib_preview(
 
 
 @router.get("/distribution/overview/{channel}", tags=["Tokens"])
-async def get_tokens_distrib_overview(
+async def get_tokens_distribution_overview(
     channel: str,
     offset: Annotated[int | None, Query()] = 0,
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
 ):
-    distribribution_stats = await db_utils.get_tokens_distrib_overview(
+    distribution_stats = await db_utils.get_tokens_distrib_overview(
         channel_id=channel, offset=offset, limit=limit, pool=pool
     )
-    return {"result": distribribution_stats}
+    return {"result": distribution_stats}
 
 
 @router.get("/distribution/details/{channel}", tags=["Tokens"])
-async def get_tokens_distrib_details(
+async def get_tokens_distribution_details(
     channel: str,
     dist_id: Annotated[int | None, Query()] = None,
     batch_id: Annotated[int | None, Query()] = 1,
@@ -220,7 +220,7 @@ async def get_top_channel_profiles(
     Parameter 'limit' is used to specify the number of results to return. \n
     Parameter 'lite' is used to indicate if additional details like
       fnames and percentile should be returned or not. \n
-    By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
+    By default, limit is 100, offset is 0 and lite is True, i.e., returns top 100 fids.
     """
     ranks = await db_utils.get_top_channel_profiles(
         channel_id=channel,
@@ -415,7 +415,7 @@ async def get_popular_channel_casts(
     """
     Get a list of recent casts that are the most popular
       based on Eigentrust scores of fids in the channel. \n
-    This API takes optional parameters - offset, limit and lite. \n
+    This API takes optional parameters - offset, limit, and lite. \n
     Parameter 'lite' is used to constrain the result to just cast hashes. \n
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
@@ -452,8 +452,8 @@ async def get_popular_channel_casts(
         "sessionId": "string" # optional field \n
       } \n
     Parameter 'limit' is used to specify the number of results to return. \n
-    By default, offset=0, limit=25, and lite=true
-      i.e., returns recent 25 **Trending** casts.
+    By default, offset=0, limit=25, and lite=true,
+      i.e., for returning recent 25 **Trending** casts.
     """
     logger.info(f"get_popular_channel_casts: channel={channel}")
     metadata = None
@@ -615,7 +615,7 @@ async def get_channel_casts_scores(
         "normalize": true | false, # true is default \n
       } \n
     provider_metadata is a **URI encoded JSON string**
-      that contains the following defaultsfor scoring Replies: \n
+      that contains the following defaults for scoring Replies: \n
       { \n
         "scoreType": "reply",  \n
         "agg": "sum" | "rms" | "sumsquare", # sum is default \n
@@ -742,18 +742,18 @@ async def get_popular_casts_from_degen_graph(
     Get a list of recent casts that are the most popular
       based on Eigentrust scores of fids in the channel. \n
     This API takes optional parameters -
-      agg, weights, offset, limit andlite. \n
+      agg, weights, offset, limit and lite. \n
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
     Parameter 'weights' is used to define the weights to be assigned
-      to (L)ikes, (C)asts, (R)ecasts and repl(Y) actions by profiles. \n
+      to likes (L), casts (C), recasts (R), and replies (Y) by profiles. \n
     Parameter 'lite' is used to constrain the result to just cast hashes. \n
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return. \n
     By default, agg=sumsquare, weights='L1C10R5Y1', offset=0,
       limit=25, and lite=true
-      i.e., returns recent 25 popular casts.
+      i.e., for returning recent 25 popular casts.
     """
     try:
         weights = Weights.from_str(weights)
@@ -791,7 +791,7 @@ async def get_top_channel_followers(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
+    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_followers(
         channel_id=channel,
@@ -861,7 +861,7 @@ async def get_top_channel_holders(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
+    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_holders(
         channel_id=channel,
@@ -894,7 +894,7 @@ async def get_top_channel_repliers(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0 and lite is True i.e., returns top 100 fids.
+    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_repliers(
         channel_id=channel,
@@ -926,7 +926,7 @@ async def get_trending_channels(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return. \n
-    By default, lookback='week, rankThreshold=10000, offset=0, and limit=25
+    By default, lookback='week', rankThreshold=10000, offset=0, and limit=25
       i.e., returns recent 25 popular casts.
     """
 
