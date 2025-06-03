@@ -101,7 +101,7 @@ MinBalanceField = Annotated[Decimal, Field(alias="minBalance")]
 
 
 class TrendingFeed(BaseModel):
-    feed_type: Annotated[Literal['trending'], Field(alias="feedType")]
+    feed_type: Annotated[Literal['trending'], Field(alias="feedType")] = 'trending'
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
@@ -118,7 +118,7 @@ class TrendingFeed(BaseModel):
 
 
 class PopularFeed(BaseModel):
-    feed_type: Annotated[Literal['popular'], Field(alias="feedType")]
+    feed_type: Annotated[Literal['popular'], Field(alias="feedType")] = 'popular'
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
@@ -133,7 +133,7 @@ class PopularFeed(BaseModel):
 
 
 class FarconFeed(BaseModel):
-    feed_type: Annotated[Literal['farcon'], Field(alias="feedType")]
+    feed_type: Annotated[Literal['farcon'], Field(alias="feedType")] = 'farcon'
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.0
@@ -150,7 +150,7 @@ class FarconFeed(BaseModel):
 
 
 class TokenFeed(BaseModel):
-    feed_type: Annotated[Literal['token'], Field(alias="feedType")]
+    feed_type: Annotated[Literal['token'], Field(alias="feedType")] = 'token'
     token_address: TokenAddressField
     min_balance: MinBalanceField = Decimal(1)
     lookback: timedelta = timedelta(days=3)
@@ -172,7 +172,7 @@ class TokenFeed(BaseModel):
 
 
 class NewUsersFeed(BaseModel):
-    feed_type: Annotated[Literal['newUsers'], Field(alias="feedType")]
+    feed_type: Annotated[Literal['newUsers'], Field(alias="feedType")] = 'newUsers'
     caster_age: timedelta = timedelta(days=90)
     lookback: timedelta = timedelta(weeks=1)
     agg: ScoreAgg = ScoreAgg.SUM
@@ -193,7 +193,7 @@ class NewUsersFeed(BaseModel):
 
 
 class SearchScores(BaseModel):
-    score_type: Annotated[Literal['search'], Field(alias="scoreType")]
+    score_type: Annotated[Literal['search'], Field(alias="scoreType")] = 'search'
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
     weights: str = 'L1C1R1Y1'
@@ -203,7 +203,7 @@ class SearchScores(BaseModel):
 
 
 class ReplyScores(BaseModel):
-    score_type: Annotated[Literal['reply'], Field(alias="scoreType")]
+    score_type: Annotated[Literal['reply'], Field(alias="scoreType")] = 'reply'
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
     weights: str = 'L1C1R1Y1'
