@@ -143,6 +143,8 @@ async def get_tokens_distribution_preview(
         distributions = await db_utils.get_points_distrib_preview(
             channel_id=channel, offset=offset, limit=limit, pool=pool
         )
+    else:
+        raise HTTPException(status_code=400, detail=f"invalid earning type {type_!r}")
     return {"result": distributions}
 
 
