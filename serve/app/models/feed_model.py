@@ -170,7 +170,6 @@ class TokenFeed(BaseModel):
 
 class NewUsersFeed(BaseModel):
     feed_type: Annotated[Literal['newUsers'], Field(alias="feedType")]
-    channel_id: str
     caster_age: timedelta = timedelta(days=90)
     lookback: timedelta = timedelta(weeks=1)
     agg: ScoreAgg = ScoreAgg.SUM

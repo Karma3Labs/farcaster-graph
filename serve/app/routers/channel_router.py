@@ -1,7 +1,7 @@
 import json
 import urllib.parse
 from itertools import batched
-from typing import Annotated
+from typing import Annotated, Any
 
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -28,6 +28,7 @@ from ..models.feed_model import (
     ChannelTimeframe,
     FarconFeed,
     FeedMetadata,
+    NewUsersFeed,
     PopularFeed,
     ScoresMetadata,
     SearchScores,
@@ -529,6 +530,8 @@ async def get_popular_channel_casts(
                 sorting_order=metadata.sorting_order,
                 pool=pool,
             )
+    elif metadata and type(metadata) is NewUsersFeed:
+        casts = await _get_new_users_feed(channel, metadata, offset, limit, pool)
     elif metadata and type(metadata) is FarconFeed:
         casts = await db_utils.get_trending_channel_casts_lite(
             channel_id=channel,
@@ -591,6 +594,36 @@ async def get_popular_channel_casts(
             )
 
     return {"result": casts}
+
+
+async def _get_new_users_feed(
+    channel: str,
+    metadata: NewUsersFeed,
+    offset: int | None,
+    limit: int | None,
+    pool: Pool,
+) -> list[dict[str, Any]]:
+    try:
+        weights = Weights.from_str(metadata.weights)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid weights") from e
+    rows = await db_utils.get_new_user_casts(
+        channel_id=channel,
+        caster_age=metadata.caster_age,
+        agg=metadata.agg,
+        weights=weights,
+        score_threshold=metadata.score_threshold,
+        max_cast_age=metadata.lookback,
+        time_decay_base=metadata.time_decay_base,
+        time_decay_period=metadata.time_decay_period,
+        sorting_order=metadata.sorting_order,
+        time_bucket_length=metadata.time_bucket_length,
+        limit_casts=metadata.limit_casts,
+        offset=offset,
+        limit=limit,
+        pool=pool,
+    )
+    return rows
 
 
 @router.post("/casts/scores/{channel}", tags=["Channel Feed"])
