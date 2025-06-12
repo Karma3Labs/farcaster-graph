@@ -89,7 +89,7 @@ def notify(
         "fids": fids,
         "screen": screen_name
     }
-    url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/warpcast-frame-notify")
+    url = "https://notifications.cura.network/api/v1/notify"
     logger.info(f"{url}: {req}")
     if settings.IS_TEST:
         logger.warning(f"Skipping notifications for channel {channel_id} in test mode")
