@@ -18,7 +18,7 @@ with DAG(
     default_args=default_args,
     description='Periodically triggers the Cura Network automated casts every 2 hours.',
     start_date=datetime(2024, 7, 15),
-    schedule_interval='0 */2 * * *',
+    schedule_interval='@hourly',
     is_paused_upon_creation=True,
     max_active_runs=1,
     catchup=False,
