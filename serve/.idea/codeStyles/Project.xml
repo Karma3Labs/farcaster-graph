@@ -1,0 +1,21 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <SqlCodeStyleSettings version="7">
+      <option name="KEYWORD_CASE" value="2" />
+      <option name="IDENTIFIER_CASE" value="1" />
+      <option name="TYPE_CASE" value="4" />
+      <option name="BUILT_IN_CASE" value="4" />
+      <option name="QUOTE_IDENTIFIER" value="1" />
+      <option name="SUBQUERY_CONTENT" value="2" />
+      <option name="SUBQUERY_CLOSING" value="2" />
+      <option name="WITH_EL_LINE" value="1" />
+      <option name="WITH_EL_COMMA" value="4" />
+      <option name="SELECT_USE_AS_WORD" value="1" />
+      <option name="SELECT_ALIGN_AS" value="false" />
+      <option name="FROM_INDENT_JOIN" value="false" />
+    </SqlCodeStyleSettings>
+    <codeStyleSettings language="SQL">
+      <option name="KEEP_LINE_BREAKS" value="false" />
+    </codeStyleSettings>
+  </code_scheme>
+</component>
