@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="Python 3.12" />
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12" project-jdk-type="Python SDK" />
+  <component name="ProjectUserFactors">
+    <factor id="completionFinishedType">
+      <dailyData date="14-06-2024">
+        <observation name="cancelled" value="8.0" />
+      </dailyData>
+      <dailyData date="25-06-2024">
+        <observation name="cancelled" value="8.0" />
+        <observation name="explicitSelect" value="3.0" />
+      </dailyData>
+    </factor>
+    <factor id="completionType">
+      <dailyData date="14-06-2024">
+        <observation name="BASIC" value="3.0" />
+      </dailyData>
+      <dailyData date="25-06-2024">
+        <observation name="BASIC" value="5.0" />
+      </dailyData>
+    </factor>
+    <factor id="completionUsage">
+      <dailyData date="14-06-2024">
+        <observation name="count" value="8.0" />
+      </dailyData>
+      <dailyData date="25-06-2024">
+        <observation name="count" value="11.0" />
+      </dailyData>
+    </factor>
+    <factor id="fullLineFactors" />
+    <factor id="itemPosition">
+      <dailyData date="25-06-2024">
+        <observation name="0" value="3.0" />
+      </dailyData>
+    </factor>
+    <factor id="mnemonicsUsage">
+      <dailyData date="25-06-2024">
+        <observation name="total" value="3.0" />
+        <observation name="withMnemonics" value="0.0" />
+      </dailyData>
+    </factor>
+    <factor id="prefixLength">
+      <dailyData date="25-06-2024">
+        <observation name="16" value="1.0" />
+        <observation name="33" value="1.0" />
+        <observation name="5" value="1.0" />
+      </dailyData>
+    </factor>
+    <factor id="prefixMatchingType">
+      <dailyData date="25-06-2024">
+        <observation name="GREEDY_WITH_CASE" value="3.0" />
+      </dailyData>
+    </factor>
+    <factor id="templatesUsage">
+      <dailyData date="25-06-2024">
+        <observation name="totalStartingWithPrefix" value="3.0" />
+      </dailyData>
+    </factor>
+    <factor id="timeBetweenTyping">
+      <dailyData date="14-06-2024">
+        <observation name="average" value="101.444444" />
+        <observation name="count" value="9.0" />
+      </dailyData>
+      <dailyData date="25-06-2024">
+        <observation name="average" value="251.828571" />
+        <observation name="count" value="35.0" />
+      </dailyData>
+    </factor>
+  </component>
+</project>
