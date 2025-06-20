@@ -1598,6 +1598,27 @@ async def get_recent_casts_by_fids(
 
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
+async def get_all_token_balances(
+    token_address: bytes,
+    pool: Pool,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Return (fid, value) rows for every holder of *token_address*,
+    sorted by value descending.  If *limit* is supplied, only the first
+    N rows are returned (useful for leaderboards).
+    """
+    sql_query = """
+        SELECT fid, value
+        FROM k3l_token_holding_fids
+        WHERE token_address = $1::bytea
+        ORDER BY value DESC
+    """
+    if limit is not None:
+        sql_query += "\nLIMIT $2"
+        return await fetch_rows(token_address, limit, sql_query=sql_query, pool=pool)
+
+    return await fetch_rows(token_address, sql_query=sql_query, pool=pool)
 
 async def get_token_balances(
     token_address: bytes, fids: Iterable[int], pool: Pool
