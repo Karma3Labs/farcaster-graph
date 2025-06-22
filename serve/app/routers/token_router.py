@@ -8,7 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool
-from ..dependencies.db_utils import get_token_balances
+from ..dependencies.db_utils import (
+    get_token_balances,
+    get_all_token_balances,
+    )
 
 router = APIRouter(prefix="/{token}", tags=["Token"])
 
@@ -52,5 +55,40 @@ async def get_balances(
     return {
         "balances": [
             {"fid": fid, "value": str(int(balances.get(fid, 0)))} for fid in fids
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
+# New endpoint: /balances/all – full or top‑N leaderboard
+# ---------------------------------------------------------------------------
+@router.get("/balances/all")
+async def get_all_balances(  # noqa: D401
+    *,
+    token: Token = Depends(get_token),
+    limit: int | None = Query(
+        None,
+        gt=0,
+        le=10000,
+        description="Optional cap on number of rows (useful for leaderboards)",
+    ),
+    pool: Pool = Depends(db_pool.get_db),
+):
+    """Return **all** FID balances for *token*, sorted high→low.
+
+    If `?limit=` is supplied, only the first *N* rows are returned.  This is
+    handy when building a public leaderboard (e.g. top‑100 holders).
+    """
+
+    try:
+        rows = await get_all_token_balances(
+            to_bytes(hexstr=token.address), pool=pool, limit=limit
+        )
+    except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {
+        "balances": [
+            {"fid": row["fid"], "value": str(int(row["value"]))} for row in rows
         ]
     }
