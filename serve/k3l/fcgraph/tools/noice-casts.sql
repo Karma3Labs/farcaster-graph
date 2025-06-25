@@ -1,5 +1,25 @@
 -- noqa: disable=RF04
 
+CREATE OR REPLACE FUNCTION array_union(anyarray, anyarray)
+RETURNS anyarray LANGUAGE sql AS $$
+    SELECT array_agg(el)
+    FROM (
+        SELECT unnest($1)
+        UNION DISTINCT
+        SELECT unnest($2)
+    ) AS x (el)
+$$;
+ALTER FUNCTION array_union(anyarray, anyarray) OWNER TO k3l_user;
+GRANT EXECUTE ON FUNCTION array_union(anyarray, anyarray) TO k3l_readonly;
+
+CREATE OR REPLACE AGGREGATE array_union_agg (anyarray)(
+    sfunc = array_union,
+    stype = anyarray,
+    initcond = '{}'
+);
+ALTER AGGREGATE array_union_agg (anyarray) OWNER TO k3l_user;
+GRANT EXECUTE ON FUNCTION array_union_agg(anyarray) TO k3l_readonly;
+
 DROP TABLE IF EXISTS noice_variants_raw CASCADE;
 CREATE TABLE noice_variants_raw (
     liked integer NOT NULL,
@@ -62,6 +82,7 @@ INNER JOIN va ON t.address = va.address;
 ALTER VIEW noice_tipper_scores OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tipper_scores TO k3l_readonly;
 
+-- noice-tipper-scores.csv
 SELECT
     fid,
     score
@@ -181,7 +202,8 @@ SELECT
     ca.weights,
     ca.hash,
     sum(ca.combined_weight * cas.score) AS score,
-    count(DISTINCT ca.fid) AS num_tippers
+    count(DISTINCT ca.fid) AS num_tippers,
+    array_agg(DISTINCT ca.fid) AS tippers
 -- FROM noice_candidate_casts AS c
 FROM ca -- ON c.hash = ca.hash
 INNER JOIN noice_tipper_scores AS cas ON ca.fid = cas.fid
@@ -202,6 +224,7 @@ SELECT
     ) AS rank,
     cs.score,
     cs.num_tippers,
+    cs.tippers,
     c.hash,
     c.fid,
     p.username,
@@ -228,6 +251,7 @@ SELECT
     c.rank,
     c.score,
     c.num_tippers,
+    c.tippers,
     c.hash,
     c.fid,
     coalesce(f.count, 0) AS follower_count,
@@ -250,6 +274,7 @@ SELECT
     fid,
     score,
     num_tippers,
+    tippers,
     rank
 FROM noice_casts_hydrated;
 ALTER VIEW noice_casts_dry_ranked OWNER TO k3l_user;
@@ -263,6 +288,7 @@ SELECT
     fid,
     score,
     num_tippers,
+    tippers,
     rank
 FROM noice_casts_dry_ranked
 WHERE rank <= 10000;
@@ -276,6 +302,7 @@ SELECT
     fid,
     score,
     num_tippers,
+    tippers,
     rank
 FROM noice_casts_dry_ranked
 WHERE weights = 'L1C0R2Y2Q3'
@@ -289,8 +316,10 @@ WITH creators AS (
         c.fid,
         p.username,
         count(*) AS cast_count,
-        array_agg(c.rank) AS ranks,
-        sum(c.score) AS total_score
+        array_agg(c.rank) AS cast_ranks,
+        sum(c.score) AS cast_score_total,
+        array_length(array_union_agg(c.tippers), 1) AS tipper_count,
+        array_union_agg(c.tippers) AS tippers
     FROM noice_casts_dry_ranked_10k AS c
     INNER JOIN neynarv3.profiles AS p ON c.fid = p.fid
     GROUP BY c.weights, c.fid, p.username
@@ -301,8 +330,10 @@ SELECT
     cr.fid,
     cr.username,
     cr.cast_count,
-    cr.ranks,
-    cr.total_score,
+    cr.cast_ranks,
+    cr.cast_score_total,
+    cr.tipper_count,
+    cr.tippers,
     coalesce(gt.v, 0) AS openrank_score,
     coalesce(f.count, 0) AS follower_count
 FROM creators AS cr
@@ -321,8 +352,12 @@ SELECT
     fid,
     username,
     cast_count,
-    ranks,
-    total_score
+    cast_ranks,
+    cast_score_total,
+    tipper_count,
+    tippers,
+    openrank_score,
+    follower_count
 FROM noice_top_creators
 WHERE weights = 'L1C0R2Y2Q3'
 ORDER BY cast_count DESC;
