@@ -224,21 +224,23 @@ CREATE INDEX noice_casts_hydrated_hash_idx ON noice_casts_hydrated (hash);
 
 -- noice-casts-hydrated-ranked-10k.csv
 SELECT
-    weights,
-    rank,
-    score,
-    num_tippers,
-    hash,
-    fid,
-    username,
-    timestamp,
-    parent_hash,
-    parent_url,
-    root_parent_hash,
-    root_parent_url,
-    text
-FROM noice_casts_hydrated
-WHERE weights = 'L1C0R2Y2Q3' AND rank <= 10000;
+    c.weights,
+    c.rank,
+    c.score,
+    c.num_tippers,
+    c.hash,
+    c.fid,
+    coalesce(f.count, 0) AS follower_count,
+    c.username,
+    c.timestamp,
+    c.parent_hash,
+    c.parent_url,
+    c.root_parent_hash,
+    c.root_parent_url,
+    c.text
+FROM noice_casts_hydrated AS c
+LEFT OUTER JOIN k3l_follower_counts AS f ON c.fid = f.fid
+WHERE c.weights = 'L1C0R2Y2Q3' AND c.rank <= 10000;
 
 DROP VIEW IF EXISTS noice_casts_dry_ranked CASCADE;
 CREATE VIEW noice_casts_dry_ranked AS
