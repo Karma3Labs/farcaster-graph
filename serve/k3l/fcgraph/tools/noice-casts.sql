@@ -281,7 +281,6 @@ FROM noice_casts_dry_ranked
 WHERE weights = 'L1C0R2Y2Q3'
 ORDER BY rank;
 
--- add follower count
 DROP VIEW IF EXISTS noice_top_creators CASCADE;
 CREATE VIEW noice_top_creators AS
 WITH creators AS (
