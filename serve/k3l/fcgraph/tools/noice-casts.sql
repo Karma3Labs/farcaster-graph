@@ -222,6 +222,7 @@ ON noice_casts_hydrated (weights, rank);
 CREATE INDEX noice_casts_hydrated_fid_idx ON noice_casts_hydrated (fid);
 CREATE INDEX noice_casts_hydrated_hash_idx ON noice_casts_hydrated (hash);
 
+-- noice-casts-hydrated-ranked-10k.csv
 SELECT
     weights,
     rank,
@@ -266,6 +267,7 @@ WHERE rank <= 10000;
 ALTER VIEW noice_casts_dry_ranked_10k OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_casts_dry_ranked_10k TO k3l_readonly;
 
+-- noice-casts-dry-ranked.csv
 SELECT
     weights,
     hash,
@@ -312,6 +314,7 @@ LEFT OUTER JOIN k3l_follower_counts AS f ON cr.fid = f.fid;
 ALTER VIEW noice_top_creators OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_creators TO k3l_readonly;
 
+-- noice-top-creators.csv
 SELECT
     weights,
     fid,
@@ -345,6 +348,7 @@ GROUP BY c.weights, t.fid, p.username;
 ALTER VIEW noice_top_tippers OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_tippers TO k3l_readonly;
 
+-- noice-top-tippers.csv
 SELECT
     weights,
     fid,
