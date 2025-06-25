@@ -9,9 +9,9 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool
 from ..dependencies.db_utils import (
-    get_token_balances,
     get_all_token_balances,
-    )
+    get_token_balances,
+)
 
 router = APIRouter(prefix="/{token}", tags=["Token"])
 

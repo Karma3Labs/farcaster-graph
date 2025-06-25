@@ -1598,6 +1598,7 @@ async def get_recent_casts_by_fids(
 
     return await fetch_rows(fids, offset, limit, sql_query=sql_query, pool=pool)
 
+
 async def get_all_token_balances(
     token_address: bytes,
     pool: Pool,
@@ -1619,6 +1620,7 @@ async def get_all_token_balances(
         return await fetch_rows(token_address, limit, sql_query=sql_query, pool=pool)
 
     return await fetch_rows(token_address, sql_query=sql_query, pool=pool)
+
 
 async def get_token_balances(
     token_address: bytes, fids: Iterable[int], pool: Pool
