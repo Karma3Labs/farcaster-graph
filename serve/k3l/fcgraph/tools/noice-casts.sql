@@ -289,7 +289,7 @@ WITH creators AS (
         c.weights,
         c.fid,
         p.username,
-        count(*) AS count,
+        count(*) AS cast_count,
         array_agg(c.rank) AS ranks,
         sum(c.score) AS total_score
     FROM noice_casts_dry_ranked_10k AS c
@@ -301,7 +301,7 @@ SELECT
     cr.weights,
     cr.fid,
     cr.username,
-    cr.count,
+    cr.cast_count,
     cr.ranks,
     cr.total_score,
     coalesce(gt.v, 0) AS openrank_score,
@@ -321,12 +321,12 @@ SELECT
     weights,
     fid,
     username,
-    count,
+    cast_count,
     ranks,
     total_score
 FROM noice_top_creators
 WHERE weights = 'L1C0R2Y2Q3'
-ORDER BY count DESC;
+ORDER BY cast_count DESC;
 
 -- another column interaction_count:
 --   unique interaction count across all top 10k casts
