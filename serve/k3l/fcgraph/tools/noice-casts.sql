@@ -8,7 +8,7 @@ CREATE TABLE noice_variants_raw (
     replied integer NOT NULL,
     quoted integer NOT NULL
 );
-GRANT ALL ON TABLE noice_variants_raw TO k3l_user;
+ALTER TABLE noice_variants_raw OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_variants_raw TO k3l_readonly;
 
 INSERT INTO noice_variants_raw (liked, casted, recasted, replied, quoted) VALUES
@@ -36,7 +36,7 @@ SELECT
     || 'Q'
     || quoted AS weights
 FROM noice_variants_raw;
-GRANT ALL ON TABLE noice_variants TO k3l_user;
+ALTER TABLE noice_variants OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_variants TO k3l_readonly;
 
 DROP VIEW IF EXISTS noice_tipper_scores CASCADE;
@@ -59,7 +59,7 @@ SELECT DISTINCT
     va.score
 FROM noice_tippers AS t
 INNER JOIN va ON t.address = va.address;
-GRANT ALL ON TABLE noice_tipper_scores TO k3l_user;
+ALTER VIEW noice_tipper_scores OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tipper_scores TO k3l_readonly;
 
 SELECT
@@ -77,7 +77,7 @@ FROM neynarv3.casts
 WHERE
     timestamp >= '2025-05-21T17:47:59Z'
     AND timestamp < '2025-06-20T00:00:00Z';
-GRANT ALL ON TABLE noice_candidate_casts TO k3l_user;
+ALTER VIEW noice_candidate_casts OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_candidate_casts TO k3l_readonly;
 CREATE INDEX noice_candidate_casts_hash_idx ON noice_candidate_casts (hash);
 CREATE INDEX noice_candidate_casts_fid_idx ON noice_candidate_casts (fid);
@@ -155,7 +155,7 @@ INNER JOIN
     ON ca.fid = ts.fid
 WHERE
     c.fid != ca.fid;
-GRANT ALL ON TABLE noice_candidate_cast_actions TO k3l_user;
+ALTER MATERIALIZED VIEW noice_candidate_cast_actions OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_candidate_cast_actions TO k3l_readonly;
 CREATE INDEX noice_candidate_cast_actions_fid_hash_idx
 ON noice_candidate_cast_actions (fid, cast_hash);
@@ -187,7 +187,7 @@ FROM ca -- ON c.hash = ca.hash
 INNER JOIN noice_tipper_scores AS cas ON ca.fid = cas.fid
 GROUP BY ca.weights, ca.hash
 HAVING sum(ca.combined_weight * cas.score) > 0;
-GRANT ALL ON TABLE noice_casts_dry TO k3l_user;
+ALTER MATERIALIZED VIEW noice_casts_dry OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_casts_dry TO k3l_readonly;
 CREATE INDEX noice_casts_dry_hash_idx ON noice_casts_dry (hash);
 
@@ -215,7 +215,7 @@ FROM noice_casts_dry AS cs
 INNER JOIN neynarv3.casts AS c ON cs.hash = c.hash
 INNER JOIN neynarv3.profiles AS p ON c.fid = p.fid
 WHERE c.fid NOT IN (2, 3, 12, 239, 3621);
-GRANT ALL ON TABLE noice_casts_hydrated TO k3l_user;
+ALTER MATERIALIZED VIEW noice_casts_hydrated OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_casts_hydrated TO k3l_readonly;
 CREATE INDEX noice_casts_hydrated_weights_rank_idx
 ON noice_casts_hydrated (weights, rank);
@@ -249,7 +249,7 @@ SELECT
     num_tippers,
     rank
 FROM noice_casts_hydrated;
-GRANT ALL ON TABLE noice_casts_dry_ranked TO k3l_user;
+ALTER VIEW noice_casts_dry_ranked OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_casts_dry_ranked TO k3l_readonly;
 
 DROP VIEW IF EXISTS noice_casts_dry_ranked_10k CASCADE;
@@ -263,7 +263,7 @@ SELECT
     rank
 FROM noice_casts_dry_ranked
 WHERE rank <= 10000;
-GRANT ALL ON TABLE noice_casts_dry_ranked_10k TO k3l_user;
+ALTER VIEW noice_casts_dry_ranked_10k OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_casts_dry_ranked_10k TO k3l_readonly;
 
 SELECT
@@ -309,7 +309,7 @@ LEFT OUTER JOIN globaltrust AS gt
         AND gt.strategy_id = 9
         AND gt.date = '2025-06-20'
 LEFT OUTER JOIN k3l_follower_counts AS f ON cr.fid = f.fid;
-GRANT ALL ON TABLE noice_top_creators TO k3l_user;
+ALTER VIEW noice_top_creators OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_creators TO k3l_readonly;
 
 SELECT
@@ -342,7 +342,7 @@ INNER JOIN noice_casts_dry_ranked AS c ON ca.cast_hash = c.hash
 INNER JOIN neynarv3.profiles AS p ON t.fid = p.fid
 WHERE c.rank <= 10000
 GROUP BY c.weights, t.fid, p.username;
-GRANT ALL ON TABLE noice_top_tippers TO k3l_user;
+ALTER VIEW noice_top_tippers OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_tippers TO k3l_readonly;
 
 SELECT
