@@ -205,6 +205,9 @@ def prepare_for_distribution(database: Database, scope: Scope, reason: str):
                 )
             else:
                 logger.info(f"Skipping distribution for channel '{channel_id}'")
+        channel_db_utils.fixup_tokens_log_addresses(
+            logger=logger, pg_dsn=pg_dsn, timeout_ms=insert_timeout_ms
+        )
 
 
 def distribute_tokens():

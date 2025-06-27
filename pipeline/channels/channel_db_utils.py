@@ -1211,6 +1211,34 @@ def insert_tokens_log(
     return dist_id
 
 
+# Some DB rows contain ASCII version of the 0x address, convert them into proper addresses.
+@Timer(name="fixup_tokens_log_addresses")
+def fixup_tokens_log_addresses(
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+):
+    start_time = time.perf_counter()
+    try:
+        # start transaction 'with' context manager
+        # ...transaction is committed on exit and rolled back on exception
+        with psycopg2.connect(
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                update_sql = f"""
+                    UPDATE k3l_channel_tokens_log
+                    SET fid_address = convert_from(decode(substr(fid_address, 3), 'hex'), 'utf-8')
+                    WHERE lower(fid_address) SIMILAR TO '0x3078(3[0-9]|[46][1-6]){40}'
+                """
+                logger.info(f"Executing: {update_sql}")
+                cursor.execute(update_sql)
+    except Exception as e:
+        logger.error(e)
+        raise
+    logger.info(f"db took {time.perf_counter() - start_time} secs")
+
+
 @Timer(name="fetch_notify_entries")
 def fetch_notify_entries(
     logger: logging.Logger,
