@@ -1,28 +1,29 @@
-from enum import Enum
+import asyncio
+import datetime
+import json
 import random
 import time
-import asyncio
+from enum import Enum
 from typing import Any
-import datetime
+
+import aiohttp
 import psycopg2
-import json
+from asyncpg.pool import Pool
+from loguru import logger
 
 from config import settings
 
-from loguru import logger
-import aiohttp
-from asyncpg.pool import Pool
 
 class JobType(Enum):
     followers = {
-        "url": 'https://api.warpcast.com/v1/channel-followers',
-        "live_table": 'warpcast_followers',
-        "columns": ["fid", "followedat", "insert_ts", "channel_id"]
+        "url": "https://api.warpcast.com/v1/channel-followers",
+        "live_table": "warpcast_followers",
+        "columns": ["fid", "followedat", "insert_ts", "channel_id"],
     }
     members = {
-        "url": 'https://api.warpcast.com/fc/channel-members',
-        "live_table": 'warpcast_members',
-        "columns": ["fid", "memberat", "insert_ts", "channel_id"]
+        "url": "https://api.warpcast.com/fc/channel-members",
+        "live_table": "warpcast_members",
+        "columns": ["fid", "memberat", "insert_ts", "channel_id"],
     }
 
     def __str__(self):
@@ -44,52 +45,58 @@ async def fetch_all_channel_ids_warpcast():
             logger.info(f"Status: {response.status}")
             data = await response.json()
 
-            channels = data.get('result', {}).get('channels', [])
+            channels = data.get("result", {}).get("channels", [])
             logger.info(f"Total number of channels: {len(channels)}")
 
-            channel_ids = [channel['id'] for channel in channels]
+            channel_ids = [channel["id"] for channel in channels]
 
             return channel_ids
 
 
 async def fetch_channel_fids(
-        job_type: JobType,
-        http_conn_pool: aiohttp.ClientSession,
-        http_timeout: aiohttp.ClientTimeout,
-        channel_id: str,
+    job_type: JobType,
+    http_conn_pool: aiohttp.ClientSession,
+    http_timeout: aiohttp.ClientTimeout,
+    channel_id: str,
 ) -> list[Any]:
     logger.info(f"Fetching {job_type} for channel '{channel_id}':")
     start_time = time.perf_counter()
-    url = f'{job_type.value['url']}?channelId={channel_id}'
+    url = f"{job_type.value['url']}?channelId={channel_id}"
     logger.info(url)
     all_fids = []
 
     json_element = (
-        "users" if job_type == JobType.followers
-        else "members" if job_type == JobType.members
-        else None
+        "users"
+        if job_type == JobType.followers
+        else "members" if job_type == JobType.members else None
     )
-    acceptable_types = ['application/json', 'text/javascript', 'text/plain']
+    acceptable_types = ["application/json", "text/javascript", "text/plain"]
     ctr = 1  # track number of API calls for a single channel
     retries = 0
     next_url = url
     while True:
         try:
-            async with http_conn_pool.get(next_url, headers={
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }, timeout=http_timeout) as response:
-                content_type = response.headers.get('Content-Type')
+            async with http_conn_pool.get(
+                next_url,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                timeout=http_timeout,
+            ) as response:
+                content_type = response.headers.get("Content-Type")
                 if any(atype in content_type for atype in acceptable_types):
                     body = await response.json(content_type=None)
                     # body = await response.json()
-                    all_fids.extend(body.get('result', {}).get(json_element, []))
-                    if body.get('next', {}).get('cursor', None):
-                        cursor = body['next']['cursor']
+                    all_fids.extend(body.get("result", {}).get(json_element, []))
+                    if body.get("next", {}).get("cursor", None):
+                        cursor = body["next"]["cursor"]
                         next_url = f"{url}&cursor={cursor}"
                         ctr += 1
                         if settings.IS_TEST and ctr > settings.TEST_CURSOR_LIMIT:
-                            logger.warning(f"Test Environment. Breaking out of loop after {ctr - 1} api calls.")
+                            logger.warning(
+                                f"Test Environment. Breaking out of loop after {ctr - 1} api calls."
+                            )
                             break
                         logger.info(f"sleeping for {settings.WARPCAST_SLEEP_SECS}s")
                         time.sleep(settings.WARPCAST_SLEEP_SECS)
@@ -105,7 +112,9 @@ async def fetch_channel_fids(
                         logger.info(f"retry #{retries} for {ctr}: {next_url}")
                         continue
                     else:
-                        raise ValueError('Content-Type for JSON response not acceptable')
+                        raise ValueError(
+                            "Content-Type for JSON response not acceptable"
+                        )
         except asyncio.TimeoutError as e:
             logger.error(f"{next_url} - {url} timed out: {e}")
             raise e
@@ -119,28 +128,40 @@ async def fetch_channel_fids(
             logger.error(f"error {next_url} - {url}: {e}")
             raise e
     logger.info(
-        f"Fetching {job_type} for channel '{channel_id}' took {time.perf_counter() - start_time} secs for {len(all_fids)} fids")
+        f"Fetching {job_type} for channel '{channel_id}' took {time.perf_counter() - start_time} secs for {len(all_fids)} fids"
+    )
     logger.info(f"First 10 {job_type} for channel '{channel_id}': {all_fids[:10]}")
     return all_fids
 
+
 async def process_channel(
-        job_type: JobType,
-        job_time: datetime.datetime,
-        db_pool: Pool,
-        http_conn_pool: aiohttp.ClientSession,
-        http_timeout: aiohttp.ClientTimeout,
-        channel_id: str,
+    job_type: JobType,
+    job_time: datetime.datetime,
+    db_pool: Pool,
+    http_conn_pool: aiohttp.ClientSession,
+    http_timeout: aiohttp.ClientTimeout,
+    channel_id: str,
 ):
     try:
-        fids = await fetch_channel_fids(job_type,http_conn_pool, http_timeout, channel_id)
+        fids = await fetch_channel_fids(
+            job_type, http_conn_pool, http_timeout, channel_id
+        )
         if job_type == JobType.followers:
-            rows = [tuple([follower['fid'], follower['followedAt'], job_time, channel_id]) for follower in fids]
+            rows = [
+                tuple([follower["fid"], follower["followedAt"], job_time, channel_id])
+                for follower in fids
+            ]
         elif job_type == JobType.members:
-            rows = [tuple([member['fid'], member['memberAt'], job_time, channel_id]) for member in fids]
+            rows = [
+                tuple([member["fid"], member["memberAt"], job_time, channel_id])
+                for member in fids
+            ]
 
         sample_size = min(10, len(rows))
         sample = random.sample(rows, sample_size)
-        logger.info(f"Sample of {sample_size} rows for channel '{channel_id}': {sample}")
+        logger.info(
+            f"Sample of {sample_size} rows for channel '{channel_id}': {sample}"
+        )
 
         await insert_db(job_type, db_pool, rows, channel_id)
     except Exception as e:
@@ -151,15 +172,17 @@ async def process_channel(
 
 
 async def insert_db(
-        job_type: JobType,
-        db_pool: Pool,
-        rows: list,
-        channel_id: str,
+    job_type: JobType,
+    db_pool: Pool,
+    rows: list,
+    channel_id: str,
 ):
     logger.info(f"Inserting {len(rows)} rows for channel '{channel_id}'")
     NEW_TBL = f"{job_type.value['live_table']}_new"
-    column_names = job_type.value['columns']
-    logger.info(f"Inserting {len(rows)} rows for channel '{channel_id}' into {NEW_TBL} with columns {column_names}")
+    column_names = job_type.value["columns"]
+    logger.info(
+        f"Inserting {len(rows)} rows for channel '{channel_id}' into {NEW_TBL} with columns {column_names}"
+    )
     start_time = time.perf_counter()
 
     async with db_pool.acquire() as connection:
@@ -178,14 +201,17 @@ async def insert_db(
                     )
                     logger.error(f"{e}")
                     raise e
-    logger.info(f"db took {time.perf_counter() - start_time} secs to insert {len(rows)} rows")
+    logger.info(
+        f"db took {time.perf_counter() - start_time} secs to insert {len(rows)} rows"
+    )
+
 
 def prepare_db(
-        pg_dsn: str, 
-        timeout_ms: int,
-        job_type: JobType,
+    pg_dsn: str,
+    timeout_ms: int,
+    job_type: JobType,
 ):
-    LIVE_TBL = job_type.value['live_table']
+    LIVE_TBL = job_type.value["live_table"]
     NEW_TBL = f"{LIVE_TBL}_new"
     logger.info(f"Prepping '{NEW_TBL}'")
     start_time = time.perf_counter()
@@ -196,9 +222,8 @@ def prepare_db(
     logger.debug(f"Executing: {create_sql}")
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {create_sql}")
                 cursor.execute(create_sql)
@@ -207,12 +232,13 @@ def prepare_db(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+
 def replace_db(
-        pg_dsn: str, 
-        timeout_ms: int,
-        job_type: JobType,
+    pg_dsn: str,
+    timeout_ms: int,
+    job_type: JobType,
 ):
-    LIVE_TBL = job_type.value['live_table']
+    LIVE_TBL = job_type.value["live_table"]
     NEW_TBL = f"{LIVE_TBL}_new"
     OLD_TBL = f"{LIVE_TBL}_old"
     logger.info(f"Swapping {LIVE_TBL} to {OLD_TBL} and {NEW_TBL} to {LIVE_TBL}")
@@ -225,9 +251,8 @@ def replace_db(
     logger.debug(f"Executing: {replace_sql}")
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {replace_sql}")
                 cursor.execute(replace_sql)
@@ -236,13 +261,14 @@ def replace_db(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+
 def merge_db(
-        pg_dsn: str, 
-        short_timeout_ms: int,
-        long_timeout_ms: int,
-        job_type: JobType,
+    pg_dsn: str,
+    short_timeout_ms: int,
+    long_timeout_ms: int,
+    job_type: JobType,
 ):
-    LIVE_TBL = job_type.value['live_table']
+    LIVE_TBL = job_type.value["live_table"]
     NEW_TBL = f"{LIVE_TBL}_new"
     logger.info(f"Deleting previous rows for table '{LIVE_TBL}'")
     start_time = time.perf_counter()
@@ -275,9 +301,8 @@ def merge_db(
     try:
         # transaction scope begins
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={long_timeout_ms}"
-            )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={long_timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
@@ -285,9 +310,8 @@ def merge_db(
         # transaction scope ends
         # transaction scope begins
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={short_timeout_ms}"
-            )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={short_timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {replace_sql}")
                 cursor.execute(replace_sql)

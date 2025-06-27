@@ -1,41 +1,45 @@
 # standard dependencies
-import sys
 import argparse
-from enum import StrEnum
+import sys
 from datetime import datetime
+from enum import StrEnum
 
-# local dependencies
-from config import settings, Database
-from . import channel_db_utils
-import utils
-import db_utils
+import numpy as np
 import pandas as pd
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import numpy as np
+
+import db_utils
+import utils
+
+# local dependencies
+from config import Database, settings
+
+from . import channel_db_utils
 
 # enable copy-on-write in prep for pandas 3.0
 pd.set_option("mode.copy_on_write", True)
 
 # Configure logger
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
+
 
 class Model(StrEnum):
     weighted = "weighted"
     reddit = "reddit"
+
 
 class WeightedModel(StrEnum):
     # default = "default"
@@ -43,16 +47,19 @@ class WeightedModel(StrEnum):
     cbrt_weighted = "cbrt_weighted"
     # logeps_weighted = "logeps_weighted"
 
+
 class RedditModel(StrEnum):
     pass
     # reddit_default = "reddit_default"
     # reddit_cast_weighted = "reddit_cast_weighted"
+
 
 class Task(StrEnum):
     genesis = "genesis"
     compute = "compute"
     update = "update"
     gapfill = "gapfill"
+
 
 def main(database: Database, task: Task, target_date_str: str):
     allowlisted_only = True
@@ -115,7 +122,7 @@ def main(database: Database, task: Task, target_date_str: str):
                 allowlisted_only=allowlisted_only,
                 is_v1=is_v1,
                 gapfill=gapfill,
-                date_str=date_str
+                date_str=date_str,
             )
             logger.info(utils.df_info_to_string(df, with_sample=True, head=True))
             if len(df) == 0:
@@ -123,12 +130,12 @@ def main(database: Database, task: Task, target_date_str: str):
                 return
             TOTAL_POINTS = 10_000
             PERCENTILE_CUTOFF = 0.1
-            df['percent_rank'] = df.groupby('channel_id')['score'].rank(pct=True)
-            df = df[df['percent_rank'] > PERCENTILE_CUTOFF] # drop bottom 10%
+            df["percent_rank"] = df.groupby("channel_id")["score"].rank(pct=True)
+            df = df[df["percent_rank"] > PERCENTILE_CUTOFF]  # drop bottom 10%
 
             for model in WeightedModel:
                 if model == WeightedModel.cbrt_weighted:
-                    transformed = np.cbrt(df['score'])
+                    transformed = np.cbrt(df["score"])
                 # elif model == WeightedModel.sqrt_weighted:
                 #     transformed = np.sqrt(df['score'])
                 # elif model == WeightedModel.default:
@@ -139,26 +146,37 @@ def main(database: Database, task: Task, target_date_str: str):
                 #     # Shift to make all values positive
                 #     transformed = transformed - transformed.min() + epsilon
                 # end if
-                df['transformed'] = transformed
-                df['weights'] = df.groupby('channel_id')['transformed'].transform(lambda x: x / x.sum())
-                df['earnings'] = df['weights'] * TOTAL_POINTS
-                df['earnings'] = df['earnings'].round(0).astype(int)
-                final_df = df[['fid', 'channel_id', 'earnings']]
-                final_df['model_name'] = model.value
+                df["transformed"] = transformed
+                df["weights"] = df.groupby("channel_id")["transformed"].transform(
+                    lambda x: x / x.sum()
+                )
+                df["earnings"] = df["weights"] * TOTAL_POINTS
+                df["earnings"] = df["earnings"].round(0).astype(int)
+                final_df = df[["fid", "channel_id", "earnings"]]
+                final_df["model_name"] = model.value
                 if task == Task.gapfill:
-                    final_df['notes'] = f"GAPFILL-{date_str}"
-                logger.info(utils.df_info_to_string(final_df, with_sample=True, head=True))
+                    final_df["notes"] = f"GAPFILL-{date_str}"
+                logger.info(
+                    utils.df_info_to_string(final_df, with_sample=True, head=True)
+                )
                 logger.info(f"Inserting data into the database for model {model.value}")
                 try:
-                    db_utils.df_insert_copy(pg_url=pg_url, df=final_df, dest_tablename='k3l_channel_points_log')
+                    db_utils.df_insert_copy(
+                        pg_url=pg_url,
+                        df=final_df,
+                        dest_tablename="k3l_channel_points_log",
+                    )
                 except Exception as e:
-                    logger.error(f"Failed to insert data into the database for model {model.value}: {e}")
+                    logger.error(
+                        f"Failed to insert data into the database for model {model.value}: {e}"
+                    )
                     raise e
         case Task.update:
             # uses the default weighted model to update points balances
             logger.info("Updating points balances with cbrt_weighted model")
-            channel_db_utils.update_points_balance_v5(logger, pg_dsn, sql_timeout_ms, allowlisted_only)
-            
+            channel_db_utils.update_points_balance_v5(
+                logger, pg_dsn, sql_timeout_ms, allowlisted_only
+            )
 
 
 if __name__ == "__main__":

@@ -1,17 +1,10 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
-from airflow.providers.common.sql.operators.sql import (
-    # SQLCheckOperator,
-    # SQLColumnCheckOperator,
-    # SQLIntervalCheckOperator,
-    # SQLTableCheckOperator,
+from airflow.providers.common.sql.operators.sql import (  # SQLCheckOperator,; SQLColumnCheckOperator,; SQLIntervalCheckOperator,; SQLTableCheckOperator,; SQLValueCheckOperator,; SQLExecuteQueryOperator,
     SQLThresholdCheckOperator,
-    # SQLValueCheckOperator,
-    # SQLExecuteQueryOperator,
 )
-
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -21,7 +14,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
@@ -48,7 +41,7 @@ with DAG(
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
         """,
         min_threshold=0,
-        max_threshold=600, # fail task if more than 10 minutes of lag
+        max_threshold=600,  # fail task if more than 10 minutes of lag
     )
 
     lag_casts_ts = SQLThresholdCheckOperator(
@@ -62,7 +55,7 @@ with DAG(
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
         """,
         min_threshold=0,
-        max_threshold=600, # fail task if more than 10 minutes of lag
+        max_threshold=600,  # fail task if more than 10 minutes of lag
     )
 
     lag_reactions_ts = SQLThresholdCheckOperator(
@@ -77,7 +70,7 @@ with DAG(
         AND deleted_at IS NULL
         """,
         min_threshold=0,
-        max_threshold=600, # fail task if more than 10 minutes of lag
+        max_threshold=600,  # fail task if more than 10 minutes of lag
     )
 
     # lag_reactions_ts = EmptyOperator(task_id="lag_reactions_ts")

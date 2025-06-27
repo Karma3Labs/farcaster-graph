@@ -1,19 +1,22 @@
 # standard dependencies
-import urllib.parse
-import hashlib
 import datetime
+import hashlib
+import urllib.parse
 from enum import StrEnum
 
-# local dependencies
-from config import settings
-import utils
+import niquests
+import pandas as pd
+import pytz
 
 # 3rd party dependencies
 from loguru import logger
-import niquests
-import pandas as pd
 from urllib3.util import Retry
-import pytz
+
+import utils
+
+# local dependencies
+from config import settings
+
 
 class ScreenName(StrEnum):
     # feed, leaderboard, token, details
@@ -21,6 +24,7 @@ class ScreenName(StrEnum):
     TOKENS = "token"
     LEADERBOARD = "leaderboard"
     DAILY_CAST = "feed"
+
 
 def leaderboard_notify(
     session: niquests.Session,
@@ -30,7 +34,9 @@ def leaderboard_notify(
     fids: list[int],
     cutoff_time: datetime.datetime,
 ):
-    notification_id = hashlib.sha256(f"{channel_id}-{cutoff_time}".encode("utf-8")).hexdigest()
+    notification_id = hashlib.sha256(
+        f"{channel_id}-{cutoff_time}".encode("utf-8")
+    ).hexdigest()
     logger.info(f"Sending notification for channel {channel_id}-{cutoff_time}")
     title = f"/{channel_id} leaderboard updated!"
     if is_token:
@@ -39,7 +45,10 @@ def leaderboard_notify(
     else:
         body = f"Check your /{channel_id} rank!"
         screen_name = ScreenName.LEADERBOARD.value
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
+    return notify(
+        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
+    )
+
 
 def daily_cast_notify(
     session: niquests.Session,
@@ -47,15 +56,20 @@ def daily_cast_notify(
     channel_id: str,
     fids: list[int],
 ):
-    pacific_tz = pytz.timezone('US/Pacific')
+    pacific_tz = pytz.timezone("US/Pacific")
     # hash is based on day so we don't risk sending out more than one notification
     pacific_9am_str = datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d")
-    notification_id = hashlib.sha256(f"{channel_id}-{pacific_9am_str}".encode("utf-8")).hexdigest()
+    notification_id = hashlib.sha256(
+        f"{channel_id}-{pacific_9am_str}".encode("utf-8")
+    ).hexdigest()
     logger.info(f"Sending notification for channel {channel_id}-{pacific_9am_str}")
     title = f"What's trending on /{channel_id} ?"
     body = f"See what you missed in /{channel_id} in the last 24 hours"
     screen_name = ScreenName.DAILY_CAST.value
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
+    return notify(
+        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
+    )
+
 
 def weekly_mods_notify(
     session: niquests.Session,
@@ -64,12 +78,17 @@ def weekly_mods_notify(
     fids: list[int],
 ):
     current_week = utils.dow_utc_time(utils.DOW.WEDNESDAY)
-    notification_id = hashlib.sha256(f"{channel_id}-{current_week}".encode("utf-8")).hexdigest()
+    notification_id = hashlib.sha256(
+        f"{channel_id}-{current_week}".encode("utf-8")
+    ).hexdigest()
     logger.info(f"Sending notification for channel {channel_id}-{current_week}")
     title = f"Check out your /{channel_id} stats"
     body = "Your top casts and members stats are in, tap to look."
     screen_name = ScreenName.WEEKLY_MODS.value
-    return notify(session, timeouts, channel_id, fids, notification_id, title, body, screen_name)
+    return notify(
+        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
+    )
+
 
 def notify(
     session: niquests.Session,
@@ -79,7 +98,7 @@ def notify(
     notification_id: str,
     title: str,
     body: str,
-    screen_name: str = None
+    screen_name: str = None,
 ):
     req = {
         "title": title,
@@ -87,7 +106,7 @@ def notify(
         "notificationId": notification_id,
         "channelId": channel_id,
         "fids": fids,
-        "screen": screen_name
+        "screen": screen_name,
     }
     url = "https://notifications.cura.network/api/v1/notify"
     logger.info(f"{url}: {req}")
@@ -124,8 +143,10 @@ def fetch_channel_hide_list() -> pd.DataFrame:
                 "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
             }
         )
-        timeouts=(connect_timeout_s, read_timeout_s)
-        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/channel-hide-list")
+        timeouts = (connect_timeout_s, read_timeout_s)
+        url = urllib.parse.urljoin(
+            settings.CURA_FE_API_URL, "/api/internal/channel-hide-list"
+        )
         logger.info(f"url: {url}")
         # TODO parallelize this
         response = session.post(url, json={}, timeout=timeouts)
@@ -136,10 +157,11 @@ def fetch_channel_hide_list() -> pd.DataFrame:
         else:
             logger.trace(f"channel-hide-list: {res_json}")
             # Read the response content into a pandas DataFrame
-            data = pd.DataFrame.from_records(res_json.get('data'))
+            data = pd.DataFrame.from_records(res_json.get("data"))
             print(len(data))
             df = pd.concat([df, data], axis=0)
     return df
+
 
 def fetch_frame_users() -> list[int]:
     retries = Retry(
@@ -159,8 +181,10 @@ def fetch_frame_users() -> list[int]:
                 "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
             }
         )
-        timeouts=(connect_timeout_s, read_timeout_s)
-        url = urllib.parse.urljoin(settings.CURA_FE_API_URL,"/api/internal/warpcast-frame-users")
+        timeouts = (connect_timeout_s, read_timeout_s)
+        url = urllib.parse.urljoin(
+            settings.CURA_FE_API_URL, "/api/internal/warpcast-frame-users"
+        )
         logger.info(f"url: {url}")
         response = session.post(url, json={}, timeout=timeouts)
         res_json = response.json()
@@ -169,6 +193,6 @@ def fetch_frame_users() -> list[int]:
             raise Exception(f"Failed to fetch warpcast-frame-users: {res_json}")
         else:
             logger.trace(f"warpcast-frame-users: {res_json}")
-            fids = res_json.get('data')
+            fids = res_json.get("data")
             print(len(fids))
     return fids

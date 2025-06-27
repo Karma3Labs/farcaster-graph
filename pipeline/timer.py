@@ -4,8 +4,10 @@ from contextlib import ContextDecorator
 from dataclasses import dataclass, field
 from typing import Any, Callable, ClassVar, Dict, Optional
 
+
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
+
 
 @dataclass
 class Timer(ContextDecorator):

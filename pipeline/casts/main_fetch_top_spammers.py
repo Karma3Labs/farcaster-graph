@@ -1,27 +1,29 @@
 # standard dependencies
 import sys
-from datetime import datetime, timedelta, date
-
-# local dependencies
-from config import settings
-import utils
-from . import cast_db_utils
+from datetime import date, datetime, timedelta
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
 from sqlalchemy import create_engine
 
+import utils
+
+# local dependencies
+from config import settings
+
+from . import cast_db_utils
+
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
+
 
 def main():
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
@@ -70,16 +72,19 @@ def main():
     # df["date_iso"] = date.today()
     # logger.info(df.head())
 
-    postgres_engine = create_engine(settings.ALT_POSTGRES_URL.get_secret_value(), connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000})
+    postgres_engine = create_engine(
+        settings.ALT_POSTGRES_URL.get_secret_value(),
+        connect_args={"connect_timeout": settings.POSTGRES_TIMEOUT_SECS * 1_000},
+    )
     logger.info(postgres_engine)
     with postgres_engine.connect() as connection:
-        df.to_sql('k3l_top_spammers', con=connection, if_exists='append', index=False)
+        df.to_sql("k3l_top_spammers", con=connection, if_exists="append", index=False)
 
     logger.info("top spammers data updated to DB")
 
 
 if __name__ == "__main__":
-  load_dotenv()
-  print(settings)
-  logger.info('hello hello')
-  main()
+    load_dotenv()
+    print(settings)
+    logger.info("hello hello")
+    main()

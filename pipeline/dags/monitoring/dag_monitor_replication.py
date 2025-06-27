@@ -1,17 +1,11 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
-from airflow.providers.common.sql.operators.sql import (
-    # SQLCheckOperator,
-    # SQLColumnCheckOperator,
-    # SQLIntervalCheckOperator,
+from airflow.providers.common.sql.operators.sql import (  # SQLCheckOperator,; SQLColumnCheckOperator,; SQLIntervalCheckOperator,; SQLValueCheckOperator,; SQLExecuteQueryOperator,
     SQLTableCheckOperator,
     SQLThresholdCheckOperator,
-    # SQLValueCheckOperator,
-    # SQLExecuteQueryOperator,
 )
-
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -22,7 +16,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
@@ -45,7 +39,7 @@ with DAG(
         checks={
             "row_count_check": {
                 "check_statement": "COUNT(*) = 2",
-                "partition_clause": "wal_status='reserved'"
+                "partition_clause": "wal_status='reserved'",
             }
         },
     )
@@ -57,7 +51,7 @@ with DAG(
         checks={
             "row_count_check": {
                 "check_statement": "COUNT(*) = 2",
-                "partition_clause": "wal_status='reserved'"
+                "partition_clause": "wal_status='reserved'",
             }
         },
     )
@@ -69,7 +63,7 @@ with DAG(
         checks={
             "row_count_check": {
                 "check_statement": "COUNT(*) = 2",
-                "partition_clause": "state='streaming'"
+                "partition_clause": "state='streaming'",
             }
         },
     )
@@ -81,7 +75,7 @@ with DAG(
         checks={
             "row_count_check": {
                 "check_statement": "COUNT(*) = 2",
-                "partition_clause": "state='streaming'"
+                "partition_clause": "state='streaming'",
             }
         },
     )
@@ -91,7 +85,7 @@ with DAG(
         conn_id=_CONN_ID,
         sql="SELECT round(EXTRACT(epoch FROM max(replay_lag))/60) FROM pg_stat_replication",
         min_threshold=0,
-        max_threshold=60, # fail task if more than 60 minutes of lag
+        max_threshold=60,  # fail task if more than 60 minutes of lag
     )
 
     lag_check8 = SQLThresholdCheckOperator(
@@ -99,7 +93,7 @@ with DAG(
         conn_id=_ALT_CONN_ID,
         sql="SELECT round(EXTRACT(epoch FROM max(replay_lag))/60) FROM pg_stat_replication",
         min_threshold=0,
-        max_threshold=60, # fail task if more than 60 minutes of lag
+        max_threshold=60,  # fail task if more than 60 minutes of lag
     )
 
     end = EmptyOperator(task_id="end")

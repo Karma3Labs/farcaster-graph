@@ -1,15 +1,15 @@
+import csv
 import tempfile
 from io import StringIO
-import csv
 
-from timer import Timer
+import pandas as pd
+import psycopg2
+from loguru import logger
+from sqlalchemy import create_engine
+
 import utils
 from config import settings
-from loguru import logger
-
-import psycopg2
-import pandas as pd
-from sqlalchemy import create_engine
+from timer import Timer
 
 
 class SQL:
@@ -25,7 +25,7 @@ def construct_query(query: SQL, where_clause: str) -> SQL:
     if not where_clause:
         condition = ""
     else:
-        if 'WHERE' in query.value.upper():
+        if "WHERE" in query.value.upper():
             condition = f"AND {where_clause}"
         else:
             condition = f"WHERE {where_clause}"
@@ -60,7 +60,7 @@ def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, **query_kwargs) -> pd.DataF
                     cursor.copy_expert(copy_sql, tmpfile)
                     tmpfile.seek(0)
                     # types = defaultdict(np.uint64, i='Int32', j='Int32')
-                    df = pd.read_csv(tmpfile, dtype={'i': 'Int32', 'j': 'Int32'})
+                    df = pd.read_csv(tmpfile, dtype={"i": "Int32", "j": "Int32"})
                     return df
 
 
@@ -72,7 +72,9 @@ def create_temp_table(pg_dsn: str, temp_tbl: str, orig_tbl: str):
             cursor.execute(create_sql)
 
 
-def update_date_strategyid(pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None):
+def update_date_strategyid(
+    pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None
+):
     # TODO remove this function as it is no longer used
     date_setting = "date=now()" if date_str is None else f"date='{date_str}'::date"
     update_sql = f"""
@@ -92,7 +94,7 @@ def df_insert_not_exists(
     dest_tablename: str,
     constraint: str,
 ):
-    # WARNING - this code does not account for 
+    # WARNING - this code does not account for
     # .... single quotes or double quotes in dataframe column values
     query = f""" 
         INSERT INTO {dest_tablename}({','.join(df.columns)}) VALUES 
@@ -106,6 +108,7 @@ def df_insert_not_exists(
             rows = cursor.rowcount
             logger.info(f"Inserted {rows} rows into table {dest_tablename}")
 
+
 def df_insert_copy(pg_url: str, df: pd.DataFrame, dest_tablename: str):
     logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")
     sql_engine = create_engine(pg_url)
@@ -114,7 +117,7 @@ def df_insert_copy(pg_url: str, df: pd.DataFrame, dest_tablename: str):
         con=sql_engine,
         if_exists="append",
         index=False,
-        method=_psql_insert_copy
+        method=_psql_insert_copy,
     )
 
 
@@ -137,14 +140,15 @@ def _psql_insert_copy(table, conn, keys, data_iter):
         writer.writerows(data_iter)
         s_buf.seek(0)
 
-        columns = ', '.join('"{}"'.format(k) for k in keys)
+        columns = ", ".join('"{}"'.format(k) for k in keys)
         if table.schema:
-            table_name = '{}.{}'.format(table.schema, table.name)
+            table_name = "{}.{}".format(table.schema, table.name)
         else:
             table_name = table.name
 
-        sql = 'COPY {} ({}) FROM STDIN WITH CSV'.format(table_name, columns)
+        sql = "COPY {} ({}) FROM STDIN WITH CSV".format(table_name, columns)
         cur.copy_expert(sql=sql, file=s_buf)
+
 
 # DEPRECATED
 @Timer(name="fetch_channel_details")
@@ -157,12 +161,13 @@ def fetch_channel_details(pg_url: str, channel_id: str):
             df = pd.read_sql_query(tmp_sql, conn)
             if len(df) == 0:
                 return None
-            return df.to_dict(orient='records')[0]
+            return df.to_dict(orient="records")[0]
     except Exception as e:
         logger.error(f"Failed to fetch_channel_details: {e}")
         raise e
     finally:
         engine.dispose()
+
 
 # DEPRECATED
 @Timer(name="fetch_all_channel_details")
@@ -179,6 +184,7 @@ def fetch_all_channel_details(pg_url: str):
         raise e
     finally:
         sql_engine.dispose()
+
 
 @Timer(name="fetch_channel_domains_for_category")
 def fetch_channel_domains_for_category(pg_url: str, category: str):

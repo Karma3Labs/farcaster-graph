@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -10,7 +9,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
@@ -26,9 +25,9 @@ with DAG(
 ) as dag:
 
     fetch_task = BashOperator(
-        task_id='extract_cura_hidden_fids',
+        task_id="extract_cura_hidden_fids",
         bash_command="cd /pipeline; extractors/extract_cura_mod.sh -w . -v .venv -r ",
-        dag=dag
+        dag=dag,
     )
 
     fetch_task

@@ -1,17 +1,10 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
-from airflow.providers.common.sql.operators.sql import (
-    # SQLCheckOperator,
-    # SQLColumnCheckOperator,
-    # SQLIntervalCheckOperator,
-    # SQLTableCheckOperator,
+from airflow.providers.common.sql.operators.sql import (  # SQLCheckOperator,; SQLColumnCheckOperator,; SQLIntervalCheckOperator,; SQLTableCheckOperator,; SQLValueCheckOperator,; SQLExecuteQueryOperator,
     SQLThresholdCheckOperator,
-    # SQLValueCheckOperator,
-    # SQLExecuteQueryOperator,
 )
-
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -21,7 +14,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
@@ -39,21 +32,21 @@ with DAG(
     start = EmptyOperator(task_id="start")
 
     check_channel_rank = SQLThresholdCheckOperator(
-        task_id="check_channel_rank", # covers the channel_fids table also
+        task_id="check_channel_rank",  # covers the channel_fids table also
         conn_id=_CONN_ID,
         # 26 hours because date timezone transitions
         sql="SELECT count(*) FROM k3l_channel_rank WHERE compute_ts > now() - interval '26 hours' AND strategy_name = 'channel_engagement'",
         min_threshold=1_500_000,
-        max_threshold=3_000_000 # alert if size doubles
+        max_threshold=3_000_000,  # alert if size doubles
     )
 
     check_global_engagement_rank = SQLThresholdCheckOperator(
-        task_id="check_global_engagement_rank", # covers the globaltrust table also
+        task_id="check_global_engagement_rank",  # covers the globaltrust table also
         conn_id=_CONN_ID,
         # 26 hours because date timezone transitions
         sql="SELECT count(*) FROM k3l_rank WHERE date >= (now() - interval '26 hours')::date AND strategy_name = 'engagement'",
         min_threshold=700_000,
-        max_threshold=1_400_000 # alert if size doubles
+        max_threshold=1_400_000,  # alert if size doubles
     )
 
     # use SQLThresholdCheckOperator instead of SQLTableCheckOperator
@@ -61,9 +54,9 @@ with DAG(
     check_parent_casts_count = SQLThresholdCheckOperator(
         task_id="check_parent_casts_count",
         conn_id=_CONN_ID,
-        sql = "SELECT count(*) FROM k3l_recent_parent_casts WHERE timestamp > now() - interval '30 min'",
+        sql="SELECT count(*) FROM k3l_recent_parent_casts WHERE timestamp > now() - interval '30 min'",
         min_threshold=100,
-        max_threshold=1_000_000, # some arbitrarily large number
+        max_threshold=1_000_000,  # some arbitrarily large number
     )
 
     check_parent_casts_lag = SQLThresholdCheckOperator(
@@ -73,7 +66,7 @@ with DAG(
 	            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - max(timestamp)))/60)::integer as diff_mins
                 FROM k3l_recent_parent_casts""",
         min_threshold=0,
-        max_threshold=45
+        max_threshold=45,
     )
 
     # use SQLThresholdCheckOperator instead of SQLTableCheckOperator
@@ -83,7 +76,7 @@ with DAG(
         conn_id=_CONN_ID,
         sql="SELECT count(*) FROM k3l_cast_action WHERE action_ts > now() - interval '45 min'",
         min_threshold=1_000,
-        max_threshold=100_000_000# some arbitrarily large number
+        max_threshold=100_000_000,  # some arbitrarily large number
     )
 
     check_cast_actions_lag = SQLThresholdCheckOperator(
@@ -93,7 +86,7 @@ with DAG(
 	            (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - max(action_ts)))/60)::integer as diff_mins
                 FROM k3l_cast_action""",
         min_threshold=0,
-        max_threshold=45
+        max_threshold=45,
     )
 
     check_spammers_count = SQLThresholdCheckOperator(
@@ -101,7 +94,7 @@ with DAG(
         conn_id=_CONN_ID,
         sql="""SELECT count(*) FROM k3l_top_spammers WHERE date_iso > now() - interval '25 hours'""",
         min_threshold=10_000,
-        max_threshold=100_000
+        max_threshold=100_000,
     )
 
     check_top_casters_count = SQLThresholdCheckOperator(
@@ -109,7 +102,7 @@ with DAG(
         conn_id=_CONN_ID,
         sql="""SELECT count(*) FROM k3l_top_casters WHERE date_iso > now() - interval '25 hours'""",
         min_threshold=100,
-        max_threshold=10_000
+        max_threshold=10_000,
     )
 
     end = EmptyOperator(task_id="end")

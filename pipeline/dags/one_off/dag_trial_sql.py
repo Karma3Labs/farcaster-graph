@@ -53,11 +53,7 @@ with DAG(
 
     start = EmptyOperator(task_id="start")
 
-    sql_check = SQLCheckOperator(
-        task_id='sql_check',
-        sql=CHECK_QUERY,
-        conn_id=_CONN_ID
-    )
+    sql_check = SQLCheckOperator(task_id="sql_check", sql=CHECK_QUERY, conn_id=_CONN_ID)
 
     end = EmptyOperator(task_id="end")
 

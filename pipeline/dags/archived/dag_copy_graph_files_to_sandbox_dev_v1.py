@@ -3,10 +3,8 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.bash import BashOperator
-from airflow.providers.ssh.operators.ssh import SSHHook
-from airflow.providers.ssh.operators.ssh import SSHOperator
+from airflow.providers.ssh.operators.ssh import SSHHook, SSHOperator
 from airflow.sensors.external_task import ExternalTaskSensor
-
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -32,7 +30,9 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    ssh_hook = SSHHook(ssh_conn_id='sandbox_staging', keepalive_interval=60, cmd_timeout=None)
+    ssh_hook = SSHHook(
+        ssh_conn_id="sandbox_staging", keepalive_interval=60, cmd_timeout=None
+    )
 
     download_pqt_file = SSHOperator(
         task_id="download_pqt_file_v1",

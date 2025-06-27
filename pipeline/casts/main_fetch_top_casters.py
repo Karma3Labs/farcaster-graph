@@ -2,26 +2,28 @@
 import sys
 from datetime import date
 
-# local dependencies
-from config import settings
-import utils
-from . import cast_db_utils
-
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
 from sqlalchemy import create_engine
 
+import utils
+
+# local dependencies
+from config import settings
+
+from . import cast_db_utils
+
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
+
 
 def main():
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
@@ -40,11 +42,11 @@ def main():
     )
     logger.info(postgres_engine)
     with postgres_engine.connect() as connection:
-        df.to_sql('k3l_top_casters', con=connection, if_exists='append', index=False)
+        df.to_sql("k3l_top_casters", con=connection, if_exists="append", index=False)
 
     # cast_db_utils.insert_dune_table(settings.DUNE_API_KEY, 'openrank', 'top_caster', df)
 
-    logger.info('top casters data updated to DB')
+    logger.info("top casters data updated to DB")
 
     # end while loop
 
@@ -61,5 +63,5 @@ if __name__ == "__main__":
     #
     # args = parser.parse_args()
 
-    logger.info('hello hello')
+    logger.info("hello hello")
     main()

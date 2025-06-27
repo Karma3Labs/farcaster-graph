@@ -1,26 +1,28 @@
-import sys
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from psycopg2.extras import execute_values
-from dotenv import load_dotenv
 import os
-from config import settings
-from loguru import logger
+import sys
 import time
 from datetime import datetime
 
+import psycopg2
+from dotenv import load_dotenv
+from loguru import logger
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.extras import execute_values
+
+from config import settings
+
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
+
 
 def update_degen_tips():
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
@@ -41,12 +43,14 @@ def update_degen_tips():
 
         # Get the last processed timestamp
         logger.info("Fetching the last processed timestamp...")
-        cur.execute("""
+        cur.execute(
+            """
         SELECT
             COALESCE(MAX(parsed_at), CURRENT_TIMESTAMP) as parsed_at,
             max(timestamp) as last_cast_timestamp
         FROM k3l_degen_tips;
-        """)
+        """
+        )
         result = cur.fetchone()
         if result and result[0]:
             last_parsed_at = result[0]
@@ -60,11 +64,15 @@ def update_degen_tips():
 
         last_parsed_at_int = int(time.mktime(last_parsed_at.timetuple()))
         last_processed_ts_int = int(time.mktime(last_processed_ts.timetuple()))
-        logger.info(f"Last parsed timestamp: {last_parsed_at} (Unix: {last_parsed_at_int})")
-        logger.info(f"Last cast timestamp: {last_processed_ts} (Unix: {last_processed_ts_int})")
+        logger.info(
+            f"Last parsed timestamp: {last_parsed_at} (Unix: {last_parsed_at_int})"
+        )
+        logger.info(
+            f"Last cast timestamp: {last_processed_ts} (Unix: {last_processed_ts_int})"
+        )
 
         # Convert the timestamp to a string for logging purposes
-        last_processed_ts_str = last_processed_ts.strftime('%Y-%m-%d %H:%M:%S')
+        last_processed_ts_str = last_processed_ts.strftime("%Y-%m-%d %H:%M:%S")
         logger.info(f"Converted last_processed_ts to string: {last_processed_ts_str}")
 
         # Define the common table expressions (CTEs)
@@ -162,7 +170,7 @@ def update_degen_tips():
 
         # Fetch the number of rows inserted
         rows_inserted = cur.rowcount
-        logger.info(f'Inserted {rows_inserted} new eligible DEGEN tips.')
+        logger.info(f"Inserted {rows_inserted} new eligible DEGEN tips.")
 
         # Commit the transaction
         cur.execute("COMMIT;")
@@ -179,6 +187,7 @@ def update_degen_tips():
             cur.close()
             conn.close()
             logger.info("PostgreSQL connection is closed")
+
 
 if __name__ == "__main__":
     update_degen_tips()

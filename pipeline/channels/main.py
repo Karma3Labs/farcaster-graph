@@ -1,37 +1,37 @@
 # standard dependencies
-import sys
 import argparse
 import random
+import sys
 from enum import Enum
 from pathlib import Path
 
-# local dependencies
-from config import settings
-from . import channel_utils
-from . import channel_db_utils
+import pandas as pd
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import pandas as pd
+
+# local dependencies
+from config import settings
+
+from . import channel_db_utils, channel_utils
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
 
 # Configure logger
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "db_utils": "DEBUG",
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "db_utils": "DEBUG", "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
+
 
 def process_channels(
     channel_seeds_csv: Path,
@@ -46,7 +46,7 @@ def process_channels(
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
-    channel_ids = channel_ids_str.split(',')
+    channel_ids = channel_ids_str.split(",")
     missing_seed_fids = []
 
     for cid in channel_ids:
@@ -57,15 +57,21 @@ def process_channels(
 
             if len(channel_lt_df) == 0:
                 if interval > 0:
-                    logger.info(f"No local trust for channel {cid} for interval {interval}")
+                    logger.info(
+                        f"No local trust for channel {cid} for interval {interval}"
+                    )
                     continue
                 else:
-                    logger.error(f"No local trust for channel {cid} for lifetime engagement")
-                    # this is unexpected because if a channel exists there must exist at least one ijv 
-                    raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+                    logger.error(
+                        f"No local trust for channel {cid} for lifetime engagement"
+                    )
+                    # this is unexpected because if a channel exists there must exist at least one ijv
+                    raise Exception(
+                        f"No local trust for channel {cid} for lifetime engagement"
+                    )
             # Future Feature: keep track and clean up seed fids that have had no engagement in channel
             missing_seed_fids.append({cid: absent_fids})
-                
+
             df = channel_utils.compute_goeigentrust(
                 cid=cid,
                 channel_lt_df=channel_lt_df,
@@ -126,16 +132,24 @@ if __name__ == "__main__":
     print(args)
     logger.info(settings)
 
-    logger.debug('hello main')
+    logger.debug("hello main")
 
-    if args.task == 'fetch':
+    if args.task == "fetch":
         channel_ids = channel_utils.read_channel_ids_csv(args.csv)
-        random.shuffle(channel_ids) # in-place shuffle
-        print(','.join(channel_ids))  # Print channel_ids as comma-separated for Airflow XCom
-    elif args.task == 'process':
-        if not hasattr(args, 'channel_ids') or not hasattr(args, 'interval') or not hasattr(args, 'bots'):
-                logger.error("Channel IDs, Bot FIDs and Interval are required for processing.")
-                sys.exit(1)
+        random.shuffle(channel_ids)  # in-place shuffle
+        print(
+            ",".join(channel_ids)
+        )  # Print channel_ids as comma-separated for Airflow XCom
+    elif args.task == "process":
+        if (
+            not hasattr(args, "channel_ids")
+            or not hasattr(args, "interval")
+            or not hasattr(args, "bots")
+        ):
+            logger.error(
+                "Channel IDs, Bot FIDs and Interval are required for processing."
+            )
+            sys.exit(1)
         process_channels(
             channel_seeds_csv=args.csv,
             channel_bots_csv=args.bots,

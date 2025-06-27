@@ -1,21 +1,21 @@
-from io import StringIO
 import logging
-
-import requests
-
-from timer import Timer
 import time
-from config import settings
 from datetime import datetime, timedelta
+from io import StringIO
 
+import pandas as pd
 import psycopg2
 import psycopg2.extras
-import pandas as pd
+import requests
+
+from config import settings
+from timer import Timer
+
 
 def fetch_rows_df(*args, logger: logging.Logger, sql_query: str, pg_dsn: str):
     start_time = time.perf_counter()
     if settings.IS_TEST:
-      sql_query = f"{sql_query} LIMIT 10"
+        sql_query = f"{sql_query} LIMIT 10"
     logger.info(f"Execute query: {sql_query}")
     with psycopg2.connect(
         pg_dsn,
@@ -116,14 +116,15 @@ def insert_cast_action(
         DO NOTHING -- expect duplicates because of between clause
     """
     with psycopg2.connect(
-    pg_dsn,
-    connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
+        pg_dsn,
+        connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
     ) as conn:
         with conn.cursor() as cursor:
             logger.info(f"Executing: {insert_sql}")
             cursor.execute(insert_sql)
             rows = cursor.rowcount
             logger.info(f"Inserted {rows} rows into {tbl_name}")
+
 
 @Timer(name="backfill_cast_action")
 def backfill_cast_action(
@@ -168,9 +169,13 @@ def backfill_cast_action(
     start_at = target_month - timedelta(seconds=1)
     start_at_str = start_at.strftime("%Y-%m-%d %H:%M:%S")
     target_month_str = target_month.strftime("%Y-%m-%d %H:%M:%S")
-    partition_name = f"k3l_cast_action_{'v1_' if is_v1 else ''}{target_month.strftime('y%Ym%m')}"
+    partition_name = (
+        f"k3l_cast_action_{'v1_' if is_v1 else ''}{target_month.strftime('y%Ym%m')}"
+    )
 
-    logger.info(f"backfilling {partition_name} from {start_at_str} to {target_month_str}")
+    logger.info(
+        f"backfilling {partition_name} from {start_at_str} to {target_month_str}"
+    )
 
     insert_sql = f"""
     INSERT INTO {partition_name}
@@ -264,9 +269,14 @@ def backfill_cast_action(
             logger.info(f"Backfilled {rows} rows into {partition_name}")
             return rows
 
+
 @Timer(name="gapfill_cast_action")
 def gapfill_cast_action(
-    logger: logging.Logger, pg_dsn: str, insert_limit: int, target_date: datetime, is_v1: bool = False
+    logger: logging.Logger,
+    pg_dsn: str,
+    insert_limit: int,
+    target_date: datetime,
+    is_v1: bool = False,
 ) -> int:
     target_date_str = target_date.strftime("%Y-%m-%d %H:%M:%S")
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
@@ -451,10 +461,10 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str, is_v1: bool = Fals
 def fetch_top_spammers_df(
     logger: logging.Logger, pg_dsn: str, start_date: datetime, end_date: datetime
 ):
-  start_date_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
-  end_date_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
+    start_date_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+    end_date_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
-  sql = f"""
+    sql = f"""
     WITH all_casts AS (
       SELECT
         fc.*
@@ -550,24 +560,24 @@ def fetch_top_spammers_df(
     AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
     ORDER BY spammer_score DESC
   """
-  return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
+    return fetch_rows_df(logger=logger, sql_query=sql, pg_dsn=pg_dsn)
+
 
 def insert_dune_table(api_key, namespace, table_name, scores_df):
-  headers = {
-      "X-DUNE-API-KEY": api_key,
-      "Content-Type": "text/csv"
-  }
+    headers = {"X-DUNE-API-KEY": api_key, "Content-Type": "text/csv"}
 
-  url = f"https://api.dune.com/api/v1/table/{namespace}/{table_name}/clear"
-  clear_resp = requests.request("POST", url, data="", headers=headers)
-  print('clear_resp', clear_resp.status_code, clear_resp.text)
+    url = f"https://api.dune.com/api/v1/table/{namespace}/{table_name}/clear"
+    clear_resp = requests.request("POST", url, data="", headers=headers)
+    print("clear_resp", clear_resp.status_code, clear_resp.text)
 
-  csv_buffer = StringIO()
-  scores_df.to_csv(csv_buffer, index=False)
-  csv_buffer.seek(0)
+    csv_buffer = StringIO()
+    scores_df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
 
-  url = f'https://api.dune.com/api/v1/table/{namespace}/{table_name}/insert'
+    url = f"https://api.dune.com/api/v1/table/{namespace}/{table_name}/insert"
 
-  insert_resp = requests.request("POST", url, data=csv_buffer.getvalue(), headers=headers)
-  print('insert to dune resp', insert_resp.status_code, insert_resp.text)
-  return insert_resp
+    insert_resp = requests.request(
+        "POST", url, data=csv_buffer.getvalue(), headers=headers
+    )
+    print("insert to dune resp", insert_resp.status_code, insert_resp.text)
+    return insert_resp

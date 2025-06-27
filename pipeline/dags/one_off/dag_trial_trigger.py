@@ -1,35 +1,37 @@
 from datetime import datetime, timedelta, timezone
+
+from airflow.decorators import dag, task
+from airflow.models import DagRun
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.decorators import task, dag
-from airflow.models import DagRun
 from airflow.utils.state import DagRunState
 
 default_args = {
-    'owner': 'karma3labs',
-    'retries': 5,
-    'retry_delay': timedelta(minutes=2),
+    "owner": "karma3labs",
+    "retries": 5,
+    "retry_delay": timedelta(minutes=2),
 }
 
 N_CHUNKS = 100  # Define the number of chunks
 FREQUENCY_H = 6  # Define the frequency in hours
 
+
 @dag(
-    dag_id='one_off_trial_trigger_src',
+    dag_id="one_off_trial_trigger_src",
     default_args=default_args,
     start_date=datetime(2024, 10, 1),
     schedule_interval=timedelta(minutes=3),
     is_paused_upon_creation=True,
     max_active_runs=1,
-    catchup=False  # To avoid backfilling if not required
+    catchup=False,  # To avoid backfilling if not required
 )
 def create_trigger_dag():
     skip_main_dag = EmptyOperator(task_id="skip_main_dag")
 
     trigger_main_dag = TriggerDagRunOperator(
-        task_id='trigger_main_dag',
-        trigger_dag_id='one_off_trial_trigger_tgt',
-        execution_date='{{ macros.datetime.now() }}',
+        task_id="trigger_main_dag",
+        trigger_dag_id="one_off_trial_trigger_tgt",
+        execution_date="{{ macros.datetime.now() }}",
         wait_for_completion=True,
         poke_interval=60,
         conf={"trigger": "one_off_trial_trigger_src"},
@@ -43,7 +45,7 @@ def create_trigger_dag():
             raise ValueError(f"No successful runs found for DAG: {dag_id}")
         print(f"Found {len(dag_runs)} previous runs of {dag_id}")
         dag_runs.sort(key=lambda x: x.execution_date, reverse=True)
-        print("Last run: ", dag_runs[0]) 
+        print("Last run: ", dag_runs[0])
         # Query the last successful DAG run
         last_run = dag_runs[0]
         print("Last run: ", last_run)
@@ -79,17 +81,19 @@ def create_trigger_dag():
 
     check_last_successful_run >> skip_main_dag
 
+
 trigger_dag = create_trigger_dag()
 
+
 @dag(
-    dag_id='one_off_trial_trigger_tgt',
+    dag_id="one_off_trial_trigger_tgt",
     default_args=default_args,
-    description='One off dag to test new features',
+    description="One off dag to test new features",
     start_date=datetime(2024, 10, 1),
     schedule_interval=None,
     is_paused_upon_creation=True,
     max_active_runs=1,
-    catchup=False  # To avoid backfilling if not required
+    catchup=False,  # To avoid backfilling if not required
 )
 def create_main_dag():
 

@@ -1,18 +1,19 @@
 # standard dependencies
-import sys
 import argparse
-from pathlib import Path
+import sys
 import time
+from pathlib import Path
 
-# local dependencies
-from config import settings
-from . import channel_utils
-from . import channel_db_utils
+import pandas as pd
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import pandas as pd
+
+# local dependencies
+from config import settings
+
+from . import channel_db_utils, channel_utils
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -23,15 +24,18 @@ level_per_module = {
     "": settings.LOG_LEVEL,
     "db_utils": settings.LOG_LEVEL,
     "channels.channel_db_utils": "DEBUG",
-    "silentlib": False
+    "silentlib": False,
 }
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
+
 
 def prep_channels(run_id: str, num_days: int, num_batches: int):
     logger.info(
@@ -41,18 +45,18 @@ def prep_channels(run_id: str, num_days: int, num_batches: int):
     sql_timeout_ms = 120_000
     try:
         num_channels = channel_db_utils.prep_channel_rank_log(
-            logger=logger, 
-            pg_dsn=pg_dsn, 
-            timeout_ms=sql_timeout_ms, 
-            run_id=run_id, 
-            num_days=num_days, 
-            num_batches=num_batches
+            logger=logger,
+            pg_dsn=pg_dsn,
+            timeout_ms=sql_timeout_ms,
+            run_id=run_id,
+            num_days=num_days,
+            num_batches=num_batches,
         )
         logger.info(f"{num_channels} prepped for ranking")
     except Exception as e:
         logger.error(f"Failed to prep channel rank: {e}")
         raise e
-    
+
 
 def process_channels(
     run_id: str,
@@ -67,12 +71,12 @@ def process_channels(
     sql_timeout_ms = 120_000
     try:
         channel_ids = channel_db_utils.update_channel_rank_batch_inprogress(
-            logger=logger, 
-            pg_dsn=pg_dsn, 
-            timeout_ms=sql_timeout_ms, 
-            run_id=run_id, 
-            num_days=num_days, 
-            batch_id=batch_id
+            logger=logger,
+            pg_dsn=pg_dsn,
+            timeout_ms=sql_timeout_ms,
+            run_id=run_id,
+            num_days=num_days,
+            batch_id=batch_id,
         )
         logger.info(f"{len(channel_ids)} marked inprogress for ranking")
         logger.info(f"{channel_ids} marked inprogress for ranking")
@@ -109,7 +113,9 @@ def process_channels(
                         logger=logger, cid=cid, scores_df=scores_df, pg_url=pg_url
                     )
             else:
-                logger.warning(f"No local trust for channel {cid} in last {num_days} days")
+                logger.warning(
+                    f"No local trust for channel {cid} in last {num_days} days"
+                )
 
             # convert from np.int32 to int
             inactive_seeds = [int(fid) for fid in inactive_seeds]
@@ -126,14 +132,15 @@ def process_channels(
                 num_fids=num_fids,
                 inactive_seeds=inactive_seeds,
                 elapsed_time_ms=elapsed_time_ms,
-                is_error=False
+                is_error=False,
             )
         except Exception as e:
             logger.error(f"Failed to process channel {cid}: {e}")
             raise e
 
+
 if __name__ == "__main__":
-    logger.debug('hello main')
+    logger.debug("hello main")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -162,7 +169,7 @@ if __name__ == "__main__":
         "--num_batches",
         type=int,
         help="number of Airflow tasks aka batches aka chunks",
-        required=False
+        required=False,
     )
     parser.add_argument(
         "-s",
@@ -190,21 +197,25 @@ if __name__ == "__main__":
     print(args)
     logger.info(settings)
 
-    if args.task == 'prep':
+    if args.task == "prep":
         if not args.num_batches:
             logger.error("Number of batches is required for prep task.")
             sys.exit(1)
-        logger.info(f"Prepping channels: {args.run_id} num_days: {args.num_days} num_batches: {args.num_batches}")
-        prep_channels(
-            run_id=args.run_id,
-            num_days=args.num_days,
-            num_batches= args.num_batches
+        logger.info(
+            f"Prepping channels: {args.run_id} num_days: {args.num_days} num_batches: {args.num_batches}"
         )
-    elif args.task == 'process':
+        prep_channels(
+            run_id=args.run_id, num_days=args.num_days, num_batches=args.num_batches
+        )
+    elif args.task == "process":
         if not args.seeds or not args.bots or not args.batch_id:
-                logger.error("Channel Seed Peers CSV, Bot FIDs CSV and Batch ID are required for processing.")
-                sys.exit(1)
-        logger.info(f"Processing channels: {args.run_id} num_days: {args.num_days} seeds: {args.seeds} bots: {args.bots} batch_id: {args.batch_id}")
+            logger.error(
+                "Channel Seed Peers CSV, Bot FIDs CSV and Batch ID are required for processing."
+            )
+            sys.exit(1)
+        logger.info(
+            f"Processing channels: {args.run_id} num_days: {args.num_days} seeds: {args.seeds} bots: {args.bots} batch_id: {args.batch_id}"
+        )
         process_channels(
             run_id=args.run_id,
             num_days=args.num_days,
@@ -215,5 +226,3 @@ if __name__ == "__main__":
     else:
         logger.error("Invalid task specified. Use 'fetch' or 'process'.")
         sys.exit(1)
-
-

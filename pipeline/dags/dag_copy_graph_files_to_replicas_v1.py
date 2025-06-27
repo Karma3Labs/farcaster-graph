@@ -1,12 +1,10 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
+from airflow.decorators import task_group
 from airflow.models import Variable
 from airflow.operators.bash import BashOperator
-from airflow.providers.ssh.operators.ssh import SSHHook
-from airflow.providers.ssh.operators.ssh import SSHOperator
-from airflow.decorators import task_group
-
+from airflow.providers.ssh.operators.ssh import SSHHook, SSHOperator
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
@@ -36,14 +34,14 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    ssh_hook = SSHHook(ssh_conn_id='eigen6', keepalive_interval=60, cmd_timeout=None)
+    ssh_hook = SSHHook(ssh_conn_id="eigen6", keepalive_interval=60, cmd_timeout=None)
 
     @task_group(group_id="gen_graphs")
     def tg_gen_graphs():
         gen_following_graph = BashOperator(
             task_id="gen_following_graph",
             bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
-                            " -i tmp/graph_files/localtrust.following.csv -o tmp/graph_files/ -p fc_following_fid ",
+            " -i tmp/graph_files/localtrust.following.csv -o tmp/graph_files/ -p fc_following_fid ",
             dag=dag,
         )
 
@@ -57,7 +55,7 @@ with DAG(
         gen_90day_graph = BashOperator(
             task_id="gen_90day_graph",
             bash_command="cd /pipeline; ./run_graph_pipeline.sh -w . -v ./.venv"
-                            " -i tmp/graph_files/localtrust.graph_90dv3.csv -o tmp/graph_files/ -p fc_90dv3_fid ",
+            " -i tmp/graph_files/localtrust.graph_90dv3.csv -o tmp/graph_files/ -p fc_90dv3_fid ",
             dag=dag,
         )
 

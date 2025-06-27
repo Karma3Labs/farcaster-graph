@@ -1,25 +1,28 @@
+import datetime
 import logging
-from enum import StrEnum, Enum
 import tempfile
 import time
-import datetime
+from enum import Enum, StrEnum
 
-from timer import Timer
-import pytz
-from config import settings
-import db_utils
-from asyncpg.pool import Pool
 import asyncpg
+import pandas as pd
 import psycopg2
 import psycopg2.extras
-import pandas as pd
+import pytz
+from asyncpg.pool import Pool
 from sqlalchemy import create_engine
 
+import db_utils
+from config import settings
+from timer import Timer
+
+
 class TokenDistStatus(StrEnum):
-    NULL = 'NULL'
-    SUBMITTED = 'submitted'
-    SUCCESS = 'success'
-    FAILURE = 'failure'
+    NULL = "NULL"
+    SUBMITTED = "submitted"
+    SUCCESS = "success"
+    FAILURE = "failure"
+
 
 class DOW(Enum):
     MONDAY = 0
@@ -30,12 +33,8 @@ class DOW(Enum):
     SATURDAY = 5
     SUNDAY = 6
 
-async def fetch_rows(
-        *args,
-        logger: logging.Logger,
-        sql_query: str,
-        pool: Pool
-):
+
+async def fetch_rows(*args, logger: logging.Logger, sql_query: str, pool: Pool):
     start_time = time.perf_counter()
     logger.debug(f"Execute query: {sql_query}")
     # Take a connection from the pool.
@@ -46,9 +45,7 @@ async def fetch_rows(
                 # Run the query passing the request argument.
                 try:
                     rows = await connection.fetch(
-                        sql_query,
-                        *args,
-                        timeout=settings.POSTGRES_TIMEOUT_SECS
+                        sql_query, *args, timeout=settings.POSTGRES_TIMEOUT_SECS
                     )
                 except Exception as e:
                     logger.error(f"Failed to execute query: {sql_query}")
@@ -56,6 +53,7 @@ async def fetch_rows(
                     return [{"Unknown error. Contact K3L team"}]
     logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
     return rows
+
 
 @Timer(name="fetch_channel_mods_with_metrics")
 def fetch_channel_mods_with_metrics(
@@ -98,7 +96,9 @@ def fetch_channel_mods_with_metrics(
         sql_engine.dispose()
 
 
-def fetch_channel_casters(logger: logging.Logger, pg_dsn: str, channel_url: str) -> list[int]:
+def fetch_channel_casters(
+    logger: logging.Logger, pg_dsn: str, channel_url: str
+) -> list[int]:
     query_sql = f"""
     SELECT
       DISTINCT(fid)
@@ -115,11 +115,12 @@ def fetch_channel_casters(logger: logging.Logger, pg_dsn: str, channel_url: str)
             fids = [row[0] for row in records]
             return fids
 
+
 @Timer(name="fetch_top_casters")
-async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str, url: str):
-    pool = await asyncpg.create_pool(pg_dsn,
-                                     min_size=1,
-                                     max_size=5)
+async def fetch_top_casters(
+    logger: logging.Logger, pg_dsn: str, channel_id: str, url: str
+):
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
     sql = f"""
     with 
         latest_global_rank as (
@@ -198,6 +199,7 @@ async def fetch_top_casters(logger: logging.Logger, pg_dsn: str, channel_id: str
         """
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
 
+
 @Timer(name="filter_channel_followers")
 async def filter_channel_followers(
     logger: logging.Logger,
@@ -205,9 +207,7 @@ async def filter_channel_followers(
     channel_id: str,
     fids: list[int],
 ):
-    pool = await asyncpg.create_pool(pg_dsn,
-                                     min_size=1,
-                                     max_size=5)
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
     sql_query = f"""
         SELECT fid
         FROM warpcast_followers
@@ -216,15 +216,14 @@ async def filter_channel_followers(
         """
     return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
 
+
 @Timer(name="fetch_channels_trend_score")
 async def fetch_channels_trend_score(
     logger: logging.Logger,
     pg_dsn: str,
     channel_ids: list[str],
 ):
-    pool = await asyncpg.create_pool(pg_dsn,
-                                     min_size=1,
-                                     max_size=5)
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
     sql_query = f"""
         WITH
         filtered_channels AS (
@@ -255,14 +254,13 @@ async def fetch_channels_trend_score(
     return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
 
 
-
 def prep_channel_rank_log(
     logger: logging.Logger,
     pg_dsn: str,
     timeout_ms: int,
     run_id: str,
     num_days: int,
-    num_batches: int
+    num_batches: int,
 ) -> int:
 
     lock_sql = """
@@ -304,9 +302,8 @@ def prep_channel_rank_log(
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn,
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn:
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {lock_sql}")
                 cursor.execute(lock_sql)
@@ -329,6 +326,7 @@ def prep_channel_rank_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return num_rows
+
 
 def update_channel_rank_batch_inprogress(
     logger: logging.Logger,
@@ -353,9 +351,8 @@ def update_channel_rank_batch_inprogress(
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn,
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn:
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {update_sql}")
                 cursor.execute(update_sql)
@@ -366,6 +363,7 @@ def update_channel_rank_batch_inprogress(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return [channel_id[0] for channel_id in channel_ids] if channel_ids else []
+
 
 def update_channel_rank_for_cid(
     logger: logging.Logger,
@@ -378,13 +376,13 @@ def update_channel_rank_for_cid(
     num_fids: int,
     inactive_seeds: list[int],
     elapsed_time_ms: int,
-    is_error: bool
+    is_error: bool,
 ) -> list[str]:
 
     if is_error:
-        status = 'errored'
+        status = "errored"
     else:
-        status = 'completed'
+        status = "completed"
     update_sql = f"""
         UPDATE k3l_channel_rank_log
         SET
@@ -401,18 +399,17 @@ def update_channel_rank_for_cid(
         RETURNING channel_id
     """
     update_data = {
-        'num_fids': num_fids,
-        'inactive_seeds': inactive_seeds,
-        'elapsed_time_ms': elapsed_time_ms
+        "num_fids": num_fids,
+        "inactive_seeds": inactive_seeds,
+        "elapsed_time_ms": elapsed_time_ms,
     }
     start_time = time.perf_counter()
     try:
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn,
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn:
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {update_sql}")
                 cursor.execute(update_sql, update_data)
@@ -424,6 +421,7 @@ def update_channel_rank_for_cid(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return [channel_id[0] for channel_id in channel_ids] if channel_ids else []
 
+
 def insert_channel_scores_df(
     logger: logging.Logger, cid: str, scores_df: pd.DataFrame, pg_url: str
 ):
@@ -432,49 +430,59 @@ def insert_channel_scores_df(
             logger.warning(f"Skipping database insertion for channel {cid}")
         else:
             logger.info(f"Inserting data into the database for channel {cid}")
-            db_utils.df_insert_copy(pg_url=pg_url, df=scores_df, dest_tablename=settings.TBL_CHANNEL_FIDS)
+            db_utils.df_insert_copy(
+                pg_url=pg_url, df=scores_df, dest_tablename=settings.TBL_CHANNEL_FIDS
+            )
     except Exception as e:
         logger.error(f"Failed to insert data into the database for channel {cid}: {e}")
         raise e
     return
 
+
 # DEPRECATED - use utils.py
-def _9ampacific_in_utc_time(date_str:str = None):
-    pacific_tz = pytz.timezone('US/Pacific')
+def _9ampacific_in_utc_time(date_str: str = None):
+    pacific_tz = pytz.timezone("US/Pacific")
     if date_str:
-        pacific_9am_str = ' '.join([date_str,'09:00:00'])
+        pacific_9am_str = " ".join([date_str, "09:00:00"])
     else:
-        pacific_9am_str = ' '.join([datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"),'09:00:00'])
-    pacific_time = pacific_tz.localize(datetime.datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S'))
+        pacific_9am_str = " ".join(
+            [datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d"), "09:00:00"]
+        )
+    pacific_time = pacific_tz.localize(
+        datetime.datetime.strptime(pacific_9am_str, "%Y-%m-%d %H:%M:%S")
+    )
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
+
 
 # DEPRECATED - use utils.py
 def _dow_utc_time(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value) 
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value)
+
 
 # DEPRECATED - use utils.py
 def _last_dow_utc_time(dow: DOW):
     utc_time = _9ampacific_in_utc_time()
-    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7) 
+    return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7)
+
 
 @Timer(name="fetch_weighted_fid_scores_df")
 def fetch_weighted_fid_scores_df(
-    logger: logging.Logger, 
-    pg_dsn: str, 
+    logger: logging.Logger,
+    pg_dsn: str,
     timeout_ms: int,
     reply_wt: int,
     recast_wt: int,
-    like_wt:int,
-    cast_wt:int,
+    like_wt: int,
+    cast_wt: int,
     model_names: list[str],
     allowlisted_only: bool,
     is_v1: bool,
     gapfill: bool,
     date_str: str,
 ) -> pd.DataFrame:
-    
+
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
@@ -593,6 +601,7 @@ def fetch_weighted_fid_scores_df(
                     dtype={"fid": "Int32", "channel_id": "str", "score": "Float64"},
                 )
                 return df
+
 
 @Timer(name="insert_reddit_points_log")
 def insert_reddit_points_log(
@@ -718,9 +727,8 @@ def insert_reddit_points_log(
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
@@ -730,14 +738,15 @@ def insert_reddit_points_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
 
+
 @Timer(name="insert_genesis_points")
 def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     # WARNING - EXTREME CAUTION - be very careful with these variables
-    # TODO move these to k3l_channel_rewards_config 
-    # ...because there will be a product requirement at some point in the future 
-    # ...where we want to expose them to frontend 
-    STRATEGY = "60d_engagement" 
-    GENESIS_BUDGET = 600_000 
+    # TODO move these to k3l_channel_rewards_config
+    # ...because there will be a product requirement at some point in the future
+    # ...where we want to expose them to frontend
+    STRATEGY = "60d_engagement"
+    GENESIS_BUDGET = 600_000
     # WARNING - EXTREME CAUTION
     insert_sql = f"""
         WITH 
@@ -768,9 +777,8 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
@@ -880,9 +888,8 @@ def update_points_balance_v5(
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {create_sql}")
                 cursor.execute(create_sql)
@@ -897,6 +904,7 @@ def update_points_balance_v5(
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
+
 
 @Timer(name="fetch_rewards_config_list")
 def fetch_rewards_config_list(
@@ -913,9 +921,8 @@ def fetch_rewards_config_list(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
                 logger.info(f"Executing: {select_sql}")
                 cursor.execute(select_sql)
@@ -926,12 +933,13 @@ def fetch_rewards_config_list(
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return rows
 
+
 @Timer(name="update_channel_rewards_config")
 def update_channel_rewards_config(
-    logger: logging.Logger, 
-    pg_dsn: str, 
-    timeout_ms: int, 
-    channel_id: str, 
+    logger: logging.Logger,
+    pg_dsn: str,
+    timeout_ms: int,
+    channel_id: str,
     symbol: str,
     total_supply: int,
     creator_cut: int,
@@ -955,22 +963,21 @@ def update_channel_rewards_config(
         WHERE channel_id=%(channel_id)s
     """
     update_data = {
-        'symbol': symbol,
-        'token_airdrop_budget': token_airdrop_budget,
-        'token_daily_budget': token_daily_budget,
-        'total_supply': total_supply,
-        'creator_cut': creator_cut,
-        'vesting_months': vesting_months,
-        'airdrop_pmil': airdrop_pmil,
-        'community_supply': community_supply,
-        'channel_id': channel_id,
+        "symbol": symbol,
+        "token_airdrop_budget": token_airdrop_budget,
+        "token_daily_budget": token_daily_budget,
+        "total_supply": total_supply,
+        "creator_cut": creator_cut,
+        "vesting_months": vesting_months,
+        "airdrop_pmil": airdrop_pmil,
+        "community_supply": community_supply,
+        "channel_id": channel_id,
     }
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {update_sql}")
                 cursor.execute(update_sql, update_data)
@@ -980,6 +987,7 @@ def update_channel_rewards_config(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
+
 
 @Timer(name="get_next_dist_sequence")
 def get_next_dist_sequence(
@@ -992,17 +1000,17 @@ def get_next_dist_sequence(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(select_sql)
-                    return cursor.fetchone()[0]
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_sql)
+                return cursor.fetchone()[0]
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
+
 
 @Timer(name="insert_tokens_log")
 def insert_tokens_log(
@@ -1015,11 +1023,11 @@ def insert_tokens_log(
     batch_size: int = 250,
 ):
     # dist_id is fetched in separate transaction
-    # but risk of gaps is not an issue 
-    dist_id = get_next_dist_sequence (
-                logger=logger,
-                pg_dsn=pg_dsn,
-                timeout_ms=timeout_ms,
+    # but risk of gaps is not an issue
+    dist_id = get_next_dist_sequence(
+        logger=logger,
+        pg_dsn=pg_dsn,
+        timeout_ms=timeout_ms,
     )
     if is_airdrop:
         insert_sql = f"""
@@ -1178,19 +1186,20 @@ def insert_tokens_log(
         # start transaction 'with' context manager
         # ...transaction is committed on exit and rolled back on exception
         with psycopg2.connect(
-            pg_dsn, 
-            options=f"-c statement_timeout={timeout_ms}"
-        )  as conn: 
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
             if is_airdrop:
                 with conn.cursor() as cursor:
                     update_sql = f"""
                         UPDATE k3l_channel_rewards_config
                         SET is_tokens = 'true'
                         WHERE channel_id = '{channel_id}'
-                    """ 
+                    """
                     logger.info(f"Executing: {update_sql}")
                     cursor.execute(update_sql)
-                    logger.info(f"Updated channel rewards config for channel: {channel_id}")
+                    logger.info(
+                        f"Updated channel rewards config for channel: {channel_id}"
+                    )
             with conn.cursor() as cursor:
                 logger.info(f"Executing: {insert_sql}")
                 cursor.execute(insert_sql)
@@ -1200,6 +1209,7 @@ def insert_tokens_log(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return dist_id
+
 
 @Timer(name="fetch_notify_entries")
 def fetch_notify_entries(
@@ -1239,18 +1249,17 @@ def fetch_notify_entries(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(select_sql)
-                    while True:
-                        rows = cursor.fetchmany(sql_batch_size)
-                        entries.extend(rows)
-                        if len(rows) == 0:
-                            logger.info("No more rows to process")
-                            break
-                    columns = [desc[0] for desc in cursor.description]
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_sql)
+                while True:
+                    rows = cursor.fetchmany(sql_batch_size)
+                    entries.extend(rows)
+                    if len(rows) == 0:
+                        logger.info("No more rows to process")
+                        break
+                columns = [desc[0] for desc in cursor.description]
     except Exception as e:
         logger.error(e)
         raise e
@@ -1270,7 +1279,7 @@ def fetch_distribution_ids(
         case TokenDistStatus.NULL:
             status_condn = " is NULL "
         case _:
-            status_condn = f" = '{status}' " 
+            status_condn = f" = '{status}' "
     select_sql = f"""
         SELECT 
             distinct channel_id, dist_id, batch_id 
@@ -1283,24 +1292,22 @@ def fetch_distribution_ids(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(select_sql)
-                    rows = cursor.fetchall()
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_sql)
+                rows = cursor.fetchall()
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return rows
 
+
 @Timer(name="fetch_distributions_one_channel")
 def fetch_distributions_one_channel(
-    logger: logging.Logger,
-    pg_dsn: str,
-    timeout_ms: int
-)-> tuple[str,list[dict]]:
+    logger: logging.Logger, pg_dsn: str, timeout_ms: int
+) -> tuple[str, list[dict]]:
     select_sql = """
         SELECT 
             channel_id, 
@@ -1324,12 +1331,11 @@ def fetch_distributions_one_channel(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(select_sql)
-                    return cursor.fetchone()
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_sql)
+                return cursor.fetchone()
     except Exception as e:
         logger.error(e)
         raise e
@@ -1346,14 +1352,14 @@ def update_distribution_status(
     batch_id: int,
     channel_id: str,
     txn_hash: str,
-    old_status:TokenDistStatus,
-    new_status:TokenDistStatus,
+    old_status: TokenDistStatus,
+    new_status: TokenDistStatus,
 ):
     match old_status:
         case TokenDistStatus.NULL:
             status_condn = " is NULL "
         case _:
-            status_condn = f" = '{old_status}' " 
+            status_condn = f" = '{old_status}' "
     match new_status:
         case TokenDistStatus.NULL:
             status_to = " NULL "
@@ -1373,17 +1379,17 @@ def update_distribution_status(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(update_sql)
-                    logger.info(f"Updated rows: {cursor.rowcount}")
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_sql)
+                logger.info(f"Updated rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
+
 
 @Timer(name="update_token_bal")
 def update_token_bal(
@@ -1422,21 +1428,22 @@ def update_token_bal(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn, 
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn: 
-                with conn.cursor() as cursor:
-                    cursor.execute(update_sql)
-                    logger.info(f"Updated rows: {cursor.rowcount}")
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_sql)
+                logger.info(f"Updated rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
 
+
 class Metric(StrEnum):
     WEEKLY_NUM_CASTS = "weekly_num_casts"
     WEEKLY_UNIQUE_CASTERS = "weekly_unique_casters"
+
 
 @Timer(name="upsert_weekly_metrics")
 def upsert_weekly_metrics(
@@ -1485,12 +1492,11 @@ def upsert_weekly_metrics(
     start_time = time.perf_counter()
     try:
         with psycopg2.connect(
-                pg_dsn,
-                options=f"-c statement_timeout={timeout_ms}"
-            )  as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(sql)
-                    logger.info(f"Upserted rows: {cursor.rowcount}")
+            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql)
+                logger.info(f"Upserted rows: {cursor.rowcount}")
     except Exception as e:
         logger.error(e)
         raise e

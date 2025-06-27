@@ -1,7 +1,10 @@
 from db_utils import SQL
 
+
 class IJVSql:
-  LIKES = SQL("LIKES", """
+    LIKES = SQL(
+        "LIKES",
+        """
     SELECT reactions.fid as i, reactions.target_fid as j, count(1) as likes_v 
     FROM reactions 
     INNER JOIN fids ON fids.fid = reactions.target_fid
@@ -9,15 +12,21 @@ class IJVSql:
     AND reactions.target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """)
-  REPLIES = SQL("REPLIES", """
+    """,
+    )
+    REPLIES = SQL(
+        "REPLIES",
+        """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
     FROM casts
     WHERE parent_hash IS NOT NULL
     {condition}
     GROUP by i, j
-    """)
-  MENTIONS = SQL("MENTIONS", """
+    """,
+    )
+    MENTIONS = SQL(
+        "MENTIONS",
+        """
     WITH mention AS (
 			SELECT fid as author_fid, mention as mention_fid, timestamp
 			FROM casts, unnest(casts.mentions) as mention
@@ -28,8 +37,11 @@ class IJVSql:
     INNER JOIN fids ON fids.fid = mention.mention_fid
     {condition}
 		GROUP BY i, j
-    """)
-  RECASTS = SQL("RECASTS", """
+    """,
+    )
+    RECASTS = SQL(
+        "RECASTS",
+        """
     SELECT reactions.fid as i, reactions.target_fid as j, count(1) as recasts_v 
     FROM reactions 
     INNER JOIN fids ON fids.fid = reactions.target_fid
@@ -37,8 +49,11 @@ class IJVSql:
     AND reactions.target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
-    """)
-  FOLLOWS = SQL("FOLLOWS", """
+    """,
+    )
+    FOLLOWS = SQL(
+        "FOLLOWS",
+        """
     SELECT 
         links.fid as i, 
         links.target_fid as j,
@@ -48,10 +63,14 @@ class IJVSql:
     WHERE type = 'follow'::text
     {condition}
     ORDER BY i, j, follows_v desc
-    """)
-  
+    """,
+    )
+
+
 class IVSql:
-  PRETRUST_TOP_TIER = SQL("PRETRUST_TOP_TIER", """
+    PRETRUST_TOP_TIER = SQL(
+        "PRETRUST_TOP_TIER",
+        """
     WITH pt_size AS (
       select count(*) as ct from pretrust_v2 
       where insert_ts=(select max(insert_ts) from pretrust_v2 where strategy_id = {strategy})
@@ -61,8 +80,11 @@ class IVSql:
     FROM pretrust_v2, pt_size
     WHERE insert_ts=(select max(insert_ts) from pretrust_v2 where strategy_id = {strategy})
     AND strategy_id = {strategy}
-    """)
-  PRETRUST_POPULAR = SQL("PRETRUST_POPULAR", """
+    """,
+    )
+    PRETRUST_POPULAR = SQL(
+        "PRETRUST_POPULAR",
+        """
     SELECT
 			c.fid AS i, 
       1/20::numeric as v
@@ -77,8 +99,11 @@ class IVSql:
 		ORDER BY
 			COUNT(*) DESC
 		LIMIT 20
-    """)
-  PRETRUST_OG = SQL("PRETRUST_OG", """
+    """,
+    )
+    PRETRUST_OG = SQL(
+        "PRETRUST_OG",
+        """
     SELECT 
 			distinct fid as i,
       1/11::numeric as v
@@ -89,4 +114,5 @@ class IVSql:
 					  'lesgreys.eth','linda','ace',
 					  'vm','cdixon.eth')
 			AND type=6
-    """)
+    """,
+    )

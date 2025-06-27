@@ -1,59 +1,72 @@
 # standard dependencies
-import sys
 import argparse
+import sys
 
-# local dependencies
-from config import settings
-from . import channel_db_utils
-import utils
-import cura_utils
+import niquests
+import numpy as np
+import pandas as pd
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import niquests
-import numpy as np
-import pandas as pd
 from urllib3.util import Retry
 
+import cura_utils
+import utils
+
+# local dependencies
+from config import settings
+
+from . import channel_db_utils
 
 # Configure logger
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
-   
+
+
 def group_and_chunk_df(
     df: pd.DataFrame, group_by_columns: list[str], collect_column: str, chunk_size: int
 ) -> pd.DataFrame:
     def chunk_list(x):
-        return [chunk for chunk in np.array_split(x, np.ceil(len(x)/chunk_size))]
-    
+        return [chunk for chunk in np.array_split(x, np.ceil(len(x) / chunk_size))]
+
     return df.groupby(group_by_columns)[collect_column].agg(list).apply(chunk_list)
+
 
 def notify():
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     (cutoff_time, entries_df) = channel_db_utils.fetch_notify_entries(
-        logger, pg_dsn, settings.POSTGRES_TIMEOUT_MS,
+        logger,
+        pg_dsn,
+        settings.POSTGRES_TIMEOUT_MS,
     )
-    logger.info(f"Channel fids to be notified: {utils.df_info_to_string(entries_df, with_sample=True)}")
+    logger.info(
+        f"Channel fids to be notified: {utils.df_info_to_string(entries_df, with_sample=True)}"
+    )
     if settings.IS_TEST:
         chunk_size = 2
     else:
         chunk_size = settings.CURA_NOTIFY_CHUNK_SIZE
-    chunked_df = group_and_chunk_df(entries_df, ["channel_id","is_token"], "fid", chunk_size)
-    logger.info(f"Channel fids to be notified: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}")
+    chunked_df = group_and_chunk_df(
+        entries_df, ["channel_id", "is_token"], "fid", chunk_size
+    )
+    logger.info(
+        f"Channel fids to be notified: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}"
+    )
 
-    chunked_df = chunked_df.sort_index(level='is_token', ascending=False)
-    logger.info(f"Sorted and chunked fids: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}")
+    chunked_df = chunked_df.sort_index(level="is_token", ascending=False)
+    logger.info(
+        f"Sorted and chunked fids: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}"
+    )
 
     notified_fids_this_run = set()
 
@@ -74,29 +87,37 @@ def notify():
                 "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
             }
         )
-        timeouts=(connect_timeout_s, read_timeout_s)
+        timeouts = (connect_timeout_s, read_timeout_s)
         for (channel_id, is_token), fids in chunked_df.items():
             for fids_chunk in fids:
-                fids_chunk = fids_chunk.tolist() # convert numpy array to scalar list
+                fids_chunk = fids_chunk.tolist()  # convert numpy array to scalar list
 
                 fids_to_send = []
 
                 if is_token:
                     fids_to_send = fids_chunk
                 else:
-                    fids_to_send = [fid for fid in fids_chunk if fid not in notified_fids_this_run]
+                    fids_to_send = [
+                        fid for fid in fids_chunk if fid not in notified_fids_this_run
+                    ]
 
                 if not fids_to_send:
-                    logger.info(f"Skipping empty or fully filtered chunk for channel={channel_id}")
+                    logger.info(
+                        f"Skipping empty or fully filtered chunk for channel={channel_id}"
+                    )
                     continue
 
-                logger.info(f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_to_send}")
-                cura_utils.leaderboard_notify(session, timeouts, channel_id, is_token, fids_to_send, cutoff_time)
+                logger.info(
+                    f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_to_send}"
+                )
+                cura_utils.leaderboard_notify(
+                    session, timeouts, channel_id, is_token, fids_to_send, cutoff_time
+                )
 
                 notified_fids_this_run.update(fids_to_send)
 
             logger.info(f"Notifications sent for channel '{channel_id}'")
-        logger.info("Notifications sent for all channels")    
+        logger.info("Notifications sent for all channels")
 
 
 if __name__ == "__main__":
@@ -106,17 +127,13 @@ if __name__ == "__main__":
         "--run",
         action="store_true",
         help="dummy arg to prevent accidental execution",
-        required=True
+        required=True,
     )
-    parser.add_argument(
-        "--dry-run",
-        help="indicate dry-run mode",
-        action="store_true"
-    ) 
+    parser.add_argument("--dry-run", help="indicate dry-run mode", action="store_true")
     args = parser.parse_args()
     print(args)
     logger.info(settings)
-    
+
     if args.dry_run:
         settings.IS_TEST = True
 

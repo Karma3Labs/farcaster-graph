@@ -1,15 +1,16 @@
 import logging
 import time
 
-from timer import Timer
 import pandas as pd
 
-import utils
 import db_utils
+import utils
 from db_utils import SQL
+from timer import Timer
 
-
-INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
+INTERACTIONS_SQL = SQL(
+    "COMBINED_INTERACTION",
+    """
     WITH
         excluded_fids AS (
             SELECT
@@ -161,7 +162,8 @@ INTERACTIONS_SQL = SQL("COMBINED_INTERACTION", """
         recasts ON likes.i = recasts.i AND likes.j = recasts.j
     FULL OUTER JOIN
         follows ON likes.i = follows.i AND likes.j = follows.j
-    """)
+    """,
+)
 
 
 def fetch_interactions_df(
@@ -172,11 +174,23 @@ def fetch_interactions_df(
     interval: int,
 ) -> pd.DataFrame:
     query_args = {
-        "r_condition": f" AND reactions.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
-        "c_condition": f" AND casts.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
-        "l_condition": f" AND links.timestamp >= now() - interval '{interval} days'" if interval > 0 else "",
+        "r_condition": (
+            f" AND reactions.timestamp >= now() - interval '{interval} days'"
+            if interval > 0
+            else ""
+        ),
+        "c_condition": (
+            f" AND casts.timestamp >= now() - interval '{interval} days'"
+            if interval > 0
+            else ""
+        ),
+        "l_condition": (
+            f" AND links.timestamp >= now() - interval '{interval} days'"
+            if interval > 0
+            else ""
+        ),
         "channel_url": channel_url,
-        "channel_id": channel_id
+        "channel_id": channel_id,
     }
     with Timer(name=f"fetch_interactions_{channel_url}"):
         start_time = time.perf_counter()

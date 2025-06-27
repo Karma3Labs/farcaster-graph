@@ -1,15 +1,16 @@
-from pathlib import Path
-import subprocess
 import os
+import subprocess
 import tempfile
-
-from config import settings
+from pathlib import Path
 
 from loguru import logger
 
-def download_results(req_id: str, toml_file: Path, out_dir:Path, out_file: Path):
+from config import settings
+
+
+def download_results(req_id: str, toml_file: Path, out_dir: Path, out_file: Path):
     new_env = os.environ.copy()
-    new_env['SECRET_KEY'] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
+    new_env["SECRET_KEY"] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
     get_cmd = subprocess.run(
         ["openrank-sdk", "get-results", str(req_id), str(toml_file), str(out_file)],
         stdout=subprocess.DEVNULL,
@@ -19,14 +20,15 @@ def download_results(req_id: str, toml_file: Path, out_dir:Path, out_file: Path)
         env=new_env,
         check=True,
     )
-    if get_cmd.returncode != 0:   
+    if get_cmd.returncode != 0:
         logger.error(f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}")
         raise Exception("OpenRank get-results failed")
     logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
+
 def update_and_compute(lt_file: Path, pt_file: Path, toml_file: Path) -> str:
     new_env = os.environ.copy()
-    new_env['SECRET_KEY'] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
+    new_env["SECRET_KEY"] = settings.OPENRANK_REQ_SECRET_KEY.get_secret_value()
 
     lt_cmd = subprocess.run(
         ["openrank-sdk", "trust-update", str(lt_file), str(toml_file)],

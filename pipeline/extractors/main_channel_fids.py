@@ -1,45 +1,40 @@
 import argparse
-from datetime import datetime
-import sys
 import asyncio
+import random
+import sys
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import random
 
+import aiohttp
 import asyncpg
+import pandas as pd
+from loguru import logger
 
+from channels import channel_utils
 from config import settings
 from extractors import channel_extractor_utils
 from extractors.channel_extractor_utils import JobType
 from timer import Timer
-from channels import channel_utils
-
-import aiohttp
-import pandas as pd
-from loguru import logger
-
 
 pd.set_option("mode.copy_on_write", True)
 
 # Configure logger
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "db_utils": "DEBUG",
-    "silentlib": False
-}
+level_per_module = {"": settings.LOG_LEVEL, "db_utils": "DEBUG", "silentlib": False}
 logger.add(
     sys.stdout,
     colorize=True,
     format=settings.LOGURU_FORMAT,
-    filter=level_per_module, # type: ignore
+    filter=level_per_module,  # type: ignore
     level=0,
-) # type: ignore
+)  # type: ignore
 
 
 class Scope(Enum):
-  top = 'top'
-  all = 'all'
+    top = "top"
+    all = "all"
+
 
 async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
     while True:
@@ -55,63 +50,83 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 channel_ids = top_channel_ids
             elif scope == Scope.all:
                 logger.info("Fetching all Warpcast channels:")
-                all_channel_ids = await channel_extractor_utils.fetch_all_channel_ids_warpcast()
+                all_channel_ids = (
+                    await channel_extractor_utils.fetch_all_channel_ids_warpcast()
+                )
                 logger.info(f"Total number of channels: {len(all_channel_ids)}")
                 logger.info(f"First 10 channel ids: {all_channel_ids[:10]}")
                 channel_ids = list(set(all_channel_ids) - set(top_channel_ids))
             else:
                 raise ValueError
-            
+
             if settings.IS_TEST:
-                channel_ids = channel_ids[:settings.TEST_CHANNEL_LIMIT]
+                channel_ids = channel_ids[: settings.TEST_CHANNEL_LIMIT]
 
             logger.info(f"Total number of channels to fetch: {len(channel_ids)}")
             logger.info(f"First 10 channel ids to fetch: {channel_ids[:10]}")
 
-            http_timeout = aiohttp.ClientTimeout(sock_connect=settings.WARPCAST_CHANNELS_TIMEOUT_SECS,
-                                                sock_read=settings.WARPCAST_CHANNELS_TIMEOUT_SECS)
-            connector = aiohttp.TCPConnector(ttl_dns_cache=3000, limit=settings.WARPCAST_PARALLEL_REQUESTS)
+            http_timeout = aiohttp.ClientTimeout(
+                sock_connect=settings.WARPCAST_CHANNELS_TIMEOUT_SECS,
+                sock_read=settings.WARPCAST_CHANNELS_TIMEOUT_SECS,
+            )
+            connector = aiohttp.TCPConnector(
+                ttl_dns_cache=3000, limit=settings.WARPCAST_PARALLEL_REQUESTS
+            )
 
-            db_pool = await asyncpg.create_pool(settings.POSTGRES_ASYNC_URI.get_secret_value(),
-                                            min_size=1,
-                                            max_size=settings.POSTGRES_POOL_SIZE)
+            db_pool = await asyncpg.create_pool(
+                settings.POSTGRES_ASYNC_URI.get_secret_value(),
+                min_size=1,
+                max_size=settings.POSTGRES_POOL_SIZE,
+            )
 
             job_time = datetime.now()
             with Timer(name="process_channels"):
                 async with aiohttp.ClientSession(connector=connector) as http_conn_pool:
-                    for i in range(0, len(channel_ids), settings.WARPCAST_PARALLEL_REQUESTS):
+                    for i in range(
+                        0, len(channel_ids), settings.WARPCAST_PARALLEL_REQUESTS
+                    ):
                         tasks = []
-                        batch = channel_ids[i:i + settings.WARPCAST_PARALLEL_REQUESTS]
-                        logger.info(f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{batch} channels to process")
+                        batch = channel_ids[i : i + settings.WARPCAST_PARALLEL_REQUESTS]
+                        logger.info(
+                            f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{batch} channels to process"
+                        )
                         for channel_id in batch:
                             tasks.append(
                                 asyncio.create_task(
                                     channel_extractor_utils.process_channel(
                                         job_type=job_type,
                                         job_time=job_time,
-                                        db_pool=db_pool, # type: ignore
+                                        db_pool=db_pool,  # type: ignore
                                         http_conn_pool=http_conn_pool,
                                         http_timeout=http_timeout,
                                         channel_id=channel_id,
                                     )
                                 )
                             )
-                        channel_followers = await asyncio.gather(*tasks, return_exceptions=True)
-                        exceptions = [t for t in channel_followers if isinstance(t, Exception)]
-                        if len(exceptions) > 0: 
+                        channel_followers = await asyncio.gather(
+                            *tasks, return_exceptions=True
+                        )
+                        exceptions = [
+                            t for t in channel_followers if isinstance(t, Exception)
+                        ]
+                        if len(exceptions) > 0:
                             logger.error(f"Error processing channels: {exceptions}")
                             if job_type == JobType.members:
-                                # warpcast_members table is replaced with every run. 
+                                # warpcast_members table is replaced with every run.
                                 # so, fail the whole job even for 1 channel failure
                                 raise Exception("Error processing channels")
                             else:
                                 # warpcast_followers table only deletes channels that have had new successful runs
                                 # don't fail the whole job
                                 pass
-                        logger.info(f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{len(channel_followers)} channels processed")
+                        logger.info(
+                            f"batch[{i},{i + settings.WARPCAST_PARALLEL_REQUESTS}]:{len(channel_followers)} channels processed"
+                        )
 
             if daemon:
-                logger.info(f"sleeping for {settings.DAEMON_SLEEP_SECS}s before the next run of this job")
+                logger.info(
+                    f"sleeping for {settings.DAEMON_SLEEP_SECS}s before the next run of this job"
+                )
                 await asyncio.sleep(settings.DAEMON_SLEEP_SECS)
                 logger.info(f"waking up after {settings.DAEMON_SLEEP_SECS}s sleep")
             else:
@@ -122,6 +137,7 @@ async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
                 await db_pool.close()
     # end while loop
 
+
 def replace_old_data(job_type: JobType):
     if job_type == JobType.followers:
         # followers job allows for failures in fetching
@@ -131,23 +147,28 @@ def replace_old_data(job_type: JobType):
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
     channel_extractor_utils.replace_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
+
 def merge_old_data(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    short_timeout_ms = settings.POSTGRES_TIMEOUT_SECS * 1_000 # typically 60 secs
-    long_timeout_ms = 300_000 # 5 mins
-    channel_extractor_utils.merge_db(pg_dsn, short_timeout_ms, long_timeout_ms, job_type)
+    short_timeout_ms = settings.POSTGRES_TIMEOUT_SECS * 1_000  # typically 60 secs
+    long_timeout_ms = 300_000  # 5 mins
+    channel_extractor_utils.merge_db(
+        pg_dsn, short_timeout_ms, long_timeout_ms, job_type
+    )
+
 
 def prepare(job_type: JobType):
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     sql_timeout_milliseconds = settings.POSTGRES_TIMEOUT_SECS * 1_000
     channel_extractor_utils.prepare_db(pg_dsn, sql_timeout_milliseconds, job_type)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(
-        dest="subcommand", 
-        title="subcommands", 
+        dest="subcommand",
+        title="subcommands",
         help="fetch or cleanup",
         required=True,
     )
@@ -180,11 +201,7 @@ if __name__ == "__main__":
         type=Scope,
     )
     fetch_parser.add_argument(
-        "-d",
-        "--daemon",
-        help="set or not",
-        default=False,
-        action="store_true"
+        "-d", "--daemon", help="set or not", default=False, action="store_true"
     )
     cleanup_parser.add_argument(
         "-j",
@@ -215,5 +232,5 @@ if __name__ == "__main__":
             merge_old_data(args.job_type)
     elif args.subcommand == "fetch":
         asyncio.run(fetch(args.daemon, args.scope, args.job_type, args.csv))
-    else: 
+    else:
         parser.print_help()

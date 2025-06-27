@@ -1,8 +1,9 @@
+import json
+import os
 
-import os, json
-from dune_client.types import QueryParameter
 from dune_client.client import DuneClient
 from dune_client.query import QueryBase
+from dune_client.types import QueryParameter
 
 # change the current working directory where .env file lives
 # os.chdir("/Users/abc/local-Workspace/python-notebook-examples")
@@ -17,12 +18,12 @@ query = QueryBase(
 )
 
 result = dune.run_query(
-    query = query,
+    query=query,
     # performance = 'large' # optionally define which tier to run the execution on (default is "medium")
 )
 
 if len(result.result.rows) != 1:
-  raise "not one"
+    raise "not one"
 
 last_date = result.result.rows[0][os.environ["FILTER_COLUMN"]]
 print(last_date)

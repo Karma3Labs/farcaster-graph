@@ -1,46 +1,47 @@
 # standard dependencies
-import sys
 import argparse
+import sys
 
-# local dependencies
-from config import settings
-import utils
-import cura_utils
+import pandas as pd
 
 # 3rd party dependencies
 from dotenv import load_dotenv
 from loguru import logger
-import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
+
+import cura_utils
+import utils
+
+# local dependencies
+from config import settings
 
 # Configure logger
 logger.remove()
-level_per_module = {
-    "": settings.LOG_LEVEL,
-    "silentlib": False
-}
-logger.add(sys.stdout,
-           colorize=True,
-           format=settings.LOGURU_FORMAT,
-           filter=level_per_module,
-           level=0)
+level_per_module = {"": settings.LOG_LEVEL, "silentlib": False}
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format=settings.LOGURU_FORMAT,
+    filter=level_per_module,
+    level=0,
+)
 
 load_dotenv()
+
 
 def main() -> pd.DataFrame:
     df = cura_utils.fetch_channel_hide_list()
     rename_cols = {
-        'channelId': 'channel_id',
-        'hiddenFid': 'hidden_fid',
-        'hiderFid': 'hider_fid',
-        'isActive': 'is_active',
-        'created_at': 'created_at',
-        'updatedAt': 'updated_at',
+        "channelId": "channel_id",
+        "hiddenFid": "hidden_fid",
+        "hiderFid": "hider_fid",
+        "isActive": "is_active",
+        "created_at": "created_at",
+        "updatedAt": "updated_at",
     }
     df.rename(columns=rename_cols, inplace=True)
     logger.info(utils.df_info_to_string(df, with_sample=True, head=True))
-    table_name = 'cura_hidden_fids'
+    table_name = "cura_hidden_fids"
     if settings.IS_TEST:
         logger.info(f"Skipping replace data in the database: {table_name}")
         return
@@ -56,7 +57,7 @@ def main() -> pd.DataFrame:
         with postgres_engine.begin() as conn:
             # within transaction boundary
             conn.execute(text(f"TRUNCATE TABLE {table_name};"))
-            df.to_sql(table_name, con=conn, if_exists='append', index=False)
+            df.to_sql(table_name, con=conn, if_exists="append", index=False)
     except Exception as e:
         logger.error(f"Failed to replace data in the database: {e}")
         raise e
@@ -67,7 +68,7 @@ def main() -> pd.DataFrame:
         )
         with alt_postgres_engine.begin() as conn:
             conn.execute(text(f"TRUNCATE TABLE {table_name};"))
-            df.to_sql(table_name, con=conn, if_exists='append', index=False)
+            df.to_sql(table_name, con=conn, if_exists="append", index=False)
     except Exception as e:
         logger.error(f"Failed to replace data in the database: {e}")
         raise e
@@ -81,13 +82,9 @@ if __name__ == "__main__":
         "--run",
         action="store_true",
         help="dummy arg to prevent accidental execution",
-        required=True
+        required=True,
     )
-    parser.add_argument(
-        "--dry-run",
-        help="indicate dry-run mode",
-        action="store_true"
-    )
+    parser.add_argument("--dry-run", help="indicate dry-run mode", action="store_true")
     args = parser.parse_args()
     print(args)
     logger.info(settings)

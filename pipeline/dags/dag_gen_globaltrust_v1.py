@@ -1,25 +1,23 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.utils.trigger_rule import TriggerRule
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.bash import BashOperator
-
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.utils.trigger_rule import TriggerRule
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
-
 default_args = {
-    'owner': 'karma3labs',
-    'retries': 5,
-    'retry_delay': timedelta(minutes=2),
-    'on_failure_callback': [send_alert_discord, send_alert_pagerduty],
+    "owner": "karma3labs",
+    "retries": 5,
+    "retry_delay": timedelta(minutes=2),
+    "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
 with DAG(
-    dag_id='gen_globaltrust_v1',
+    dag_id="gen_globaltrust_v1",
     default_args=default_args,
-    description='This runs run_globaltrust_pipeline.sh without any optimization',
+    description="This runs run_globaltrust_pipeline.sh without any optimization",
     start_date=datetime(2024, 8, 16),
     # schedule_interval='0 */6 * * *',
     schedule_interval=timedelta(hours=12),
@@ -28,63 +26,72 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    mkdir_tmp =  BashOperator(
+    mkdir_tmp = BashOperator(
         task_id="mkdir_tmp",
-        bash_command= "cd /pipeline; mkdir -p tmp/{{ run_id }}; mkdir -p tmp/graph_files",
-        dag=dag)
+        bash_command="cd /pipeline; mkdir -p tmp/{{ run_id }}; mkdir -p tmp/graph_files",
+        dag=dag,
+    )
 
     prep_globaltrust = BashOperator(
         task_id="prep_globaltrust",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s prep"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
-        dag=dag)
-    
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s prep"
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag,
+    )
+
     gen_90day_graph = BashOperator(
         task_id="gen_90day_localtrust",
         bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s graph"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d {{ macros.ds_add(ds, -90) }}",
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/ -d {{ macros.ds_add(ds, -90) }}",
         dag=dag,
     )
 
     compute_v3engagement = BashOperator(
         task_id="compute_v3engagement",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_v3engagement"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
-        dag=dag)
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_v3engagement"
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag,
+    )
 
     compute_engagement = BashOperator(
         task_id="compute_engagement",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_engagement"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
-        dag=dag)
-    
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_engagement"
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag,
+    )
+
     compute_following = BashOperator(
         task_id="compute_following",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_following"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
-        dag=dag)
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s compute_following"
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag,
+    )
 
     insert_db = BashOperator(
         task_id="insert_db",
-        bash_command= "cd /pipeline; ./run_globaltrust_pipeline.sh -s insert_db"
-                        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
-        dag=dag)
-    
-    upload_to_dune =  BashOperator(
+        bash_command="cd /pipeline; ./run_globaltrust_pipeline.sh -s insert_db"
+        " -w . -v ./.venv -t tmp/{{ run_id }} -o tmp/graph_files/",
+        dag=dag,
+    )
+
+    upload_to_dune = BashOperator(
         task_id="upload_to_dune",
-        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3",
-        dag=dag)
+        bash_command="cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3",
+        dag=dag,
+    )
 
-    upload_to_s3 =  BashOperator(
+    upload_to_s3 = BashOperator(
         task_id="upload_to_s3",
-        bash_command= "cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_global_engagement_rankings_in_s3",
-        dag=dag)
+        bash_command="cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_global_engagement_rankings_in_s3",
+        dag=dag,
+    )
 
-    rmdir_tmp =  BashOperator(
+    rmdir_tmp = BashOperator(
         task_id="rmdir_tmp",
-        bash_command= "cd /pipeline; rm -rf tmp/{{ run_id }}",
+        bash_command="cd /pipeline; rm -rf tmp/{{ run_id }}",
         trigger_rule=TriggerRule.ONE_SUCCESS,
-        dag=dag)
+        dag=dag,
+    )
 
     trigger_copy_to_replica = TriggerDagRunOperator(
         task_id="trigger_copy_to_replica",
