@@ -106,9 +106,22 @@ LimitCastsField = Annotated[
 SessionIdField = Annotated[str, Field(alias="sessionId")]
 TokenAddressField = Annotated[str, Field(alias="tokenAddress")]
 MinBalanceField = Annotated[Decimal, Field(alias="minBalance")]
+
+
+def _validate_weights(v: str | list[str]) -> Weights:
+    if isinstance(v, list) and v:
+        # FastAPI treats Weights as a repeatable type because it is a sequence
+        # (NamedTuple).  Take the last entry.
+        v = v[-1]
+    if isinstance(v, str):
+        return Weights.from_str(v)
+    msg = f"Invalid weights: {v!r}"
+    raise ValueError(msg)
+
+
 WeightsField = Annotated[
     Weights,
-    PlainValidator(Weights.from_str),
+    PlainValidator(_validate_weights, json_schema_input_type=str),
     PlainSerializer(str),
     WithJsonSchema(
         {

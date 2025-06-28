@@ -55,7 +55,7 @@ async def task_with_timeout(task_id, task_coroutine, task_timeout):
 @router.get("/scores")
 async def get_cast_scores(
     hashes: Annotated[list[HexBytes], Query(alias="hash", max_length=1000)],
-    weights: Annotated[WeightsField, Query()] = Weights.from_str("L1C10R5Y1"),
+    weights: Annotated[WeightsField, Query()] = "L1C10R5Y1",
     time_decay_base: TimeDecayBaseField = 0.9,
     time_decay_period: TimeDecayPeriodField = timedelta(days=1),
     pool: Pool = Depends(db_pool.get_db),
