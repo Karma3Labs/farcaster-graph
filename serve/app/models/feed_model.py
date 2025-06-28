@@ -84,7 +84,7 @@ ReactionsThresholdField = Annotated[int, Field(alias="reactionsThreshold", ge=0)
 CutoffPtileField = Annotated[int, Field(alias="cutoffPtile", le=100, ge=0)]
 SortingOrderField = Annotated[SortingOrder, Field(alias="sortingOrder")]
 TimeDecayField = Annotated[CastsTimeDecay, Field(alias="timeDecay")]
-TimeDecayBaseField = Annotated[float, Field(alias="timeDecayBase", gt=0, le=0)]
+TimeDecayBaseField = Annotated[float, Field(alias="timeDecayBase", gt=0, le=1)]
 TimeDecayPeriodField = Annotated[timedelta, Field(alias="timeDecayPeriod")]
 TimeBucketLengthField = Annotated[timedelta, Field(alias="timeBucketLength")]
 TimeoutSecsField = Annotated[int, Field(alias="timeoutSecs", ge=3, le=30)]
