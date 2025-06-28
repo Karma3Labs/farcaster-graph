@@ -46,7 +46,7 @@ class Weights(NamedTuple):
             weights_str,
         )
         if wts is None:
-            raise Exception("Invalid weights")
+            raise ValueError(f"Invalid weights {weights_str=}")
         return Weights(
             like=0 if wts.group(2) is None else wts.group(2),
             cast=0 if wts.group(4) is None else wts.group(4),
