@@ -42,7 +42,7 @@ class Weights(NamedTuple):
     @staticmethod
     def from_str(weights_str: str) -> Self:
         wts = re.search(
-            r'^([lL](\d{1,2}))?([cC](\d{1,2}))?([rR](\d{1,2}))?([yY](\d{1,2}))?$',
+            r'^([lL]([0-9]+))?([cC]([0-9]+))?([rR]([0-9]+))?([yY]([0-9]+))?$',
             weights_str,
         )
         if wts is None:
