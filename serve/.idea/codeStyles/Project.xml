@@ -14,6 +14,11 @@
       <option name="SELECT_ALIGN_AS" value="false" />
       <option name="FROM_INDENT_JOIN" value="false" />
     </SqlCodeStyleSettings>
+    <codeStyleSettings language="Python">
+      <indentOptions>
+        <option name="CONTINUATION_INDENT_SIZE" value="4" />
+      </indentOptions>
+    </codeStyleSettings>
     <codeStyleSettings language="SQL">
       <option name="KEEP_LINE_BREAKS" value="false" />
     </codeStyleSettings>
