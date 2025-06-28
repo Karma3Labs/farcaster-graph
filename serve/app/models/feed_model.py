@@ -13,7 +13,7 @@ from pydantic import (
 )
 
 from ..config import settings
-from .score_model import ScoreAgg
+from . import HexBytes
 from .score_model import ScoreAgg, Weights
 
 
@@ -242,3 +242,8 @@ FeedMetadata = TypeAdapter(
 ScoresMetadata = TypeAdapter(
     Annotated[Union[SearchScores, ReplyScores], Field(discriminator="score_type")]
 )
+
+
+class CastScore(BaseModel):
+    hash: HexBytes
+    score: float

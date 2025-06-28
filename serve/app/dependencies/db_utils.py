@@ -26,7 +26,7 @@ from app.models.channel_model import (
     ChannelFidType,
     ChannelPointsOrderBy,
 )
-from app.models.feed_model import CastsTimeDecay, SortingOrder
+from app.models.feed_model import CastScore, CastsTimeDecay, SortingOrder
 from app.models.score_model import ScoreAgg, Voting, Weights
 
 from ..config import DBVersion, settings
@@ -3196,3 +3196,48 @@ async def get_trending_channels(
     return await fetch_rows(
         rank_threshold, offset, limit, sql_query=sql_query, pool=pool
     )
+
+
+async def score_casts(
+    hashes: list[bytes],
+    weights: Weights,
+    time_decay_base: float,
+    time_decay_period: timedelta,
+    pool: Pool,
+) -> list[CastScore]:
+    decay_sql = sql_for_decay(
+        "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - action_ts",
+        period=time_decay_period,
+        base=time_decay_base,
+    )
+    query = f"""
+    WITH ca AS (
+        SELECT
+            cast_hash AS hash,
+            fid,
+            (
+                liked * $2 +
+                casted * $3 +
+                recasted * $4 +
+                replied * $5
+            ) * {decay_sql} AS weight
+        FROM k3l_cast_action
+        WHERE cast_hash = ANY($1::bytea[])
+    )
+    SELECT
+        ca.hash,
+        sum(ca.weight * r.score) AS score
+    FROM ca
+    JOIN k3l_rank r ON ca.fid = r.profile_id AND r.strategy_id = 9
+    GROUP BY ca.hash
+    """
+    rows = await fetch_rows(
+        hashes,
+        weights.like,
+        weights.cast,
+        weights.recast,
+        weights.reply,
+        sql_query=query,
+        pool=pool,
+    )
+    return [CastScore(**row) for row in rows]

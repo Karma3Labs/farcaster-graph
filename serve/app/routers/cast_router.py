@@ -1,6 +1,7 @@
 import asyncio
 import urllib.parse
 from asyncio import TimeoutError
+from datetime import timedelta
 from typing import Annotated, Any, List
 
 import niquests
@@ -11,9 +12,17 @@ from pydantic_core import ValidationError
 
 from ..config import settings
 from ..dependencies import db_pool, db_utils, graph
+from ..models import HexBytes
 from ..models.channel_model import ChannelRankingsTimeframe
-from ..models.feed_model import FeedMetadata, TokenFeed
-from ..models.graph_model import Graph, GraphTimeframe
+from ..models.feed_model import (
+    CastScore,
+    FeedMetadata,
+    TimeDecayBaseField,
+    TimeDecayPeriodField,
+    TokenFeed,
+    WeightsField,
+)
+from ..models.graph_model import Graph
 from ..models.score_model import ScoreAgg, Weights
 from . import channel_router
 
@@ -41,6 +50,26 @@ async def task_with_timeout(task_id, task_coroutine, task_timeout):
         return task_id, result
     except TimeoutError:
         return task_id, None
+
+
+@router.get("/scores")
+async def get_cast_scores(
+    hashes: Annotated[list[HexBytes], Query(alias="hash", max_length=1000)],
+    weights: Annotated[WeightsField, Query()] = Weights.from_str("L1C10R5Y1"),
+    time_decay_base: TimeDecayBaseField = 0.9,
+    time_decay_period: TimeDecayPeriodField = timedelta(days=1),
+    pool: Pool = Depends(db_pool.get_db),
+) -> list[CastScore]:
+    """
+    Return the cast scores for the given cast hashes.
+    """
+    return await db_utils.score_casts(
+        hashes=hashes,
+        weights=weights,
+        time_decay_base=time_decay_base,
+        time_decay_period=time_decay_period,
+        pool=pool,
+    )
 
 
 @router.get("/personalized/popular/{fid}", tags=["For You Feed", "Neynar For You Feed"])
