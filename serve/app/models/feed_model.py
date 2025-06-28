@@ -3,10 +3,18 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import (
+    BaseModel,
+    Field,
+    PlainSerializer,
+    PlainValidator,
+    TypeAdapter,
+    WithJsonSchema,
+)
 
 from ..config import settings
 from .score_model import ScoreAgg
+from .score_model import ScoreAgg, Weights
 
 
 class SortingOrder(StrEnum):
@@ -98,6 +106,18 @@ LimitCastsField = Annotated[
 SessionIdField = Annotated[str, Field(alias="sessionId")]
 TokenAddressField = Annotated[str, Field(alias="tokenAddress")]
 MinBalanceField = Annotated[Decimal, Field(alias="minBalance")]
+WeightsField = Annotated[
+    Weights,
+    PlainValidator(Weights.from_str),
+    PlainSerializer(str),
+    WithJsonSchema(
+        {
+            "type": "string",
+            "pattern": "^(L[0-9]+)?(C[0-9]+)?(R[0-9]+)?(Y[0-9]+)?$",
+            "examples": ["L1C0R1Y1", "L1C15R5Y1"],
+        }
+    ),
+]
 
 
 class TrendingFeed(BaseModel):

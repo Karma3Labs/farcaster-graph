@@ -53,3 +53,6 @@ class Weights(NamedTuple):
             recast=0 if wts.group(6) is None else wts.group(6),
             reply=0 if wts.group(8) is None else wts.group(8),
         )
+
+    def __str__(self) -> str:
+        return f"L{self.like}C{self.cast}R{self.recast}Y{self.reply}"
