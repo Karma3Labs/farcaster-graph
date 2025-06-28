@@ -39,15 +39,15 @@ class Weights(NamedTuple):
     reply: int = 7
     like: int = 1
 
-    @staticmethod
-    def from_str(weights_str: str) -> Self:
+    @classmethod
+    def from_str(cls, weights_str: str) -> Self:
         wts = re.search(
             r'^([lL]([0-9]+))?([cC]([0-9]+))?([rR]([0-9]+))?([yY]([0-9]+))?$',
             weights_str,
         )
         if wts is None:
             raise ValueError(f"Invalid weights {weights_str=}")
-        return Weights(
+        return cls(
             like=0 if wts.group(2) is None else wts.group(2),
             cast=0 if wts.group(4) is None else wts.group(4),
             recast=0 if wts.group(6) is None else wts.group(6),
