@@ -48,10 +48,10 @@ class Weights(NamedTuple):
         if wts is None:
             raise ValueError(f"Invalid weights {weights_str=}")
         return cls(
-            like=0 if wts.group(2) is None else wts.group(2),
-            cast=0 if wts.group(4) is None else wts.group(4),
-            recast=0 if wts.group(6) is None else wts.group(6),
-            reply=0 if wts.group(8) is None else wts.group(8),
+            like=0 if wts.group(2) is None else int(wts.group(2)),
+            cast=0 if wts.group(4) is None else int(wts.group(4)),
+            recast=0 if wts.group(6) is None else int(wts.group(6)),
+            reply=0 if wts.group(8) is None else int(wts.group(8)),
         )
 
     def __str__(self) -> str:
