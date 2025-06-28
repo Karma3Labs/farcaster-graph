@@ -13,6 +13,7 @@ asyncpg = "^0.29.0"
 sqlalchemy = "^2.0.25"
 loguru = "^0.7.2"
 igraph = "^0.11.3"
+pydantic = "^2.9.0"
 pydantic-settings = "^2.1.0"
 psutil = "^5.9.8"
 pandas = {extras = ["performance"], version = "^2.2.2"}
