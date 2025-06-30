@@ -389,6 +389,7 @@ SELECT
     weights,
     fid,
     username,
+    interaction_count,
     creator_count,
     creators
 FROM noice_top_tippers
