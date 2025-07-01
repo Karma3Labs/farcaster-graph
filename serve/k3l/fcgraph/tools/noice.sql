@@ -334,6 +334,14 @@ SELECT
     cr.cast_score_total,
     cr.tipper_count,
     cr.tippers,
+    (
+        WITH tippers (i) AS (SELECT unnest(cr.tippers))
+
+        SELECT sum(tgt.v)
+        FROM globaltrust AS tgt
+        INNER JOIN tippers USING (i)
+        WHERE tgt.strategy_id = 9 AND tgt.date = '2025-06-20'
+    ) AS tipper_openrank_score_total,
     coalesce(gt.v, 0) AS openrank_score,
     coalesce(f.count, 0) AS follower_count
 FROM creators AS cr
@@ -356,6 +364,7 @@ SELECT
     cast_score_total,
     tipper_count,
     tippers,
+    tipper_openrank_score_total,
     openrank_score,
     follower_count
 FROM noice_top_creators
