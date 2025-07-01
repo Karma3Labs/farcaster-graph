@@ -20,6 +20,31 @@ CREATE OR REPLACE AGGREGATE array_union_agg (anyarray)(
 ALTER AGGREGATE array_union_agg (anyarray) OWNER TO k3l_user;
 GRANT EXECUTE ON FUNCTION array_union_agg(anyarray) TO k3l_readonly;
 
+DROP TABLE IF EXISTS noice_tippers_final_raw CASCADE;
+CREATE TABLE noice_tippers_final_raw (
+    from_fid bigint NOT NULL,
+    all_to_fids text NOT NULL,
+    unique_to_fid_count_across_tokens bigint NOT NULL,
+    total_amount_across_tokens numeric NOT NULL,
+    PRIMARY KEY (from_fid)
+);
+ALTER TABLE noice_tippers_final_raw OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tippers_final_raw TO k3l_readonly;
+
+DROP MATERIALIZED VIEW IF EXISTS noice_tippers_final CASCADE;
+CREATE MATERIALIZED VIEW noice_tippers_final AS
+SELECT
+    from_fid AS fid,
+    string_to_array(
+        regexp_replace(all_to_fids, '[\[\]\s]', '', 'g'),
+        ','
+    )::bigint [] AS tipped_fids,
+    total_amount_across_tokens
+FROM noice_tippers_final_raw;
+ALTER MATERIALIZED VIEW noice_tippers_final OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tippers_final TO k3l_readonly;
+CREATE INDEX noice_tippers_final_fid_idx ON noice_tippers_final (fid);
+
 DROP TABLE IF EXISTS noice_variants_raw CASCADE;
 CREATE TABLE noice_variants_raw (
     liked integer NOT NULL,
@@ -393,6 +418,9 @@ GROUP BY c.weights, t.fid, p.username;
 ALTER VIEW noice_top_tippers OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_tippers TO k3l_readonly;
 
+-- TODO(ek) - merge noice_tippers_final into noice_tipper_scores above
+-- TODO(ek) - retire old noice_tippers
+
 -- noice-top-tippers.csv
 SELECT
     t.weights,
@@ -410,7 +438,17 @@ SELECT
         WHERE cgt.strategy_id = 9 AND cgt.date = '2025-06-20'
     ) AS creator_openrank_score_total,
     coalesce(gt.v, 0) AS openrank_score,
-    coalesce(f.count, 0) AS follower_count
+    coalesce(f.count, 0) AS follower_count,
+    ft.total_amount_across_tokens,
+    ft.tipped_fids,
+    coalesce((
+        WITH fids (i) AS (SELECT unnest(ft.tipped_fids))
+
+        SELECT sum(gt.v)
+        FROM globaltrust AS gt
+        INNER JOIN fids USING (i)
+        WHERE gt.strategy_id = 9 AND gt.date = '2025-06-20'
+    ), 0) AS tipped_fids_openrank_score
 FROM noice_top_tippers AS t
 LEFT OUTER JOIN globaltrust AS gt
     ON
@@ -418,5 +456,6 @@ LEFT OUTER JOIN globaltrust AS gt
         AND gt.strategy_id = 9
         AND gt.date = '2025-06-20'
 LEFT OUTER JOIN k3l_follower_counts_matview AS f ON t.fid = f.fid
+LEFT OUTER JOIN noice_tippers_final AS ft ON t.fid = ft.fid
 WHERE t.weights = 'L1C0R2Y2Q3'
 ORDER BY creator_openrank_score_total DESC;
