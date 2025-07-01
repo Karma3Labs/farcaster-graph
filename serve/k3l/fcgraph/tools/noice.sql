@@ -395,12 +395,12 @@ GRANT SELECT ON TABLE noice_top_tippers TO k3l_readonly;
 
 -- noice-top-tippers.csv
 SELECT
-    weights,
-    fid,
-    username,
-    interaction_count,
-    creator_count,
-    creators
-FROM noice_top_tippers
-WHERE weights = 'L1C0R2Y2Q3'
-ORDER BY interaction_count DESC;
+    t.weights,
+    t.fid,
+    t.username,
+    t.interaction_count,
+    t.creator_count,
+    t.creators
+FROM noice_top_tippers AS t
+WHERE t.weights = 'L1C0R2Y2Q3'
+ORDER BY t.interaction_count DESC;
