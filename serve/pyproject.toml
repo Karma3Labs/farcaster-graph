@@ -50,3 +50,6 @@ skip-string-normalization = true
 
 [tool.sqlfluff.core]
 dialect = "postgres"
+
+[tool.isort]
+skip_gitignore = true

@@ -59,3 +59,6 @@ Issues = "https://github.com/Karma3Labs/farcaster-graph/issues"
 
 [tool.flit.module]
 name = "k3l.fcgraph.pipeline"
+
+[tool.isort]
+skip_gitignore = true
