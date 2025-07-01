@@ -4,7 +4,8 @@ dist/
 .env.docker
 .*.credentials.json
 build/
-.venv
+.venv/
+.venvs/
 *.pyc
 **/.ipynb_checkpoints
 **/.DS_Store
