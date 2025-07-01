@@ -400,7 +400,23 @@ SELECT
     t.username,
     t.interaction_count,
     t.creator_count,
-    t.creators
+    t.creators,
+    (
+        WITH creators (i) AS (SELECT unnest(t.creators))
+
+        SELECT sum(cgt.v)
+        FROM globaltrust AS cgt
+        INNER JOIN creators USING (i)
+        WHERE cgt.strategy_id = 9 AND cgt.date = '2025-06-20'
+    ) AS creator_openrank_score_total,
+    coalesce(gt.v, 0) AS openrank_score,
+    coalesce(f.count, 0) AS follower_count
 FROM noice_top_tippers AS t
+LEFT OUTER JOIN globaltrust AS gt
+    ON
+        t.fid = gt.i
+        AND gt.strategy_id = 9
+        AND gt.date = '2025-06-20'
+LEFT OUTER JOIN k3l_follower_counts_matview AS f ON t.fid = f.fid
 WHERE t.weights = 'L1C0R2Y2Q3'
-ORDER BY t.interaction_count DESC;
+ORDER BY creator_openrank_score_total DESC;
