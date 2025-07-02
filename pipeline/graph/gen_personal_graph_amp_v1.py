@@ -128,7 +128,14 @@ def process_slice(
     logger.debug(f"{process_label}{len(results)} results available")
 
     pl_slice = pl.LazyFrame(
-        results, schema={"fid": pl.UInt32, "degree": pl.UInt8, "scores": pl.List}
+        results,
+        schema={
+            "fid": pl.UInt32,
+            "degree": pl.UInt8,
+            "scores": pl.List(
+                pl.Struct([pl.Field("i", pl.UInt32), pl.Field("v", pl.Float32)])
+            ),
+        },
     )
 
     logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
