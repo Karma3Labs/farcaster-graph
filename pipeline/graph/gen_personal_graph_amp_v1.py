@@ -127,16 +127,26 @@ def process_slice(
 
     logger.debug(f"{process_label}{len(results)} results available")
 
-    pl_slice = pl.LazyFrame(
-        results,
-        schema={
-            "fid": pl.UInt32,
-            "degree": pl.UInt8,
-            "scores": pl.List(
-                pl.Struct([pl.Field("i", pl.UInt32), pl.Field("v", pl.Float32)])
-            ),
-        },
-    )
+    try:
+        pl_slice = pl.LazyFrame(
+            results,
+            schema={
+                "fid": pl.UInt32,
+                "degree": pl.UInt8,
+                "scores": pl.List(
+                    pl.Struct([pl.Field("i", pl.UInt32), pl.Field("v", pl.Float32)])
+                ),
+            },
+        )
+    except Exception as e:
+        import pprint
+
+        logger.error(
+            f"{process_label} Polars DataFrame creation failed! Printing the 'results' variable that caused the error:"
+        )
+        logger.error(pprint.pformat(results))
+        logger.error(f"------------------- END OF RESULTS DUMP -------------------")
+        raise
 
     logger.debug(f"{process_label}pl_slice: {pl_slice.describe()}")
 
