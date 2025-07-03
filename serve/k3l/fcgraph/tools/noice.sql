@@ -45,6 +45,16 @@ ALTER MATERIALIZED VIEW noice_tippers_final OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tippers_final TO k3l_readonly;
 CREATE INDEX noice_tippers_final_fid_idx ON noice_tippers_final (fid);
 
+DROP VIEW IF EXISTS noice_gt CASCADE;
+CREATE VIEW noice_gt AS
+SELECT
+    i,
+    v
+FROM globaltrust
+WHERE strategy_id = 9 AND date = '2025-07-01';
+ALTER VIEW noice_gt OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_gt TO k3l_readonly;
+
 DROP TABLE IF EXISTS noice_variants_raw CASCADE;
 CREATE TABLE noice_variants_raw (
     liked integer NOT NULL,
@@ -92,11 +102,8 @@ WITH va AS (
         va.fid,
         gt.v AS score
     FROM neynarv3.verifications AS va
-    LEFT JOIN globaltrust AS gt ON va.fid = gt.i
-    WHERE
-        va.deleted_at IS NULL
-        AND gt.strategy_id = 9
-        AND gt.date = '2025-06-20'
+    LEFT JOIN noice_gt AS gt ON va.fid = gt.i
+    WHERE va.deleted_at IS NULL
 )
 
 SELECT DISTINCT
@@ -363,18 +370,15 @@ SELECT
         WITH tippers (i) AS (SELECT unnest(cr.tippers))
 
         SELECT sum(tgt.v)
-        FROM globaltrust AS tgt
+        FROM noice_gt AS tgt
         INNER JOIN tippers USING (i)
-        WHERE tgt.strategy_id = 9 AND tgt.date = '2025-06-20'
     ) AS tipper_openrank_score_total,
     coalesce(gt.v, 0) AS openrank_score,
     coalesce(f.count, 0) AS follower_count
 FROM creators AS cr
-LEFT OUTER JOIN globaltrust AS gt
+LEFT OUTER JOIN noice_gt AS gt
     ON
         cr.fid = gt.i
-        AND gt.strategy_id = 9
-        AND gt.date = '2025-06-20'
 LEFT OUTER JOIN k3l_follower_counts AS f ON cr.fid = f.fid;
 ALTER VIEW noice_top_creators OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_creators TO k3l_readonly;
@@ -433,9 +437,8 @@ SELECT
         WITH creators (i) AS (SELECT unnest(t.creators))
 
         SELECT sum(cgt.v)
-        FROM globaltrust AS cgt
+        FROM noice_gt AS cgt
         INNER JOIN creators USING (i)
-        WHERE cgt.strategy_id = 9 AND cgt.date = '2025-06-20'
     ) AS creator_openrank_score_total,
     coalesce(gt.v, 0) AS openrank_score,
     coalesce(f.count, 0) AS follower_count,
@@ -445,16 +448,13 @@ SELECT
         WITH fids (i) AS (SELECT unnest(ft.tipped_fids))
 
         SELECT sum(gt.v)
-        FROM globaltrust AS gt
+        FROM noice_gt AS gt
         INNER JOIN fids USING (i)
-        WHERE gt.strategy_id = 9 AND gt.date = '2025-06-20'
     ), 0) AS tipped_fids_openrank_score
 FROM noice_top_tippers AS t
-LEFT OUTER JOIN globaltrust AS gt
+LEFT OUTER JOIN noice_gt AS gt
     ON
         t.fid = gt.i
-        AND gt.strategy_id = 9
-        AND gt.date = '2025-06-20'
 LEFT OUTER JOIN k3l_follower_counts_matview AS f ON t.fid = f.fid
 LEFT OUTER JOIN noice_tippers_final AS ft ON t.fid = ft.fid
 WHERE t.weights = 'L1C0R2Y2Q3'
