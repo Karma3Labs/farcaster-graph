@@ -129,7 +129,7 @@ SELECT
 FROM neynarv3.casts
 WHERE
     timestamp >= '2025-05-21T17:47:59Z'
-    AND timestamp < '2025-06-20T00:00:00Z';
+    AND timestamp < '2025-07-01T00:00:00Z';
 ALTER VIEW noice_candidate_casts OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_candidate_casts TO k3l_readonly;
 CREATE INDEX noice_candidate_casts_hash_idx ON noice_candidate_casts (hash);
@@ -155,7 +155,7 @@ q AS (
     FROM raw_quotes
     WHERE
         timestamp >= '2025-05-21T17:47:59Z'
-        AND timestamp < '2025-06-20T00:00:00Z'
+        AND timestamp < '2025-07-01T00:00:00Z'
     GROUP BY fid, cast_hash, timestamp
 ),
 
@@ -171,7 +171,7 @@ a AS (
     FROM k3l_cast_action_v1
     WHERE
         action_ts >= '2025-05-21T17:47:59Z'
-        AND action_ts < '2025-06-20T00:00:00Z'
+        AND action_ts < '2025-07-01T00:00:00Z'
 ),
 
 ca AS (
