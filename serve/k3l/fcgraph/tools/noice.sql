@@ -48,6 +48,78 @@ ALTER MATERIALIZED VIEW noice_tippers_final OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tippers_final TO k3l_readonly;
 CREATE INDEX noice_tippers_final_fid_idx ON noice_tippers_final (fid);
 
+DROP TABLE IF EXISTS noice_all_txs CASCADE;
+CREATE TABLE noice_all_txs (
+    id uuid NOT NULL,
+    from_fid bigint NOT NULL,
+    to_fid bigint NOT NULL,
+    token_address text NOT NULL,
+    amount numeric NOT NULL,
+    status text NOT NULL,
+    type text NOT NULL,
+    tx_hash text NOT NULL,
+    action_reference_id text NOT NULL,
+    idempotency_key text NOT NULL,
+    raw_payload jsonb,
+    created_at timestamp with time zone NOT NULL,
+    chain_id bigint NOT NULL
+);
+ALTER TABLE noice_all_txs OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_all_txs TO k3l_readonly;
+-- \COPY noice_all_txs FROM 'all_transactions.csv' (FORMAT CSV, HEADER MATCH);
+CREATE INDEX noice_all_txs_tx_hash_idx ON noice_all_txs (tx_hash);
+
+DROP MATERIALIZED VIEW IF EXISTS noice_txs CASCADE;
+CREATE MATERIALIZED VIEW noice_txs AS
+SELECT DISTINCT
+    id,
+    from_fid,
+    to_fid,
+    token_address,
+    amount,
+    status,
+    type,
+    tx_hash,
+    action_reference_id,
+    idempotency_key,
+    raw_payload,
+    created_at,
+    chain_id
+FROM noice_all_txs
+ORDER BY tx_hash;
+ALTER MATERIALIZED VIEW noice_txs OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_txs TO k3l_readonly;
+CREATE INDEX noice_txs_tx_hash_idx ON noice_txs (tx_hash);
+
+DROP MATERIALIZED VIEW IF EXISTS noice_tipping_actions CASCADE;
+CREATE MATERIALIZED VIEW noice_tipping_actions AS
+WITH a AS (
+    SELECT
+        from_fid,
+        to_fid,
+        type,
+        CASE
+            WHEN type = 'comment'
+                THEN json_value(raw_payload, '$.data.parent_hash')
+            WHEN type IN ('like', 'recast')
+                THEN coalesce(
+                    json_value(raw_payload, '$.data.cast.hash'),
+                    json_value(raw_payload, '$.data.hash')
+                )
+        END AS cast_hash
+    FROM noice_txs
+    WHERE type IN ('comment', 'like', 'recast') AND raw_payload IS NOT NULL
+)
+
+SELECT from_fid, to_fid, type, cast_hash
+FROM a
+WHERE cast_hash IS NOT NULL;
+ALTER MATERIALIZED VIEW noice_tipping_actions OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tipping_actions TO k3l_readonly;
+CREATE INDEX noice_tipping_actions_cast_hash_idx ON noice_tipping_actions (cast_hash);
+CREATE INDEX noice_tipping_actions_from_fid_idx ON noice_tipping_actions (from_fid, to_fid, type);
+CREATE INDEX noice_tipping_actions_to_fid_idx ON noice_tipping_actions (to_fid, from_fid, type);
+
 DROP VIEW IF EXISTS noice_gt CASCADE;
 CREATE VIEW noice_gt AS
 SELECT
