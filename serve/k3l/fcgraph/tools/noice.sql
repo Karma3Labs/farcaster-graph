@@ -471,8 +471,8 @@ SELECT
     coalesce((
         WITH fids (i) AS (SELECT unnest(ft.tipped_fids))
 
-        SELECT sum(gt.v)
-        FROM noice_gt AS gt
+        SELECT sum(cgt2.v)
+        FROM noice_gt AS cgt2
         INNER JOIN fids USING (i)
     ), 0) AS tipped_fids_openrank_score
 FROM noice_top_tippers AS t
