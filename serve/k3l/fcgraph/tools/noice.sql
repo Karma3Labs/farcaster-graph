@@ -31,6 +31,9 @@ CREATE TABLE noice_tippers_final_raw (
 ALTER TABLE noice_tippers_final_raw OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tippers_final_raw TO k3l_readonly;
 
+-- \COPY noice_tippers_final_raw FROM 'noice_unique_tippers_final.csv'
+-- (FORMAT CSV, HEADER MATCH);
+
 DROP MATERIALIZED VIEW IF EXISTS noice_tippers_final CASCADE;
 CREATE MATERIALIZED VIEW noice_tippers_final AS
 SELECT
