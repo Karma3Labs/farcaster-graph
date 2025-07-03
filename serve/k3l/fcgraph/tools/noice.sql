@@ -99,21 +99,20 @@ GRANT SELECT ON TABLE noice_variants TO k3l_readonly;
 
 DROP VIEW IF EXISTS noice_tipper_scores CASCADE;
 CREATE VIEW noice_tipper_scores AS
-WITH va AS (
-    SELECT
-        va.address,
-        va.fid,
-        gt.v AS score
-    FROM neynarv3.verifications AS va
-    LEFT JOIN noice_gt AS gt ON va.fid = gt.i
-    WHERE va.deleted_at IS NULL
-)
-
 SELECT DISTINCT
-    va.fid,
-    va.score
-FROM noice_tippers AS t
-INNER JOIN va ON t.address = va.address;
+    t.fid,
+    gt.v AS score,
+    t.total_amount_across_tokens,
+    t.tipped_fids,
+    coalesce((
+        WITH fids (i) AS (SELECT unnest(t.tipped_fids))
+
+        SELECT sum(cgt.v)
+        FROM noice_gt AS cgt
+        INNER JOIN fids ON cgt.i = fids.i
+    ), 0) AS tipped_fids_openrank_score
+FROM noice_tippers_final AS t
+LEFT JOIN noice_gt AS gt ON t.fid = gt.i;
 ALTER VIEW noice_tipper_scores OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tipper_scores TO k3l_readonly;
 
