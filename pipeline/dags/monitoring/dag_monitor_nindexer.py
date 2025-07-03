@@ -36,7 +36,7 @@ with DAG(
         sql="""
         SELECT 
 	        EXTRACT(EPOCH FROM (now() - max(created_at))) as max_createdat_lag_ms
-        FROM neynarv2.casts
+        FROM neynarv3.casts
         WHERE timestamp > now() - interval '1 days'
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
         """,
@@ -50,7 +50,7 @@ with DAG(
         sql="""
         SELECT 
 	        EXTRACT(EPOCH FROM (now() - max(timestamp))) as max_ts_lag_ms
-        FROM neynarv2.casts
+        FROM neynarv3.casts
         WHERE timestamp > now() - interval '1 days'
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
         """,
@@ -64,7 +64,7 @@ with DAG(
         sql="""
         SELECT
 	        EXTRACT(EPOCH FROM (now() - max(timestamp))) as max_ts_lag_ms
-        FROM neynarv2.reactions
+        FROM neynarv3.reactions
         WHERE timestamp > now() - interval '1 days'
         AND timestamp <= now() -- ignore casts with bad timestamp in the future
         AND deleted_at IS NULL
