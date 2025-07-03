@@ -120,6 +120,18 @@ CREATE INDEX noice_tipping_actions_cast_hash_idx ON noice_tipping_actions (cast_
 CREATE INDEX noice_tipping_actions_from_fid_idx ON noice_tipping_actions (from_fid, to_fid, type);
 CREATE INDEX noice_tipping_actions_to_fid_idx ON noice_tipping_actions (to_fid, from_fid, type);
 
+DROP VIEW IF EXISTS noice_tipping_stats CASCADE;
+CREATE VIEW noice_tipping_stats AS
+SELECT
+    from_fid AS fid,
+    count(*) AS num_tips,
+    count(DISTINCT to_fid) AS num_tipped_fids,
+    array_agg(DISTINCT to_fid) AS tipped_fids
+FROM noice_tipping_actions
+GROUP BY from_fid;
+ALTER VIEW noice_tipping_stats OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tipping_stats TO k3l_readonly;
+
 DROP VIEW IF EXISTS noice_gt CASCADE;
 CREATE VIEW noice_gt AS
 SELECT
@@ -519,7 +531,6 @@ ALTER VIEW noice_top_tippers OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_top_tippers TO k3l_readonly;
 
 -- TODO(ek) - merge noice_tippers_final into noice_tipper_scores above
--- TODO(ek) - retire old noice_tippers
 
 -- noice-top-tippers.csv
 SELECT
@@ -538,20 +549,21 @@ SELECT
     ) AS creator_openrank_score_total,
     coalesce(gt.v, 0) AS openrank_score,
     coalesce(f.count, 0) AS follower_count,
-    ft.total_amount_across_tokens,
-    ft.tipped_fids,
+    ft.num_tips,
+    ft.num_tipped_fids,
     coalesce((
         WITH fids (i) AS (SELECT unnest(ft.tipped_fids))
 
         SELECT sum(cgt2.v)
         FROM noice_gt AS cgt2
         INNER JOIN fids USING (i)
-    ), 0) AS tipped_fids_openrank_score
+    ), 0) AS tipped_fids_openrank_score,
+    ft.tipped_fids
 FROM noice_top_tippers AS t
 LEFT OUTER JOIN noice_gt AS gt
     ON
         t.fid = gt.i
 LEFT OUTER JOIN k3l_follower_counts_matview AS f ON t.fid = f.fid
-LEFT OUTER JOIN noice_tippers_final AS ft ON t.fid = ft.fid
+LEFT OUTER JOIN noice_tipping_stats AS ft ON t.fid = ft.fid
 WHERE t.weights = 'L1C0R2Y2Q3'
 ORDER BY creator_openrank_score_total DESC;
