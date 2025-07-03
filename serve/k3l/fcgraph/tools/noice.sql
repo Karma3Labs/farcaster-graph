@@ -413,12 +413,12 @@ SELECT
     fid,
     username,
     cast_count,
+    openrank_score,
     cast_ranks,
     cast_score_total,
     tipper_count,
     tippers,
     tipper_openrank_score_total,
-    openrank_score,
     follower_count
 FROM noice_top_creators
 WHERE weights = 'L1C0R2Y2Q3'
