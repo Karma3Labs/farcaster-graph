@@ -279,7 +279,8 @@ ON noice_casts_hydrated (weights, rank);
 CREATE INDEX noice_casts_hydrated_fid_idx ON noice_casts_hydrated (fid);
 CREATE INDEX noice_casts_hydrated_hash_idx ON noice_casts_hydrated (hash);
 
--- noice-casts-hydrated-ranked-10k.csv
+DROP VIEW IF EXISTS noice_casts_hydrated_10k CASCADE;
+CREATE VIEW noice_casts_hydrated_10k AS
 SELECT
     c.weights,
     c.rank,
@@ -299,6 +300,27 @@ SELECT
 FROM noice_casts_hydrated AS c
 LEFT OUTER JOIN k3l_follower_counts AS f ON c.fid = f.fid
 WHERE c.weights = 'L1C0R2Y2Q3' AND c.rank <= 10000;
+ALTER VIEW noice_casts_hydrated_10k OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_casts_hydrated_10k TO k3l_readonly;
+
+-- noice-casts-hydrated-10k.csv
+SELECT
+    weights,
+    rank,
+    score,
+    num_tippers,
+    tippers,
+    hash,
+    fid,
+    follower_count,
+    username,
+    timestamp,
+    parent_hash,
+    parent_url,
+    root_parent_hash,
+    root_parent_url,
+    text
+FROM noice_casts_hydrated_10k;
 
 DROP VIEW IF EXISTS noice_casts_dry_ranked CASCADE;
 CREATE VIEW noice_casts_dry_ranked AS
