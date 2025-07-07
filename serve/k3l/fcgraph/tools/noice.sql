@@ -91,47 +91,6 @@ ALTER MATERIALIZED VIEW noice_txs OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_txs TO k3l_readonly;
 CREATE INDEX noice_txs_tx_hash_idx ON noice_txs (tx_hash);
 
-DROP MATERIALIZED VIEW IF EXISTS noice_tipping_actions CASCADE;
-CREATE MATERIALIZED VIEW noice_tipping_actions AS
-WITH a AS (
-    SELECT
-        from_fid,
-        to_fid,
-        type,
-        CASE
-            WHEN type = 'comment'
-                THEN json_value(raw_payload, '$.data.parent_hash')
-            WHEN type IN ('like', 'recast')
-                THEN coalesce(
-                    json_value(raw_payload, '$.data.cast.hash'),
-                    json_value(raw_payload, '$.data.hash')
-                )
-        END AS cast_hash
-    FROM noice_txs
-    WHERE type IN ('comment', 'like', 'recast') AND raw_payload IS NOT NULL
-)
-
-SELECT from_fid, to_fid, type, cast_hash
-FROM a
-WHERE cast_hash IS NOT NULL;
-ALTER MATERIALIZED VIEW noice_tipping_actions OWNER TO k3l_user;
-GRANT SELECT ON TABLE noice_tipping_actions TO k3l_readonly;
-CREATE INDEX noice_tipping_actions_cast_hash_idx ON noice_tipping_actions (cast_hash);
-CREATE INDEX noice_tipping_actions_from_fid_idx ON noice_tipping_actions (from_fid, to_fid, type);
-CREATE INDEX noice_tipping_actions_to_fid_idx ON noice_tipping_actions (to_fid, from_fid, type);
-
-DROP VIEW IF EXISTS noice_tipping_stats CASCADE;
-CREATE VIEW noice_tipping_stats AS
-SELECT
-    from_fid AS fid,
-    count(*) AS num_tips,
-    count(DISTINCT to_fid) AS num_tipped_fids,
-    array_agg(DISTINCT to_fid) AS tipped_fids
-FROM noice_tipping_actions
-GROUP BY from_fid;
-ALTER VIEW noice_tipping_stats OWNER TO k3l_user;
-GRANT SELECT ON TABLE noice_tipping_stats TO k3l_readonly;
-
 DROP VIEW IF EXISTS noice_gt CASCADE;
 CREATE VIEW noice_gt AS
 SELECT
@@ -405,6 +364,48 @@ SELECT
     root_parent_url,
     text
 FROM noice_casts_hydrated_10k;
+
+DROP MATERIALIZED VIEW IF EXISTS noice_tipping_actions CASCADE;
+CREATE MATERIALIZED VIEW noice_tipping_actions AS
+WITH a AS (
+    SELECT
+        from_fid,
+        to_fid,
+        type,
+        CASE
+            WHEN type = 'comment'
+                THEN json_value(raw_payload, '$.data.parent_hash')
+            WHEN type IN ('like', 'recast')
+                THEN coalesce(
+                    json_value(raw_payload, '$.data.cast.hash'),
+                    json_value(raw_payload, '$.data.hash')
+                     )
+            END AS cast_hash
+    FROM noice_txs tx
+    WHERE type IN ('comment', 'like', 'recast') AND raw_payload IS NOT NULL
+)
+
+SELECT a.from_fid, a.to_fid, a.type, a.cast_hash
+FROM a
+JOIN noice_casts_hydrated_10k AS c ON lower(a.cast_hash) = lower('0x' || encode(c.hash, 'hex'))
+WHERE a.cast_hash IS NOT NULL;
+ALTER MATERIALIZED VIEW noice_tipping_actions OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tipping_actions TO k3l_readonly;
+CREATE INDEX noice_tipping_actions_cast_hash_idx ON noice_tipping_actions (cast_hash);
+CREATE INDEX noice_tipping_actions_from_fid_idx ON noice_tipping_actions (from_fid, to_fid, type);
+CREATE INDEX noice_tipping_actions_to_fid_idx ON noice_tipping_actions (to_fid, from_fid, type);
+
+DROP VIEW IF EXISTS noice_tipping_stats CASCADE;
+CREATE VIEW noice_tipping_stats AS
+SELECT
+    from_fid AS fid,
+    count(*) AS num_tips,
+    count(DISTINCT to_fid) AS num_tipped_fids,
+    array_agg(DISTINCT to_fid) AS tipped_fids
+FROM noice_tipping_actions
+GROUP BY from_fid;
+ALTER VIEW noice_tipping_stats OWNER TO k3l_user;
+GRANT SELECT ON TABLE noice_tipping_stats TO k3l_readonly;
 
 DROP VIEW IF EXISTS noice_casts_dry_ranked CASCADE;
 CREATE VIEW noice_casts_dry_ranked AS
