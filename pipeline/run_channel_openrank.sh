@@ -91,8 +91,8 @@ else
 fi
 
 ver=$(openrank-sdk --version 2>&1 | sed 's/openrank-sdk 0.\([0-9]\).\([0-9]\)/\1\2/')
-if [ "$ver" -lt "14" ]; then
-    echo "openrank-sdk version must be 0.1.4 or greater"
+if [ "$ver" -lt "19" ]; then
+    echo "openrank-sdk version must be 0.1.9 or greater"
     exit 1
 fi
 
