@@ -1,6 +1,8 @@
 from enum import Enum
 from functools import cached_property
 
+import hvac
+from hvac.exceptions import VaultError
 from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,7 +42,16 @@ class Settings(BaseSettings):
 
     OPENRANK_CHAIN_RPC_URL: str = "CHANGEME"
     OPENRANK_MANAGER_ADDRESS: str = "0x0"
-    OPENRANK_MNEMONIC: SecretStr = "CHANGEME"
+
+    # Vault configuration for secure mnemonic retrieval
+    # OPENRANK_VAULT_URL: URL to your OpenBao/Vault instance (e.g., "https://vault.example.com")
+    # OPENRANK_VAULT_TOKEN: Authentication token for vault access
+    # OPENRANK_VAULT_SECRET_PATH: Path to the secret containing the mnemonic (default: "secret/openrank/mnemonic")
+    # The secret should contain a key named "mnemonic" with the private key value
+    OPENRANK_VAULT_URL: str = "CHANGEME"
+    OPENRANK_VAULT_TOKEN: SecretStr = "CHANGEME"
+    OPENRANK_VAULT_SECRET_PATH: str = "secret/openrank/mnemonic"
+
     OPENRANK_TIMEOUT_SECS: int = 300
     OPENRANK_REQ_IDS_FILENAME: str = "request_ids.csv"
     OPENRANK_AWS_ACCESS_KEY_ID: str = "CHANGEME"
@@ -179,6 +190,50 @@ class Settings(BaseSettings):
             f"{self.ALT_DB_USER}:{self.ALT_DB_PASSWORD.get_secret_value()}@"
             f"{self.ALT_DB_HOST}:{self.ALT_DB_PORT}/{self.ALT_DB_NAME}"
         )
+
+    def get_openrank_mnemonic(self) -> str:
+        """
+        Fetch the OpenRank mnemonic from vault dynamically.
+        The private key is never stored in persistent storage and is fetched fresh each time.
+
+        Returns:
+            str: The mnemonic phrase from vault
+
+        Raises:
+            ValueError: If vault authentication fails or secret cannot be retrieved
+        """
+        if self.OPENRANK_VAULT_URL == "CHANGEME":
+            raise ValueError("OPENRANK_VAULT_URL must be configured")
+
+        if self.OPENRANK_VAULT_TOKEN.get_secret_value() == "CHANGEME":
+            raise ValueError("OPENRANK_VAULT_TOKEN must be configured")
+
+        try:
+            client = hvac.Client(
+                url=self.OPENRANK_VAULT_URL,
+                token=self.OPENRANK_VAULT_TOKEN.get_secret_value()
+            )
+
+            if not client.is_authenticated():
+                raise ValueError("Failed to authenticate with vault - check token and URL")
+
+            response = client.secrets.kv.v2.read_secret_version(
+                path=self.OPENRANK_VAULT_SECRET_PATH
+            )
+
+            if 'data' not in response or 'data' not in response['data']:
+                raise ValueError("Invalid vault response structure")
+
+            mnemonic = response['data']['data'].get('mnemonic')
+            if not mnemonic:
+                raise ValueError("Mnemonic not found in vault secret")
+
+            return mnemonic
+
+        except VaultError as e:
+            raise ValueError(f"Vault error: {e}")
+        except Exception as e:
+            raise ValueError(f"Failed to fetch mnemonic from vault: {e}")
 
     @computed_field
     def POSTGRES_ASYNC_URI(self) -> SecretStr:

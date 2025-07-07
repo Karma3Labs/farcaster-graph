@@ -7,7 +7,7 @@ from loguru import logger
 
 def download_results(req_id: str, out_file: Path):
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = settings.OPENRANK_MNEMONIC.get_secret_value()
+    new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
     new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
     new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
     new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID
@@ -29,7 +29,7 @@ def download_results(req_id: str, out_file: Path):
 
 def update_and_compute(lt_file: Path, pt_file: Path) -> str:
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = settings.OPENRANK_MNEMONIC.get_secret_value()
+    new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
     new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
     new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
     new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID
