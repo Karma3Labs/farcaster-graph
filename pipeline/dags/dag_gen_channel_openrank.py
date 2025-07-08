@@ -18,7 +18,7 @@ default_args = {
 
 N_CHUNKS = 100  # Define the number of chunks
 # NOTE: Refer to the 'k3l_channel_domains' table to get the category
-CATEGORY = 'test'
+CATEGORY = "test"
 
 with DAG(
     dag_id="gen_channel_openrank",

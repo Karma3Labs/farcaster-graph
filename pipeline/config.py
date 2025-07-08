@@ -211,20 +211,22 @@ class Settings(BaseSettings):
         try:
             client = hvac.Client(
                 url=self.OPENRANK_VAULT_URL,
-                token=self.OPENRANK_VAULT_TOKEN.get_secret_value()
+                token=self.OPENRANK_VAULT_TOKEN.get_secret_value(),
             )
 
             if not client.is_authenticated():
-                raise ValueError("Failed to authenticate with vault - check token and URL")
+                raise ValueError(
+                    "Failed to authenticate with vault - check token and URL"
+                )
 
             response = client.secrets.kv.v2.read_secret_version(
                 path=self.OPENRANK_VAULT_SECRET_PATH
             )
 
-            if 'data' not in response or 'data' not in response['data']:
+            if "data" not in response or "data" not in response["data"]:
                 raise ValueError("Invalid vault response structure")
 
-            mnemonic = response['data']['data'].get('mnemonic')
+            mnemonic = response["data"]["data"].get("mnemonic")
             if not mnemonic:
                 raise ValueError("Mnemonic not found in vault secret")
 

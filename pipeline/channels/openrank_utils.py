@@ -5,6 +5,7 @@ from pathlib import Path
 from config import settings
 from loguru import logger
 
+
 def download_results(req_id: str, out_file: Path):
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
@@ -27,6 +28,7 @@ def download_results(req_id: str, out_file: Path):
         raise Exception("OpenRank get-results failed")
     logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
+
 def update_and_compute(lt_file: Path, pt_file: Path) -> str:
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
@@ -36,7 +38,13 @@ def update_and_compute(lt_file: Path, pt_file: Path) -> str:
     new_env["AWS_SECRET_ACCESS_KEY"] = settings.OPENRANK_AWS_SECRET_ACCESS_KEY
 
     compute_cmd = subprocess.run(
-        ["openrank-sdk", "meta-compute-request", str(lt_file), str(pt_file), "--watch"],
+        [
+            "openrank-sdk",
+            "meta-compute-request",
+            str(lt_file),
+            str(pt_file),
+            "--watch",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

@@ -59,16 +59,18 @@ def fetch_results(
         raise Exception(f"Missing file {file}")
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    req_ids_df = pd.read_csv(file, header=None, names=['channel_id', 'interval_days', 'req_id'])
+    req_ids_df = pd.read_csv(
+        file, header=None, names=["channel_id", "interval_days", "req_id"]
+    )
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
-    req_ids_df = req_ids_df.drop_duplicates(subset=['req_id'], keep='last')
+    req_ids_df = req_ids_df.drop_duplicates(subset=["req_id"], keep="last")
 
     failed_computes = []
 
     for _, row in req_ids_df.iterrows():
-        cid = row['channel_id']
-        interval = row['interval_days']
-        req_id = row['req_id']
+        cid = row["channel_id"]
+        interval = row["interval_days"]
+        req_id = row["req_id"]
 
         out_filename = _RANKING_FILENAME_FORMAT.format(cid=cid)
         out_file = os.path.join(out_dir, out_filename)
@@ -79,14 +81,16 @@ def fetch_results(
             openrank_utils.download_results(req_id, out_file)
         except Exception as e:
             failed_computes.append((cid, interval, req_id))
-            logger.error(f"Failed to download results for channel {cid}, interval {interval}, req_id {req_id}: {e}")
+            logger.error(
+                f"Failed to download results for channel {cid}, interval {interval}, req_id {req_id}: {e}"
+            )
             continue
 
         scores_df = pd.read_json(out_file)
-        scores_df['channel_id'] = cid
-        scores_df['req_id'] = req_id
-        scores_df.rename(columns={'id': 'fid', 'value': 'score'}, inplace=True)
-        scores_df = scores_df.sort_values(['score'], ascending=[False])
+        scores_df["channel_id"] = cid
+        scores_df["req_id"] = req_id
+        scores_df.rename(columns={"id": "fid", "value": "score"}, inplace=True)
+        scores_df = scores_df.sort_values(["score"], ascending=[False])
         scores_df = scores_df.reset_index(drop=True)
         scores_df["rank"] = scores_df.index + 1
         try:
@@ -123,8 +127,8 @@ def process_domains(
     )
     for cid in channel_ids_list:
         try:
-            channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
-            interval = channel['interval_days'].values[0]
+            channel = channel_domain_df[channel_domain_df["channel_id"] == cid]
+            interval = channel["interval_days"].values[0]
 
             lt_filename = _LT_FILENAME_FORMAT.format(cid=cid)
             lt_file = os.path.join(out_dir, lt_filename)
@@ -135,14 +139,12 @@ def process_domains(
             if not os.path.exists(lt_file) or not os.path.exists(pt_file):
                 raise Exception(f"Missing files for {cid}")
 
-            req_id = openrank_utils.update_and_compute(
-                lt_file=lt_file, pt_file=pt_file
-            )
+            req_id = openrank_utils.update_and_compute(lt_file=lt_file, pt_file=pt_file)
 
             with open(
                 file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME),
-                mode="a", # Note - multiple processes within an airflow dag will write to the same file
-                buffering=os.O_NONBLOCK, # Note - this setting is redundant on most OS
+                mode="a",  # Note - multiple processes within an airflow dag will write to the same file
+                buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
                 newline="",
             ) as f:
                 write = csv.writer(f)
@@ -181,6 +183,7 @@ def write_openrank_files(
 
     return
 
+
 def gen_domain_files(
     channel_seeds_csv: Path,
     channel_ids_list: list[str],
@@ -199,8 +202,8 @@ def gen_domain_files(
 
     for cid in channel_ids_list:
         try:
-            channel = channel_domain_df[channel_domain_df['channel_id'] == cid]
-            interval = int(channel['interval_days'].values[0])
+            channel = channel_domain_df[channel_domain_df["channel_id"] == cid]
+            interval = int(channel["interval_days"].values[0])
 
             localtrust_df, pretrust_fid_list, absent_fids = (
                 channel_utils.prep_trust_data(
@@ -227,9 +230,13 @@ def gen_domain_files(
                     )
                     return {cid: []}
                 else:
-                    logger.error(f"No local trust for channel {cid} for lifetime engagement")
+                    logger.error(
+                        f"No local trust for channel {cid} for lifetime engagement"
+                    )
                     # this is unexpected because if a channel exists there must exist at least one ijv
-                    raise Exception(f"No local trust for channel {cid} for lifetime engagement")
+                    raise Exception(
+                        f"No local trust for channel {cid} for lifetime engagement"
+                    )
 
             pretrust_df = channel_utils.pretrust_list_to_df(pretrust_fid_list)
 
@@ -308,11 +315,8 @@ if __name__ == "__main__":
             logger.error("Output directory is required.")
             sys.exit(1)
 
-        if args.task == 'fetch_results':
-            fetch_results(
-                out_dir=args.outdir,
-                domains_category=domains_category
-            )
+        if args.task == "fetch_results":
+            fetch_results(out_dir=args.outdir, domains_category=domains_category)
         else:
             if not hasattr(args, "channel_ids"):
                 logger.error("Channel IDs are required.")
@@ -323,11 +327,11 @@ if __name__ == "__main__":
                 logger.warning("No channel IDs specified.")
                 sys.exit(0)
 
-            if args.task == 'gen_domain_files':
-                if (
-                    not hasattr(args, "seed")
-                ):
-                    logger.error("Seed csv file, previous directory and domain mapping are required for gen_domain_files task.")
+            if args.task == "gen_domain_files":
+                if not hasattr(args, "seed"):
+                    logger.error(
+                        "Seed csv file, previous directory and domain mapping are required for gen_domain_files task."
+                    )
                     sys.exit(1)
 
                 gen_domain_files(
@@ -343,5 +347,7 @@ if __name__ == "__main__":
                     out_dir=args.outdir,
                 )
             else:
-                logger.error("Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'.")
+                logger.error(
+                    "Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'."
+                )
                 sys.exit(1)
