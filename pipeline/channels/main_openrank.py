@@ -28,7 +28,11 @@ pd.set_option("mode.copy_on_write", True)
 
 # Configure logger
 logger.remove()
-level_per_module = {"": settings.LOG_LEVEL, "db_utils": "DEBUG", "silentlib": False}
+level_per_module = {
+    "": settings.LOG_LEVEL,
+    "db_utils": "DEBUG",
+    "silentlib": False,
+}
 logger.add(
     sys.stdout,
     colorize=True,

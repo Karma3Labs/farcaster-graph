@@ -1,9 +1,56 @@
 import os
 import subprocess
+import hvac
 
 from pathlib import Path
 from config import settings
 from loguru import logger
+from hvac.exceptions import VaultError
+
+
+def get_openrank_mnemonic(self) -> str:
+    """
+    Fetch the OpenRank mnemonic from vault dynamically.
+    The private key is never stored in persistent storage and is fetched fresh each time.
+
+    Returns:
+        str: The mnemonic phrase from vault
+
+    Raises:
+        ValueError: If vault authentication fails or secret cannot be retrieved
+    """
+    if settings.OPENRANK_VAULT_URL == "CHANGEME":
+        raise ValueError("OPENRANK_VAULT_URL must be configured")
+
+    if settings.OPENRANK_VAULT_TOKEN.get_secret_value() == "CHANGEME":
+        raise ValueError("OPENRANK_VAULT_TOKEN must be configured")
+
+    try:
+        client = hvac.Client(
+            url=settings.OPENRANK_VAULT_URL,
+            token=settings.OPENRANK_VAULT_TOKEN.get_secret_value(),
+        )
+
+        if not client.is_authenticated():
+            raise ValueError("Failed to authenticate with vault - check token and URL")
+
+        response = client.secrets.kv.v2.read_secret_version(
+            path=settings.OPENRANK_VAULT_SECRET_PATH
+        )
+
+        if "data" not in response or "data" not in response["data"]:
+            raise ValueError("Invalid vault response structure")
+
+        mnemonic = response["data"]["data"].get("mnemonic")
+        if not mnemonic:
+            raise ValueError("Mnemonic not found in vault secret")
+
+        return mnemonic
+
+    except VaultError as e:
+        raise ValueError(f"Vault error: {e}")
+    except Exception as e:
+        raise ValueError(f"Failed to fetch mnemonic from vault: {e}")
 
 
 def download_results(req_id: str, out_file: Path):
