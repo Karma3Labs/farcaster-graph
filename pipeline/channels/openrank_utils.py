@@ -3,12 +3,11 @@ import subprocess
 import hvac
 
 from pathlib import Path
-from config import settings
 from loguru import logger
 from hvac.exceptions import VaultError
 
 
-def get_openrank_mnemonic(self) -> str:
+def get_openrank_mnemonic(settings) -> str:
     """
     Fetch the OpenRank mnemonic from vault dynamically.
     The private key is never stored in persistent storage and is fetched fresh each time.
@@ -17,14 +16,8 @@ def get_openrank_mnemonic(self) -> str:
         str: The mnemonic phrase from vault
 
     Raises:
-        ValueError: If vault authentication fails or secret cannot be retrieved
+        RuntimeError: If vault authentication fails or secret cannot be retrieved
     """
-    if settings.OPENRANK_VAULT_URL == "CHANGEME":
-        raise ValueError("OPENRANK_VAULT_URL must be configured")
-
-    if settings.OPENRANK_VAULT_TOKEN.get_secret_value() == "CHANGEME":
-        raise ValueError("OPENRANK_VAULT_TOKEN must be configured")
-
     try:
         client = hvac.Client(
             url=settings.OPENRANK_VAULT_URL,
@@ -32,30 +25,26 @@ def get_openrank_mnemonic(self) -> str:
         )
 
         if not client.is_authenticated():
-            raise ValueError("Failed to authenticate with vault - check token and URL")
+            raise RuntimeError(
+                "Failed to authenticate with vault - check token and URL"
+            )
 
         response = client.secrets.kv.v2.read_secret_version(
             path=settings.OPENRANK_VAULT_SECRET_PATH
         )
 
-        if "data" not in response or "data" not in response["data"]:
-            raise ValueError("Invalid vault response structure")
-
-        mnemonic = response["data"]["data"].get("mnemonic")
-        if not mnemonic:
-            raise ValueError("Mnemonic not found in vault secret")
-
-        return mnemonic
-
+        return response["data"]["data"]["mnemonic"]
+    except KeyError as e:
+        raise RuntimeError("Mnemonic not found") from e
     except VaultError as e:
-        raise ValueError(f"Vault error: {e}")
+        raise RuntimeError("Vault error") from e
     except Exception as e:
-        raise ValueError(f"Failed to fetch mnemonic from vault: {e}")
+        raise RuntimeError("Failed to fetch mnemonic from vault") from e
 
 
-def download_results(req_id: str, out_file: Path):
+def download_results(settings, req_id: str, out_file: Path):
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
+    new_env["MNEMONIC"] = get_openrank_mnemonic(settings)
     new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
     new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
     new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID
@@ -76,9 +65,9 @@ def download_results(req_id: str, out_file: Path):
     logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
 
-def update_and_compute(lt_file: Path, pt_file: Path) -> str:
+def update_and_compute(settings, lt_file: Path, pt_file: Path) -> str:
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = settings.get_openrank_mnemonic()
+    new_env["MNEMONIC"] = get_openrank_mnemonic(settings)
     new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
     new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
     new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID

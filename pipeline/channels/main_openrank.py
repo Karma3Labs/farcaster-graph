@@ -19,9 +19,11 @@ import db_utils
 
 # local dependencies
 import utils
-from config import settings
+from config import settings, OpenRankSettings
 
 from . import channel_utils, openrank_utils
+
+openrank_settings = OpenRankSettings()
 
 # Performance optimization to avoid copies unless there is a write on shared data
 pd.set_option("mode.copy_on_write", True)
@@ -58,7 +60,7 @@ def fetch_results(
     out_dir: Path,
     domains_category: str,
 ):
-    file = os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME)
+    file = os.path.join(out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
     pg_url = settings.POSTGRES_URL.get_secret_value()
@@ -82,7 +84,7 @@ def fetch_results(
             logger.warning(f"Output file {out_file} already exists. Overwriting")
 
         try:
-            openrank_utils.download_results(req_id, out_file)
+            openrank_utils.download_results(openrank_settings, req_id, out_file)
         except Exception as e:
             failed_computes.append((cid, interval, req_id))
             logger.error(
@@ -143,10 +145,14 @@ def process_domains(
             if not os.path.exists(lt_file) or not os.path.exists(pt_file):
                 raise Exception(f"Missing files for {cid}")
 
-            req_id = openrank_utils.update_and_compute(lt_file=lt_file, pt_file=pt_file)
+            req_id = openrank_utils.update_and_compute(
+                openrank_settings,
+                lt_file=lt_file,
+                pt_file=pt_file,
+            )
 
             with open(
-                file=os.path.join(out_dir, settings.OPENRANK_REQ_IDS_FILENAME),
+                file=os.path.join(out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME),
                 mode="a",  # Note - multiple processes within an airflow dag will write to the same file
                 buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
                 newline="",
