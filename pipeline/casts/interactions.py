@@ -76,20 +76,22 @@ aggregated_results AS (
         ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
+),
+inserted AS (
+    -- Insert the aggregated results into the table
+    INSERT INTO public.k3l_farcaster_interactions (source, target, interaction_type, value)
+    SELECT 
+        source,
+        target,
+        {InteractionType.LIKE.value} AS interaction_type, -- 1 for likes
+        value
+    FROM aggregated_results
+    WHERE value != 0 -- Only insert non-zero interactions
+    ON CONFLICT (source, target, interaction_type) 
+    DO UPDATE SET 
+        value = k3l_farcaster_interactions.value + EXCLUDED.value
+    RETURNING 1  -- dummy value to keep the CTE happy
 )
--- Insert the aggregated results into the table
-INSERT INTO public.k3l_farcaster_interactions (source, target, interaction_type, value)
-SELECT 
-    source,
-    target,
-    {InteractionType.LIKE.value} AS interaction_type, -- 1 for likes
-    value
-FROM aggregated_results
-WHERE value != 0 -- Only insert non-zero interactions
-ON CONFLICT (source, target, interaction_type) 
-DO UPDATE SET 
-    value = k3l_farcaster_interactions.value + EXCLUDED.value;
-
 -- Update the cursor for the next query (only if we processed data)
 INSERT INTO public.k3l_farcaster_interaction_cursors (interaction_type, next_cursor)
 SELECT 
