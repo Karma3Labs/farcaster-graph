@@ -1386,3 +1386,22 @@ SELECT
     REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
 
 -------------------------------------------------
+CREATE TABLE public.k3l_farcaster_interactions (
+    id SERIAL PRIMARY KEY,
+    source INTEGER NOT NULL,
+    target INTEGER NOT NULL,
+    interaction_type INTEGER NOT NULL,
+    value INTEGER NOT NULL
+);
+
+ALTER TABLE
+    ONLY public.k3l_farcaster_interactions
+ADD
+    CONSTRAINT k3l_farcaster_interactions_source_target_interaction_type_uniq UNIQUE (source, target, interaction_type);
+
+CREATE TABLE public.k3l_farcaster_interaction_cursors (
+    interaction_type INTEGER NOT NULL PRIMARY KEY,
+    next_cursor TIMESTAMP NOT NULL
+);
+
+-------------------------------------------------
