@@ -1226,7 +1226,7 @@ def fixup_tokens_log_addresses(
             pg_dsn, options=f"-c statement_timeout={timeout_ms}"
         ) as conn:
             with conn.cursor() as cursor:
-                update_sql = f"""
+                update_sql = """
                     UPDATE k3l_channel_tokens_log
                     SET fid_address = convert_from(decode(substr(fid_address, 3), 'hex'), 'utf-8')
                     WHERE lower(fid_address) SIMILAR TO '0x3078(3[0-9]|[46][1-6]){40}'
