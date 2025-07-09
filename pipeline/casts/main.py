@@ -11,9 +11,8 @@ from loguru import logger
 
 # local dependencies
 from config import Database, settings
-from pipeline.casts import interactions
-
 from . import cast_db_utils
+from . import interactions
 
 
 class FillType(str, Enum):
