@@ -16,7 +16,7 @@ class InteractionType(IntEnum):
 
 
 @Timer(name="update_reply_interactions")
-def update_reply_interactions():
+def update_reply_interactions(logger: logging.Logger, pg_dsn: str):
     LIMIT = 100_000
     sql = f"""
 BEGIN;
@@ -52,10 +52,11 @@ aggregated_results AS (
 
 COMMIT;
 """
+    query_db(sql, logger, pg_dsn)
 
 
 @Timer(name="update_likes_interactions")
-def update_likes_interactions(logger: logging.Logger, pg_dsn: str, insert_limit: int):
+def update_likes_interactions(logger: logging.Logger, pg_dsn: str):
     LIMIT = 100_000
     sql = f"""
 BEGIN;
@@ -92,7 +93,10 @@ aggregated_results AS (
 
 COMMIT;
 """
+    query_db(sql, logger, pg_dsn)
 
+
+def query_db(sql: str, logger: logging.Logger, pg_dsn: str):
     with psycopg2.connect(
         pg_dsn,
         connect_timeout=settings.POSTGRES_TIMEOUT_SECS,

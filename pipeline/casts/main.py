@@ -11,6 +11,7 @@ from loguru import logger
 
 # local dependencies
 from config import Database, settings
+from pipeline.casts import interactions
 
 from . import cast_db_utils
 
@@ -19,6 +20,7 @@ class FillType(str, Enum):
     default = "default"
     backfill = "backfill"
     gapfill = "gapfill"
+    populate_interactions = "populate_interactions"
 
 
 logger.remove()
@@ -79,6 +81,10 @@ async def main(
                 if row_count == 0:
                     logger.info("no more rows to gapfill")
                     break  # even if daemon flag is on, we don't want to continue
+            case FillType.populate_interactions:
+                logger.info(f"populating interactions into {pg_host}")
+                interactions.update_likes_interactions(logger, pg_dsn)
+                interactions.update_reply_interactions(logger, pg_dsn)
 
         sleep_duration = settings.CASTS_SLEEP_SECS
         if daemon:
