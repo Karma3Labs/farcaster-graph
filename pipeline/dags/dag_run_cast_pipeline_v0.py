@@ -35,6 +35,11 @@ with DAG(
         bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ -p eigen8 ",
     )
 
+    update_interactions = BashOperator(
+        task_id="update_interactions",
+        bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ -f populate_interactions -p eigen8 ",
+    )
+
     refresh = BashOperator(
         task_id="refresh_parent_casts_view",
         bash_command="""cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
