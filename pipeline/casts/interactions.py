@@ -30,11 +30,14 @@ WITH current_cursor AS (
 last_timestamp AS (
     SELECT updated_at 
     FROM (
-        SELECT DISTINCT updated_at 
-        FROM neynarv2.reactions
-        WHERE updated_at > (SELECT processed_updates_til FROM current_cursor)
-        ORDER BY updated_at ASC
-        LIMIT {LIMIT}
+        SELECT DISTINCT updated_at
+        FROM (
+            SELECT updated_at
+            FROM neynarv2.reactions
+            WHERE updated_at > (SELECT processed_updates_til FROM current_cursor)
+            ORDER BY updated_at ASC
+            LIMIT {LIMIT}  -- Apply limit before deduplication
+        ) limited_chunk
     ) limited_timestamps
     ORDER BY updated_at DESC
     LIMIT 1 OFFSET 1  -- We are getting the second largest timestamp to handle the case of incomplete updates when at the tip. 
