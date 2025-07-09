@@ -17,7 +17,7 @@ class InteractionType(IntEnum):
 
 @Timer(name="update_reply_interactions")
 def update_reply_interactions(logger: logging.Logger, pg_dsn: str):
-    LIMIT = 1_000_000
+    LIMIT = 10_000_000
     sql = f"""
 BEGIN;
 
@@ -57,7 +57,7 @@ COMMIT;
 
 @Timer(name="update_likes_interactions")
 def update_likes_interactions(logger: logging.Logger, pg_dsn: str):
-    LIMIT = 1_000_000
+    LIMIT = 10_000_000
     sql = f"""
 BEGIN;
 
