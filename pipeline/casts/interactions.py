@@ -33,7 +33,8 @@ batch_of_updates AS (
         fid,
         parent_fid as target_fid,
         created_at,
-        deleted_at
+        deleted_at,
+        updated_at
     FROM neynarv2.casts
     WHERE
         parent_hash IS NOT NULL
