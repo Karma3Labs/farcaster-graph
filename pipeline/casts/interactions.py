@@ -93,10 +93,10 @@ batch_of_updates AS (
     FROM neynarv2.reactions
     INNER JOIN neynarv2.fids ON neynarv2.fids.fid = neynarv2.reactions.target_fid
     WHERE
-        reaction_type = {InteractionType.LIKE.value}
-        AND target_fid IS NOT NULL
-        AND updated_at > (SELECT processed_updates_til FROM current_cursor)
-        AND updated_at <= (SELECT updated_at FROM last_timestamp)
+        neynarv2.reactions.reaction_type = {InteractionType.LIKE.value}
+        AND neynarv2.reactions.target_fid IS NOT NULL
+        AND neynarv2.reactions.updated_at > (SELECT processed_updates_til FROM current_cursor)
+        AND neynarv2.reactions.updated_at <= (SELECT updated_at FROM last_timestamp)
 ),
 aggregated_results AS (
     SELECT
