@@ -86,10 +86,10 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
-        fid,
-        target_fid,
-        created_at,
-        deleted_at
+        neynarv2.reactions.fid,
+        neynarv2.reactions.target_fid,
+        neynarv2.reactions.created_at,
+        neynarv2.reactions.deleted_at
     FROM neynarv2.reactions
     INNER JOIN neynarv2.fids ON neynarv2.fids.fid = neynarv2.reactions.target_fid
     WHERE
