@@ -91,6 +91,7 @@ batch_of_updates AS (
         created_at,
         deleted_at
     FROM neynarv2.reactions
+    INNER JOIN neynarv2.fids ON neynarv2.fids.fid = neynarv2.reactions.target_fid
     WHERE
         reaction_type = {InteractionType.LIKE.value}
         AND target_fid IS NOT NULL
