@@ -44,7 +44,11 @@ def _fetch_pt_toptier_df(
 
 
 def _fetch_interactions_df(
-    logger: logging.Logger, pg_dsn: str, target_date: str = None, interval: int = 0
+    logger: logging.Logger,
+    pg_dsn: str,
+    version: int,
+    target_date: str = None,
+    interval: int = 0,
 ) -> pd.DataFrame:
     global _interactions_df
 
@@ -62,7 +66,7 @@ def _fetch_interactions_df(
         )
     )
 
-    if where_clause is None:
+    if where_clause is None and version == 2:
         # We use `k3l_farcaster_interactions` to query aggregate interactions over all time.
         like_sql = IJVSql.LIKES_ALL
         reply_sql = IJVSql.REPLIES_ALL
@@ -216,11 +220,12 @@ def localtrust_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
     strategy: Strategy,
+    version: int,
     target_date: str = None,
     interval: int = 0,
 ) -> pd.DataFrame:
     with Timer(name=f"{strategy}"):
-        intx_df = _fetch_interactions_df(logger, pg_dsn, target_date, interval)
+        intx_df = _fetch_interactions_df(logger, pg_dsn, version, target_date, interval)
         match strategy:
             case Strategy.FOLLOWING:
                 lt_df = intx_df[intx_df["follows_v"].notna()][

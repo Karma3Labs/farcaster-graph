@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
 
-    df = compute._fetch_interactions_df(logger, pg_dsn)
+    df = compute._fetch_interactions_df(logger, pg_dsn, version=1)
     logger.info(utils.df_info_to_string(df, with_sample=True))
 
     pkl_file = "/tmp/fc_interactions_df.pkl"

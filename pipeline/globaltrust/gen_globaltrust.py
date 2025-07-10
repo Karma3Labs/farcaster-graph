@@ -78,6 +78,7 @@ def gen_localtrust_to_csv(
     pg_dsn: str,
     outdir: Path,
     strategy: compute.Strategy,
+    version: int,
     target_date: str = None,
     interval: int = 0,
 ):
@@ -88,7 +89,7 @@ def gen_localtrust_to_csv(
         )
 
         lt_df = compute.localtrust_for_strategy(
-            logger, pg_dsn, strategy, target_date, interval
+            logger, pg_dsn, strategy, version, target_date, interval
         )
 
         (lt_filepath, _, lt_stats_filepath, _) = gen_filepaths(
@@ -189,6 +190,7 @@ def main(
     ptcsv: Path,
     ltcsv: Path,
     outdir: Path,
+    version: int,
     target_date: str = None,
 ):
     utils.log_memusage(logger)
@@ -198,18 +200,19 @@ def main(
                 pg_dsn,
                 outdir,
                 compute.Strategy.GRAPH_90DV3,
+                version,
                 target_date=None,
                 interval=90,
             )
         case Step.prep:
             gen_localtrust_to_csv(
-                pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date
+                pg_dsn, outdir, compute.Strategy.FOLLOWING, version, target_date
             )
             gen_localtrust_to_csv(
-                pg_dsn, outdir, compute.Strategy.ENGAGEMENT, target_date
+                pg_dsn, outdir, compute.Strategy.ENGAGEMENT, version, target_date
             )
             gen_localtrust_to_csv(
-                pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, target_date
+                pg_dsn, outdir, compute.Strategy.V3ENGAGEMENT, version, target_date
             )
             gen_pretrust_to_csv(pg_dsn, outdir, compute.Strategy.FOLLOWING, target_date)
             gen_pretrust_to_csv(
@@ -278,6 +281,14 @@ if __name__ == "__main__":
         required=False,
         type=lambda d: datetime.strptime(d, "%Y-%m-%d"),
     )
+    parser.add_argument(
+        "-r",  # NOTE: -v is used for venv
+        "--version",
+        help="Version of the globaltrust computation",
+        required=False,
+        type=int,
+        default=1,
+    )
     args = parser.parse_args()
     print(args)
 
@@ -296,5 +307,6 @@ if __name__ == "__main__":
         args.ptcsv,
         args.ltcsv,
         args.outdir,
+        args.version,
         target_date,
     )
