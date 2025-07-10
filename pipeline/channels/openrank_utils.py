@@ -6,8 +6,10 @@ from pathlib import Path
 from loguru import logger
 from hvac.exceptions import VaultError
 
+from config import OpenRankSettings
 
-def get_openrank_mnemonic(settings) -> str:
+
+def get_openrank_mnemonic(openrank_settings: OpenRankSettings) -> str:
     """
     Fetch the OpenRank mnemonic from vault dynamically.
     The private key is never stored in persistent storage and is fetched fresh each time.
@@ -20,8 +22,8 @@ def get_openrank_mnemonic(settings) -> str:
     """
     try:
         client = hvac.Client(
-            url=settings.OPENRANK_VAULT_URL,
-            token=settings.OPENRANK_VAULT_TOKEN.get_secret_value(),
+            url=openrank_settings.VAULT_URL,
+            token=openrank_settings.VAULT_TOKEN.get_secret_value(),
         )
 
         if not client.is_authenticated():
@@ -30,7 +32,7 @@ def get_openrank_mnemonic(settings) -> str:
             )
 
         response = client.secrets.kv.v2.read_secret_version(
-            path=settings.OPENRANK_VAULT_SECRET_PATH
+            path=openrank_settings.VAULT_SECRET_PATH
         )
 
         return response["data"]["data"]["mnemonic"]
@@ -42,36 +44,42 @@ def get_openrank_mnemonic(settings) -> str:
         raise RuntimeError("Failed to fetch mnemonic from vault") from e
 
 
-def download_results(settings, req_id: str, out_file: Path):
+def download_results(
+    openrank_settings: OpenRankSettings, req_id: str, out_file: Path
+):
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = get_openrank_mnemonic(settings)
-    new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
-    new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
-    new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID
-    new_env["AWS_SECRET_ACCESS_KEY"] = settings.OPENRANK_AWS_SECRET_ACCESS_KEY
+    new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
+    new_env["OPENRANK_MANAGER_ADDRESS"] = openrank_settings.MANAGER_ADDRESS
+    new_env["CHAIN_RPC_URL"] = openrank_settings.CHAIN_RPC_URL
+    new_env["AWS_ACCESS_KEY_ID"] = openrank_settings.AWS_ACCESS_KEY_ID
+    new_env["AWS_SECRET_ACCESS_KEY"] = openrank_settings.AWS_SECRET_ACCESS_KEY
 
     get_cmd = subprocess.run(
         ["openrank-sdk", "meta-download-results", str(req_id), str(out_file)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
-        timeout=settings.OPENRANK_TIMEOUT_SECS,
+        timeout=openrank_settings.TIMEOUT_SECS,
         env=new_env,
         check=True,
     )
     if get_cmd.returncode != 0:
-        logger.error(f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}")
+        logger.error(
+            f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}"
+        )
         raise Exception("OpenRank get-results failed")
     logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
 
-def update_and_compute(settings, lt_file: Path, pt_file: Path) -> str:
+def update_and_compute(
+    openrank_settings: OpenRankSettings, lt_file: Path, pt_file: Path
+) -> str:
     new_env = os.environ.copy()
-    new_env["MNEMONIC"] = get_openrank_mnemonic(settings)
-    new_env["OPENRANK_MANAGER_ADDRESS"] = settings.OPENRANK_MANAGER_ADDRESS
-    new_env["CHAIN_RPC_URL"] = settings.OPENRANK_CHAIN_RPC_URL
-    new_env["AWS_ACCESS_KEY_ID"] = settings.OPENRANK_AWS_ACCESS_KEY_ID
-    new_env["AWS_SECRET_ACCESS_KEY"] = settings.OPENRANK_AWS_SECRET_ACCESS_KEY
+    new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
+    new_env["OPENRANK_MANAGER_ADDRESS"] = openrank_settings.MANAGER_ADDRESS
+    new_env["CHAIN_RPC_URL"] = openrank_settings.CHAIN_RPC_URL
+    new_env["AWS_ACCESS_KEY_ID"] = openrank_settings.AWS_ACCESS_KEY_ID
+    new_env["AWS_SECRET_ACCESS_KEY"] = openrank_settings.AWS_SECRET_ACCESS_KEY
 
     compute_cmd = subprocess.run(
         [
@@ -84,7 +92,7 @@ def update_and_compute(settings, lt_file: Path, pt_file: Path) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        timeout=settings.OPENRANK_TIMEOUT_SECS,
+        timeout=openrank_settings.TIMEOUT_SECS,
         env=new_env,
     )
     logger.info(f"OpenRank compute output: {compute_cmd}")

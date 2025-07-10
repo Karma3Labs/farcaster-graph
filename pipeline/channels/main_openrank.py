@@ -81,7 +81,9 @@ def fetch_results(
         out_filename = _RANKING_FILENAME_FORMAT.format(cid=cid)
         out_file = os.path.join(out_dir, out_filename)
         if os.path.exists(out_file):
-            logger.warning(f"Output file {out_file} already exists. Overwriting")
+            logger.warning(
+                f"Output file {out_file} already exists. Overwriting"
+            )
 
         try:
             openrank_utils.download_results(openrank_settings, req_id, out_file)
@@ -101,7 +103,9 @@ def fetch_results(
         scores_df["rank"] = scores_df.index + 1
         try:
             logger.info(f"Inserting data into the database for channel {cid}")
-            logger.info(utils.df_info_to_string(scores_df, with_sample=True, head=True))
+            logger.info(
+                utils.df_info_to_string(scores_df, with_sample=True, head=True)
+            )
             db_utils.df_insert_copy(
                 pg_url=pg_url,
                 df=scores_df,
@@ -114,7 +118,9 @@ def fetch_results(
             raise e
     # end of for loop
     if len(failed_computes) > 0:
-        logger.error(f"Failed to download results for {len(failed_computes)} channels")
+        logger.error(
+            f"Failed to download results for {len(failed_computes)} channels"
+        )
         logger.error(failed_computes)
         raise Exception(
             f"Failed to download results for {len(failed_computes)} channels"
@@ -152,7 +158,9 @@ def process_domains(
             )
 
             with open(
-                file=os.path.join(out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME),
+                file=os.path.join(
+                    out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME
+                ),
                 mode="a",  # Note - multiple processes within an airflow dag will write to the same file
                 buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
                 newline="",
@@ -186,7 +194,9 @@ def write_openrank_files(
     pt_filename = _PT_FILENAME_FORMAT.format(cid=cid)
     pt_file = os.path.join(out_dir, pt_filename)
     logger.info(f"Saving pretrust for channel {cid} to {pt_file}")
-    logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
+    logger.info(
+        f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}"
+    )
     if len(pretrust_df) == 0:
         pretrust_df = pd.DataFrame(columns=["i", "v"])
     pretrust_df.to_csv(pt_file, index=False)
@@ -204,7 +214,9 @@ def gen_domain_files(
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(
+        channel_seeds_csv
+    )
     channel_domain_df = channel_utils.fetch_channel_domain_df(
         pg_url, domains_category, channel_ids_list
     )
@@ -228,10 +240,14 @@ def gen_domain_files(
                     f"Pretrust sample: {random.choices(pretrust_fid_list, k=10)}"
                 )
             else:
-                logger.warning(f"No pretrust for channel {cid} for interval {interval}")
+                logger.warning(
+                    f"No pretrust for channel {cid} for interval {interval}"
+                )
 
             # Filter out entries where i == j
-            localtrust_df = localtrust_df[localtrust_df["i"] != localtrust_df["j"]]
+            localtrust_df = localtrust_df[
+                localtrust_df["i"] != localtrust_df["j"]
+            ]
 
             if len(localtrust_df) == 0:
                 if interval > 0:
@@ -326,7 +342,9 @@ if __name__ == "__main__":
             sys.exit(1)
 
         if args.task == "fetch_results":
-            fetch_results(out_dir=args.outdir, domains_category=domains_category)
+            fetch_results(
+                out_dir=args.outdir, domains_category=domains_category
+            )
         else:
             if not hasattr(args, "channel_ids"):
                 logger.error("Channel IDs are required.")

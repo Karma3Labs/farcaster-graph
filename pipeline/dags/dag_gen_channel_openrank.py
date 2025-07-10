@@ -110,7 +110,13 @@ with DAG(
             " -o tmp/{{ run_id }} ",
         )
 
-        fetch_domains >> extract_ids >> gen_file_tasks >> process_tasks >> fetch_results
+        (
+            fetch_domains
+            >> extract_ids
+            >> gen_file_tasks
+            >> process_tasks
+            >> fetch_results
+        )
 
     rmdir_tmp = BashOperator(
         task_id="rmdir_tmp",
