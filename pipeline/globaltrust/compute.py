@@ -63,6 +63,7 @@ def _fetch_interactions_df(
     )
 
     if where_clause is None:
+        # We use `k3l_farcaster_interactions` to query aggregate interactions over all time.
         like_sql = IJVSql.LIKES_ALL
         reply_sql = IJVSql.REPLIES_ALL
     else:
