@@ -62,14 +62,21 @@ def _fetch_interactions_df(
         )
     )
 
-    query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
+    if where_clause is None:
+        like_sql = IJVSql.LIKES_ALL
+        reply_sql = IJVSql.REPLIES_ALL
+    else:
+        like_sql = IJVSql.LIKES
+        reply_sql = IJVSql.REPLIES
+
+    query = db_utils.construct_query(like_sql, where_clause=where_clause)
     logger.info(f"Fetching likes: {query}")
     l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     logger.info(utils.df_info_to_string(l_df, with_sample=True))
     utils.log_memusage(logger)
 
     with Timer(name="merge_replies"):
-        query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
+        query = db_utils.construct_query(reply_sql, where_clause=where_clause)
         logger.info(f"Fetching replies: {query}")
         replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
         lr_df = l_df.merge(
