@@ -53,9 +53,11 @@ aggregated_results AS (
                     CASE WHEN created_at > (SELECT processed_updates_til FROM current_cursor) THEN 0 ELSE -1 END
                 
                 -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or an update of older interaction.
-                ELSE if created_at == updated_at -- fresh interaction.
-                THEN 1 
-                ELSE 0 -- an older reply was updated.
+                ELSE 
+                    CASE WHEN created_at = updated_at -- fresh interaction.
+                    THEN 1 
+                    ELSE 0 -- an older reply was updated.
+                    END
             END
         ) AS value
     FROM batch_of_updates
