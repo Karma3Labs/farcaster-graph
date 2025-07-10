@@ -26,7 +26,7 @@ function validate_date() {
     fi
 }
 
-while getopts s:w:v:t:o:d: flag
+while getopts s:w:v:t:o:d:r: flag
 do
     case "${flag}" in
         s) STEP=${OPTARG};;
@@ -35,17 +35,18 @@ do
         t) TEMP_DIR=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
         d) TARGET_DATE=${OPTARG};;
+        r) VERSION=${OPTARG};;
     esac
 done
 
 if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ]  || [ -z "$TEMP_DIR" ]; then
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir]"
   echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
-  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date]"
+  echo "Usage:   $0 -s [step] -w [work_dir] -v [venv] -o [out_dir] -t [temp_dir] -d [date] -r [version]"
   echo ""
   echo "Example: $0 -s prep -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp"
   echo "         $0 -s compute -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
-  echo "         $0 -s graph -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01"
+  echo "         $0 -s graph -w . -v /home/ubuntu/farcaster-graph/pipeline/.venv -o ~/graph_files -t /tmp -d 2024-06-01 -r 1"
   echo ""
   echo "Params:"
   echo "  [step]  localtrust or compute"
@@ -54,7 +55,7 @@ if [ -z "$STEP" ] || [ -z "$WORK_DIR" ] || [ -z "$VENV" ]  || [ -z "$OUT_DIR" ] 
   echo "  [out_dir]  The final destination directory to write localtrust files to."
   echo "  [venv]      The path where a python3 virtualenv has been created."
   echo "  [date]      (optional) Target date to run the globaltrust and localtrust generation."
-  echo "  [c]         (optional) Cut off the date before the target date. Default is false."
+  echo "  [version]   (optional) Version of the globaltrust computation. Default is 1."
   echo ""
   exit
 fi
@@ -72,6 +73,10 @@ if [ ! -z "$TARGET_DATE" ]; then
   TARGET_DATE_SUFFIX="_$TARGET_DATE"
   DATE_OPTION="--date $TARGET_DATE"
 fi
+
+# Set default version if not provided
+VERSION=${VERSION:-1}
+VERSION_OPTION="--version $VERSION"
 
 source $WORK_DIR/.env
 
@@ -91,6 +96,7 @@ function log() {
 
 log "DATE_OPTION: $OPT_DATE_SUFFIX"
 log "TARGET_DATE: $TARGET_DATE_SUFFIX"
+log "VERSION: $VERSION"
 log "TEMP_DIR: $TEMP_DIR"
 log "OUT_DIR: $OUT_DIR"
 
@@ -105,14 +111,14 @@ if [ "$STEP" = "graph" ]; then
 
   source $VENV/bin/activate
   #pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $OUT_DIR $VERSION_OPTION
   deactivate
 
 elif [ "$STEP" = "prep" ]; then
 
   source $VENV/bin/activate
   #pip install -r requirements.txt
-  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION 
+  python3 -m globaltrust.gen_globaltrust -s $STEP -o $TEMP_DIR $DATE_OPTION $VERSION_OPTION
   deactivate
 
 elif [ "$STEP" = "compute_following" ]; then
@@ -133,7 +139,8 @@ elif [ "$STEP" = "compute_following" ]; then
     -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
     -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
-    $DATE_OPTION
+    $DATE_OPTION \
+    $VERSION_OPTION
   #### END Globaltrust for FOLLOWING strategy
 
   deactivate
@@ -156,7 +163,8 @@ elif [ "$STEP" = "compute_engagement" ]; then
     -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
     -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
-    $DATE_OPTION
+    $DATE_OPTION \
+    $VERSION_OPTION
   #### END Globaltrust for ENGAGEMENT strategy
 
   deactivate
@@ -179,7 +187,8 @@ elif [ "$STEP" = "compute_v3engagement" ]; then
     -p ${GO_EIGENTRUST_BIND_TARGET}/go_pretrust.csv \
     -l ${GO_EIGENTRUST_BIND_TARGET}/go_localtrust.csv \
     -o $TEMP_DIR \
-    $DATE_OPTION
+    $DATE_OPTION \
+    $VERSION_OPTION
   #### END Globaltrust for V3_ENGAGEMENT strategy
 
   deactivate
