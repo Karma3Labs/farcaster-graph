@@ -44,7 +44,20 @@ aggregated_results AS (
     SELECT
         fid AS source,
         target_fid AS target,
-        SUM({get_value_by_deleted_at_cte()}) AS value
+        SUM(
+            CASE
+                -- Case 1: The interaction is currently in a "deleted" state.
+                WHEN deleted_at IS NOT NULL THEN
+                    -- Check if it was also CREATED in this same window.
+                    -- If so, its net change is 0. Otherwise, it's -1.
+                    CASE WHEN created_at > (SELECT processed_updates_til FROM current_cursor) THEN 0 ELSE -1 END
+                
+                -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or an update of older interaction.
+                ELSE if created_at == updated_at -- fresh interaction.
+                THEN 1 
+                ELSE 0 -- an older reply was updated.
+            END
+        ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
 ),
@@ -85,7 +98,24 @@ aggregated_results AS (
     SELECT
         fid AS source,
         target_fid AS target,
-        SUM({get_value_by_deleted_at_cte()}) AS value
+        SUM(
+            CASE
+                -- Case 1: The interaction is currently in a "deleted" state.
+                WHEN deleted_at IS NOT NULL
+                    THEN
+                        -- Check if it was also CREATED in this same window.
+                        -- If so, its net change is 0. Otherwise, it's -1.
+                        CASE
+                            WHEN
+                                created_at
+                                > (SELECT processed_updates_til FROM current_cursor)
+                                THEN 0
+                            ELSE -1
+                        END
+                -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or "like, deleted, like". 
+                ELSE 1
+            END
+        ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
 ),
@@ -134,22 +164,6 @@ def get_current_cursor_cte_with_lock(interaction_type: InteractionType):
          FOR UPDATE),  -- Lock this specific row
         '1970-01-01'::timestamp
     ) AS processed_updates_til
-    """
-
-
-def get_value_by_deleted_at_cte():
-    return f"""
-CASE
-    -- Case 1: The interaction is currently in a "deleted" state.
-    WHEN deleted_at IS NOT NULL THEN
-        -- Check if it was also CREATED in this same window.
-        -- If so, its net change is 0. Otherwise, it's -1.
-        CASE WHEN created_at > (SELECT processed_updates_til FROM current_cursor) THEN 0 ELSE -1 END
-    
-    -- Case 2: The interaction is in an "active" (not deleted) state.
-    -- This means it's a new "interaction".
-    ELSE 1
-END
     """
 
 
