@@ -1,7 +1,16 @@
 from db_utils import SQL
+from casts.interactions import InteractionType
 
 
 class IJVSql:
+    LIKES_ALL = SQL(
+        "LIKES_ALL",
+        f"""
+    SELECT source as i, target as j, value as likes_v 
+    FROM public.k3l_farcaster_interactions 
+    WHERE interaction_type={InteractionType.LIKE.value}
+    """,
+    )
     LIKES = SQL(
         "LIKES",
         """
@@ -12,6 +21,14 @@ class IJVSql:
     AND reactions.target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
+    """,
+    )
+    REPLIES_ALL = SQL(
+        "REPLIES_ALL",
+        f"""
+    SELECT source as i, target as j, value as replies_v 
+    FROM public.k3l_farcaster_interactions 
+    WHERE interaction_type={InteractionType.REPLY.value}
     """,
     )
     REPLIES = SQL(

@@ -44,7 +44,11 @@ def _fetch_pt_toptier_df(
 
 
 def _fetch_interactions_df(
-    logger: logging.Logger, pg_dsn: str, target_date: str = None, interval: int = 0
+    logger: logging.Logger,
+    pg_dsn: str,
+    version: int,
+    target_date: str = None,
+    interval: int = 0,
 ) -> pd.DataFrame:
     global _interactions_df
 
@@ -62,14 +66,22 @@ def _fetch_interactions_df(
         )
     )
 
-    query = db_utils.construct_query(IJVSql.LIKES, where_clause=where_clause)
+    if where_clause is None and version == 2:
+        # We use `k3l_farcaster_interactions` to query aggregate interactions over all time.
+        like_sql = IJVSql.LIKES_ALL
+        reply_sql = IJVSql.REPLIES_ALL
+    else:
+        like_sql = IJVSql.LIKES
+        reply_sql = IJVSql.REPLIES
+
+    query = db_utils.construct_query(like_sql, where_clause=where_clause)
     logger.info(f"Fetching likes: {query}")
     l_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
     logger.info(utils.df_info_to_string(l_df, with_sample=True))
     utils.log_memusage(logger)
 
     with Timer(name="merge_replies"):
-        query = db_utils.construct_query(IJVSql.REPLIES, where_clause=where_clause)
+        query = db_utils.construct_query(reply_sql, where_clause=where_clause)
         logger.info(f"Fetching replies: {query}")
         replies_df = db_utils.ijv_df_read_sql_tmpfile(pg_dsn, query)
         lr_df = l_df.merge(
@@ -208,11 +220,12 @@ def localtrust_for_strategy(
     logger: logging.Logger,
     pg_dsn: str,
     strategy: Strategy,
+    version: int,
     target_date: str = None,
     interval: int = 0,
 ) -> pd.DataFrame:
     with Timer(name=f"{strategy}"):
-        intx_df = _fetch_interactions_df(logger, pg_dsn, target_date, interval)
+        intx_df = _fetch_interactions_df(logger, pg_dsn, version, target_date, interval)
         match strategy:
             case Strategy.FOLLOWING:
                 lt_df = intx_df[intx_df["follows_v"].notna()][
