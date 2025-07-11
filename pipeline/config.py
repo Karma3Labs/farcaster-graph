@@ -38,12 +38,6 @@ class Settings(BaseSettings):
     EIGENTRUST_MAX_ITER: int = 50
     EIGENTRUST_FLAT_TAIL: int = 2
 
-    OPENRANK_REQ_ADDR: str = "CHANGEME"
-    OPENRANK_REQ_SECRET_KEY: SecretStr = "CHANGEME"
-    OPENRANK_URL: str = "https://CHANGEME"
-    OPENRANK_TIMEOUT_SECS: int = 300
-    OPENRANK_REQ_IDS_FILENAME: str = "request_ids.csv"
-
     FRAMES_NAP_SECS: int = 10
     FRAMES_SLEEP_SECS: int = 300
     FRAMES_BATCH_SIZE: int = 1_000
@@ -193,6 +187,26 @@ class Settings(BaseSettings):
             f"@{self.ALT_DB_HOST}:{self.ALT_DB_PORT}/{self.ALT_DB_NAME}"
             f"?random_page_cost=1.1"
         )
+
+
+class OpenRankSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="OPENRANK_")
+    CHAIN_RPC_URL: str = "CHANGEME"
+    MANAGER_ADDRESS: str = "0x0"
+
+    # Vault configuration for secure mnemonic retrieval
+    # OPENRANK_VAULT_URL: URL to your OpenBao/Vault instance (e.g., "https://vault.example.com")
+    # OPENRANK_VAULT_TOKEN: Authentication token for vault access
+    # OPENRANK_VAULT_SECRET_PATH: Path to the secret containing the mnemonic (default: "secret/openrank/mnemonic")
+    # The secret should contain a key named "mnemonic" with the private key value
+    VAULT_URL: str = "CHANGEME"
+    VAULT_TOKEN: SecretStr = "CHANGEME"
+    VAULT_SECRET_PATH: str = "secret/openrank/mnemonic"
+
+    TIMEOUT_SECS: int = 300
+    REQ_IDS_FILENAME: str = "request_ids.csv"
+    AWS_ACCESS_KEY_ID: str = "CHANGEME"
+    AWS_SECRET_ACCESS_KEY: str = "CHANGEME"
 
 
 settings = Settings()

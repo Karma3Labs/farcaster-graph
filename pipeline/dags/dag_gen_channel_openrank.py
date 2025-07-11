@@ -103,8 +103,6 @@ with DAG(
         gen_file_tasks = gen_domain_files_chunk.expand(chunk=extract_ids)
         process_tasks = process_domains_chunk.expand(chunk=extract_ids)
 
-        sleep_task = TimeDeltaSensor(task_id="sleep_task", delta=timedelta(seconds=60))
-
         fetch_results = BashOperator(
             task_id="fetch_results",
             bash_command="cd /pipeline && ./run_channel_openrank.sh"
@@ -117,7 +115,6 @@ with DAG(
             >> extract_ids
             >> gen_file_tasks
             >> process_tasks
-            >> sleep_task
             >> fetch_results
         )
 
