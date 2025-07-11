@@ -261,7 +261,6 @@ def localtrust_for_strategy(
 def pretrust_for_strategy(
     logger: logging.Logger, pg_dsn: str, strategy: Strategy
 ) -> pd.DataFrame:
-
     with Timer(name=f"{strategy}"):
         match strategy:
             case Strategy.FOLLOWING:
@@ -299,7 +298,6 @@ def globaltrust_for_strategy(
     lt_filepath: Path,
     strategy: Strategy,
 ) -> pd.DataFrame:
-
     with Timer(name=f"{strategy}"):
         if settings.GO_EIGENTRUST_FILE_MODE:
             with Timer(name="go_eigentrust_from_file"):

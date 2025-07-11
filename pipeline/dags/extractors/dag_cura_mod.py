@@ -23,7 +23,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     fetch_task = BashOperator(
         task_id="extract_cura_hidden_fids",
         bash_command="cd /pipeline; extractors/extract_cura_mod.sh -w . -v .venv -r ",

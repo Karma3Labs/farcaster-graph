@@ -262,7 +262,6 @@ def prep_channel_rank_log(
     num_days: int,
     num_batches: int,
 ) -> int:
-
     lock_sql = """
         SELECT
             1
@@ -378,7 +377,6 @@ def update_channel_rank_for_cid(
     elapsed_time_ms: int,
     is_error: bool,
 ) -> list[str]:
-
     if is_error:
         status = "errored"
     else:
@@ -482,7 +480,6 @@ def fetch_weighted_fid_scores_df(
     gapfill: bool,
     date_str: str,
 ) -> pd.DataFrame:
-
     STRATEGY = "60d_engagement"
     INTERVAL = "1 day"
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
@@ -540,11 +537,13 @@ def fetch_weighted_fid_scores_df(
         INNER JOIN warpcast_channels_data as channels
             ON (channels.url = casts.root_parent_url)
         {
-            ("INNER JOIN k3l_channel_rewards_config as config"
-             " ON (config.channel_id = channels.id AND config.is_points = true)")
-             if allowlisted_only
-             else ""
-        }
+        (
+            "INNER JOIN k3l_channel_rewards_config as config"
+            " ON (config.channel_id = channels.id AND config.is_points = true)"
+        )
+        if allowlisted_only
+        else ""
+    }
         LEFT JOIN excluded_channels as excl
             ON (excl.channel_id = channels.id)
         WHERE excl.channel_id IS NULL
@@ -1397,7 +1396,7 @@ def update_distribution_status(
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
         SET dist_status = {status_to}, 
-            txn_hash = {"'"+txn_hash+"'" if txn_hash else "NULL"}
+            txn_hash = {"'" + txn_hash + "'" if txn_hash else "NULL"}
         WHERE dist_status {status_condn} 
         AND channel_id = '{channel_id}'
         AND dist_id = {dist_id}

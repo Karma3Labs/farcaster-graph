@@ -24,7 +24,6 @@ with DAG(
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
-
     insert = BashOperator(
         task_id="insert_cast_actions",
         bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ ",

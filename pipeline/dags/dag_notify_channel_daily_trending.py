@@ -38,7 +38,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     skip_notify = EmptyOperator(task_id="skip_notify")
 
     notify = BashOperator(

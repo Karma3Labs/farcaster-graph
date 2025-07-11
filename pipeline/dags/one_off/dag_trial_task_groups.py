@@ -42,7 +42,6 @@ with DAG(
 
     @task_group(group_id="my_echo_group")
     def tg_echo():
-
         echo3 = BashOperator(
             task_id="echo3", bash_command="echo {{ macros.ds_add(ds, -90) }}", dag=dag
         )

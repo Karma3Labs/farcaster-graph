@@ -96,7 +96,6 @@ trigger_dag = create_trigger_dag()
     catchup=False,  # To avoid backfilling if not required
 )
 def create_main_dag():
-
     start_task = EmptyOperator(task_id="start_task")
 
     end_task = EmptyOperator(task_id="end_task")

@@ -81,7 +81,6 @@ def fetch_and_slice_fids(incsv: Path, chunksize: int, outpath: Path) -> list[lis
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",

@@ -112,7 +112,6 @@ async def notify(channel_bots_csv: str, since: datetime):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-b",

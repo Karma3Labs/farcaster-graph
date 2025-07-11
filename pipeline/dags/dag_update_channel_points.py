@@ -24,7 +24,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     # run_genesis = BashOperator(
     #     task_id="run_genesis",
     #     bash_command="cd /pipeline && ./run_update_channel_points.sh  -w . -v .venv -t genesis",

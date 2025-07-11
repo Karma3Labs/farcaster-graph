@@ -27,7 +27,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     ssh_hook = SSHHook(ssh_conn_id="eigen1", keepalive_interval=60, cmd_timeout=None)
 
     eigen1_install_dependencies = SSHOperator(

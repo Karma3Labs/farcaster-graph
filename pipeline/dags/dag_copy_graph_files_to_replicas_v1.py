@@ -33,7 +33,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     ssh_hook = SSHHook(ssh_conn_id="eigen6", keepalive_interval=60, cmd_timeout=None)
 
     @task_group(group_id="gen_graphs")
@@ -66,7 +65,6 @@ with DAG(
 
     @task_group(group_id="copy_graphs")
     def tg_copy_graphs():
-
         eigen7_copy_personal_pkl_files = SSHOperator(
             task_id="eigen7_copy_personal_pkl_files",
             command=f"scp -v -i {eigen6_ssh_cred_path} ~/farcaster-graph/pipeline/tmp/graph_files/fc_engagement_fid_ig.pkl ubuntu@{eigen7_ipv4}:~/serve_files/",

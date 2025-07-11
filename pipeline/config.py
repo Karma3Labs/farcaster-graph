@@ -66,9 +66,7 @@ class Settings(BaseSettings):
     TEST_CHANNEL_LIMIT: int = 2
 
     LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: str = (
-        "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
-    )
+    LOG_FORMAT: str = "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
     LOGURU_FORMAT: str = (
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
         " | {name}:{function}:{line}"

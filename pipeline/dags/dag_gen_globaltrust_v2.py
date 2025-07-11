@@ -25,7 +25,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     mkdir_tmp = BashOperator(
         task_id="mkdir_tmpv2",
         bash_command="cd /pipeline; mkdir -p tmpv2/{{ run_id }}; mkdir -p tmpv2/graph_files",

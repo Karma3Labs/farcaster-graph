@@ -29,13 +29,11 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     b1 = EmptyOperator(task_id="all")
     b2 = EmptyOperator(task_id="skip_weekly")
 
     @task_group(group_id="tg_all")
     def tg_all():
-
         # prepare_airdrop = BashOperator(
         #     task_id="prepare_airdrop",
         #     bash_command="cd /pipeline && ./run_update_channel_tokens.sh  -w . -v .venv -t prep -s airdrop -r {{ run_id }}",

@@ -1,5 +1,5 @@
-from db_utils import SQL
 from casts.interactions import InteractionType
+from db_utils import SQL
 
 
 class IJVSql:

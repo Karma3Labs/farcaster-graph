@@ -25,7 +25,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     # gen_channel_metrics = EmptyOperator(task_id="gen_channel_metrics")
 
     gen_channel_metrics = BashOperator(

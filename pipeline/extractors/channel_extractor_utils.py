@@ -68,7 +68,9 @@ async def fetch_channel_fids(
     json_element = (
         "users"
         if job_type == JobType.followers
-        else "members" if job_type == JobType.members else None
+        else "members"
+        if job_type == JobType.members
+        else None
     )
     acceptable_types = ["application/json", "text/javascript", "text/plain"]
     ctr = 1  # track number of API calls for a single channel
@@ -295,8 +297,7 @@ def merge_db(
         (missing_live_channels.channel_id = live.channel_id)
     """
     replace_sql = (
-        f"DROP TABLE IF EXISTS {LIVE_TBL};"
-        f"ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
+        f"DROP TABLE IF EXISTS {LIVE_TBL};ALTER TABLE {NEW_TBL} RENAME TO {LIVE_TBL};"
     )
     try:
         # transaction scope begins

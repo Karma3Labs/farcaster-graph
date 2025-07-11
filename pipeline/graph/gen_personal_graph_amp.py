@@ -96,9 +96,7 @@ async def compute_task(
         )
         return knn_list
     except:
-        logger.error(
-            f"{process_label}" f"fid:{fid}" f"degree:{degree}" f"limit:{limit}"
-        )
+        logger.error(f"{process_label}fid:{fid}degree:{degree}limit:{limit}")
         logger.exception(f"{process_label}")
     return []
 
@@ -233,7 +231,6 @@ async def main(
 # -c 3 \
 # -m 1000
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",

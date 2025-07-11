@@ -27,7 +27,7 @@ with DAG(
 ) as dag:
     fetch_data_from_automod = BashOperator(
         task_id="fetch_automod_data_from_api",
-        bash_command=f"cd /pipeline/extractors ; python3 automod_extractor.py {api_key} { db_user } { db_password } { db_endpoint }",
+        bash_command=f"cd /pipeline/extractors ; python3 automod_extractor.py {api_key} {db_user} {db_password} {db_endpoint}",
     )
 
     fetch_data_from_automod

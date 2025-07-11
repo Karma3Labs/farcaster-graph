@@ -22,7 +22,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     prep_task = BashOperator(
         task_id="prep_warpcast_members",
         bash_command="cd /pipeline; extractors/extract_channel_fids.sh -t prep"

@@ -59,7 +59,6 @@ def gen_filepaths(
     strategy: compute.Strategy,
     target_date: str,
 ) -> tuple[Path, Path, Path, Path]:
-
     suffix = f"_{target_date}" if target_date else ""
 
     lt_filename = f"localtrust.{strategy.name.lower()}{suffix}.csv"

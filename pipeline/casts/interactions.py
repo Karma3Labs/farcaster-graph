@@ -1,9 +1,11 @@
-from enum import IntEnum
 import logging
+from enum import IntEnum
+
 import psycopg2
 import psycopg2.extras
-from timer import Timer
+
 from config import settings
+from timer import Timer
 
 
 class InteractionType(IntEnum):

@@ -22,7 +22,6 @@ with DAG(
     schedule_interval="30 20 * * *",
     catchup=False,
 ) as dag:
-
     task1 = BashOperator(
         task_id="backup_globaltrust",
         bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh globaltrust",

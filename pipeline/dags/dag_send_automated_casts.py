@@ -23,7 +23,6 @@ with DAG(
     catchup=False,
     tags=["notifications", "api", "cura"],
 ) as dag:
-
     trigger_api = BashOperator(
         task_id="trigger_cast_run_api_call",
         bash_command="curl -f -X GET https://notifications.cura.network/api/v1/casts/run",

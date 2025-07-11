@@ -39,7 +39,6 @@ class Scope(Enum):
 async def fetch(daemon: bool, scope: Scope, job_type: JobType, csv_path: Path):
     while True:
         try:
-
             logger.info(f"Reading all top channels from CSV:{csv_path}")
             top_channel_ids = channel_utils.read_channel_ids_csv(csv_path)
             random.shuffle(top_channel_ids)

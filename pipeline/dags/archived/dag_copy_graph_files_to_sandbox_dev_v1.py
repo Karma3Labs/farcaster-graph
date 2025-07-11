@@ -29,7 +29,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     ssh_hook = SSHHook(
         ssh_conn_id="sandbox_staging", keepalive_interval=60, cmd_timeout=None
     )

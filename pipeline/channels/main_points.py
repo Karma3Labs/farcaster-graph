@@ -180,7 +180,6 @@ def main(database: Database, task: Task, target_date_str: str):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-t",

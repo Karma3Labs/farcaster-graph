@@ -24,7 +24,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     gen_top_spammers = BashOperator(
         task_id="gen_top_spammers",
         bash_command="cd /pipeline && ./run_fetch_top_spammers.sh -v ./.venv",

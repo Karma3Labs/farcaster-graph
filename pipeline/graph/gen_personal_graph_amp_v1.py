@@ -85,9 +85,7 @@ def compute_task(
         )
         return knn_list
     except:
-        logger.error(
-            f"{process_label}" f"fid:{fid}" f"degree:{degree}" f"limit:{limit}"
-        )
+        logger.error(f"{process_label}fid:{fid}degree:{degree}limit:{limit}")
         logger.exception(f"{process_label}")
         raise
     return []

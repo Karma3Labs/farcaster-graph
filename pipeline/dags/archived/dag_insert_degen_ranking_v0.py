@@ -22,7 +22,6 @@ with DAG(
     schedule_interval=None,
     catchup=False,
 ) as dag:
-
     task_update_degen_tips = BashOperator(
         task_id="update_degen_tips_v0",
         bash_command="""cd /pipeline/ && ./run_create_degen_db_functions.sh -v .venv -t insert_scores

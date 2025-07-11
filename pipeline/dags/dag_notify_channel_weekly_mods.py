@@ -29,17 +29,18 @@ def wed_9ampacific_in_utc_time():
     return utc_time - timedelta(days=utc_time.weekday() - wednesday_dow)
 
 
-with DAG(
-    dag_id="notify_channel_weekly_mods",
-    default_args=default_args,
-    description="weekly notifications to mods",
-    start_date=datetime(2024, 7, 10, 18),
-    schedule_interval="30 16 * * 3",  # every Wednesday at 16:30/17:30 UTC / 09:30 Pacific
-    is_paused_upon_creation=True,
-    max_active_runs=1,
-    catchup=False,
-) as dag:
-
+with (
+    DAG(
+        dag_id="notify_channel_weekly_mods",
+        default_args=default_args,
+        description="weekly notifications to mods",
+        start_date=datetime(2024, 7, 10, 18),
+        schedule_interval="30 16 * * 3",  # every Wednesday at 16:30/17:30 UTC / 09:30 Pacific
+        is_paused_upon_creation=True,
+        max_active_runs=1,
+        catchup=False,
+    ) as dag
+):
     skip_notify = EmptyOperator(task_id="skip_notify")
 
     notify = BashOperator(

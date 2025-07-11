@@ -80,10 +80,8 @@ CHECK_QUERY = """
     catchup=False,  # To avoid backfilling if not required
 )
 def create_dag():
-
     @task_group(group_id="prep_db")
     def tg_prep_db():
-
         sanitycheck_before_truncate8 = SQLCheckOperator(
             task_id="sanitycheck_before_truncate8", sql=CHECK_QUERY, conn_id=CONN_ID
         )
@@ -107,7 +105,6 @@ def create_dag():
 
     @task_group(group_id="compute_group")
     def tg_compute():
-
         prep_channel_data = BashOperator(
             task_id="prep_channel_data",
             bash_command=(
@@ -147,7 +144,6 @@ def create_dag():
 
     @task_group(group_id="refesh_db")
     def tg_db():
-
         sanitycheck_before_refresh8 = SQLCheckOperator(
             task_id="sanitycheck_before_refresh8", sql=CHECK_QUERY, conn_id=CONN_ID
         )
@@ -167,7 +163,6 @@ def create_dag():
 
     @task_group(group_id="sync_data")
     def tg_sync():
-
         push_to_dune = BashOperator(
             task_id="overwrite_channel_rank_in_dune_v4",
             bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh overwrite_channel_rank_in_dune_v4",

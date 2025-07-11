@@ -22,7 +22,6 @@ with DAG(
     schedule=None,
     catchup=False,
 ) as dag:
-
     task1 = BashOperator(
         task_id="refresh_view_k3l_rank_e8",
         bash_command="""cd /pipeline/ && ./run_eigen8_postgres_sql.sh -w . "

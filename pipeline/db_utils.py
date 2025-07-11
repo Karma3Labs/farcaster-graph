@@ -97,8 +97,8 @@ def df_insert_not_exists(
     # WARNING - this code does not account for
     # .... single quotes or double quotes in dataframe column values
     query = f""" 
-        INSERT INTO {dest_tablename}({','.join(df.columns)}) VALUES 
-        {','.join([str(i) for i in list(df.to_records(index=False))])} 
+        INSERT INTO {dest_tablename}({",".join(df.columns)}) VALUES 
+        {",".join([str(i) for i in list(df.to_records(index=False))])} 
         ON CONFLICT ON CONSTRAINT {constraint} DO NOTHING
     """
     logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")

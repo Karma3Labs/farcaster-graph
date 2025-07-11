@@ -13,7 +13,6 @@ from loguru import logger
 
 
 def main(indir: Path, outfile: Path):
-
     logger.info(f"reading parquet files {indir}/*.pqt")
     pq_files = [os.path.join(indir, f) for f in os.listdir(indir) if f.endswith(".pqt")]
     if not pq_files:

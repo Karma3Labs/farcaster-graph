@@ -50,7 +50,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-
     start = EmptyOperator(task_id="start")
 
     sql_check = SQLCheckOperator(task_id="sql_check", sql=CHECK_QUERY, conn_id=_CONN_ID)
