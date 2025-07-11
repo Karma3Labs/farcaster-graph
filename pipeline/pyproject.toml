@@ -44,8 +44,7 @@ dynamic = ["version", "description"]
 [project.optional-dependencies]
 dev = [
     "flit>=3.12,<4",
-    "black>=25.1,<26",
-    "isort>=6.0,<7",
+    "ruff>=0.12.2,<0.13",
     "sqlfluff>=3.4,<4",
 ]
 
@@ -62,3 +61,7 @@ name = "k3l.fcgraph.pipeline"
 
 [tool.isort]
 skip_gitignore = true
+
+[tool.ruff.lint]
+# TODO(ek) - re-enable other check rules, by using extend-select instead
+select = ["I"]

@@ -19,6 +19,5 @@ case $# in
 		set -- .
 		;;
 esac
-isort --profile=black "$@" || exit
-black --quiet "$@" || exit
-#autopep8 --in-place --aggressive --aggressive --recursive "$@" || exit
+ruff check --fix "$@" || exit
+ruff format "$@" || exit
