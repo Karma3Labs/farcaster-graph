@@ -60,7 +60,7 @@ def fetch_results(
     out_dir: Path,
     domains_category: str,
 ):
-    file = os.path.join(out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME)
+    file = os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
     pg_url = settings.POSTGRES_URL.get_secret_value()
@@ -158,9 +158,7 @@ def process_domains(
             )
 
             with open(
-                file=os.path.join(
-                    out_dir, openrank_settings.OPENRANK_REQ_IDS_FILENAME
-                ),
+                file=os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME),
                 mode="a",  # Note - multiple processes within an airflow dag will write to the same file
                 buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
                 newline="",
