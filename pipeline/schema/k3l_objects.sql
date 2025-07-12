@@ -926,6 +926,9 @@ CREATE TABLE k3l_channel_openrank_results_y2025m03 PARTITION OF k3l_channel_open
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
 -------------------------------------------------
+CREATE INDEX k3l_reactions_updated_at ON neynarv3.reactions(updated_at);
+
+-------------------------------------------------
 
 CREATE TABLE public.k3l_farcaster_interactions (
     id SERIAL PRIMARY KEY,
@@ -940,9 +943,18 @@ ALTER TABLE
 ADD
     CONSTRAINT k3l_farcaster_interactions_source_target_interaction_type_uniq UNIQUE (source, target, interaction_type);
 
+ALTER TABLE 
+    public.k3l_farcaster_interactions
+ADD 
+    CONSTRAINT chk_value_non_negative CHECK (value >= 0);
+
 CREATE TABLE public.k3l_farcaster_interaction_cursors (
     interaction_type INTEGER NOT NULL PRIMARY KEY,
     next_cursor TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public.seen_reactions (
+    id UUID NOT NULL PRIMARY KEY REFERENCES neynarv3.reactions(id)
 );
 
 -------------------------------------------------
