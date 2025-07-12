@@ -9,11 +9,11 @@ from timer import Timer
 
 
 class InteractionType(IntEnum):
-    # Note: Match it with `neynarv2.reactions.reaction_type`
+    # Note: Match it with `neynarv3.reactions.reaction_type`
     LIKE = 1
     RECAST = 2
 
-    # not in the neynarv2.reactions.reaction_type
+    # not in the neynarv3.reactions.reaction_type
     REPLY = 11
 
 
@@ -37,7 +37,7 @@ batch_of_updates AS (
         created_at,
         deleted_at,
         updated_at
-    FROM neynarv2.casts
+    FROM neynarv3.casts
     WHERE
         parent_hash IS NOT NULL
         AND updated_at > (SELECT processed_updates_til FROM current_cursor)
