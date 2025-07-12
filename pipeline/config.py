@@ -11,6 +11,8 @@ class Database(str, Enum):
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
+
     DB_USER: str = "postgres"
     DB_PASSWORD: SecretStr = "password"
     DB_NAME: str = "postgres"
@@ -188,7 +190,7 @@ class Settings(BaseSettings):
 
 
 class OpenRankSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="OPENRANK_")
+    model_config = SettingsConfigDict(env_prefix="OPENRANK_", extra="ignore")
     CHAIN_RPC_URL: str = "CHANGEME"
     MANAGER_ADDRESS: str = "0x0"
 
