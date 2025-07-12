@@ -101,7 +101,7 @@ batch_of_updates AS (
         neynarv3.reactions.created_at,
         neynarv3.reactions.deleted_at
     FROM neynarv3.reactions
-    INNER JOIN neynarv3.profiles ON neynarv3.profiles.fid = neynarv3.reactions.target_fid AND neynarv3.profiles.deleted_at IS NOT NULL
+    INNER JOIN neynarv3.profiles ON neynarv3.profiles.fid = neynarv3.reactions.target_fid AND neynarv3.profiles.deleted_at IS NULL
     WHERE
         neynarv3.reactions.reaction_type = {InteractionType.LIKE.value}
         AND neynarv3.reactions.target_fid IS NOT NULL
