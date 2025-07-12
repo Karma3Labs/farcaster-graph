@@ -28,7 +28,7 @@ WITH current_cursor AS (
     {get_current_cursor_cte_with_lock(InteractionType.REPLY)}
 ),
 last_timestamp AS (
-    {get_last_timestamp_cte("casts", LIMIT)}
+    {get_last_timestamp_cte("neynarv3.casts", LIMIT)}
 ),
 batch_of_updates AS (
     SELECT
@@ -52,10 +52,15 @@ aggregated_results AS (
             CASE
                 -- Case 0: The interaction is not in the seen_casts table - we are seeing it for the first time.
                 WHEN id NOT IN (SELECT id FROM public.seen_casts) THEN
-                    CASE WHEN deleted_at is NULL THEN 1 ELSE 0
+                    CASE 
+                        WHEN deleted_at is NULL THEN 1 
+                        ELSE 0
+                    END
                 ELSE
-                    CASE WHEN deleted_at is not NULL THEN 0 ELSE -1 
-                END
+                    CASE 
+                        WHEN deleted_at is not NULL THEN 0 
+                        ELSE -1 
+                    END
             END
         ) AS value
     FROM batch_of_updates
@@ -86,7 +91,7 @@ WITH current_cursor AS (
     {get_current_cursor_cte_with_lock(InteractionType.LIKE)}
 ),
 last_timestamp AS (
-    {get_last_timestamp_cte("reactions", LIMIT)}
+    {get_last_timestamp_cte("neynarv3.reactions", LIMIT)}
 ),
 batch_of_updates AS (
     SELECT
@@ -111,10 +116,15 @@ aggregated_results AS (
             CASE
                 -- Case 0: The interaction is not in the seen_reactions table - we are seeing it for the first time.
                 WHEN id NOT IN (SELECT id FROM public.seen_reactions) THEN
-                    CASE WHEN deleted_at is NULL THEN 1 ELSE 0
+                    CASE 
+                        WHEN deleted_at is NULL THEN 1 
+                        ELSE 0 
+                    END
                 ELSE
-                    CASE WHEN deleted_at is not NULL THEN -1 ELSE 1 
-                END
+                    CASE 
+                        WHEN deleted_at is not NULL THEN -1 
+                        ELSE 1 
+                    END
             END
         ) AS value
     FROM batch_of_updates
