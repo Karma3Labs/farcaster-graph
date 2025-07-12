@@ -9,11 +9,11 @@ from timer import Timer
 
 
 class InteractionType(IntEnum):
-    # Note: Match it with `neynarv2.reactions.reaction_type`
+    # Note: Match it with `neynarv3.reactions.reaction_type`
     LIKE = 1
     RECAST = 2
 
-    # not in the neynarv2.reactions.reaction_type
+    # not in the neynarv3.reactions.reaction_type
     REPLY = 11
 
 
@@ -32,12 +32,13 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
+        id,
         fid,
         parent_fid as target_fid,
         created_at,
         deleted_at,
         updated_at
-    FROM neynarv2.casts
+    FROM neynarv3.casts
     WHERE
         parent_hash IS NOT NULL
         AND updated_at > (SELECT processed_updates_til FROM current_cursor)
@@ -49,22 +50,23 @@ aggregated_results AS (
         target_fid AS target,
         SUM(
             CASE
-                -- Case 1: The interaction is currently in a "deleted" state.
-                WHEN deleted_at IS NOT NULL THEN
-                    -- Check if it was also CREATED in this same window.
-                    -- If so, its net change is 0. Otherwise, it's -1.
-                    CASE WHEN created_at > (SELECT processed_updates_til FROM current_cursor) THEN 0 ELSE -1 END
-                
-                -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or an update of older interaction.
-                ELSE 
-                    CASE WHEN created_at = updated_at -- fresh interaction.
-                    THEN 1 
-                    ELSE 0 -- an older reply was updated.
-                    END
+                -- Case 0: The interaction is not in the seen_casts table - we are seeing it for the first time.
+                WHEN id NOT IN (SELECT id FROM public.seen_casts) THEN
+                    CASE WHEN deleted_at is NULL THEN 1 ELSE 0
+                ELSE
+                    CASE WHEN deleted_at is not NULL THEN 0 ELSE -1 
+                END
             END
         ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
+),
+inserted_ids AS (
+    INSERT INTO public.seen_casts (id, interaction_type)
+    SELECT id, {InteractionType.REPLY.value}
+    FROM batch_of_updates
+    ON CONFLICT (id, interaction_type) DO NOTHING
+    RETURNING 1
 ),
 {insert_data_sql(InteractionType.REPLY)}
 
@@ -88,17 +90,18 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
-        neynarv2.reactions.fid,
-        neynarv2.reactions.target_fid,
-        neynarv2.reactions.created_at,
-        neynarv2.reactions.deleted_at
-    FROM neynarv2.reactions
-    INNER JOIN neynarv2.fids ON neynarv2.fids.fid = neynarv2.reactions.target_fid
+        neynarv3.reactions.id,
+        neynarv3.reactions.fid,
+        neynarv3.reactions.target_fid,
+        neynarv3.reactions.created_at,
+        neynarv3.reactions.deleted_at
+    FROM neynarv3.reactions
+    INNER JOIN neynarv3.fids ON neynarv3.fids.fid = neynarv3.reactions.target_fid
     WHERE
-        neynarv2.reactions.reaction_type = {InteractionType.LIKE.value}
-        AND neynarv2.reactions.target_fid IS NOT NULL
-        AND neynarv2.reactions.updated_at > (SELECT processed_updates_til FROM current_cursor)
-        AND neynarv2.reactions.updated_at <= (SELECT updated_at FROM last_timestamp)
+        neynarv3.reactions.reaction_type = {InteractionType.LIKE.value}
+        AND neynarv3.reactions.target_fid IS NOT NULL
+        AND neynarv3.reactions.updated_at > (SELECT processed_updates_til FROM current_cursor)
+        AND neynarv3.reactions.updated_at <= (SELECT updated_at FROM last_timestamp)
 ),
 aggregated_results AS (
     SELECT
@@ -106,24 +109,23 @@ aggregated_results AS (
         target_fid AS target,
         SUM(
             CASE
-                -- Case 1: The interaction is currently in a "deleted" state.
-                WHEN deleted_at IS NOT NULL
-                    THEN
-                        -- Check if it was also CREATED in this same window.
-                        -- If so, its net change is 0. Otherwise, it's -1.
-                        CASE
-                            WHEN
-                                created_at
-                                > (SELECT processed_updates_til FROM current_cursor)
-                                THEN 0
-                            ELSE -1
-                        END
-                -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or "like, deleted, like". 
-                ELSE 1
+                -- Case 0: The interaction is not in the seen_reactions table - we are seeing it for the first time.
+                WHEN id NOT IN (SELECT id FROM public.seen_reactions) THEN
+                    CASE WHEN deleted_at is NULL THEN 1 ELSE 0
+                ELSE
+                    CASE WHEN deleted_at is not NULL THEN -1 ELSE 1 
+                END
             END
         ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
+),
+inserted_ids AS (
+    INSERT INTO public.seen_reactions (id)
+    SELECT id
+    FROM batch_of_updates
+    ON CONFLICT (id) DO NOTHING
+    RETURNING 1
 ),
 {insert_data_sql(InteractionType.LIKE)}
 
