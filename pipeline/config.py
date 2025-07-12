@@ -11,7 +11,11 @@ class Database(str, Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        # `.env.prod` takes priority over `.env`
+        env_file=(".env", ".env.prod"),
+    )
 
     DB_USER: str = "postgres"
     DB_PASSWORD: SecretStr = "password"
@@ -120,11 +124,6 @@ class Settings(BaseSettings):
     CURA_FE_API_URL: str = "changeme"
     CURA_FE_API_KEY: str = "changeme"
     CURA_NOTIFY_CHUNK_SIZE: int = 100
-
-    model_config = SettingsConfigDict(
-        # `.env.prod` takes priority over `.env`
-        env_file=(".env", ".env.prod")
-    )
 
     @computed_field
     @cached_property
