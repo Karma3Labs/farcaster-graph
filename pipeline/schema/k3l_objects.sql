@@ -957,5 +957,11 @@ CREATE TABLE public.seen_reactions (
     id UUID NOT NULL PRIMARY KEY REFERENCES neynarv3.reactions(id)
 );
 
+CREATE TABLE public.seen_casts (
+    id UUID NOT NULL,
+    interaction_type INTEGER NOT NULL,
+    UNIQUE (id, interaction_type)
+);
+
 -------------------------------------------------
 

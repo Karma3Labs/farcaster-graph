@@ -32,6 +32,7 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
+        id,
         fid,
         parent_fid as target_fid,
         created_at,
@@ -49,22 +50,23 @@ aggregated_results AS (
         target_fid AS target,
         SUM(
             CASE
-                -- Case 1: The interaction is currently in a "deleted" state.
-                WHEN deleted_at IS NOT NULL THEN
-                    -- Check if it was also CREATED in this same window.
-                    -- If so, its net change is 0. Otherwise, it's -1.
-                    CASE WHEN created_at > (SELECT processed_updates_til FROM current_cursor) THEN 0 ELSE -1 END
-                
-                -- Case 2: The interaction is in an "active" (not deleted) state. It can either be fresh or an update of older interaction.
-                ELSE 
-                    CASE WHEN created_at = updated_at -- fresh interaction.
-                    THEN 1 
-                    ELSE 0 -- an older reply was updated.
-                    END
+                -- Case 0: The interaction is not in the seen_casts table - we are seeing it for the first time.
+                WHEN id NOT IN (SELECT id FROM public.seen_casts) THEN
+                    CASE WHEN deleted_at is NULL THEN 1 ELSE 0
+                ELSE
+                    CASE WHEN deleted_at is not NULL THEN 0 ELSE -1 
+                END
             END
         ) AS value
     FROM batch_of_updates
     GROUP BY fid, target_fid
+),
+inserted_ids AS (
+    INSERT INTO public.seen_casts (id, interaction_type)
+    SELECT id, {InteractionType.REPLY.value}
+    FROM batch_of_updates
+    ON CONFLICT (id, interaction_type) DO NOTHING
+    RETURNING 1
 ),
 {insert_data_sql(InteractionType.REPLY)}
 
