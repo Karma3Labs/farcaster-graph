@@ -88,17 +88,17 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
-        neynarv2.reactions.fid,
-        neynarv2.reactions.target_fid,
-        neynarv2.reactions.created_at,
-        neynarv2.reactions.deleted_at
-    FROM neynarv2.reactions
-    INNER JOIN neynarv2.fids ON neynarv2.fids.fid = neynarv2.reactions.target_fid
+        neynarv3.reactions.fid,
+        neynarv3.reactions.target_fid,
+        neynarv3.reactions.created_at,
+        neynarv3.reactions.deleted_at
+    FROM neynarv3.reactions
+    INNER JOIN neynarv3.fids ON neynarv3.fids.fid = neynarv3.reactions.target_fid
     WHERE
-        neynarv2.reactions.reaction_type = {InteractionType.LIKE.value}
-        AND neynarv2.reactions.target_fid IS NOT NULL
-        AND neynarv2.reactions.updated_at > (SELECT processed_updates_til FROM current_cursor)
-        AND neynarv2.reactions.updated_at <= (SELECT updated_at FROM last_timestamp)
+        neynarv3.reactions.reaction_type = {InteractionType.LIKE.value}
+        AND neynarv3.reactions.target_fid IS NOT NULL
+        AND neynarv3.reactions.updated_at > (SELECT processed_updates_til FROM current_cursor)
+        AND neynarv3.reactions.updated_at <= (SELECT updated_at FROM last_timestamp)
 ),
 aggregated_results AS (
     SELECT
