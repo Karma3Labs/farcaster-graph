@@ -89,7 +89,12 @@ def process_channels(
         try:
             start_time = time.perf_counter()
             channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(
-                cid, channel_seeds_df, channel_bots_df, pg_dsn, pg_url, num_days
+                cid,
+                channel_seeds_df,
+                channel_bots_df,
+                pg_dsn,
+                pg_url,
+                num_days,
             )
             num_fids = 0
             inactive_seeds = pretrust_fids
@@ -110,7 +115,10 @@ def process_channels(
                     num_fids = len(scores_df)
                     inactive_seeds = absent_fids
                     channel_db_utils.insert_channel_scores_df(
-                        logger=logger, cid=cid, scores_df=scores_df, pg_url=pg_url
+                        logger=logger,
+                        cid=cid,
+                        scores_df=scores_df,
+                        pg_url=pg_url,
                     )
             else:
                 logger.warning(
@@ -205,7 +213,9 @@ if __name__ == "__main__":
             f"Prepping channels: {args.run_id} num_days: {args.num_days} num_batches: {args.num_batches}"
         )
         prep_channels(
-            run_id=args.run_id, num_days=args.num_days, num_batches=args.num_batches
+            run_id=args.run_id,
+            num_days=args.num_days,
+            num_batches=args.num_batches,
         )
     elif args.task == "process":
         if not args.seeds or not args.bots or not args.batch_id:

@@ -51,11 +51,6 @@ class Category(Enum):
     prod = "prod"
 
 
-_LT_FILENAME_FORMAT = "./trust/{cid}.csv"
-_PT_FILENAME_FORMAT = "./seed/{cid}.csv"
-_RANKING_FILENAME_FORMAT = "./scores/{cid}.json"
-
-
 def fetch_results(
     out_dir: Path,
     domains_category: str,
@@ -63,7 +58,6 @@ def fetch_results(
     file = os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
-    pg_url = settings.POSTGRES_URL.get_secret_value()
 
     req_ids_df = pd.read_csv(
         file, header=None, names=["channel_id", "interval_days", "req_id"]
@@ -71,54 +65,22 @@ def fetch_results(
     # duplicates possible if process_domains task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=["req_id"], keep="last")
 
-    failed_computes = []
-
     for _, row in req_ids_df.iterrows():
         cid = row["channel_id"]
         interval = row["interval_days"]
         req_id = row["req_id"]
 
-        out_filename = _RANKING_FILENAME_FORMAT.format(cid=cid)
-        out_file = os.path.join(out_dir, out_filename)
-        if os.path.exists(out_file):
-            logger.warning(f"Output file {out_file} already exists. Overwriting")
+        out_folder = os.path.join(out_dir, "./scores/")
+        if os.path.exists(out_folder):
+            logger.warning(f"Output folder {out_folder} already exists. Overwriting")
 
         try:
-            openrank_utils.download_results(openrank_settings, req_id, out_file)
+            openrank_utils.download_results(openrank_settings, req_id, out_folder)
         except Exception as e:
-            failed_computes.append((cid, interval, req_id))
             logger.error(
                 f"Failed to download results for channel {cid}, interval {interval}, req_id {req_id}: {e}"
             )
             continue
-
-        scores_df = pd.read_json(out_file)
-        scores_df["channel_id"] = cid
-        scores_df["req_id"] = req_id
-        scores_df.rename(columns={"id": "fid", "value": "score"}, inplace=True)
-        scores_df = scores_df.sort_values(["score"], ascending=[False])
-        scores_df = scores_df.reset_index(drop=True)
-        scores_df["rank"] = scores_df.index + 1
-        try:
-            logger.info(f"Inserting data into the database for channel {cid}")
-            logger.info(utils.df_info_to_string(scores_df, with_sample=True, head=True))
-            db_utils.df_insert_copy(
-                pg_url=pg_url,
-                df=scores_df,
-                dest_tablename="k3l_channel_openrank_results",
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to insert data into the database for channel {cid}: {e}"
-            )
-            raise e
-    # end of for loop
-    if len(failed_computes) > 0:
-        logger.error(f"Failed to download results for {len(failed_computes)} channels")
-        logger.error(failed_computes)
-        raise Exception(
-            f"Failed to download results for {len(failed_computes)} channels"
-        )
     return
 
 
@@ -136,19 +98,16 @@ def process_domains(
             channel = channel_domain_df[channel_domain_df["channel_id"] == cid]
             interval = channel["interval_days"].values[0]
 
-            lt_filename = _LT_FILENAME_FORMAT.format(cid=cid)
-            lt_file = os.path.join(out_dir, lt_filename)
+            lt_folder = os.path.join(out_dir, "./trust/")
+            pt_folder = os.path.join(out_dir, "./seed/")
 
-            pt_filename = _PT_FILENAME_FORMAT.format(cid=cid)
-            pt_file = os.path.join(out_dir, pt_filename)
-
-            if not os.path.exists(lt_file) or not os.path.exists(pt_file):
-                raise Exception(f"Missing files for {cid}")
+            if not os.path.exists(lt_folder) or not os.path.exists(pt_folder):
+                raise Exception(f"Missing folders for {cid}")
 
             req_id = openrank_utils.update_and_compute(
                 openrank_settings,
-                lt_file=lt_file,
-                pt_file=pt_file,
+                lt_folder=lt_folder,
+                pt_folder=pt_folder,
             )
 
             with (
@@ -175,8 +134,8 @@ def write_openrank_files(
     pretrust_df: pd.DataFrame,
     out_dir: Path,
 ):
-    lt_filename = _LT_FILENAME_FORMAT.format(cid=cid)
-    lt_file = os.path.join(out_dir, lt_filename)
+    lt_file = "./trust/{cid}.csv".format(cid=cid)
+    lt_file = os.path.join(out_dir, lt_file)
     logger.info(f"Saving localtrust for channel {cid} to {lt_file}")
     logger.info(
         f"Localtrust: {utils.df_info_to_string(localtrust_df, with_sample=True)}"
@@ -185,8 +144,8 @@ def write_openrank_files(
         localtrust_df = pd.DataFrame(columns=["i", "j", "v"])
     localtrust_df.to_csv(lt_file, index=False)
 
-    pt_filename = _PT_FILENAME_FORMAT.format(cid=cid)
-    pt_file = os.path.join(out_dir, pt_filename)
+    pt_file = "./seed/{cid}.csv".format(cid=cid)
+    pt_file = os.path.join(out_dir, pt_file)
     logger.info(f"Saving pretrust for channel {cid} to {pt_file}")
     logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
     if len(pretrust_df) == 0:
@@ -198,6 +157,7 @@ def write_openrank_files(
 
 def gen_domain_files(
     channel_seeds_csv: Path,
+    channel_bots_csv: Path,
     channel_ids_list: list[str],
     domains_category: str,
     out_dir: Path,
@@ -207,6 +167,7 @@ def gen_domain_files(
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
+    channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
     channel_domain_df = channel_utils.fetch_channel_domain_df(
         pg_url, domains_category, channel_ids_list
     )
@@ -219,7 +180,12 @@ def gen_domain_files(
 
             localtrust_df, pretrust_fid_list, absent_fids = (
                 channel_utils.prep_trust_data(
-                    cid, channel_seeds_df, pg_dsn, pg_url, interval
+                    cid,
+                    channel_seeds_df,
+                    channel_bots_df,
+                    pg_dsn,
+                    pg_url,
+                    interval,
                 )
             )
             logger.info(
@@ -277,6 +243,13 @@ if __name__ == "__main__":
         "--seed",
         type=lambda f: Path(f).expanduser().resolve(),
         help="path to the channel id - seed CSV file. For example, -s /path/to/file.csv",
+        required=False,
+    )
+    parser.add_argument(
+        "-b",
+        "--bots",
+        type=lambda f: Path(f).expanduser().resolve(),
+        help="path to the CSV file. For example, -c /path/to/file.csv",
         required=False,
     )
     parser.add_argument(
@@ -348,6 +321,7 @@ if __name__ == "__main__":
 
                 gen_domain_files(
                     channel_seeds_csv=args.seed,
+                    channel_bots_csv=args.bots,
                     channel_ids_list=channel_ids_list,
                     domains_category=domains_category,
                     out_dir=args.outdir,

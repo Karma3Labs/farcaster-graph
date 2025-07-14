@@ -4,7 +4,7 @@
 function validate_date() {
     date_to_check=$1
     date_format='%Y-%m-%d'
-    
+
     # Check if the date matches the format YYYY-mm-dd
     if [[ $(uname) == "Darwin" ]]; then
       if ! date -j -f "$date_format" "$date_to_check" >/dev/null 2>&1; then
@@ -131,7 +131,7 @@ elif [ "$STEP" = "compute_following" ]; then
 
   # copy localtrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   # localtrust has i,j,v,date,strategy_id for downstream processing but
-  # go-eigentrust requires only i,j,v 
+  # go-eigentrust requires only i,j,v
   cut -d',' -f1,2,3 \
   ${TEMP_DIR}/localtrust.following${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv
   # run compute
@@ -155,7 +155,7 @@ elif [ "$STEP" = "compute_engagement" ]; then
 
   # copy localtrust to go_eigentrust_bind_src so that go-eigentrust can read from filesystem instead of rest api
   # localtrust has i,j,v,date,strategy_id for downstream processing but
-  # go-eigentrust requires only i,j,v 
+  # go-eigentrust requires only i,j,v
   cut -d',' -f1,2,3 \
   ${TEMP_DIR}/localtrust.engagement${TARGET_DATE_SUFFIX}.csv > ${GO_EIGENTRUST_BIND_SRC}/go_localtrust.csv
   # run compute

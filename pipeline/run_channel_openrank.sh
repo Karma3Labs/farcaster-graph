@@ -2,7 +2,7 @@
 
 PATH=$PATH:tmp/bin
 
-while getopts w:v:t:s:c:o:p: flag
+while getopts w:v:t:s:c:o:p:b: flag
 do
     case "${flag}" in
         w) WORK_DIR=${OPTARG};;
@@ -11,6 +11,7 @@ do
         s) SEED_CSV=${OPTARG};;
         c) CATEGORY=${OPTARG};;
         o) OUT_DIR=${OPTARG};;
+        b) BOTS_CSV=${OPTARG};;
     esac
 done
 
@@ -21,8 +22,8 @@ if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CATEGORY" ];
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [seed_csv] -c [category] -o [out_dir] [channel_ids] "
   echo ""
   echo "Example: $0 -w . -v .venv -t fetch_domains -s channels/Top_Channels.csv -c test"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/ -p /tmp/prev_run/ openrank,music"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/ -p /tmp/prev/ openrank,music"
+  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/"
+  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/"
   echo "         $0 -w . -v .venv -t process_domains -c test -o /tmp/ openrank,music"
   echo "         $0 -w . -v .venv -t fetch_results -o /tmp/ "
   echo ""
@@ -108,7 +109,7 @@ elif [ "$TASK" = "gen_domain_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
   python3 -m channels.main_openrank -s "$SEED_CSV" -t gen_domain_files \
     --category "$CATEGORY" --outdir "$OUT_DIR" \
-    --channel_ids "$CHANNEL_IDS"
+    --channel_ids "$CHANNEL_IDS" -b "$BOTS_CSV"
   deactivate
 elif [ "$TASK" = "process_domains" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
