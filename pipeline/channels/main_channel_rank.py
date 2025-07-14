@@ -65,7 +65,9 @@ def process_channels(
     channel_seeds_csv: Path,
     channel_bots_csv: Path,
 ):
-    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(
+        channel_seeds_csv
+    )
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     sql_timeout_ms = 120_000
@@ -88,13 +90,22 @@ def process_channels(
     for cid in channel_ids:
         try:
             start_time = time.perf_counter()
-            channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(
-                cid, channel_seeds_df, channel_bots_df, pg_dsn, pg_url, num_days
+            channel_lt_df, pretrust_fids, absent_fids = (
+                channel_utils.prep_trust_data(
+                    cid,
+                    channel_seeds_df,
+                    channel_bots_df,
+                    pg_dsn,
+                    pg_url,
+                    num_days,
+                )
             )
             num_fids = 0
             inactive_seeds = pretrust_fids
             if len(pretrust_fids) == 0:
-                logger.info(f"No pretrust for channel {cid} in last {num_days} days")
+                logger.info(
+                    f"No pretrust for channel {cid} in last {num_days} days"
+                )
                 # product decision to allow channels with no pretrust
                 # ie., trust all channel users equally if mods are not doing their job
                 pass
@@ -110,7 +121,10 @@ def process_channels(
                     num_fids = len(scores_df)
                     inactive_seeds = absent_fids
                     channel_db_utils.insert_channel_scores_df(
-                        logger=logger, cid=cid, scores_df=scores_df, pg_url=pg_url
+                        logger=logger,
+                        cid=cid,
+                        scores_df=scores_df,
+                        pg_url=pg_url,
                     )
             else:
                 logger.warning(
@@ -205,7 +219,9 @@ if __name__ == "__main__":
             f"Prepping channels: {args.run_id} num_days: {args.num_days} num_batches: {args.num_batches}"
         )
         prep_channels(
-            run_id=args.run_id, num_days=args.num_days, num_batches=args.num_batches
+            run_id=args.run_id,
+            num_days=args.num_days,
+            num_batches=args.num_batches,
         )
     elif args.task == "process":
         if not args.seeds or not args.bots or not args.batch_id:

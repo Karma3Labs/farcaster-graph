@@ -44,7 +44,9 @@ def get_openrank_mnemonic(openrank_settings: OpenRankSettings) -> str:
         raise RuntimeError("Failed to fetch mnemonic from vault") from e
 
 
-def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file: Path):
+def download_results(
+    openrank_settings: OpenRankSettings, req_id: str, out_file: Path
+):
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
     new_env["OPENRANK_MANAGER_ADDRESS"] = openrank_settings.MANAGER_ADDRESS
@@ -53,7 +55,12 @@ def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file:
     new_env["AWS_SECRET_ACCESS_KEY"] = openrank_settings.AWS_SECRET_ACCESS_KEY
 
     get_cmd = subprocess.run(
-        ["openrank-sdk", "meta-download-results", str(req_id), str(out_file)],
+        [
+            "openrank-sdk",
+            "meta-download-scores",
+            str(req_id),
+            "--out-dir={}".format(str(out_file)),
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
@@ -62,13 +69,15 @@ def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file:
         check=True,
     )
     if get_cmd.returncode != 0:
-        logger.error(f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}")
+        logger.error(
+            f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}"
+        )
         raise Exception("OpenRank get-results failed")
     logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
 
 
 def update_and_compute(
-    openrank_settings: OpenRankSettings, lt_file: Path, pt_file: Path
+    openrank_settings: OpenRankSettings, lt_folder: str, pt_folder: str
 ) -> str:
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
@@ -81,8 +90,8 @@ def update_and_compute(
         [
             "openrank-sdk",
             "meta-compute-request",
-            str(lt_file),
-            str(pt_file),
+            lt_folder,
+            pt_folder,
             "--watch",
         ],
         stdout=subprocess.PIPE,

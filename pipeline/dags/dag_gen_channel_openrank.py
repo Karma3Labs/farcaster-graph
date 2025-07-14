@@ -78,7 +78,7 @@ with DAG(
                 bash_command="cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t gen_domain_files"
                 f" -s channels/Top_Channels.csv -c {CATEGORY}"
-                f" -o tmp/{run_id} -p previous_compute_input/"
+                f" -o tmp/{run_id}"
                 f' "{chunk_str}"',
                 env={"PYTHONUNBUFFERED": "1"},  # Ensures real-time logging
             )

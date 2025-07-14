@@ -72,7 +72,9 @@ class Settings(BaseSettings):
     TEST_CHANNEL_LIMIT: int = 2
 
     LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: str = "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
+    LOG_FORMAT: str = (
+        "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
+    )
     LOGURU_FORMAT: str = (
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
         " | {name}:{function}:{line}"
@@ -189,23 +191,25 @@ class Settings(BaseSettings):
 
 
 class OpenRankSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="OPENRANK_", extra="ignore")
-    CHAIN_RPC_URL: str = "CHANGEME"
-    MANAGER_ADDRESS: str = "0x0"
+    model_config = SettingsConfigDict(
+        env_prefix="OPENRANK_", env_file=(".env", ".env.prod"), extra="ignore"
+    )
+    CHAIN_RPC_URL: str
+    MANAGER_ADDRESS: str
 
     # Vault configuration for secure mnemonic retrieval
     # OPENRANK_VAULT_URL: URL to your OpenBao/Vault instance (e.g., "https://vault.example.com")
     # OPENRANK_VAULT_TOKEN: Authentication token for vault access
     # OPENRANK_VAULT_SECRET_PATH: Path to the secret containing the mnemonic (default: "secret/openrank/mnemonic")
     # The secret should contain a key named "mnemonic" with the private key value
-    VAULT_URL: str = "CHANGEME"
-    VAULT_TOKEN: SecretStr = "CHANGEME"
-    VAULT_SECRET_PATH: str = "secret/openrank/mnemonic"
+    VAULT_URL: str
+    VAULT_TOKEN: SecretStr
+    VAULT_SECRET_PATH: str = "openrank/mnemonic"
 
     TIMEOUT_SECS: int = 300
     REQ_IDS_FILENAME: str = "request_ids.csv"
-    AWS_ACCESS_KEY_ID: str = "CHANGEME"
-    AWS_SECRET_ACCESS_KEY: str = "CHANGEME"
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
 
 
 settings = Settings()

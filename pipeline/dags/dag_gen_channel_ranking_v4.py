@@ -20,7 +20,7 @@ CONN_ID = "eig8_k3l_user"
 N_CHUNKS = 200  # Define the number of chunks
 
 CHECK_QUERY = """
-    WITH 
+    WITH
     channel_rank_stats AS (
     SELECT
         COUNT(*) as tot_rows,
@@ -33,7 +33,7 @@ CHECK_QUERY = """
         SELECT
             COUNT(*) as tot_rows,
             COUNT(DISTINCT channel_id) AS tot_channels,
-            strategy_name				
+            strategy_name
         FROM k3l_channel_fids
     GROUP BY strategy_name
     ),
@@ -83,7 +83,9 @@ def create_dag():
     @task_group(group_id="prep_db")
     def tg_prep_db():
         sanitycheck_before_truncate8 = SQLCheckOperator(
-            task_id="sanitycheck_before_truncate8", sql=CHECK_QUERY, conn_id=CONN_ID
+            task_id="sanitycheck_before_truncate8",
+            sql=CHECK_QUERY,
+            conn_id=CONN_ID,
         )
         # sanitycheck_before_truncate8 = EmptyOperator(task_id='sanitycheck_before_truncate8')
 
@@ -145,7 +147,9 @@ def create_dag():
     @task_group(group_id="refesh_db")
     def tg_db():
         sanitycheck_before_refresh8 = SQLCheckOperator(
-            task_id="sanitycheck_before_refresh8", sql=CHECK_QUERY, conn_id=CONN_ID
+            task_id="sanitycheck_before_refresh8",
+            sql=CHECK_QUERY,
+            conn_id=CONN_ID,
         )
 
         # sanitycheck_before_refresh8 = EmptyOperator(task_id='sanitycheck_before_refresh8')

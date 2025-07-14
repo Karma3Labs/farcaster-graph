@@ -46,12 +46,16 @@ def execute_query(pg_dsn: str, query: str):
             cursor.execute(query)
 
 
-def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, **query_kwargs) -> pd.DataFrame:
+def ijv_df_read_sql_tmpfile(
+    pg_dsn: str, query: SQL, **query_kwargs
+) -> pd.DataFrame:
     with Timer(name=query.name):
         sql_query = query.value.format(**query_kwargs)
         with tempfile.TemporaryFile() as tmpfile:
             if settings.IS_TEST:
-                copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
+                copy_sql = (
+                    f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
+                )
             else:
                 copy_sql = f"COPY ({sql_query}) TO STDOUT WITH CSV HEADER"
             logger.debug(f"{copy_sql}")
@@ -60,7 +64,9 @@ def ijv_df_read_sql_tmpfile(pg_dsn: str, query: SQL, **query_kwargs) -> pd.DataF
                     cursor.copy_expert(copy_sql, tmpfile)
                     tmpfile.seek(0)
                     # types = defaultdict(np.uint64, i='Int32', j='Int32')
-                    df = pd.read_csv(tmpfile, dtype={"i": "Int32", "j": "Int32"})
+                    df = pd.read_csv(
+                        tmpfile, dtype={"i": "Int32", "j": "Int32"}
+                    )
                     return df
 
 
@@ -76,7 +82,9 @@ def update_date_strategyid(
     pg_dsn: str, temp_tbl: str, strategy_id: int, date_str: str = None
 ):
     # TODO remove this function as it is no longer used
-    date_setting = "date=now()" if date_str is None else f"date='{date_str}'::date"
+    date_setting = (
+        "date=now()" if date_str is None else f"date='{date_str}'::date"
+    )
     update_sql = f"""
     UPDATE {temp_tbl}
     SET {date_setting}, strategy_id={strategy_id}
@@ -96,9 +104,9 @@ def df_insert_not_exists(
 ):
     # WARNING - this code does not account for
     # .... single quotes or double quotes in dataframe column values
-    query = f""" 
-        INSERT INTO {dest_tablename}({",".join(df.columns)}) VALUES 
-        {",".join([str(i) for i in list(df.to_records(index=False))])} 
+    query = f"""
+        INSERT INTO {dest_tablename}({",".join(df.columns)}) VALUES
+        {",".join([str(i) for i in list(df.to_records(index=False))])}
         ON CONFLICT ON CONSTRAINT {constraint} DO NOTHING
     """
     logger.info(f"Inserting {len(df)} rows into table {dest_tablename}")
