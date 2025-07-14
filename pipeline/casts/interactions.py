@@ -19,7 +19,7 @@ class InteractionType(IntEnum):
 
 @Timer(name="update_reply_interactions")
 def update_reply_interactions(logger: logging.Logger, pg_dsn: str):
-    LIMIT = 10_000_000
+    LIMIT = 100_000
     sql = f"""
 BEGIN;
 
@@ -32,13 +32,16 @@ last_timestamp AS (
 ),
 batch_of_updates AS (
     SELECT
-        id,
+        neynarv3.casts.id,
         fid,
         parent_fid as target_fid,
         created_at,
         deleted_at,
-        updated_at
+        updated_at,
+        seen_casts.id IS NOT NULL AS seen
     FROM neynarv3.casts
+    LEFT JOIN public.seen_casts
+    ON neynarv3.casts.id = seen_casts.id AND interaction_type = {InteractionType.REPLY.value}
     WHERE
         parent_hash IS NOT NULL
         AND updated_at > (SELECT processed_updates_til FROM current_cursor)
@@ -51,7 +54,7 @@ aggregated_results AS (
         SUM(
             CASE
                 -- Case 0: The interaction is not in the seen_casts table - we are seeing it for the first time.
-                WHEN id NOT IN (SELECT id FROM public.seen_casts) THEN
+                WHEN seen = FALSE THEN
                     CASE 
                         WHEN deleted_at is NULL THEN 1 
                         ELSE 0
@@ -82,7 +85,7 @@ COMMIT;
 
 @Timer(name="update_likes_interactions")
 def update_likes_interactions(logger: logging.Logger, pg_dsn: str):
-    LIMIT = 10_000_000
+    LIMIT = 100_000
     sql = f"""
 BEGIN;
 
@@ -115,7 +118,7 @@ aggregated_results AS (
         SUM(
             CASE
                 -- Case 0: The interaction is not in the seen_reactions table - we are seeing it for the first time.
-                WHEN id NOT IN (SELECT id FROM public.seen_reactions) THEN
+                WHEN seen_reactions.id IS NULL THEN
                     CASE 
                         WHEN deleted_at is NULL THEN 1 
                         ELSE 0 
@@ -128,6 +131,8 @@ aggregated_results AS (
             END
         ) AS value
     FROM batch_of_updates
+    LEFT JOIN public.seen_reactions
+    ON batch_of_updates.id = public.seen_reactions.id
     GROUP BY fid, target_fid
 ),
 inserted_ids AS (
