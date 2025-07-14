@@ -23,9 +23,7 @@ def read_channel_seed_fids_csv(csv_path: Path) -> pd.DataFrame:
         seeds_df["seed_peers"] = seeds_df["seed_peers"].astype(str)
         seeds_df["seed_fids_list"] = seeds_df.apply(
             lambda row: (
-                []
-                if row["seed_peers"] == "nan"
-                else row["seed_peers"].split(",")
+                [] if row["seed_peers"] == "nan" else row["seed_peers"].split(",")
             ),
             axis=1,
         )
@@ -66,20 +64,14 @@ def fetch_channel_domain_df(
     pg_url: str, category: str, channel_ids: list[str] = None
 ) -> pd.DataFrame:
     try:
-        domains_df = db_utils.fetch_channel_domains_for_category(
-            pg_url, category
-        )
+        domains_df = db_utils.fetch_channel_domains_for_category(pg_url, category)
         if len(domains_df) == 0:
             raise Exception(f"No channel domains found for category {category}")
         if channel_ids:
             domains_df = domains_df[domains_df["channel_id"].isin(channel_ids)]
-            missing_channels = set(channel_ids) - set(
-                domains_df["channel_id"].values
-            )
+            missing_channels = set(channel_ids) - set(domains_df["channel_id"].values)
             if len(missing_channels) > 0:
-                raise Exception(
-                    f"Missing channel domains for {missing_channels}"
-                )
+                raise Exception(f"Missing channel domains for {missing_channels}")
         return domains_df
     except Exception as e:
         logger.error(f"Failed to read channel data from DB: {e}")
@@ -90,9 +82,7 @@ def read_channel_ids_csv(csv_path: Path) -> list:
     try:
         channels_df = pd.read_csv(csv_path)
         channels_df = channels_df.dropna(subset=["channel id"])
-        channels_df = channels_df.drop_duplicates(
-            subset=["channel id"], keep="last"
-        )
+        channels_df = channels_df.drop_duplicates(subset=["channel id"], keep="last")
         channels_df = channels_df[["channel id"]]
         channels_df["channel id"] = channels_df["channel id"].str.lower()
         channel_ids = list(set(channels_df["channel id"].values.tolist()))
@@ -124,9 +114,7 @@ def prep_trust_data(
     try:
         channel = db_utils.fetch_channel_details(pg_url, channel_id=cid)
         if channel is None:
-            logger.error(
-                f"Failed to fetch channel details for channel {cid}: skipping"
-            )
+            logger.error(f"Failed to fetch channel details for channel {cid}: skipping")
             return {cid: []}
         if len(host_fids) == 0:
             lead_fid = channel["leadfid"]
@@ -157,9 +145,7 @@ def prep_trust_data(
         channel_interactions_df = channel_interactions_df.rename(
             columns={"l1rep6rec3m12": "v"}
         )
-        logger.info(
-            utils.df_info_to_string(channel_interactions_df, with_sample=True)
-        )
+        logger.info(utils.df_info_to_string(channel_interactions_df, with_sample=True))
         utils.log_memusage(logger)
     except Exception as e:
         logger.error(f"Failed to fetch channel interactions DataFrame: {e}")
@@ -182,9 +168,7 @@ def prep_trust_data(
     else:
         logger.info(f"All channel casters: {fids}")
 
-    fids.extend(
-        host_fids
-    )  # host_fids need to be included in the eigentrust compute
+    fids.extend(host_fids)  # host_fids need to be included in the eigentrust compute
 
     try:
         # filter channel interactions by those casting in the channel
@@ -224,30 +208,20 @@ def compute_goeigentrust(
     interval: int,
 ) -> pd.DataFrame:
     try:
-        scores = go_eigentrust.get_scores(
-            lt_df=channel_lt_df, pt_ids=pretrust_fids
-        )
+        scores = go_eigentrust.get_scores(lt_df=channel_lt_df, pt_ids=pretrust_fids)
     except Exception as e:
-        logger.error(
-            f"Failed to compute EigenTrust scores for channel {cid}: {e}"
-        )
+        logger.error(f"Failed to compute EigenTrust scores for channel {cid}: {e}")
         raise e
 
     logger.info(f"go_eigentrust returned {len(scores)} entries")
 
     if len(scores) == 0:
         if interval > 0:
-            logger.info(
-                f"No globaltrust for channel {cid} for interval {interval}"
-            )
+            logger.info(f"No globaltrust for channel {cid} for interval {interval}")
             return None
         else:
-            logger.error(
-                f"No globaltrust for channel {cid} for lifetime engagement"
-            )
-            raise Exception(
-                f"No globaltrust for channel {cid} for lifetime engagement"
-            )
+            logger.error(f"No globaltrust for channel {cid} for lifetime engagement")
+            raise Exception(f"No globaltrust for channel {cid} for lifetime engagement")
 
     logger.debug(f"Channel user scores: {scores}")
 

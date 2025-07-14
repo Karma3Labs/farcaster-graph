@@ -65,9 +65,7 @@ def process_channels(
     channel_seeds_csv: Path,
     channel_bots_csv: Path,
 ):
-    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(
-        channel_seeds_csv
-    )
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
     sql_timeout_ms = 120_000
@@ -90,22 +88,18 @@ def process_channels(
     for cid in channel_ids:
         try:
             start_time = time.perf_counter()
-            channel_lt_df, pretrust_fids, absent_fids = (
-                channel_utils.prep_trust_data(
-                    cid,
-                    channel_seeds_df,
-                    channel_bots_df,
-                    pg_dsn,
-                    pg_url,
-                    num_days,
-                )
+            channel_lt_df, pretrust_fids, absent_fids = channel_utils.prep_trust_data(
+                cid,
+                channel_seeds_df,
+                channel_bots_df,
+                pg_dsn,
+                pg_url,
+                num_days,
             )
             num_fids = 0
             inactive_seeds = pretrust_fids
             if len(pretrust_fids) == 0:
-                logger.info(
-                    f"No pretrust for channel {cid} in last {num_days} days"
-                )
+                logger.info(f"No pretrust for channel {cid} in last {num_days} days")
                 # product decision to allow channels with no pretrust
                 # ie., trust all channel users equally if mods are not doing their job
                 pass

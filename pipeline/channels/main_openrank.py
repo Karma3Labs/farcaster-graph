@@ -72,14 +72,10 @@ def fetch_results(
 
         out_folder = os.path.join(out_dir, "./scores/")
         if os.path.exists(out_folder):
-            logger.warning(
-                f"Output folder {out_folder} already exists. Overwriting"
-            )
+            logger.warning(f"Output folder {out_folder} already exists. Overwriting")
 
         try:
-            openrank_utils.download_results(
-                openrank_settings, req_id, out_folder
-            )
+            openrank_utils.download_results(openrank_settings, req_id, out_folder)
         except Exception as e:
             logger.error(
                 f"Failed to download results for channel {cid}, interval {interval}, req_id {req_id}: {e}"
@@ -114,12 +110,14 @@ def process_domains(
                 pt_folder=pt_folder,
             )
 
-            with open(
-                file=os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME),
-                mode="a",  # Note - multiple processes within an airflow dag will write to the same file
-                buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
-                newline="",
-            ) as f:
+            with (
+                open(
+                    file=os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME),
+                    mode="a",  # Note - multiple processes within an airflow dag will write to the same file
+                    buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
+                    newline="",
+                ) as f
+            ):
                 write = csv.writer(f)
                 write.writerow([cid, interval, req_id])
 
@@ -149,9 +147,7 @@ def write_openrank_files(
     pt_file = "./seed/{cid}.csv".format(cid=cid)
     pt_file = os.path.join(out_dir, pt_file)
     logger.info(f"Saving pretrust for channel {cid} to {pt_file}")
-    logger.info(
-        f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}"
-    )
+    logger.info(f"Pretrust: {utils.df_info_to_string(pretrust_df, with_sample=True)}")
     if len(pretrust_df) == 0:
         pretrust_df = pd.DataFrame(columns=["i", "v"])
     pretrust_df.to_csv(pt_file, index=False)
@@ -170,9 +166,7 @@ def gen_domain_files(
     pg_dsn = settings.POSTGRES_DSN.get_secret_value()
     pg_url = settings.POSTGRES_URL.get_secret_value()
 
-    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(
-        channel_seeds_csv
-    )
+    channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
     channel_domain_df = channel_utils.fetch_channel_domain_df(
         pg_url, domains_category, channel_ids_list
@@ -202,14 +196,10 @@ def gen_domain_files(
                     f"Pretrust sample: {random.choices(pretrust_fid_list, k=10)}"
                 )
             else:
-                logger.warning(
-                    f"No pretrust for channel {cid} for interval {interval}"
-                )
+                logger.warning(f"No pretrust for channel {cid} for interval {interval}")
 
             # Filter out entries where i == j
-            localtrust_df = localtrust_df[
-                localtrust_df["i"] != localtrust_df["j"]
-            ]
+            localtrust_df = localtrust_df[localtrust_df["i"] != localtrust_df["j"]]
 
             if len(localtrust_df) == 0:
                 if interval > 0:
@@ -311,9 +301,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         if args.task == "fetch_results":
-            fetch_results(
-                out_dir=args.outdir, domains_category=domains_category
-            )
+            fetch_results(out_dir=args.outdir, domains_category=domains_category)
         else:
             if not hasattr(args, "channel_ids"):
                 logger.error("Channel IDs are required.")
