@@ -1260,6 +1260,7 @@ def fetch_notify_entries(
         SELECT 
             plog.fid, 
             plog.channel_id,
+            sum(plog.earnings) as earnings,
             coalesce(bool_or(config.is_tokens), false) as is_token
         FROM k3l_channel_points_log AS plog
         LEFT JOIN k3l_channel_rewards_config AS config
