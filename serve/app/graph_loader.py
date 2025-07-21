@@ -7,7 +7,7 @@ import igraph
 import pandas
 from loguru import logger
 
-from . import main, utils
+from . import utils
 from .config import settings
 from .models.graph_model import Graph, GraphType
 from .serverstatus import ServerStatus
