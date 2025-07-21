@@ -29,6 +29,7 @@ from .routers.localtrust_router import router as lt_router
 from .routers.metadata_router import router as metadata_router
 from .routers.token_router import router as token_router
 from .routers.user_router import router as user_router
+from .serverstatus import ServerStatus
 from .telemetry import PrometheusMiddleware, metrics
 
 logger.remove()
@@ -91,6 +92,7 @@ def custom_openapi():
 
 
 app_state = {}
+server_status = ServerStatus()
 
 
 async def _check_and_reload_models(loader: GraphLoader):
@@ -131,7 +133,7 @@ async def lifespan(app: FastAPI):
     # ... load graphs from disk immediately
     # ... set the loader into the global state
     # ... that every API request has access to.
-    app_state['graph_loader'] = GraphLoader()
+    app_state['graph_loader'] = GraphLoader(server_status=server_status)
 
     # start a background thread that can reload graphs if necessary
     app_state['graph_loader_task'] = asyncio.create_task(
@@ -210,7 +212,7 @@ async def session_middleware(request: Request, call_next):
 
 @app.get("/_health", include_in_schema=False)
 def get_health(response: Response):
-    app_status = app_state.get('app_status', 'accept')
+    app_status = server_status.status
     logger.info(f"health: {app_status}")
     if app_status != 'accept':
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -222,14 +224,14 @@ def get_health(response: Response):
 @app.get("/_pause", status_code=200, include_in_schema=False)
 def get_pause():
     logger.info("pausing app")
-    app_state['app_status'] = 'reject'
+    server_status.pause()
     return {'status': 'ok'}
 
 
 @app.get("/_resume", status_code=200, include_in_schema=False)
 def get_resume():
     logger.info("resuming app")
-    app_state['app_status'] = 'accept'
+    server_status.resume()
     return {'status': 'ok'}
 
 

@@ -10,12 +10,15 @@ from loguru import logger
 from . import main, utils
 from .config import settings
 from .models.graph_model import Graph, GraphType
+from .serverstatus import ServerStatus
 
 
 class GraphLoader:
 
-    def __init__(self) -> None:
+    def __init__(self, *poargs, server_status: ServerStatus, **kwargs) -> None:
+        super().__init__(*poargs, **kwargs)
         self.graphs = self.load_graphs()
+        self.server_status = server_status
 
     def get_graphs(self):
         return self.graphs
@@ -86,13 +89,13 @@ class GraphLoader:
                     # signal to the load balancer to stop sending new requests
                     # TODO co-ordinate with other servers to avoid all
                     # ... load-balanced servers going down at the same time
-                    main.get_pause()
+                    self.server_status.pause()
                     time.sleep(settings.PAUSE_BEFORE_RELOAD_SECS)
                     logger.info("reload graphs")
                     del self.graphs
                     gc.collect()
                     self.graphs = self.load_graphs()
-                    main.get_resume()  # start accepting new requests
+                    self.server_status.resume()  # start accepting new requests
                     break
         except Exception as e:
             logger.error(e)
