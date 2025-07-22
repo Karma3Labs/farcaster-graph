@@ -132,7 +132,7 @@ def process_slice(
                 "fid": pl.UInt32,
                 "degree": pl.UInt8,
                 "scores": pl.List(
-                    pl.Struct([pl.Field("i", pl.UInt32), pl.Field("v", pl.Float32)])
+                    pl.Struct([pl.Field("i", pl.UInt32), pl.Field("v", pl.Float64)])
                 ),
             },
         )

@@ -60,9 +60,7 @@ def read_trending_channel_ids_csv(csv_path: Path) -> pd.DataFrame:
         raise e
 
 
-def fetch_channels_for_category_df(
-    pg_url: str, category: str
-) -> pd.DataFrame:
+def fetch_channels_for_category_df(pg_url: str, category: str) -> pd.DataFrame:
     try:
         channels_df = db_utils.fetch_channels_for_category(pg_url, category)
         if len(channels_df) == 0:

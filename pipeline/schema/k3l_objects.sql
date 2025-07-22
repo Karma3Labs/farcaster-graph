@@ -931,6 +931,11 @@ CREATE TABLE public.seen_casts (
     UNIQUE (id, interaction_type)
 );
 
+
+CREATE INDEX idx_seen_casts_id
+  ON public.seen_casts(id);
+
+
 ALTER TABLE public.seen_casts
     OWNER TO k3l_user;
 

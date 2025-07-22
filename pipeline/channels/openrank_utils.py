@@ -43,6 +43,7 @@ def get_openrank_mnemonic(openrank_settings: OpenRankSettings) -> str:
     except Exception as e:
         raise RuntimeError("Failed to fetch mnemonic from vault") from e
 
+
 def compute_watch(openrank_settings: OpenRankSettings, req_id: str, out_file: Path):
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
@@ -66,9 +67,12 @@ def compute_watch(openrank_settings: OpenRankSettings, req_id: str, out_file: Pa
         check=True,
     )
     if get_cmd.returncode != 0:
-        logger.error(f"OpenRank meta-compute-watch failed for {req_id}: {get_cmd.stderr}")
+        logger.error(
+            f"OpenRank meta-compute-watch failed for {req_id}: {get_cmd.stderr}"
+        )
         raise Exception("OpenRank meta-compute-watch failed")
     logger.info(f"OpenRank meta-compute-watch for {req_id} downloaded to: {out_file}")
+
 
 def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file: Path):
     new_env = os.environ.copy()
@@ -93,7 +97,9 @@ def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file:
         check=True,
     )
     if get_cmd.returncode != 0:
-        logger.error(f"OpenRank meta-download-scores failed for {req_id}: {get_cmd.stderr}")
+        logger.error(
+            f"OpenRank meta-download-scores failed for {req_id}: {get_cmd.stderr}"
+        )
         raise Exception("OpenRank meta-download-scores failed")
     logger.info(f"OpenRank meta-download-scores for {req_id} downloaded to: {out_file}")
 

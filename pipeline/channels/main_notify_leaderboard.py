@@ -52,12 +52,25 @@ def notify():
     logger.info(
         f"Channel fids to be notified: {utils.df_info_to_string(entries_df, with_sample=True)}"
     )
+
+    # Get top 50 earners per channel
+    top_50_per_channel = (
+        entries_df.sort_values(["channel_id", "earnings"], ascending=[True, False])
+        .groupby("channel_id")
+        .head(50)
+    )
+
+    logger.info(
+        f"Top 50 earners per channel: {utils.df_info_to_string(top_50_per_channel, with_sample=True)}"
+    )
+
     if settings.IS_TEST:
         chunk_size = 2
     else:
         chunk_size = settings.CURA_NOTIFY_CHUNK_SIZE
+
     chunked_df = group_and_chunk_df(
-        entries_df, ["channel_id", "is_token"], "fid", chunk_size
+        top_50_per_channel, ["channel_id", "is_token"], "fid", chunk_size
     )
     logger.info(
         f"Channel fids to be notified: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}"
@@ -68,8 +81,6 @@ def notify():
         f"Sorted and chunked fids: {utils.df_info_to_string(chunked_df, with_sample=True, head=True)}"
     )
 
-    notified_fids_this_run = set()
-
     retries = Retry(
         total=3,
         backoff_factor=0.1,
@@ -79,7 +90,6 @@ def notify():
     connect_timeout_s = 5.0
     read_timeout_s = 30.0
     with niquests.Session(retries=retries) as session:
-        # reuse TCP connection for multiple scm requests
         session.headers.update(
             {
                 "Accept": "application/json",
@@ -90,31 +100,14 @@ def notify():
         timeouts = (connect_timeout_s, read_timeout_s)
         for (channel_id, is_token), fids in chunked_df.items():
             for fids_chunk in fids:
-                fids_chunk = fids_chunk.tolist()  # convert numpy array to scalar list
-
-                fids_to_send = []
-
-                if is_token:
-                    fids_to_send = fids_chunk
-                else:
-                    fids_to_send = [
-                        fid for fid in fids_chunk if fid not in notified_fids_this_run
-                    ]
-
-                if not fids_to_send:
-                    logger.info(
-                        f"Skipping empty or fully filtered chunk for channel={channel_id}"
-                    )
-                    continue
+                fids_chunk = fids_chunk.tolist()
 
                 logger.info(
-                    f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_to_send}"
+                    f"Sending notification for channel={channel_id} :is_token={is_token} :fids={fids_chunk}"
                 )
                 cura_utils.leaderboard_notify(
-                    session, timeouts, channel_id, is_token, fids_to_send, cutoff_time
+                    session, timeouts, channel_id, is_token, fids_chunk, cutoff_time
                 )
-
-                notified_fids_this_run.update(fids_to_send)
 
             logger.info(f"Notifications sent for channel '{channel_id}'")
         logger.info("Notifications sent for all channels")

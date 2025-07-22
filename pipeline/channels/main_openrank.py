@@ -1,10 +1,10 @@
 # standard dependencies
 import argparse
 import csv
+import json
 import os
 import random
 import sys
-import json
 from enum import Enum
 from pathlib import Path
 from typing import Tuple
@@ -61,9 +61,7 @@ def fetch_results(
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
 
-    req_ids_df = pd.read_csv(
-        file, header=None, names=["channel_ids", "req_id"]
-    )
+    req_ids_df = pd.read_csv(file, header=None, names=["channel_ids", "req_id"])
     # duplicates possible if process_category task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=["req_id"], keep="last")
     row = req_ids_df.iloc[-1]
@@ -78,21 +76,34 @@ def fetch_results(
         openrank_utils.compute_watch(openrank_settings, req_id, out_dir)
         openrank_utils.download_results(openrank_settings, req_id, out_dir)
 
-        with open(os.path.join(out_dir, "metadata.json"), 'r') as file:
+        with open(os.path.join(out_dir, "metadata.json"), "r") as file:
             data = json.load(file)
 
         metadata_df = pd.DataFrame(
-            columns=['category', 'req_id', 'request_tx_hash', 'results_tx_hash', 'challenge_tx_hash'],
-            data=[[category, req_id, data['request_tx_hash'], data['results_tx_hash'], data['challenge_tx_hash']]]
-        );
-
+            columns=[
+                "category",
+                "req_id",
+                "request_tx_hash",
+                "results_tx_hash",
+                "challenge_tx_hash",
+            ],
+            data=[
+                [
+                    category,
+                    req_id,
+                    data["request_tx_hash"],
+                    data["results_tx_hash"],
+                    data["challenge_tx_hash"],
+                ]
+            ],
+        )
         print(metadata_df)
 
-        db_utils.df_insert_copy(pg_url=pg_url, df=metadata_df, dest_tablename="openrank_channel_metadata")
-    except Exception as e:
-        logger.error(
-            f"Failed to download results, req_id {req_id}: {e}"
+        db_utils.df_insert_copy(
+            pg_url=pg_url, df=metadata_df, dest_tablename="openrank_channel_metadata"
         )
+    except Exception as e:
+        logger.error(f"Failed to download results, req_id {req_id}: {e}")
 
     return
 
@@ -102,9 +113,7 @@ def process_category(
     out_dir: Path,
 ):
     pg_url = settings.POSTGRES_URL.get_secret_value()
-    channels_df = channel_utils.fetch_channels_for_category_df(
-        pg_url, category
-    )
+    channels_df = channel_utils.fetch_channels_for_category_df(pg_url, category)
     try:
         lt_folder = os.path.join(out_dir, "./trust/")
         pt_folder = os.path.join(out_dir, "./seed/")
@@ -176,9 +185,7 @@ def gen_category_files(
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
-    channels_df = channel_utils.fetch_channels_for_category_df(
-        pg_url, category
-    )
+    channels_df = channel_utils.fetch_channels_for_category_df(pg_url, category)
     missing_seed_fids = []
 
     for index, channel in channels_df.iterrows():
