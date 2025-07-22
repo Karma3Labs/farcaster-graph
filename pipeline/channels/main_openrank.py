@@ -4,6 +4,7 @@ import csv
 import os
 import random
 import sys
+import json
 from enum import Enum
 from pathlib import Path
 from typing import Tuple
@@ -53,77 +54,85 @@ class Category(Enum):
 
 def fetch_results(
     out_dir: Path,
-    domains_category: str,
+    category: str,
 ):
+    pg_url = settings.POSTGRES_URL.get_secret_value()
     file = os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
 
     req_ids_df = pd.read_csv(
-        file, header=None, names=["channel_id", "interval_days", "req_id"]
+        file, header=None, names=["channel_ids", "req_id"]
     )
-    # duplicates possible if process_domains task was retried multiple times by Airflow dag
+    # duplicates possible if process_category task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=["req_id"], keep="last")
+    row = req_ids_df.iloc[-1]
 
-    for _, row in req_ids_df.iterrows():
-        cid = row["channel_id"]
-        interval = row["interval_days"]
-        req_id = row["req_id"]
+    req_id = row["req_id"]
 
-        out_folder = os.path.join(out_dir, "./scores/")
-        if os.path.exists(out_folder):
-            logger.warning(f"Output folder {out_folder} already exists. Overwriting")
+    out_folder = os.path.join(out_dir, "./scores/")
+    if os.path.exists(out_folder):
+        logger.warning(f"Output folder {out_folder} already exists. Overwriting")
 
-        try:
-            openrank_utils.download_results(openrank_settings, req_id, out_folder)
-        except Exception as e:
-            logger.error(
-                f"Failed to download results for channel {cid}, interval {interval}, req_id {req_id}: {e}"
-            )
-            continue
+    try:
+        openrank_utils.compute_watch(openrank_settings, req_id, out_dir)
+        openrank_utils.download_results(openrank_settings, req_id, out_dir)
+
+        with open(os.path.join(out_dir, "metadata.json"), 'r') as file:
+            data = json.load(file)
+
+        metadata_df = pd.DataFrame(
+            columns=['category', 'req_id', 'request_tx_hash', 'results_tx_hash', 'challenge_tx_hash'],
+            data=[[category, req_id, data['request_tx_hash'], data['results_tx_hash'], data['challenge_tx_hash']]]
+        );
+
+        print(metadata_df)
+
+        db_utils.df_insert_copy(pg_url=pg_url, df=metadata_df, dest_tablename="openrank_channel_metadata")
+    except Exception as e:
+        logger.error(
+            f"Failed to download results, req_id {req_id}: {e}"
+        )
+
     return
 
 
-def process_domains(
-    channel_ids_list: list[str],
-    domains_category: str,
+def process_category(
+    category: str,
     out_dir: Path,
 ):
     pg_url = settings.POSTGRES_URL.get_secret_value()
-    channel_domain_df = channel_utils.fetch_channel_domain_df(
-        pg_url, domains_category, channel_ids_list
+    channels_df = channel_utils.fetch_channels_for_category_df(
+        pg_url, category
     )
-    for cid in channel_ids_list:
-        try:
-            channel = channel_domain_df[channel_domain_df["channel_id"] == cid]
-            interval = channel["interval_days"].values[0]
+    try:
+        lt_folder = os.path.join(out_dir, "./trust/")
+        pt_folder = os.path.join(out_dir, "./seed/")
 
-            lt_folder = os.path.join(out_dir, "./trust/")
-            pt_folder = os.path.join(out_dir, "./seed/")
+        if not os.path.exists(lt_folder) or not os.path.exists(pt_folder):
+            raise Exception(f"Missing folders ./trust or ./seed")
 
-            if not os.path.exists(lt_folder) or not os.path.exists(pt_folder):
-                raise Exception(f"Missing folders for {cid}")
+        req_id = openrank_utils.update_and_compute(
+            openrank_settings,
+            lt_folder=lt_folder,
+            pt_folder=pt_folder,
+        )
 
-            req_id = openrank_utils.update_and_compute(
-                openrank_settings,
-                lt_folder=lt_folder,
-                pt_folder=pt_folder,
-            )
+        with (
+            open(
+                file=os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME),
+                mode="a",  # Note - multiple processes within an airflow dag will write to the same file
+                buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
+                newline="",
+            ) as f
+        ):
+            write = csv.writer(f)
+            write.writerow([channels_df["channel_id"].values, req_id])
 
-            with (
-                open(
-                    file=os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME),
-                    mode="a",  # Note - multiple processes within an airflow dag will write to the same file
-                    buffering=os.O_NONBLOCK,  # Note - this setting is redundant on most OS
-                    newline="",
-                ) as f
-            ):
-                write = csv.writer(f)
-                write.writerow([cid, interval, req_id])
+    except Exception as e:
+        logger.error(f"failed to process a channel: {cid}: {e}")
+        raise e
 
-        except Exception as e:
-            logger.error(f"failed to process a channel: {cid}: {e}")
-            raise e
     return
 
 
@@ -155,11 +164,10 @@ def write_openrank_files(
     return
 
 
-def gen_domain_files(
+def gen_category_files(
     channel_seeds_csv: Path,
     channel_bots_csv: Path,
-    channel_ids_list: list[str],
-    domains_category: str,
+    category: str,
     out_dir: Path,
 ):
     # DSN used with Pandas to SQL, and URL with direct SQL queries
@@ -168,15 +176,15 @@ def gen_domain_files(
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
-    channel_domain_df = channel_utils.fetch_channel_domain_df(
-        pg_url, domains_category, channel_ids_list
+    channels_df = channel_utils.fetch_channels_for_category_df(
+        pg_url, category
     )
     missing_seed_fids = []
 
-    for cid in channel_ids_list:
+    for index, channel in channels_df.iterrows():
         try:
-            channel = channel_domain_df[channel_domain_df["channel_id"] == cid]
-            interval = int(channel["interval_days"].values[0])
+            cid = channel["channel_id"]
+            interval = int(channel["interval_days"])
 
             localtrust_df, pretrust_fid_list, absent_fids = (
                 channel_utils.prep_trust_data(
@@ -277,7 +285,7 @@ if __name__ == "__main__":
         "-o",
         "--outdir",
         type=lambda f: Path(f).expanduser().resolve(),
-        help="output directory for process_domain task",
+        help="output directory for process_category task",
         required=False,
     )
     args = parser.parse_args()
@@ -285,11 +293,11 @@ if __name__ == "__main__":
 
     logger.debug("hello main")
 
-    domains_category = args.category.value
+    category = args.category.value
     # TODO replace this nested if-else with argparse groups
-    if args.task == "fetch_domains":
+    if args.task == "fetch_category":
         pg_url = settings.POSTGRES_URL.get_secret_value()
-        df = channel_utils.fetch_channel_domain_df(pg_url, domains_category)
+        df = channel_utils.fetch_channels_for_category_df(pg_url, category)
         channel_ids = df["channel_id"].values.tolist()
         random.shuffle(channel_ids)  # in-place shuffle
         print(
@@ -301,7 +309,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         if args.task == "fetch_results":
-            fetch_results(out_dir=args.outdir, domains_category=domains_category)
+            fetch_results(out_dir=args.outdir, category=category)
         else:
             if not hasattr(args, "channel_ids"):
                 logger.error("Channel IDs are required.")
@@ -312,28 +320,26 @@ if __name__ == "__main__":
                 logger.warning("No channel IDs specified.")
                 sys.exit(0)
 
-            if args.task == "gen_domain_files":
+            if args.task == "gen_category_files":
                 if not hasattr(args, "seed"):
                     logger.error(
-                        "Seed csv file, previous directory and domain mapping are required for gen_domain_files task."
+                        "Seed csv file, previous directory and category mapping are required for gen_category_files task."
                     )
                     sys.exit(1)
 
-                gen_domain_files(
+                gen_category_files(
                     channel_seeds_csv=args.seed,
                     channel_bots_csv=args.bots,
-                    channel_ids_list=channel_ids_list,
-                    domains_category=domains_category,
+                    category=category,
                     out_dir=args.outdir,
                 )
-            elif args.task == "process_domains":
-                process_domains(
-                    channel_ids_list=channel_ids_list,
-                    domains_category=domains_category,
+            elif args.task == "process_category":
+                process_category(
+                    category=category,
                     out_dir=args.outdir,
                 )
             else:
                 logger.error(
-                    "Invalid task specified. Use 'fetch_domains', 'process_domains' or 'gen_domain_files'."
+                    "Invalid task specified. Use 'fetch_category', 'process_category' or 'gen_category_files'."
                 )
                 sys.exit(1)

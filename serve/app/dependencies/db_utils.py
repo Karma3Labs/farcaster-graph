@@ -252,17 +252,17 @@ async def get_verified_addresses_for_fids(fids: list[str], pool: Pool):
                 and date in (select max(date) from k3l_rank)
     ),
     verified_addresses as (
-        SELECT 
+        SELECT
             verifications.claim->>'address' as address,
             fids.fid as fid,
-            ROW_NUMBER() OVER(PARTITION BY verifications.fid 
+            ROW_NUMBER() OVER(PARTITION BY verifications.fid
                                 ORDER BY verifications.timestamp DESC) AS created_order
         FROM fids
         INNER JOIN verifications ON (verifications.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     )
-    SELECT	
+    SELECT
         vaddr.address as address,
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT(fnames.fname)), null) as fnames,
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 6 then user_data.value end)), null) as usernames,
@@ -317,7 +317,7 @@ async def get_all_handle_addresses_for_fids(fids: list[str], pool: Pool):
     )
     SELECT fid_details.*,
     latest_global_rank.global_rank
-    FROM fid_details 
+    FROM fid_details
     LEFT JOIN latest_global_rank using(fid)
     ORDER BY username
     LIMIT 1000 -- safety valve
@@ -327,7 +327,7 @@ async def get_all_handle_addresses_for_fids(fids: list[str], pool: Pool):
 
 async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
     sql_query = """
-    WITH 
+    WITH
     latest_global_rank as (
     select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=9
                 and date in (select max(date) from k3l_rank)
@@ -350,7 +350,7 @@ async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
         ANY_VALUE(fnames.fname) as fname,
         ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
         ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
-        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio 
+        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio
         from agg_addresses
     LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
     LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid)
@@ -431,9 +431,9 @@ async def get_top_profiles(
 
 async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     sql_query = """
-    WITH 
+    WITH
     follower_stats AS (
-    SELECT 
+    SELECT
         channel_id,
             count(*) as num_followers
     FROM warpcast_followers
@@ -441,14 +441,14 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     GROUP BY channel_id
     ),
     rank_stats AS (
-    SELECT 	
+    SELECT
         channel_id AS ranked_cid,
         COUNT(*) AS num_fids_ranked,
     --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
     --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
-        MIN(score) as min_score, 
+        MIN(score) as min_score,
         MAX(score) as max_score
     FROM k3l_channel_rank
     WHERE channel_id = $1
@@ -456,7 +456,7 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     GROUP BY channel_id
     ),
     member_stats AS (
-    SELECT 
+    SELECT
         channel_id as member_cid,
             count(*) as num_members
     FROM warpcast_members
@@ -470,8 +470,8 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY balance) AS p25_balance,
     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS p50_balance,
     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS p75_balance,
-    --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS p90_balance,  	
-        MIN(balance) as min_balance, 
+    --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS p90_balance,
+        MIN(balance) as min_balance,
         MAX(balance) as max_balance
     FROM k3l_channel_points_bal
         WHERE channel_id = $1
@@ -485,13 +485,35 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS token_p50_balance,
     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS token_p75_balance,
     --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS token_p90_balance,
-        MIN(balance) as token_min_balance, 
+        MIN(balance) as token_min_balance,
         MAX(balance) as token_max_balance
     FROM k3l_channel_tokens_bal
     WHERE channel_id = $1
     GROUP BY channel_id
+    ),
+    category_stats AS (
+    SELECT
+        channel_id as category_cid,
+        category
+    FROM k3l_channel_categories
+    WHERE channel_id = $1
+    ),
+    metadata_stats AS (
+    SELECT
+        ocm.request_tx_hash,
+        ocm.results_tx_hash,
+        ocm.challenge_tx_hash
+    FROM k3l_channel_categories kcc
+    LEFT JOIN openrank_channel_metadata ocm ON ocm.category = kcc.category
+    WHERE kcc.channel_id = $1
+    UNION ALL
+    SELECT
+        NULL as request_tx_hash,
+        NULL as results_tx_hash,
+        NULL as challenge_tx_hash
+    WHERE NOT EXISTS (SELECT 1 FROM k3l_channel_categories WHERE channel_id = $1)
     )
-    SELECT 
+    SELECT
     channel_id,
     num_followers,
     num_fids_ranked,
@@ -503,7 +525,11 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
         min_balance,max_balance,
     token_num_holders,
     --   token_p25_balance,token_p50_balance,token_p75_balance,token_p90_balance,
-    token_min_balance,token_max_balance
+    token_min_balance,token_max_balance,
+    category,
+    request_tx_hash,
+    results_tx_hash,
+    challenge_tx_hash
     FROM rank_stats as rs
     LEFT JOIN follower_stats as fids
         ON (fids.channel_id = rs.ranked_cid)
@@ -513,6 +539,9 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
         ON (ps.points_cid = rs.ranked_cid)
     LEFT JOIN tokens_stats as ts
         ON (ts.tokens_cid = rs.ranked_cid)
+    LEFT JOIN category_stats as cs
+        ON (cs.category_cid = rs.ranked_cid)
+    LEFT JOIN metadata_stats as mds ON 1=1
     """
     return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
 
@@ -590,25 +619,25 @@ async def get_top_openrank_channel_profiles(
 ):
     sql_query = """
     WITH latest AS (
-        SELECT 
+        SELECT
             max(results.insert_ts) as latest_ts,
             results.channel_domain_id
-        FROM 
+        FROM
                 k3l_channel_openrank_results as results
-            INNER JOIN k3l_channel_domains as domains 
+            INNER JOIN k3l_channel_domains as domains
                     ON (domains.id = results.channel_domain_id and domains.category=$2
                 AND domains.channel_id=$1)
         GROUP BY results.channel_domain_id
     )
-    SELECT 
+    SELECT
         fid,
         score,
         rank,
         req_id,
-        insert_ts as compute_ts 
-    FROM 
-        k3l_channel_openrank_results as results, latest 
-    WHERE 
+        insert_ts as compute_ts
+    FROM
+        k3l_channel_openrank_results as results, latest
+    WHERE
         results.insert_ts = latest.latest_ts AND results.channel_domain_id = latest.channel_domain_id
     OFFSET $3
     LIMIT $4
@@ -662,8 +691,8 @@ async def get_top_channel_earnings(
         sql_query = f"""
         SELECT
             bal.fid,
-            bal.balance as balance, 
-            CASE 
+            bal.balance as balance,
+            CASE
                 WHEN (bal.update_ts < now() - interval '1 days') THEN 0
                 WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                 ELSE bal.latest_earnings
@@ -693,8 +722,8 @@ async def get_top_channel_earnings(
                 case when user_data.type = 6 then user_data.value end as username,
                 case when user_data.type = 1 then user_data.value end as pfp,
                 case when user_data.type = 3 then user_data.value end as bio,
-                bal.balance as balance, 
-                CASE 
+                bal.balance as balance,
+                CASE
                     WHEN (bal.update_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                     ELSE bal.latest_earnings
@@ -713,7 +742,7 @@ async def get_top_channel_earnings(
             FROM top_records
             LEFT JOIN addresses using (fid)
         )
-        SELECT 
+        SELECT
             fid,
             any_value(fname) as fname,
             any_value(username) as username,
@@ -744,14 +773,14 @@ async def get_tokens_distribution_details(
     )
 
     sql_query = f"""
-    WITH 
+    WITH
     dist_id AS (
         SELECT
             channel_id, dist_id, batch_id
         FROM k3l_channel_tokens_log
         WHERE channel_id=$1
         AND batch_id=$2
-        {dist_filter} 
+        {dist_filter}
         LIMIT 1
     ),
     distrib_rows AS (
@@ -768,14 +797,14 @@ async def get_tokens_distribution_details(
             tlog.amt,
             tlog.txn_hash
         FROM k3l_channel_tokens_log AS tlog
-        INNER JOIN dist_id 
-            ON (tlog.channel_id = dist_id.channel_id 
+        INNER JOIN dist_id
+            ON (tlog.channel_id = dist_id.channel_id
                 AND dist_id.dist_id = tlog.dist_id
                 AND dist_id.batch_id = tlog.batch_id)
         LEFT JOIN fnames on (fnames.fid = tlog.fid)
         LEFT JOIN user_data on (user_data.fid = tlog.fid)
     )
-    SELECT 
+    SELECT
         fid,
         any_value(channel_id) as channel_id,
         any_value(dist_id) as dist_id,
@@ -802,7 +831,7 @@ async def get_tokens_distribution_overview(
     channel_id: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = """
-    SELECT 
+    SELECT
         channel_id,
         dist_id,
         batch_id,
@@ -826,7 +855,7 @@ async def get_tokens_distribution_overview(
             max(amt) as max_amt,
         min(amt) as min_amt,
     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY amt) AS median_amt
-    FROM k3l_channel_tokens_log 
+    FROM k3l_channel_tokens_log
     WHERE channel_id = $1
     GROUP BY channel_id, dist_id, batch_id
     ORDER BY dist_id DESC, batch_id ASC
@@ -842,7 +871,7 @@ async def get_fid_channel_token_balance(channel_id: str, fid: int, pool: Pool):
 		    fid,
             channel_id,
             balance,
-            CASE 
+            CASE
                 WHEN (bal.update_ts < now() - interval '1 days') THEN 0
                 WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                 ELSE bal.latest_earnings
@@ -867,11 +896,11 @@ async def get_points_distribution_preview(
         WITH latest as (
             SELECT channel_id, model_name, max(insert_ts) as insert_ts
             FROM k3l_channel_points_log
-            WHERE channel_id = $1 
+            WHERE channel_id = $1
             GROUP BY channel_id, model_name
         )
-        SELECT 
-            l.channel_id, l.fid, 
+        SELECT
+            l.channel_id, l.fid,
             any_value(fnames.fname) as fname,
             any_value(case when user_data.type = 6 then user_data.value end) as username,
             any_value(case when user_data.type = 1 then user_data.value end) as pfp,
@@ -882,10 +911,10 @@ async def get_points_distribution_preview(
             any_value(case when l.model_name = 'reddit_default' then earnings end) as reddit_earnings,
             any_value(case when l.model_name = 'reddit_cast_weighted' then earnings end) as reddit_cast_weighted_earnings
         FROM k3l_channel_points_log as l
-        INNER JOIN latest 
+        INNER JOIN latest
             on (
-                latest.channel_id = l.channel_id 
-            and latest.model_name = l.model_name 
+                latest.channel_id = l.channel_id
+            and latest.model_name = l.model_name
             and latest.insert_ts <= l.insert_ts
             )
         LEFT JOIN fnames on (fnames.fid = l.fid)
@@ -910,7 +939,7 @@ async def get_tokens_distribution_preview(
 
     sql_query = f"""
         WITH latest_log AS (
-            SELECT max(points_ts) as max_points_ts, channel_id, fid 
+            SELECT max(points_ts) as max_points_ts, channel_id, fid
             FROM k3l_channel_tokens_log
             WHERE channel_id = $1
             GROUP BY channel_id, fid
@@ -921,7 +950,7 @@ async def get_tokens_distribution_preview(
             GROUP BY fid
         ),
         eligible AS (
-            SELECT 
+            SELECT
                 bal.fid as fid,
                 COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
                 fnames.fname as fname,
@@ -931,18 +960,18 @@ async def get_tokens_distribution_preview(
                 bal.channel_id as channel_id,
                 round(bal.{points_col},0) as amt
             FROM k3l_channel_points_bal as bal
-            LEFT JOIN latest_log as tlog 
+            LEFT JOIN latest_log as tlog
                 ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
                     AND tlog.max_points_ts = bal.update_ts)
-            INNER JOIN fids ON (fids.fid = bal.fid) 
-            LEFT JOIN latest_verified_address as vaddr 
+            INNER JOIN fids ON (fids.fid = bal.fid)
+            LEFT JOIN latest_verified_address as vaddr
                 ON (vaddr.fid=bal.fid)
             LEFT JOIN fnames on (fnames.fid = bal.fid)
             LEFT JOIN user_data on (user_data.fid = bal.fid)
-            WHERE 
+            WHERE
                 tlog.channel_id IS NULL
                 AND bal.channel_id = $1
-                {interval_cond} 
+                {interval_cond}
         )
         SELECT
             fid,
@@ -1001,8 +1030,8 @@ async def get_top_channel_profiles(
                 rank,
                 score,
                 ((total.total - (rank - 1))*100 / total.total) as percentile,
-                bal.balance as balance, 
-                CASE 
+                bal.balance as balance,
+                CASE
                     WHEN (bal.update_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                     ELSE bal.latest_earnings
@@ -1013,7 +1042,7 @@ async def get_top_channel_profiles(
             CROSS JOIN total
             LEFT JOIN fnames on (fnames.fid = ch.fid)
             LEFT JOIN user_data on (user_data.fid = ch.fid)
-            LEFT JOIN k3l_channel_points_bal as bal 
+            LEFT JOIN k3l_channel_points_bal as bal
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
             WHERE
                 ch.channel_id = $1
@@ -1027,7 +1056,7 @@ async def get_top_channel_profiles(
             FROM top_records
             LEFT JOIN addresses using (fid)
         )
-        SELECT 
+        SELECT
             fid,
             any_value(fname) as fname,
             any_value(username) as username,
@@ -1136,7 +1165,7 @@ async def get_channel_profile_ranks(
         LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
 
         sql_query = f"""
-        WITH 
+        WITH
         total AS (
             SELECT count(*) as total from k3l_channel_rank
             WHERE channel_id = $1
@@ -1150,22 +1179,22 @@ async def get_channel_profile_ranks(
                 ch.score as channel_score,
                 k3l_rank.rank as global_rank,
                 ((total.total - (ch.rank - 1))*100 / total.total) as percentile,
-                bal.balance as balance, 
+                bal.balance as balance,
                 tok.balance as token_balance,
-                CASE 
+                CASE
                     WHEN (plog.insert_ts < now() - interval '1 days') THEN 0
                     WHEN (bal.insert_ts = bal.update_ts) THEN 0 -- airdrop
                     ELSE plog.earnings
                 END as daily_earnings,
                 0 as token_daily_earnings,
-                CASE 
+                CASE
                     WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
                     ELSE true
                 END as is_weekly_earnings_available,
                 CASE
                     WHEN (
                         now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
-                        AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP} 
+                        AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
                         AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
                     ) THEN plog.earnings
                     ELSE NULL
@@ -1175,7 +1204,7 @@ async def get_channel_profile_ranks(
                     WHEN (
                         (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
                         OR
-                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
                     ) THEN plog.earnings
                     ELSE 0
                 END as weekly_earnings,
@@ -1186,9 +1215,9 @@ async def get_channel_profile_ranks(
             FROM k3l_channel_rank as ch
             CROSS JOIN total
             LEFT JOIN k3l_rank on (ch.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
-            LEFT JOIN k3l_channel_points_bal as bal 
+            LEFT JOIN k3l_channel_points_bal as bal
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
-            LEFT JOIN k3l_channel_tokens_bal as tok 
+            LEFT JOIN k3l_channel_tokens_bal as tok
             		on (tok.channel_id=ch.channel_id and tok.fid=ch.fid)
             LEFT JOIN k3l_channel_rewards_config as config
                 on (config.channel_id = ch.channel_id)
@@ -2069,7 +2098,7 @@ async def get_popular_channel_casts_lite(
                 ON (ci.cast_hash = casts.hash
                     AND ci.action_ts > now() - interval '{max_cast_age}'
                     AND casts.root_parent_url = $2)
-            INNER JOIN k3l_channel_rank as fids 
+            INNER JOIN k3l_channel_rank as fids
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
@@ -2091,7 +2120,7 @@ async def get_popular_channel_casts_lite(
         '0x' || encode(cast_hash, 'hex') as cast_hash,
         FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/3600) as age_hours,
         FLOOR(EXTRACT(EPOCH FROM (now() - cast_ts))/(60 * 60 * 24)::numeric) AS age_days,
-        cast_ts, 
+        cast_ts,
         cast_score
     FROM scores
     WHERE
@@ -2173,7 +2202,7 @@ async def get_popular_channel_casts_heavy(
                 ON (ci.cast_hash = casts.hash
                     AND ci.action_ts > now() - interval '{max_cast_age}'
                     AND casts.root_parent_url = $2)
-            INNER JOIN k3l_channel_rank as fids 
+            INNER JOIN k3l_channel_rank as fids
                 ON (fids.channel_id=$1 AND fids.fid = ci.fid AND fids.strategy_name=$3)
             LEFT JOIN automod_data as md ON (md.channel_id=$1 AND md.affected_userid=ci.fid AND md.action='ban')
             LEFT JOIN cura_hidden_fids as hids ON (hids.hidden_fid=ci.fid AND hids.channel_id=$1)
@@ -2361,7 +2390,7 @@ async def get_trending_casts_heavy(
 
 
 async def get_top_casters(offset: int, limit: int, pool: Pool):
-    sql_query = """ select cast_hash, i as fid, v as score from k3l_top_casters 
+    sql_query = """ select cast_hash, i as fid, v as score from k3l_top_casters
                     where date_iso = (select max(date_iso) from k3l_top_casters)
                     order by v desc
                     OFFSET $1 LIMIT $2"""
@@ -2369,7 +2398,7 @@ async def get_top_casters(offset: int, limit: int, pool: Pool):
 
 
 async def get_top_spammers(offset: int, limit: int, pool: Pool):
-    sql_query = """ select 
+    sql_query = """ select
                     fid,
                     display_name,
                     total_outgoing,
@@ -2379,7 +2408,7 @@ async def get_top_spammers(offset: int, limit: int, pool: Pool):
                     global_openrank_score,
                     global_rank,
                     total_global_rank_rows
-                    from k3l_top_spammers 
+                    from k3l_top_spammers
                     where date_iso = (select max(date_iso) from k3l_top_spammers)
                     order by global_rank
                     OFFSET $1 LIMIT $2"""
@@ -2395,9 +2424,9 @@ async def get_top_channel_followers(
     LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
 
     sql_query = f"""
-    WITH 
+    WITH
     distinct_warpcast_followers as (
-    SELECT 
+    SELECT
     	distinct
         fid,
         channel_id
@@ -2423,11 +2452,11 @@ async def get_top_channel_followers(
             ELSE plog.earnings
         END as daily_earnings,
         0 as token_daily_earnings,
-        CASE 
+        CASE
             WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
             ELSE true
         END as is_weekly_earnings_available,
-        CASE 
+        CASE
             WHEN (
                 now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
                 AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
@@ -2440,7 +2469,7 @@ async def get_top_channel_followers(
             WHEN (
                     (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
                     OR
-                    (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                    (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
                 ) THEN plog.earnings
             ELSE 0
         END as weekly_earnings,
@@ -2448,15 +2477,15 @@ async def get_top_channel_followers(
         bal.update_ts as bal_update_ts,
         true as is_points_launched,
         coalesce(config.is_tokens, false) as is_tokens_launched
-    FROM 
-        distinct_warpcast_followers wf 
+    FROM
+        distinct_warpcast_followers wf
         LEFT JOIN k3l_rank on (wf.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
-        LEFT JOIN k3l_channel_rank klcr 
+        LEFT JOIN k3l_channel_rank klcr
             on (wf.fid = klcr.fid and wf.channel_id = klcr.channel_id and klcr.strategy_name = $2)
         LEFT JOIN warpcast_members on (warpcast_members.fid = wf.fid and warpcast_members.channel_id = wf.channel_id)
-        LEFT JOIN k3l_channel_points_bal as bal 
+        LEFT JOIN k3l_channel_points_bal as bal
             on (bal.channel_id=wf.channel_id and bal.fid=wf.fid)
-        LEFT JOIN k3l_channel_tokens_bal as tok 
+        LEFT JOIN k3l_channel_tokens_bal as tok
             on (tok.channel_id=wf.channel_id and tok.fid=wf.fid)
       	LEFT JOIN k3l_channel_rewards_config as config
                 on (config.channel_id = wf.channel_id)
@@ -2479,7 +2508,7 @@ async def get_top_channel_followers(
         LEFT JOIN verifications v on (v.fid = followers_data.fid and v.deleted_at is null)
         GROUP BY followers_data.fid
       )
-    SELECT 
+    SELECT
         followers_data.fid,
         any_value(fname) as fname,
         any_value(username) as username,
@@ -2569,11 +2598,11 @@ async def get_top_channel_holders(
                 ELSE plog.earnings
             END as daily_earnings,
             0 as token_daily_earnings,
-            CASE 
+            CASE
                 WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
                 ELSE true
             END as is_weekly_earnings_available,
-            CASE 
+            CASE
                 WHEN (
                     now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
                     AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
@@ -2586,7 +2615,7 @@ async def get_top_channel_holders(
                 WHEN (
                         (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
                         OR
-                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}) 
+                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
                     ) THEN plog.earnings
                 ELSE 0
             END as weekly_earnings,
@@ -2594,14 +2623,14 @@ async def get_top_channel_holders(
             bal.update_ts as bal_update_ts,
             true as is_points_launched,
             coalesce(config.is_tokens, false) as is_tokens_launched
-        FROM 
-            k3l_channel_points_bal as bal 
+        FROM
+            k3l_channel_points_bal as bal
             LEFT JOIN k3l_rank on (bal.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
-            LEFT JOIN k3l_channel_rank klcr 
+            LEFT JOIN k3l_channel_rank klcr
                 on (bal.fid = klcr.fid and bal.channel_id = klcr.channel_id and klcr.strategy_name = $2)
             LEFT JOIN warpcast_members on (warpcast_members.fid = bal.fid and warpcast_members.channel_id = bal.channel_id)
             LEFT JOIN warpcast_followers on (warpcast_followers.fid = bal.fid and warpcast_followers.channel_id = bal.channel_id)
-            LEFT JOIN k3l_channel_tokens_bal as tok 
+            LEFT JOIN k3l_channel_tokens_bal as tok
                 on (tok.channel_id=bal.channel_id and tok.fid=bal.fid)
             LEFT JOIN k3l_channel_rewards_config as config
                     on (config.channel_id = bal.channel_id)
@@ -2675,27 +2704,27 @@ async def get_top_channel_repliers(
     channel_id: str, strategy_name: str, offset: int, limit: int, pool: Pool
 ):
     sql_query = f"""
-        WITH 
+        WITH
         non_member_followers as (
-          SELECT 
+          SELECT
               distinct wf.fid,
               wf.channel_id,
               ch.url as channel_url
           FROM warpcast_followers as wf
-          LEFT JOIN warpcast_members as wm 
-            ON (wm.fid = wf.fid 
-                AND wm.channel_id = wf.channel_id 
+          LEFT JOIN warpcast_members as wm
+            ON (wm.fid = wf.fid
+                AND wm.channel_id = wf.channel_id
                 {"AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)"
                     if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
                )
           INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
-          WHERE 
+          WHERE
           wm.fid IS NULL
           {"AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
                 if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
-        ), 
+        ),
         followers_data as (
-            SELECT 
+            SELECT
                 nmf.fid,
                 nmf.channel_id,
                 '0x' || encode(casts.hash, 'hex') as cast_hash,
@@ -2715,17 +2744,17 @@ async def get_top_channel_repliers(
                         AND casts.root_parent_url = nmf.channel_url
                         AND casts.parent_hash IS NOT NULL
                         AND casts.deleted_at IS NULL
-                        AND casts.timestamp 
+                        AND casts.timestamp
                               BETWEEN now() - interval '1 days'
                                   AND now()
                     )
                 LEFT JOIN k3l_rank on (nmf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
-                LEFT JOIN k3l_channel_rank klcr 
+                LEFT JOIN k3l_channel_rank klcr
                     on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id and klcr.strategy_name = $2)
                 LEFT JOIN fnames on (fnames.fid = nmf.fid)
                 LEFT JOIN user_data on (user_data.fid = nmf.fid and user_data.type in (6,1))
         )
-        SELECT 
+        SELECT
             fid,
             channel_id,
             channel_rank,
@@ -2739,7 +2768,7 @@ async def get_top_channel_repliers(
         ORDER BY channel_rank,global_rank NULLS LAST
         OFFSET $3
         limit $4
-   
+
     """
 
     return await fetch_rows(
@@ -2824,7 +2853,7 @@ async def get_trending_channel_casts_heavy(
         AND casts.timestamp > now() - interval '{max_cast_age}'
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
-    ), 
+    ),
     scores AS (
         SELECT
             cast_hash,
@@ -2871,7 +2900,7 @@ async def get_trending_channel_casts_heavy(
             ANY_VALUE(case when user_data.type = 1 then user_data.value end) as pfp,
             ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
             MAX(cast_details.cast_score) as cast_score,
-            MAX(cast_details.reaction_count) as reaction_count, 
+            MAX(cast_details.reaction_count) as reaction_count,
             MIN(cast_details.age_hours) as age_hours,
             MIN(cast_details.age_days) as age_days,
             MIN(cast_details.cast_ts) as cast_ts,
@@ -3024,7 +3053,7 @@ async def get_trending_channel_casts_lite(
         AND casts.timestamp > now() - interval '{max_cast_age}'
         GROUP BY casts.hash, ci.fid
         ORDER BY cast_ts DESC
-    ), 
+    ),
     scores AS (
         SELECT
             cast_hash,

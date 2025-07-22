@@ -6,7 +6,7 @@ CREATE INDEX CONCURRENTLY casts_deleted_at_idx ON neynarv2.casts USING btree (de
 CREATE INDEX CONCURRENTLY follows_fid_target_timestamp_idx ON neynarv3.follows(fid, target_fid, timestamp) WHERE deleted_at IS NULL;
 CREATE INDEX CONCURRENTLY reactions_type_target_timestamp_idx ON neynarv2.reactions(reaction_type, target_fid, timestamp) WHERE target_fid IS NOT NULL;
 CREATE INDEX CONCURRENTLY reactions_timestamp_type_idx ON neynarv2.reactions("timestamp", reaction_type) WHERE target_fid IS NOT NULL;
-CREATE INDEX CONCURRENTLY reactions_target_hash_deleted_at_timestamp_idx ON neynarv2.reactions 
+CREATE INDEX CONCURRENTLY reactions_target_hash_deleted_at_timestamp_idx ON neynarv2.reactions
 				USING btree (target_hash, deleted_at, "timestamp" DESC) WITH (deduplicate_items='false');
 ----------------------------------------------------------------------------------------------------------------
 
@@ -158,10 +158,10 @@ ALTER TABLE public.k3l_url_labels ALTER COLUMN url_id ADD GENERATED ALWAYS AS ID
 
 ALTER TABLE ONLY public.k3l_url_labels
     ADD CONSTRAINT k3l_url_labels_pkey PRIMARY KEY (url_id);
-    
+
 ALTER TABLE ONLY public.k3l_url_labels
     ADD CONSTRAINT k3l_url_labels_url_unique UNIQUE (url);
-    
+
 CREATE INDEX k3l_url_labels_earliest_cast_dt_idx ON public.k3l_url_labels USING btree (earliest_cast_dt);
 
 CREATE INDEX k3l_url_labels_latest_cast_dt_idx ON public.k3l_url_labels USING btree (latest_cast_dt);
@@ -177,7 +177,7 @@ CREATE INDEX k3l_cast_embed_url_mapping_url_id_index ON public.k3l_cast_embed_ur
 
 ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
     ADD CONSTRAINT k3l_cast_embed_url_mapping_cast_id_fkey FOREIGN KEY (cast_id) REFERENCES public.casts(id);
-    
+
 ALTER TABLE ONLY public.k3l_cast_embed_url_mapping
     ADD CONSTRAINT k3l_cast_embed_url_mapping_url_id_fkey FOREIGN KEY (url_id) REFERENCES public.k3l_url_labels(url_id);
 
@@ -210,7 +210,7 @@ UNION
             ELSE ''::text
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
    FROM (((public.casts
-     JOIN public.reactions 
+     JOIN public.reactions
         ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 2) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
@@ -230,7 +230,7 @@ UNION
             ELSE ''::text
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path) AS url
    FROM (((public.casts
-     JOIN public.reactions 
+     JOIN public.reactions
         ON (((reactions.target_hash = casts.hash) AND (reactions.reaction_type = 1) AND (casts.deleted_at IS NULL))))
      JOIN public.k3l_cast_embed_url_mapping url_map ON ((casts.id = url_map.cast_id)))
      JOIN public.k3l_url_labels urls ON (((urls.url_id = url_map.url_id) AND ((urls.category)::text = 'frame'::text))))
@@ -242,8 +242,8 @@ UNION
         END) || urls.domain) || '.'::text) || (urls.tld)::text) || urls.path)
   WITH NO DATA;
 
-CREATE UNIQUE INDEX k3l_recent_frame_interaction_fid_type_url_unq 
-ON public.k3l_recent_frame_interaction 
+CREATE UNIQUE INDEX k3l_recent_frame_interaction_fid_type_url_unq
+ON public.k3l_recent_frame_interaction
 USING btree (fid, action_type, url_id) NULLS NOT DISTINCT;
 
 CREATE INDEX k3l_recent_frame_interaction_url_id_idx ON public.k3l_recent_frame_interaction USING btree (url_id);
@@ -258,12 +258,12 @@ GRANT SELECT,REFERENCES ON public.k3l_recent_frame_interaction TO k3l_readonly;
 
 ------------------------------------------------------------------------------------
 CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
-SELECT 
+SELECT
 	*
 FROM casts
   WHERE casts.parent_hash IS NULL
   AND casts.deleted_at IS NULL
-  AND casts.timestamp 
+  AND casts.timestamp
   	BETWEEN now() - interval '30 days'
     		AND now()
 WITH NO DATA;
@@ -331,19 +331,19 @@ CREATE TABLE k3l_cast_action (
 PARTITION BY RANGE (action_ts);
 
 
-CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action 
+CREATE INDEX k3l_cast_action_fid_idx ON public.k3l_cast_action
 USING btree(fid);
 
-CREATE INDEX k3l_cast_action_fid_ts_idx ON public.k3l_cast_action 
+CREATE INDEX k3l_cast_action_fid_ts_idx ON public.k3l_cast_action
 USING btree(fid, action_ts);
 
-CREATE INDEX k3l_cast_action_cast_hash_idx ON public.k3l_cast_action 
+CREATE INDEX k3l_cast_action_cast_hash_idx ON public.k3l_cast_action
 USING btree(cast_hash);
 
-CREATE INDEX k3l_cast_action_timestamp_idx ON public.k3l_cast_action 
+CREATE INDEX k3l_cast_action_timestamp_idx ON public.k3l_cast_action
 USING btree (action_ts);
 
-CREATE UNIQUE INDEX k3l_cast_action_unique_idx ON public.k3l_cast_action 
+CREATE UNIQUE INDEX k3l_cast_action_unique_idx ON public.k3l_cast_action
 USING btree(cast_hash, fid, action_ts);
 
 CREATE TABLE k3l_cast_action_y2024m04 PARTITION OF k3l_cast_action
@@ -353,11 +353,11 @@ CREATE TABLE k3l_cast_action_y2024m05 PARTITION OF k3l_cast_action
 CREATE TABLE k3l_cast_action_y2024m06 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-06-01') TO ('2024-07-01');
 CREATE TABLE k3l_cast_action_y2024m07 PARTITION OF k3l_cast_action
-    FOR VALUES FROM ('2024-07-01') TO ('2024-08-01'); 
+    FOR VALUES FROM ('2024-07-01') TO ('2024-08-01');
 CREATE TABLE k3l_cast_action_y2024m08 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-08-01') TO ('2024-09-01');
 CREATE TABLE k3l_cast_action_y2024m09 PARTITION OF k3l_cast_action
-    FOR VALUES FROM ('2024-09-01') TO ('2024-10-01'); 
+    FOR VALUES FROM ('2024-09-01') TO ('2024-10-01');
 CREATE TABLE k3l_cast_action_y2024m10 PARTITION OF k3l_cast_action
     FOR VALUES FROM ('2024-10-01') TO ('2024-11-01');
 CREATE TABLE k3l_cast_action_y2024m11 PARTITION OF k3l_cast_action
@@ -429,7 +429,7 @@ GRANT SELECT,REFERENCES ON VIEW public.k3l_cast_action TO k3l_readonly;
 CREATE MATERIALIZED VIEW public.k3l_channel_rank AS
 SELECT
  	row_number() OVER () AS pseudo_id,
- 	cfids.* 
+ 	cfids.*
 FROM k3l_channel_fids as cfids
 WITH NO DATA;
 
@@ -470,7 +470,7 @@ CREATE TABLE public.automod_data (
     date_iso date
 );
 
-CREATE INDEX idx_automod_data_action_ch_userid 
+CREATE INDEX idx_automod_data_action_ch_userid
     ON public.automod_data USING btree (action, channel_id, affected_userid);
 
 GRANT SELECT,REFERENCES ON public.automod_data TO k3l_readonly;
@@ -606,7 +606,7 @@ CREATE TABLE public.warpcast_followers (
   insert_ts timestamp without time zone NOT NULL,
   channel_id text NOT NULL
  );
- 
+
 CREATE INDEX warpcast_followers_ts_ch_fid_idx ON public.warpcast_followers USING btree (insert_ts, channel_id, fid);
 CREATE INDEX warpcast_followers_ch_fid_idx ON public.warpcast_followers USING btree (channel_id, fid);
 CREATE INDEX warpcast_followers_ch_id_idx ON public.warpcast_followers USING btree (channel_id);
@@ -710,13 +710,13 @@ CREATE TABLE k3l_channel_metrics (
 GRANT SELECT, REFERENCES ON TABLE public.links TO k3l_readonly;
 
 CREATE OR REPLACE FUNCTION end_week_9amoffset(timestamp, interval)
-  RETURNS timestamptz AS $$ 
-    SELECT 
+  RETURNS timestamptz AS $$
+    SELECT
             date_trunc('week', $1 + $2 - '9 hours'::interval)  -- force to monday 9am
             - $2 + '9 hours'::interval -- revert force
             + '7 days'::interval - '1 seconds'::interval -- end of week
     $$
-  LANGUAGE sql 
+  LANGUAGE sql
   IMMUTABLE;
 
 GRANT EXECUTE ON FUNCTION end_week_9amoffset(timestamp, interval) TO k3l_readonly;
@@ -785,7 +785,7 @@ CREATE TABLE public.k3l_channel_tokens_bal (
     update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX k3l_channel_tokens_bal_ch_fid_idx 
+CREATE UNIQUE INDEX k3l_channel_tokens_bal_ch_fid_idx
     ON public.k3l_channel_tokens_bal USING btree (channel_id, fid);
 
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_tokens_bal TO k3l_readonly;
@@ -797,13 +797,13 @@ CREATE SEQUENCE tokens_dist_seq;
 CREATE TABLE public.k3l_channel_tokens_log (
 	fid int8 NOT NULL,
     -- fid_addess is NULL because
-    -- .....custody address is nullable in fids table 
+    -- .....custody address is nullable in fids table
     -- .....and not all fids have verified addresses
     -- fid_addess is TYPE TEXT because
     -- .....verfications address is a string in a jsonb column
     -- .....custoday address is bytea but assuming verified address will be used more
     -- .....also viem and other javascript libraries use strings
-    fid_address text NULL, 
+    fid_address text NULL,
     channel_id text NOT NULL,
 	amt bigint NOT NULL,
     latest_points real NOT NULL,
@@ -822,7 +822,7 @@ CREATE INDEX k3l_channel_tokens_log_dist_idx ON public.k3l_channel_tokens_log US
 
 CREATE INDEX k3l_channel_tokens_log_ch_fid_idx ON public.k3l_channel_tokens_log USING btree (channel_id, fid);
 
-CREATE INDEX k3l_channel_tokens_log_pending_idx ON public.k3l_channel_tokens_log (dist_status) 
+CREATE INDEX k3l_channel_tokens_log_pending_idx ON public.k3l_channel_tokens_log (dist_status)
     WHERE dist_status != 'success';
 
 CREATE INDEX k3l_channel_tokens_log_hash_idx ON public.k3l_channel_tokens_log USING HASH (txn_hash);
@@ -882,49 +882,14 @@ CREATE TABLE public.k3l_channel_points_allowlist (
 GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_points_allowlist TO k3l_readonly;
 -------------------------------------------------
 CREATE TABLE public.k3l_channel_domains (
-    id int GENERATED ALWAYS AS IDENTITY, 
+    id int GENERATED ALWAYS AS IDENTITY,
     channel_id text NOT NULL,
-    interval_days smallint NOT NULL, -- constrain datatype to auto-fail on bad data
-    domain int NOT NULL,
+    interval_days smallint NOT NULL,
     category text NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT openrank_reqs_pkey PRIMARY KEY (id),
-    UNIQUE (channel_id, category),
-    UNIQUE ( domain )
+    UNIQUE (channel_id),
+    UNIQUE (category)
 );
-
-GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_req_ids TO k3l_readonly;
--------------------------------------------------
-CREATE TABLE public.k3l_channel_openrank_results (
-    channel_domain_id int NOT NULL,
-    fid bigint NOT NULL,
-    channel_id text NOT NULL,
-    req_id text NOT NULL,
-    score real NOT NULL,
-    rank bigint NOT NULL,
-    insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT k3l_channel_openrank_results_fkey 
-        FOREIGN KEY (channel_domain_id) 
-            REFERENCES public.k3l_channel_domains(id)
-)
-PARTITION BY RANGE (insert_ts);
-
-CREATE INDEX k3l_ch_or_results_ch_idx ON public.k3l_channel_openrank_results USING btree (channel_id);
-
-CREATE INDEX k3l_ch_or_results_fid_idx ON public.k3l_channel_openrank_results USING btree (fid);
-
-CREATE TABLE k3l_channel_openrank_results_y2024m11 PARTITION OF k3l_channel_openrank_results
-    FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
-CREATE TABLE k3l_channel_openrank_results_y2024m12 PARTITION OF k3l_channel_openrank_results
-    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
-CREATE TABLE k3l_channel_openrank_results_y2025m01 PARTITION OF k3l_channel_openrank_results
-    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
-CREATE TABLE k3l_channel_openrank_results_y2025m02 PARTITION OF k3l_channel_openrank_results
-    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
-CREATE TABLE k3l_channel_openrank_results_y2025m03 PARTITION OF k3l_channel_openrank_results
-    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
-
-GRANT SELECT,REFERENCES ON TABLE public.k3l_channel_openrank_results TO k3l_readonly;
 -------------------------------------------------
 CREATE INDEX k3l_reactions_updated_at ON neynarv3.reactions(updated_at);
 
@@ -943,9 +908,9 @@ ALTER TABLE
 ADD
     CONSTRAINT k3l_farcaster_interactions_source_target_interaction_type_uniq UNIQUE (source, target, interaction_type);
 
-ALTER TABLE 
+ALTER TABLE
     public.k3l_farcaster_interactions
-ADD 
+ADD
     CONSTRAINT chk_value_non_negative CHECK (value >= 0);
 
 CREATE TABLE public.k3l_farcaster_interaction_cursors (
@@ -966,8 +931,7 @@ CREATE TABLE public.seen_casts (
     UNIQUE (id, interaction_type)
 );
 
-ALTER TABLE public.seen_casts 
+ALTER TABLE public.seen_casts
     OWNER TO k3l_user;
 
 -------------------------------------------------
-

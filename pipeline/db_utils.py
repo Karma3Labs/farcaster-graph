@@ -186,10 +186,10 @@ def fetch_all_channel_details(pg_url: str):
         sql_engine.dispose()
 
 
-@Timer(name="fetch_channel_domains_for_category")
-def fetch_channel_domains_for_category(pg_url: str, category: str):
+@Timer(name="fetch_channels_for_category")
+def fetch_channels_for_category(pg_url: str, category: str):
     # TODO move this to channels/channel_db_utils
-    tmp_sql = f"select * from k3l_channel_domains where category='{category}'"
+    tmp_sql = f"select * from k3l_channel_categories where category='{category}'"
     sql_engine = create_engine(pg_url)
     try:
         with sql_engine.connect() as conn:
@@ -198,7 +198,7 @@ def fetch_channel_domains_for_category(pg_url: str, category: str):
             logger.info(utils.df_info_to_string(df, with_sample=True))
             return df
     except Exception as e:
-        logger.error(f"Failed to fetch_all_channel_domains: {e}")
+        logger.error(f"Failed to fetch k3l_channel_categories: {e}")
         raise e
     finally:
         sql_engine.dispose()

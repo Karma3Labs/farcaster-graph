@@ -21,34 +21,34 @@ CHANNEL_IDS="$1"
 if [ -z "$WORK_DIR" ] || [ -z "$VENV" ] || [ -z "$TASK" ] || [ -z "$CATEGORY" ]; then
   echo "Usage:   $0 -w [work_dir] -v [venv] -t [task] -s [seed_csv] -c [category] -o [out_dir] [channel_ids] "
   echo ""
-  echo "Example: $0 -w . -v .venv -t fetch_domains -s channels/Top_Channels.csv -c test"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/"
-  echo "         $0 -w . -v .venv -t gen_domain_files -s channels/Top_Channels.csv -c test -o /tmp/"
-  echo "         $0 -w . -v .venv -t process_domains -c test -o /tmp/ openrank,music"
+  echo "Example: $0 -w . -v .venv -t fetch_category -s channels/Top_Channels.csv -c test"
+  echo "         $0 -w . -v .venv -t gen_category_files -s channels/Top_Channels.csv -c test -o /tmp/"
+  echo "         $0 -w . -v .venv -t gen_category_files -s channels/Top_Channels.csv -c test -o /tmp/"
+  echo "         $0 -w . -v .venv -t process_category -c test -o /tmp/ openrank,music"
   echo "         $0 -w . -v .venv -t fetch_results -o /tmp/ "
   echo ""
   echo "Params:"
   echo "  [work_dir] The working directory to read .env file and execute scripts from."
   echo "  [venv] The path where a python3 virtualenv has been created."
-  echo "  [task] The task to perform: fetch_domains or gen_domain_files."
+  echo "  [task] The task to perform: fetch_category or gen_category_files."
   echo "  [seed_csv] The path to the Seed CSV file."
   echo "  [category] Choice of 'test' or 'prod'."
   echo "  [out_dir] The directory to write localtrust, pretrust and openrank configs to."
-  echo "  [channel_ids] Required parameter for gen_domain_files task indicating the channel IDs to process."
+  echo "  [channel_ids] Required parameter for gen_category_files task indicating the channel IDs to process."
   echo ""
   exit 1
 fi
 
-if [ "$TASK" = "gen_domain_files" ] || [ "$TASK" = "process_domains" ]; then
+if [ "$TASK" = "gen_category_files" ] || [ "$TASK" = "process_category" ]; then
   if [ -z "$OUT_DIR" ] || [ -z "$CHANNEL_IDS" ]; then
-    echo "Please specify -o (outdir) and (channel_ids) for the gen_domain_files and process_domains task."
+    echo "Please specify -o (outdir) and (channel_ids) for the gen_category_files and process_category task."
     exit 1
   fi
 fi
 
-if [ "$TASK" = "gen_domain_files" ]; then
+if [ "$TASK" = "gen_category_files" ]; then
   if [ -z "$SEED_CSV" ]; then
-    echo "Please specify -s (seed_csv) for the gen_domain_files task."
+    echo "Please specify -s (seed_csv) for the gen_category_files task."
     exit 1
   fi
 fi
@@ -102,18 +102,18 @@ source $VENV/bin/activate
 # pip install -r requirements.txt
 
 log "Executing task: $TASK"
-if [ "$TASK" = "fetch_domains" ]; then
-  python3 -m channels.main_openrank -s "$SEED_CSV" --category "$CATEGORY" -t fetch_domains
+if [ "$TASK" = "fetch_category" ]; then
+  python3 -m channels.main_openrank -s "$SEED_CSV" --category "$CATEGORY" -t fetch_category
   deactivate
-elif [ "$TASK" = "gen_domain_files" ]; then
+elif [ "$TASK" = "gen_category_files" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_openrank -s "$SEED_CSV" -t gen_domain_files \
+  python3 -m channels.main_openrank -s "$SEED_CSV" -t gen_category_files \
     --category "$CATEGORY" --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS" -b "$BOTS_CSV"
   deactivate
-elif [ "$TASK" = "process_domains" ]; then
+elif [ "$TASK" = "process_category" ]; then
   log "Received channel_ids: $CHANNEL_IDS"
-  python3 -m channels.main_openrank -t process_domains \
+  python3 -m channels.main_openrank -t process_category \
     --category "$CATEGORY" --outdir "$OUT_DIR" \
     --channel_ids "$CHANNEL_IDS"
   deactivate
