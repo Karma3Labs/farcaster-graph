@@ -60,19 +60,12 @@ def read_trending_channel_ids_csv(csv_path: Path) -> pd.DataFrame:
         raise e
 
 
-def fetch_channel_domain_df(
-    pg_url: str, category: str, channel_ids: list[str] = None
-) -> pd.DataFrame:
+def fetch_channels_for_category_df(pg_url: str, category: str) -> pd.DataFrame:
     try:
-        domains_df = db_utils.fetch_channel_domains_for_category(pg_url, category)
-        if len(domains_df) == 0:
-            raise Exception(f"No channel domains found for category {category}")
-        if channel_ids:
-            domains_df = domains_df[domains_df["channel_id"].isin(channel_ids)]
-            missing_channels = set(channel_ids) - set(domains_df["channel_id"].values)
-            if len(missing_channels) > 0:
-                raise Exception(f"Missing channel domains for {missing_channels}")
-        return domains_df
+        channels_df = db_utils.fetch_channels_for_category(pg_url, category)
+        if len(channels_df) == 0:
+            raise Exception(f"No channels found for category {category}")
+        return channels_df
     except Exception as e:
         logger.error(f"Failed to read channel data from DB: {e}")
         raise e

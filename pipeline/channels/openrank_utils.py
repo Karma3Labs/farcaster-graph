@@ -44,6 +44,36 @@ def get_openrank_mnemonic(openrank_settings: OpenRankSettings) -> str:
         raise RuntimeError("Failed to fetch mnemonic from vault") from e
 
 
+def compute_watch(openrank_settings: OpenRankSettings, req_id: str, out_file: Path):
+    new_env = os.environ.copy()
+    new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
+    new_env["OPENRANK_MANAGER_ADDRESS"] = openrank_settings.MANAGER_ADDRESS
+    new_env["CHAIN_RPC_URL"] = openrank_settings.CHAIN_RPC_URL
+    new_env["AWS_ACCESS_KEY_ID"] = openrank_settings.AWS_ACCESS_KEY_ID
+    new_env["AWS_SECRET_ACCESS_KEY"] = openrank_settings.AWS_SECRET_ACCESS_KEY
+
+    get_cmd = subprocess.run(
+        [
+            "openrank-sdk",
+            "meta-compute-watch",
+            str(req_id),
+            "--out-dir={}".format(str(out_file)),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=openrank_settings.TIMEOUT_SECS,
+        env=new_env,
+        check=True,
+    )
+    if get_cmd.returncode != 0:
+        logger.error(
+            f"OpenRank meta-compute-watch failed for {req_id}: {get_cmd.stderr}"
+        )
+        raise Exception("OpenRank meta-compute-watch failed")
+    logger.info(f"OpenRank meta-compute-watch for {req_id} downloaded to: {out_file}")
+
+
 def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file: Path):
     new_env = os.environ.copy()
     new_env["MNEMONIC"] = get_openrank_mnemonic(openrank_settings)
@@ -67,9 +97,11 @@ def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file:
         check=True,
     )
     if get_cmd.returncode != 0:
-        logger.error(f"OpenRank get-results failed for {req_id}: {get_cmd.stderr}")
-        raise Exception("OpenRank get-results failed")
-    logger.info(f"OpenRank get-results for {req_id} downloaded to: {out_file}")
+        logger.error(
+            f"OpenRank meta-download-scores failed for {req_id}: {get_cmd.stderr}"
+        )
+        raise Exception("OpenRank meta-download-scores failed")
+    logger.info(f"OpenRank meta-download-scores for {req_id} downloaded to: {out_file}")
 
 
 def update_and_compute(
@@ -88,7 +120,6 @@ def update_and_compute(
             "meta-compute-request",
             lt_folder,
             pt_folder,
-            "--watch",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

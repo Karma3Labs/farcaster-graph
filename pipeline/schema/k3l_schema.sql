@@ -67,8 +67,8 @@ ALTER TYPE public.tokens_dist_status OWNER TO k3l_user;
 
 CREATE FUNCTION public.end_week_9amoffset(timestamp without time zone, interval) RETURNS timestamp with time zone
     LANGUAGE sql IMMUTABLE
-    AS $_$ 
-    SELECT 
+    AS $_$
+    SELECT
             date_trunc('week', $1 + $2 - '9 hours'::interval)  -- force to monday 9am
             - $2 + '9 hours'::interval -- revert force
             + '7 days'::interval - '1 seconds'::interval -- end of week
@@ -417,27 +417,26 @@ CREATE TABLE public.k3l_cast_action_v1_y2025m06 (
 ALTER TABLE public.k3l_cast_action_v1_y2025m06 OWNER TO k3l_user;
 
 --
--- Name: k3l_channel_domains; Type: TABLE; Schema: public; Owner: k3l_user
+-- Name: k3l_channel_category; Type: TABLE; Schema: public; Owner: k3l_user
 --
 
-CREATE TABLE public.k3l_channel_domains (
+CREATE TABLE public.k3l_channel_category (
     id integer NOT NULL,
     channel_id text NOT NULL,
     interval_days smallint NOT NULL,
-    domain integer NOT NULL,
     category text NOT NULL,
     insert_ts timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
-ALTER TABLE public.k3l_channel_domains OWNER TO k3l_user;
+ALTER TABLE public.k3l_channel_category OWNER TO k3l_user;
 
 --
--- Name: k3l_channel_domains_id_seq; Type: SEQUENCE; Schema: public; Owner: k3l_user
+-- Name: k3l_channel_category_id_seq; Type: SEQUENCE; Schema: public; Owner: k3l_user
 --
 
-ALTER TABLE public.k3l_channel_domains ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.k3l_channel_domains_id_seq
+ALTER TABLE public.k3l_channel_category ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.k3l_channel_category_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -4471,4 +4470,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE k3l_user IN SCHEMA public GRANT SELECT,REFEREN
 --
 -- PostgreSQL database dump complete
 --
-

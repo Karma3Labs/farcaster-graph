@@ -17,7 +17,7 @@ default_args = {
 }
 
 N_CHUNKS = 100  # Define the number of chunks
-# NOTE: Refer to the 'k3l_channel_domains' table to get the category
+# NOTE: Refer to the 'k3l_channel_categories' table to get the category
 CATEGORY = "test"
 
 with DAG(
@@ -40,11 +40,11 @@ with DAG(
 
     @task_group(group_id="openrank_compute_group")
     def tg_openrank_compute():
-        fetch_domains = BashOperator(
-            task_id="fetch_domains",
+        fetch_category = BashOperator(
+            task_id="fetch_category",
             bash_command=(
                 "cd /pipeline && ./run_channel_openrank.sh"
-                " -w . -v .venv -t fetch_domains"
+                " -w . -v .venv -t fetch_category"
                 f" -s channels/Top_Channels.csv -c {CATEGORY} "
             ),
             do_xcom_push=True,
@@ -71,12 +71,12 @@ with DAG(
             return channel_chunks
 
         @task(max_active_tis_per_dagrun=8)
-        def gen_domain_files_chunk(chunk: list, run_id):
+        def gen_category_files_chunk(chunk: list, run_id):
             chunk_str = ",".join(chunk)
             gen_files_task = BashOperator(
-                task_id=f"gen_domain_files_chunk_{hash(chunk_str)}",
+                task_id=f"gen_category_files_chunk_{hash(chunk_str)}",
                 bash_command="cd /pipeline && ./run_channel_openrank.sh"
-                " -w . -v .venv -t gen_domain_files"
+                " -w . -v .venv -t gen_category_files"
                 f" -s channels/Top_Channels.csv -c {CATEGORY}"
                 f" -o tmp/{run_id}"
                 f' "{chunk_str}"',
@@ -85,12 +85,12 @@ with DAG(
             gen_files_task.execute({})
 
         @task(max_active_tis_per_dagrun=8)
-        def process_domains_chunk(chunk: list, run_id):
+        def process_category_chunk(chunk: list, run_id):
             chunk_str = ",".join(chunk)
             process_task = BashOperator(
-                task_id=f"process_domains_chunk_{hash(chunk_str)}",
+                task_id=f"process_category_chunk_{hash(chunk_str)}",
                 bash_command="cd /pipeline && ./run_channel_openrank.sh"
-                " -w . -v .venv -t process_domains"
+                " -w . -v .venv -t process_category"
                 f" -c {CATEGORY} -o tmp/{run_id}"
                 f' "{chunk_str}"',
                 env={"PYTHONUNBUFFERED": "1"},  # Ensures real-time logging
@@ -98,9 +98,9 @@ with DAG(
             process_task.execute({})
 
         # Create dynamic tasks
-        extract_ids = extract_channel_ids(fetch_domains.output)
-        gen_file_tasks = gen_domain_files_chunk.expand(chunk=extract_ids)
-        process_tasks = process_domains_chunk.expand(chunk=extract_ids)
+        extract_ids = extract_channel_ids(fetch_category.output)
+        gen_file_tasks = gen_category_files_chunk.expand(chunk=extract_ids)
+        process_tasks = process_category_chunk.expand(chunk=extract_ids)
 
         fetch_results = BashOperator(
             task_id="fetch_results",
@@ -110,7 +110,7 @@ with DAG(
         )
 
         (
-            fetch_domains
+            fetch_category
             >> extract_ids
             >> gen_file_tasks
             >> process_tasks

@@ -80,8 +80,8 @@ def fetch_channel_mods_with_metrics(
                     FROM unnest(ARRAY[leadfid] || moderatorfids) as fids
                 ) as mods
             FROM warpcast_channels_data as ch
-            INNER JOIN eligible 
-                    ON (ch.id = eligible.channel_id 
+            INNER JOIN eligible
+                    ON (ch.id = eligible.channel_id
                         and eligible.int_value > {notification_threshold}
                     )
             ORDER BY eligible.int_value desc
@@ -122,7 +122,7 @@ async def fetch_top_casters(
 ):
     pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
     sql = f"""
-    with 
+    with
         latest_global_rank as (
                 select profile_id as fid, rank as global_rank, score from k3l_rank g where strategy_id=3
                     and date in (select max(date) from k3l_rank)
@@ -511,11 +511,11 @@ def fetch_weighted_fid_scores_df(
             )
         """
     sql_query = f"""
-    WITH 
+    WITH
     excluded_channels AS (
-        SELECT distinct(channel_id) as channel_id 
+        SELECT distinct(channel_id) as channel_id
         FROM k3l_channel_points_log
-        WHERE 
+        WHERE
             {exclude_condition}
             AND model_name = ANY(ARRAY{model_names})
     ),
@@ -560,8 +560,8 @@ def fetch_weighted_fid_scores_df(
             actions.channel_id as channel_id
         FROM eligible_casts as actions
         INNER JOIN k3l_channel_rank as ranks -- cura_hidden_fids already excluded in channel_rank
-            ON (ranks.fid = actions.fid 
-                AND ranks.channel_id=actions.channel_id 
+            ON (ranks.fid = actions.fid
+                AND ranks.channel_id=actions.channel_id
                 AND ranks.strategy_name='{STRATEGY}')
         GROUP BY actions.channel_id, actions.cast_hash, ranks.fid
     ),
@@ -579,7 +579,7 @@ def fetch_weighted_fid_scores_df(
         cast_scores.channel_id as channel_id,
         SUM(cast_scores.cast_score) as score
     FROM cast_scores
-    INNER JOIN k3l_recent_parent_casts AS casts 
+    INNER JOIN k3l_recent_parent_casts AS casts
         ON casts.hash = cast_scores.cast_hash
     GROUP BY casts.fid, cast_scores.channel_id
     """
@@ -622,28 +622,28 @@ def insert_reddit_points_log(
     CUTOFF_NTILE = 9
 
     insert_sql = f"""
-    WITH 
+    WITH
     excluded_channels AS (
         -- IMPORTANT: don't generate points within last 23 hours
-        SELECT distinct(channel_id) as channel_id 
+        SELECT distinct(channel_id) as channel_id
         FROM k3l_channel_points_log
-        WHERE 
+        WHERE
             insert_ts > now() - interval '{INTERVAL}'
             AND model_name = '{model_name}'
     ),
     eligible_channel_rank AS (
-        SELECT 
-            ROUND(max(rank)/{CHANNEL_RANK_CUTOFF_RATIO},0) as max_rank, 
-            strategy_name, 
-            k3l_channel_rank.channel_id 
+        SELECT
+            ROUND(max(rank)/{CHANNEL_RANK_CUTOFF_RATIO},0) as max_rank,
+            strategy_name,
+            k3l_channel_rank.channel_id
         FROM k3l_channel_rank
         WHERE strategy_name = '{CHANNEL_RANK_STRATEGY}'
         GROUP BY k3l_channel_rank.channel_id, strategy_name
         ),
     eligible_channel_actors AS (
-        SELECT fid, eligible_channel_rank.channel_id 
+        SELECT fid, eligible_channel_rank.channel_id
         FROM k3l_channel_rank
-        INNER JOIN eligible_channel_rank 
+        INNER JOIN eligible_channel_rank
             ON (eligible_channel_rank.channel_id=k3l_channel_rank.channel_id
                 AND eligible_channel_rank.max_rank > k3l_channel_rank.rank
             AND eligible_channel_rank.strategy_name = k3l_channel_rank.strategy_name)
@@ -658,7 +658,7 @@ def insert_reddit_points_log(
                     + ({like_wt} * actions.liked)
                 ) as cast_score,
                 channels.id as channel_id
-        FROM k3l_cast_action as actions 
+        FROM k3l_cast_action as actions
             INNER JOIN k3l_recent_parent_casts as casts -- find all authors and engager fids
             ON (actions.cast_hash = casts.hash
                 AND actions.action_ts BETWEEN now() - interval '{INTERVAL}' AND now()
@@ -668,18 +668,18 @@ def insert_reddit_points_log(
         INNER JOIN k3l_channel_rewards_config as config
             ON (config.channel_id = channels.id AND config.is_points = true)
         LEFT JOIN excluded_channels as excl
-            ON (excl.channel_id = channels.id)	
-        LEFT JOIN k3l_rank 
-            ON (k3l_rank.profile_id = actions.fid 
-            AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID} 
+            ON (excl.channel_id = channels.id)
+        LEFT JOIN k3l_rank
+            ON (k3l_rank.profile_id = actions.fid
+            AND k3l_rank.strategy_id = {GLOBAL_RANK_STRATEGY_ID}
             AND k3l_rank.rank <= {MAX_GLOBAL_RANK})
-        LEFT JOIN eligible_channel_actors 
-            ON (eligible_channel_actors.fid = actions.fid 
-            AND eligible_channel_actors.channel_id=channels.id)   
-        WHERE 
+        LEFT JOIN eligible_channel_actors
+            ON (eligible_channel_actors.fid = actions.fid
+            AND eligible_channel_actors.channel_id=channels.id)
+        WHERE
             excl.channel_id IS NULL AND
             (   k3l_rank.profile_id IS NOT NULL  -- author is either ranked
-                OR 
+                OR
                 eligible_channel_actors.fid IS NOT NULL -- has engagement from a ranked user
             )
         GROUP BY channels.id, casts.hash
@@ -690,13 +690,13 @@ def insert_reddit_points_log(
                     casts.fid,
                 cast_scores.channel_id
             FROM cast_scores
-            INNER JOIN k3l_recent_parent_casts AS casts 
+            INNER JOIN k3l_recent_parent_casts AS casts
                 ON casts.hash = cast_scores.cast_hash
             GROUP BY casts.fid, cast_scores.channel_id
         ),
         top_ntile_authors AS (
         SELECT
-            * 
+            *
         FROM (
             SELECT
             fid,
@@ -712,7 +712,7 @@ def insert_reddit_points_log(
         WHERE ptile <= {CUTOFF_NTILE}
         )
     INSERT INTO k3l_channel_points_log (fid, channel_id, earnings, model_name, insert_ts)
-    SELECT 
+    SELECT
         authors.fid,
         authors.channel_id,
         authors.score as earnings,
@@ -748,10 +748,10 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
     GENESIS_BUDGET = 600_000
     # WARNING - EXTREME CAUTION
     insert_sql = f"""
-        WITH 
+        WITH
         excluded_channels AS (
             -- IMPORTANT: don't airdrop for channels with existing balances
-            SELECT distinct(channel_id) as channel_id 
+            SELECT distinct(channel_id) as channel_id
             FROM k3l_channel_points_bal
         ),
         eligible_fids AS (
@@ -767,9 +767,9 @@ def insert_genesis_points(logger: logging.Logger, pg_dsn: str, timeout_ms: int):
                 ON (excl.channel_id = rk.channel_id)
             WHERE excl.channel_id IS NULL AND rk.strategy_name='{STRATEGY}'
         )
-        INSERT INTO k3l_channel_points_bal 
+        INSERT INTO k3l_channel_points_bal
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score)
-        SELECT 
+        SELECT
             fids.fid, fids.channel_id, fids.earnings, fids.earnings, fids.score, fids.score
         FROM eligible_fids as fids
     """
@@ -824,7 +824,7 @@ def update_points_balance_v5(
             {balance_baseline_check}
         ),
         eligible_fids AS (
-            SELECT 
+            SELECT
                 plog.fid,
                 plog.channel_id,
                 SUM(plog.earnings) as weekly_earnings,
@@ -832,13 +832,13 @@ def update_points_balance_v5(
                 0 as adj_score -- TODO drop this column
             FROM k3l_channel_points_log AS plog
             INNER JOIN last_channel_bal_ts
-                ON (last_channel_bal_ts.channel_id=plog.channel_id 
+                ON (last_channel_bal_ts.channel_id=plog.channel_id
                     AND plog.model_name='{POINTS_MODEL}'
                     AND plog.insert_ts > last_channel_bal_ts.update_ts
                     )
             GROUP BY plog.fid, plog.channel_id
         )
-        INSERT INTO {NEW_TBL} 
+        INSERT INTO {NEW_TBL}
             (fid, channel_id, balance, latest_earnings, latest_score, latest_adj_score, insert_ts, update_ts)
             SELECT -- existing fids and new fids (hence coalesce)
                 fids.fid,
@@ -857,18 +857,18 @@ def update_points_balance_v5(
             SELECT -- existing balances with no points log since last balance update
                 bal.fid,
                 bal.channel_id,
-                bal.balance as balance, 
+                bal.balance as balance,
                 bal.latest_earnings as latest_earnings,
-                bal.latest_score as latest_score, 
+                bal.latest_score as latest_score,
                 bal.latest_adj_score as latest_adj_score,
                 bal.insert_ts,
                 bal.update_ts
             FROM {LIVE_TBL} AS bal
-            LEFT JOIN eligible_fids AS fids 
-                ON (bal.channel_id = fids.channel_id 
+            LEFT JOIN eligible_fids AS fids
+                ON (bal.channel_id = fids.channel_id
                     AND bal.fid = fids.fid)
             WHERE
-                fids.fid IS NULL	
+                fids.fid IS NULL
     """
 
     replace_sql = (
@@ -911,7 +911,7 @@ def fetch_rewards_config_list(
 ) -> list[dict]:
     where_sql = "" if channel_id is None else f" WHERE channel_id = '{channel_id}'"
     select_sql = f"""
-        SELECT 
+        SELECT
             *
         FROM k3l_channel_rewards_config AS config
         {where_sql}
@@ -950,9 +950,9 @@ def update_channel_rewards_config(
 ) -> list[tuple[str, bool]]:
     update_sql = """
         UPDATE k3l_channel_rewards_config
-        SET 
+        SET
         symbol=%(symbol)s,
-        token_airdrop_budget=%(token_airdrop_budget)s, 
+        token_airdrop_budget=%(token_airdrop_budget)s,
         token_daily_budget=%(token_daily_budget)s,
         total_supply=%(total_supply)s,
         creator_cut=%(creator_cut)s,
@@ -1030,7 +1030,7 @@ def insert_tokens_log(
     )
     if is_airdrop:
         insert_sql = f"""
-        WITH 
+        WITH
         latest_verified_address as (
             SELECT
                 coalesce('0x' || encode(profiles.primary_eth_address, 'hex'),
@@ -1043,18 +1043,18 @@ def insert_tokens_log(
             GROUP BY profiles.fid, profiles.primary_eth_address
         ),
         channel_totals AS (
-            SELECT 
-                sum(balance) as balance, 
-                sum(latest_earnings) as latest_earnings, 
+            SELECT
+                sum(balance) as balance,
+                sum(latest_earnings) as latest_earnings,
                 count(*) as ct,
                 channel_id
             FROM k3l_channel_points_bal
-            WHERE channel_id='{channel_id}' 
+            WHERE channel_id='{channel_id}'
             GROUP BY channel_id
         )
         INSERT INTO k3l_channel_tokens_log
             (fid, fid_address, channel_id, amt, dist_id, batch_id, dist_reason, latest_points, points_ts)
-        SELECT 
+        SELECT
             bal.fid,
             COALESCE(vaddr.address, '0x' ||encode(fids.custody_address,'hex')) as fid_address,
             bal.channel_id,
@@ -1065,14 +1065,14 @@ def insert_tokens_log(
             bal.balance as latest_points,
             bal.update_ts as points_ts
         FROM k3l_channel_points_bal as bal
-        INNER JOIN channel_totals as tot 
+        INNER JOIN channel_totals as tot
     		ON (tot.channel_id = bal.channel_id)
-        INNER JOIN fids ON (fids.fid = bal.fid) 
+        INNER JOIN fids ON (fids.fid = bal.fid)
         INNER JOIN k3l_channel_rewards_config as config
                 ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
-        LEFT JOIN latest_verified_address as vaddr 
+        LEFT JOIN latest_verified_address as vaddr
             ON (vaddr.fid=bal.fid)
-        WHERE 
+        WHERE
             bal.channel_id = '{channel_id}'
             AND bal.balance > 0
         ORDER BY channel_id, batch_id, fid
@@ -1101,8 +1101,8 @@ def insert_tokens_log(
                 LIMIT 1
             ),
             pts_distrib AS (
-                SELECT 
-                    count(distinct plog.insert_ts) as num_distrib, 
+                SELECT
+                    count(distinct plog.insert_ts) as num_distrib,
                     plog.channel_id
                 FROM k3l_channel_points_log AS plog
                 INNER JOIN is_monday_pts_done ON (plog.channel_id=is_monday_pts_done.channel_id)
@@ -1116,18 +1116,18 @@ def insert_tokens_log(
                 GROUP BY plog.channel_id
             ),
             eligible AS (
-                SELECT 
+                SELECT
                     plog.fid,
-                    plog.channel_id,	
+                    plog.channel_id,
                     sum(plog.earnings) as earnings,
                     max(plog.insert_ts) as latest_points_ts
                 FROM k3l_channel_points_log as plog
                 INNER JOIN is_monday_pts_done ON (plog.channel_id=is_monday_pts_done.channel_id)
-                WHERE 
+                WHERE
                     plog.channel_id = '{channel_id}'
                     AND plog.insert_ts > (
                         SELECT max(points_ts) FROM k3l_channel_tokens_log WHERE channel_id = '{channel_id}'
-                    )  		
+                    )
                     AND plog.model_name='cbrt_weighted'
                     AND plog.insert_ts > ({BEGIN_TIMESTAMP})
                     AND plog.insert_ts < ({END_TIMESTAMP})
@@ -1139,7 +1139,7 @@ def insert_tokens_log(
                     fids.custody_address,
                     eligible.channel_id,
                     round((
-                        eligible.earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct) 
+                        eligible.earnings * config.token_daily_budget * 7 * (1 - config.token_tax_pct)
                         / (10000 * pts_distrib.num_distrib))
                     ,0) as amt,
                     eligible.earnings as latest_points,
@@ -1162,7 +1162,7 @@ def insert_tokens_log(
                 tokens.fid,
                 COALESCE(
                         '0x' || encode(any_value(profiles.primary_eth_address), 'hex'),
-                        (array_agg(v.claim->>'address' order by timestamp DESC))[1], 
+                        (array_agg(v.claim->>'address' order by timestamp DESC))[1],
                         '0x' || encode(any_value(custody_address),'hex')
                 ) as fid_address,
                 tokens.channel_id,
@@ -1176,7 +1176,7 @@ def insert_tokens_log(
             INNER JOIN numfids ON (numfids.channel_id = tokens.channel_id)
             LEFT JOIN profiles ON (profiles.fid = tokens.fid AND profiles.deleted_at IS NULL)
             LEFT JOIN verifications as v
-                    ON (v.fid=tokens.fid AND v.deleted_at IS NULL 
+                    ON (v.fid=tokens.fid AND v.deleted_at IS NULL
                         AND v.claim->>'address' ~ '^(0x)?[0-9a-fA-F]{{40}}$')
             GROUP BY tokens.fid, tokens.channel_id
         """
@@ -1257,19 +1257,19 @@ def fetch_notify_entries(
     limit = 10 if settings.IS_TEST else 1_000_000
     sql_batch_size = 2 if settings.IS_TEST else 10_000
     select_sql = f"""
-        SELECT 
-            plog.fid, 
+        SELECT
+            plog.fid,
             plog.channel_id,
             sum(plog.earnings) as earnings,
             coalesce(bool_or(config.is_tokens), false) as is_token
         FROM k3l_channel_points_log AS plog
         LEFT JOIN k3l_channel_rewards_config AS config
             ON (config.channel_id = plog.channel_id)
-        WHERE 
+        WHERE
             plog.model_name='cbrt_weighted'
             AND plog.insert_ts > ({BEGIN_TIMESTAMP})
             AND plog.insert_ts < ({END_TIMESTAMP})
-        GROUP BY plog.channel_id, plog.fid    
+        GROUP BY plog.channel_id, plog.fid
         ORDER BY plog.channel_id, plog.fid
         LIMIT {limit} -- safety valve
     """
@@ -1309,8 +1309,8 @@ def fetch_distribution_ids(
         case _:
             status_condn = f" = '{status}' "
     select_sql = f"""
-        SELECT 
-            distinct channel_id, dist_id, batch_id 
+        SELECT
+            distinct channel_id, dist_id, batch_id
         FROM k3l_channel_tokens_log
         WHERE dist_status {status_condn}
         ORDER BY channel_id, dist_id, batch_id
@@ -1337,8 +1337,8 @@ def fetch_distributions_one_channel(
     logger: logging.Logger, pg_dsn: str, timeout_ms: int
 ) -> tuple[str, list[dict]]:
     select_sql = """
-        SELECT 
-            channel_id, 
+        SELECT
+            channel_id,
             dist_id,
             batch_id,
             json_agg(
@@ -1346,7 +1346,7 @@ def fetch_distributions_one_channel(
                 'address', fid_address,
                 'amount', amt
                 )
-            ) as distributions 
+            ) as distributions
         FROM k3l_channel_tokens_log
         WHERE dist_status is NULL
         AND amt > 0
@@ -1396,9 +1396,9 @@ def update_distribution_status(
 
     update_sql = f"""
         UPDATE k3l_channel_tokens_log
-        SET dist_status = {status_to}, 
+        SET dist_status = {status_to},
             txn_hash = {"'" + txn_hash + "'" if txn_hash else "NULL"}
-        WHERE dist_status {status_condn} 
+        WHERE dist_status {status_condn}
         AND channel_id = '{channel_id}'
         AND dist_id = {dist_id}
         AND batch_id = {batch_id}
@@ -1430,26 +1430,26 @@ def update_token_bal(
 ):
     update_sql = f"""
         WITH eligible_fids AS (
-        SELECT 
+        SELECT
                 amt, channel_id, fid
             FROM k3l_channel_tokens_log
-            WHERE dist_status = 'success' 
+            WHERE dist_status = 'success'
                 AND channel_id = '{channel_id}'
             AND dist_id = {dist_id}
             AND batch_id = {batch_id}
         )
         MERGE INTO k3l_channel_tokens_bal as bal
-        USING eligible_fids as fids 
+        USING eligible_fids as fids
                     ON (bal.channel_id = fids.channel_id AND bal.fid = fids.fid)
         WHEN MATCHED THEN
-            UPDATE SET 
-            balance = balance + fids.amt, 
-            latest_earnings = fids.amt, 
+            UPDATE SET
+            balance = balance + fids.amt,
+            latest_earnings = fids.amt,
             update_ts = DEFAULT
         WHEN NOT MATCHED THEN
-            INSERT 
+            INSERT
             (fid, channel_id, balance, latest_earnings, insert_ts, update_ts)
-        VALUES 
+        VALUES
             (fids.fid, fids.channel_id, fids.amt, fids.amt, DEFAULT, DEFAULT);
     """
     logger.info(f"Executing: {update_sql}")
