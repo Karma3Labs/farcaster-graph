@@ -181,6 +181,13 @@ async def get_tokens_distribution_details(
     return {"result": details}
 
 
+@router.get("/top-channels/{fid}")
+async def get_top_channels_for_fid(fid: int, pool: Pool = Depends(db_pool.get_db)):
+    # returns the top channels for the fid based on interactions from the last 30 days
+    channels = await db_utils.get_top_channels_for_fid(fid, pool)
+    return {"result": channels}
+
+
 @router.get("/rankings/{channel}", tags=["Deprecated"])
 async def get_top_channel_profiles(
     channel: str,
