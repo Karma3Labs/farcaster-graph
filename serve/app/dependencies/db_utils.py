@@ -827,6 +827,22 @@ async def get_tokens_distribution_details(
     )
 
 
+async def get_top_channels_for_fid(fid: int, pool: Pool):
+    sql_query = """
+SELECT
+  channel_id, count(*) as num_actions
+FROM
+  k3l_cast_action_v1
+WHERE
+  fid = $1
+  AND channel_id IS NOT NULL
+  AND action_ts >= NOW() - INTERVAL '1 month'
+  group by channel_id
+  order by num_actions desc;
+    """
+    return await fetch_rows(fid, sql_query=sql_query, pool=pool)
+
+
 async def get_tokens_distribution_overview(
     channel_id: str, offset: int, limit: int, pool: Pool
 ):
