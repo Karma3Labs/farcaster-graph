@@ -429,6 +429,132 @@ async def get_top_profiles(
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
+# async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manager_address: str, pool: Pool):
+#     sql_query = """
+#     WITH
+#     follower_stats AS (
+#     SELECT
+#         channel_id,
+#             count(*) as num_followers
+#     FROM warpcast_followers
+#     WHERE channel_id = $1
+#     GROUP BY channel_id
+#     ),
+#     rank_stats AS (
+#     SELECT
+#         channel_id AS ranked_cid,
+#         COUNT(*) AS num_fids_ranked,
+#     --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY score) AS p25_score,
+#     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY score) AS p50_score,
+#     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY score) AS p75_score,
+#     --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY score) AS p90_score,
+#         MIN(score) as min_score,
+#         MAX(score) as max_score
+#     FROM k3l_channel_rank
+#     WHERE channel_id = $1
+#     AND strategy_name = $2
+#     GROUP BY channel_id
+#     ),
+#     member_stats AS (
+#     SELECT
+#         channel_id as member_cid,
+#             count(*) as num_members
+#     FROM warpcast_members
+#     WHERE channel_id = $1
+#     GROUP BY channel_id
+#     ),
+#     points_stats AS (
+#     SELECT
+#         channel_id as points_cid,
+#         count(fid) as num_holders,
+#     --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY balance) AS p25_balance,
+#     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS p50_balance,
+#     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS p75_balance,
+#     --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS p90_balance,
+#         MIN(balance) as min_balance,
+#         MAX(balance) as max_balance
+#     FROM k3l_channel_points_bal
+#         WHERE channel_id = $1
+#     GROUP BY channel_id
+#     ),
+#     tokens_stats AS (
+#         SELECT
+#             channel_id as tokens_cid,
+#         count(fid) as token_num_holders,
+#     --     PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY balance) AS token_p25_balance,
+#     --     PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY balance) AS token_p50_balance,
+#     --     PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY balance) AS token_p75_balance,
+#     --     PERCENTILE_DISC(0.90) WITHIN GROUP (ORDER BY balance) AS token_p90_balance,
+#         MIN(balance) as token_min_balance,
+#         MAX(balance) as token_max_balance
+#     FROM k3l_channel_tokens_bal
+#     WHERE channel_id = $1
+#     GROUP BY channel_id
+#     ),
+#     category_stats AS (
+#     SELECT
+#         channel_id as category_cid,
+#         category
+#     FROM k3l_channel_categories
+#     WHERE channel_id = $1
+#     ),
+#     latest_metadata_stat_key AS (
+#         SELECT openrank_manager_address, max(req_id) AS req_id, category
+#         FROM openrank_channel_metadata
+#         GROUP BY openrank_manager_address, category),
+#     latest_metadata_stats AS (
+#         SELECT *
+#         FROM openrank_channel_metadata
+#         JOIN latest_metadata_stat_key
+#         USING (openrank_manager_address, req_id, category)
+#     ),
+#     metadata_stats AS (
+#     SELECT
+#         ocm.request_tx_hash,
+#         ocm.results_tx_hash,
+#         ocm.challenge_tx_hash
+#     FROM k3l_channel_categories kcc
+#     LEFT JOIN latest_metadata_stats ocm ON ocm.category = kcc.category
+#     WHERE kcc.channel_id = $1 AND ocm.openrank_manager_address = $3
+#     UNION ALL
+#     SELECT
+#         NULL as request_tx_hash,
+#         NULL as results_tx_hash,
+#         NULL as challenge_tx_hash
+#     WHERE NOT EXISTS (SELECT 1 FROM k3l_channel_categories WHERE channel_id = $1)
+#     )
+#     SELECT
+#     channel_id,
+#     num_followers,
+#     num_fids_ranked,
+#     --   p25_score,p50_score,p75_score,p90_score,
+#         min_score,max_score,
+#     num_members,
+#     num_holders,
+#     --   p25_balance,p50_balance,p75_balance,p90_balance,
+#         min_balance,max_balance,
+#     token_num_holders,
+#     --   token_p25_balance,token_p50_balance,token_p75_balance,token_p90_balance,
+#     token_min_balance,token_max_balance,
+#     category,
+#     request_tx_hash,
+#     results_tx_hash,
+#     challenge_tx_hash
+#     FROM rank_stats as rs
+#     LEFT JOIN follower_stats as fids
+#         ON (fids.channel_id = rs.ranked_cid)
+#     LEFT JOIN member_stats as ms
+#         ON (ms.member_cid = rs.ranked_cid)
+#     LEFT JOIN points_stats as ps
+#         ON (ps.points_cid = rs.ranked_cid)
+#     LEFT JOIN tokens_stats as ts
+#         ON (ts.tokens_cid = rs.ranked_cid)
+#     LEFT JOIN category_stats as cs
+#         ON (cs.category_cid = rs.ranked_cid)
+#     LEFT JOIN metadata_stats as mds ON 1=1
+#     """
+#     return await fetch_rows(channel_id, strategy_name, openrank_manager_address, sql_query=sql_query, pool=pool)
+
 async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manager_address: str, pool: Pool):
     sql_query = """
     WITH
@@ -493,35 +619,23 @@ async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manage
     ),
     category_stats AS (
     SELECT
-        channel_id as category_cid,
+        channel_id as cat_cid,
         category
     FROM k3l_channel_categories
     WHERE channel_id = $1
     ),
-    latest_metadata_stat_key AS (
-        SELECT openrank_manager_address, max(req_id) AS req_id, category
-        FROM openrank_channel_metadata
-        GROUP BY openrank_manager_address, category),
-    latest_metadata_stats AS (
-        SELECT *
-        FROM openrank_channel_metadata
-        JOIN latest_metadata_stat_key
-        USING (openrank_manager_address, req_id, category)
-    ),
-    metadata_stats AS (
+    openrank_metadata AS (
     SELECT
+        ocm.category as or_category,
         ocm.request_tx_hash,
         ocm.results_tx_hash,
-        ocm.challenge_tx_hash
-    FROM k3l_channel_categories kcc
-    LEFT JOIN latest_metadata_stats ocm ON ocm.category = kcc.category
-    WHERE kcc.channel_id = $1
-    UNION ALL
-    SELECT
-        NULL as request_tx_hash,
-        NULL as results_tx_hash,
-        NULL as challenge_tx_hash
-    WHERE NOT EXISTS (SELECT 1 FROM k3l_channel_categories WHERE channel_id = $1)
+        ocm.challenge_tx_hash,
+        ocm.req_id
+    FROM openrank_channel_metadata ocm
+    WHERE EXISTS (SELECT 1 FROM k3l_channel_categories kcc WHERE kcc.channel_id = $1 AND kcc.category = ocm.category)
+    AND ocm.openrank_manager_address = $3
+    ORDER BY ocm.req_id DESC
+    LIMIT 1
     )
     SELECT
     channel_id,
@@ -536,10 +650,10 @@ async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manage
     token_num_holders,
     --   token_p25_balance,token_p50_balance,token_p75_balance,token_p90_balance,
     token_min_balance,token_max_balance,
-    category,
-    request_tx_hash,
-    results_tx_hash,
-    challenge_tx_hash
+    cs.category,
+    orm.request_tx_hash,
+    orm.results_tx_hash,
+    orm.challenge_tx_hash
     FROM rank_stats as rs
     LEFT JOIN follower_stats as fids
         ON (fids.channel_id = rs.ranked_cid)
@@ -550,11 +664,11 @@ async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manage
     LEFT JOIN tokens_stats as ts
         ON (ts.tokens_cid = rs.ranked_cid)
     LEFT JOIN category_stats as cs
-        ON (cs.category_cid = rs.ranked_cid)
-    LEFT JOIN metadata_stats as mds ON 1=1
+        ON (cs.cat_cid = rs.ranked_cid)
+    LEFT JOIN openrank_metadata as orm
+        ON (orm.or_category = cs.category)
     """
     return await fetch_rows(channel_id, strategy_name, openrank_manager_address, sql_query=sql_query, pool=pool)
-
 
 async def get_channel_cast_metrics(channel_id: str, pool: Pool):
     sql_query = """
