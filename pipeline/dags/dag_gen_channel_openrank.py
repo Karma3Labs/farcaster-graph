@@ -32,12 +32,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-    mkdir_tmp = BashOperator(
-        task_id="mkdir_tmp",
-        bash_command="cd /pipeline; mkdir -p previous_compute_input/ && mkdir -p tmp/{{ run_id }}",
-        dag=dag,
-    )
-
     @task_group(group_id="openrank_compute_group")
     def tg_openrank_compute():
         fetch_category = BashOperator(
@@ -117,11 +111,4 @@ with DAG(
             >> fetch_results
         )
 
-    rmdir_tmp = BashOperator(
-        task_id="rmdir_tmp",
-        bash_command="cd /pipeline && mv tmp/{{ run_id }}/* previous_compute_input/ && rm -r tmp/{{ run_id }}",
-        trigger_rule=TriggerRule.ALL_SUCCESS,
-        dag=dag,
-    )
-
-    (mkdir_tmp >> tg_openrank_compute() >> rmdir_tmp)
+    tg_openrank_compute()
