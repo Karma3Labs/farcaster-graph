@@ -77,8 +77,8 @@ with DAG(
                 task_id=f"gen_category_files_chunk_{hash(chunk_str)}",
                 bash_command="cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t gen_category_files"
-                f" -s channels/Top_Channels.csv -c {CATEGORY}"
-                f" -o tmp/{run_id}"
+                f" -s channels/Top_Channels.csv -b channels/Bot_Fids.csv -c {CATEGORY}"
+                f" -o tmp/{CATEGORY}"
                 f' "{chunk_str}"',
                 env={"PYTHONUNBUFFERED": "1"},  # Ensures real-time logging
             )
@@ -91,7 +91,7 @@ with DAG(
                 task_id=f"process_category_chunk_{hash(chunk_str)}",
                 bash_command="cd /pipeline && ./run_channel_openrank.sh"
                 " -w . -v .venv -t process_category"
-                f" -c {CATEGORY} -o tmp/{run_id}"
+                f" -c {CATEGORY} -o tmp/{CATEGORY}"
                 f' "{chunk_str}"',
                 env={"PYTHONUNBUFFERED": "1"},  # Ensures real-time logging
             )
@@ -106,7 +106,7 @@ with DAG(
             task_id="fetch_results",
             bash_command="cd /pipeline && ./run_channel_openrank.sh"
             f" -w . -v .venv -t fetch_results -c {CATEGORY}"
-            " -o tmp/{{ run_id }} ",
+            f" -o tmp/{CATEGORY}",
         )
 
         (
