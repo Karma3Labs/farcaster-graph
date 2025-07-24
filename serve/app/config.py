@@ -11,6 +11,12 @@ class DBVersion(StrEnum):
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        # `.env.prod` takes priority over `.env`
+        env_file=(".env", ".env.prod"),
+        extra="ignore"
+    )
+
     DB_USERNAME: str = "postgres"
     DB_PASSWORD: SecretStr = "postgres"
     DB_NAME: str = "postgres"
@@ -72,11 +78,6 @@ class Settings(BaseSettings):
     TOKEN_FEED_CACHE_REFRESH_THRESHOLD: timedelta = timedelta(seconds=3)
     TOKEN_FEED_CACHE_SIZE: int = 1000
 
-    model_config = SettingsConfigDict(
-        # `.env.prod` takes priority over `.env`
-        env_file=(".env", ".env.prod")
-    )
-
     @computed_field
     def POSTGRES_URI(self) -> SecretStr:
         return SecretStr(
@@ -109,5 +110,11 @@ class Settings(BaseSettings):
             f"?random_page_cost=1.1"
         )
 
+class OpenRankSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="OPENRANK_", env_file=(".env", ".env.prod"), extra="ignore"
+    )
+    MANAGER_ADDRESS: str
 
 settings = Settings()
+openrank_settings = OpenRankSettings()

@@ -429,7 +429,7 @@ async def get_top_profiles(
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
 
-async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
+async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manager_address: str, pool: Pool):
     sql_query = """
     WITH
     follower_stats AS (
@@ -498,13 +498,23 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
     FROM k3l_channel_categories
     WHERE channel_id = $1
     ),
+    latest_metadata_stat_key AS (
+        SELECT openrank_manager_address, max(req_id) AS req_id, category
+        FROM openrank_channel_metadata
+        GROUP BY openrank_manager_address, category),
+    latest_metadata_stats AS (
+        SELECT *
+        FROM openrank_channel_metadata
+        JOIN latest_metadata_stat_key
+        USING (openrank_manager_address, req_id, category)
+    ),
     metadata_stats AS (
     SELECT
         ocm.request_tx_hash,
         ocm.results_tx_hash,
         ocm.challenge_tx_hash
     FROM k3l_channel_categories kcc
-    LEFT JOIN openrank_channel_metadata ocm ON ocm.category = kcc.category
+    LEFT JOIN latest_metadata_stats ocm ON ocm.category = kcc.category
     WHERE kcc.channel_id = $1
     UNION ALL
     SELECT
@@ -543,7 +553,7 @@ async def get_channel_stats(channel_id: str, strategy_name: str, pool: Pool):
         ON (cs.category_cid = rs.ranked_cid)
     LEFT JOIN metadata_stats as mds ON 1=1
     """
-    return await fetch_rows(channel_id, strategy_name, sql_query=sql_query, pool=pool)
+    return await fetch_rows(channel_id, strategy_name, openrank_manager_address, sql_query=sql_query, pool=pool)
 
 
 async def get_channel_cast_metrics(channel_id: str, pool: Pool):

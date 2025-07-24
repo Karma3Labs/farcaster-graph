@@ -9,7 +9,7 @@ from loguru import logger
 from pydantic_core import ValidationError
 
 from .. import utils
-from ..config import DBVersion, settings
+from ..config import DBVersion, settings, openrank_settings
 from ..dependencies import db_pool, db_utils
 from ..models.channel_model import (
     CHANNEL_RANKING_STRATEGY_NAMES,
@@ -234,9 +234,11 @@ async def get_channel_stats(
     """
     Get basic statistics about the rankings in a channel. \n
     """
+    openrank_manager_address = openrank_settings.MANAGER_ADDRESS
     stats = await db_utils.get_channel_stats(
         channel_id=channel,
         strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
+        openrank_manager_address=openrank_manager_address,
         pool=pool,
     )
     return {"result": stats}
