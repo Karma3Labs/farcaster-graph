@@ -56,7 +56,7 @@ def fetch_results(
     out_dir: Path,
     category: str,
 ):
-    pg_url = settings.POSTGRES_URL.get_secret_value()
+    pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
     file = os.path.join(out_dir, openrank_settings.REQ_IDS_FILENAME)
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
@@ -112,7 +112,7 @@ def process_category(
     category: str,
     out_dir: Path,
 ):
-    pg_url = settings.POSTGRES_URL.get_secret_value()
+    pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
     channels_df = channel_utils.fetch_channels_for_category_df(pg_url, category)
     try:
         lt_folder = os.path.join(out_dir, "./trust/")
@@ -180,8 +180,8 @@ def gen_category_files(
     out_dir: Path,
 ):
     # DSN used with Pandas to SQL, and URL with direct SQL queries
-    pg_dsn = settings.POSTGRES_DSN.get_secret_value()
-    pg_url = settings.POSTGRES_URL.get_secret_value()
+    pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
+    pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
 
     channel_seeds_df = channel_utils.read_channel_seed_fids_csv(channel_seeds_csv)
     channel_bots_df = channel_utils.read_channel_bot_fids_csv(channel_bots_csv)
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     category = args.category.value
     # TODO replace this nested if-else with argparse groups
     if args.task == "fetch_category":
-        pg_url = settings.POSTGRES_URL.get_secret_value()
+        pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
         df = channel_utils.fetch_channels_for_category_df(pg_url, category)
         channel_ids = df["channel_id"].values.tolist()
         random.shuffle(channel_ids)  # in-place shuffle
