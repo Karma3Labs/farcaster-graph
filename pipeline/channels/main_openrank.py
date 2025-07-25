@@ -286,13 +286,6 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "-ids",
-        "--channel_ids",
-        type=str,
-        help="channel IDs for processing, only used for process task",
-        required=False,
-    )
-    parser.add_argument(
         "-o",
         "--outdir",
         type=lambda f: Path(f).expanduser().resolve(),
@@ -305,52 +298,33 @@ if __name__ == "__main__":
     logger.debug("hello main")
 
     category = args.category.value
-    # TODO replace this nested if-else with argparse groups
-    if args.task == "fetch_category":
-        pg_url = settings.ALT_POSTGRES_URL.get_secret_value()
-        df = channel_utils.fetch_channels_for_category_df(pg_url, category)
-        channel_ids = df["channel_id"].values.tolist()
-        random.shuffle(channel_ids)  # in-place shuffle
-        print(
-            ",".join(channel_ids)
-        )  # Print channel_ids as comma-separated for Airflow XCom
+    if not hasattr(args, "outdir"):
+        logger.error("Output directory is required.")
+        sys.exit(1)
+
+    if args.task == "fetch_results":
+        fetch_results(out_dir=args.outdir, category=category)
     else:
-        if not hasattr(args, "outdir"):
-            logger.error("Output directory is required.")
-            sys.exit(1)
-
-        if args.task == "fetch_results":
-            fetch_results(out_dir=args.outdir, category=category)
-        else:
-            if not hasattr(args, "channel_ids"):
-                logger.error("Channel IDs are required.")
-                sys.exit(1)
-
-            channel_ids_list = args.channel_ids.split(",")
-            if len(channel_ids_list) == 0:
-                logger.warning("No channel IDs specified.")
-                sys.exit(0)
-
-            if args.task == "gen_category_files":
-                if not hasattr(args, "seed"):
-                    logger.error(
-                        "Seed csv file, previous directory and category mapping are required for gen_category_files task."
-                    )
-                    sys.exit(1)
-
-                gen_category_files(
-                    channel_seeds_csv=args.seed,
-                    channel_bots_csv=args.bots,
-                    category=category,
-                    out_dir=args.outdir,
-                )
-            elif args.task == "process_category":
-                process_category(
-                    category=category,
-                    out_dir=args.outdir,
-                )
-            else:
+        if args.task == "gen_category_files":
+            if not hasattr(args, "seed"):
                 logger.error(
-                    "Invalid task specified. Use 'fetch_category', 'process_category' or 'gen_category_files'."
+                    "Seed csv file, previous directory and category mapping are required for gen_category_files task."
                 )
                 sys.exit(1)
+
+            gen_category_files(
+                channel_seeds_csv=args.seed,
+                channel_bots_csv=args.bots,
+                category=category,
+                out_dir=args.outdir,
+            )
+        elif args.task == "process_category":
+            process_category(
+                category=category,
+                out_dir=args.outdir,
+            )
+        else:
+            logger.error(
+                "Invalid task specified. Use 'process_category' or 'gen_category_files'."
+            )
+            sys.exit(1)
