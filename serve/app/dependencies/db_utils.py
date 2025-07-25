@@ -428,7 +428,10 @@ async def get_top_profiles(
         """
     return await fetch_rows(strategy_id, offset, limit, sql_query=sql_query, pool=pool)
 
-async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manager_address: str, pool: Pool):
+
+async def get_channel_stats(
+    channel_id: str, strategy_name: str, openrank_manager_address: str, pool: Pool
+):
     sql_query = """
     WITH
     follower_stats AS (
@@ -541,7 +544,14 @@ async def get_channel_stats(channel_id: str, strategy_name: str, openrank_manage
     LEFT JOIN openrank_metadata as orm
         ON (orm.or_category = cs.category)
     """
-    return await fetch_rows(channel_id, strategy_name, openrank_manager_address, sql_query=sql_query, pool=pool)
+    return await fetch_rows(
+        channel_id,
+        strategy_name,
+        openrank_manager_address,
+        sql_query=sql_query,
+        pool=pool,
+    )
+
 
 async def get_channel_cast_metrics(channel_id: str, pool: Pool):
     sql_query = """
@@ -827,7 +837,8 @@ async def get_tokens_distribution_details(
 async def get_top_channels_for_fid(fid: int, pool: Pool):
     sql_query = """
 SELECT
-  channel_id, count(*) as num_actions
+  channel_id, 
+  SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing key name for compatibility with frontend
 FROM
   k3l_cast_action_v1
 WHERE
