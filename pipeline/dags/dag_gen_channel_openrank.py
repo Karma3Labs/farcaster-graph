@@ -53,4 +53,4 @@ with DAG(
         f" -w . -v .venv -t fetch_results -c {CATEGORY}"
         f" -o tmp/{CATEGORY}",
     )
-    (gen_file_tasks >> process_tasks >> fetch_results)
+    (gen_files_task >> process_task >> fetch_results)
