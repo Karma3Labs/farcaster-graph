@@ -9,7 +9,7 @@ from loguru import logger
 from pydantic_core import ValidationError
 
 from .. import utils
-from ..config import DBVersion, settings, openrank_settings
+from ..config import DBVersion, openrank_settings, settings
 from ..dependencies import db_pool, db_utils
 from ..models.channel_model import (
     CHANNEL_RANKING_STRATEGY_NAMES,

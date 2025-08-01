@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # `.env.prod` takes priority over `.env`
         env_file=(".env", ".env.prod"),
-        extra="ignore"
+        extra="ignore",
     )
 
     DB_USERNAME: str = "postgres"
@@ -110,11 +110,13 @@ class Settings(BaseSettings):
             f"?random_page_cost=1.1"
         )
 
+
 class OpenRankSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="OPENRANK_", env_file=(".env", ".env.prod"), extra="ignore"
     )
     MANAGER_ADDRESS: str
+
 
 settings = Settings()
 openrank_settings = OpenRankSettings()
