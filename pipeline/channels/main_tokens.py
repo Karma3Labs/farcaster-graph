@@ -63,8 +63,6 @@ def prepare_for_distribution(database: Database, scope: Scope, reason: str):
         status_forcelist=[502, 503, 504],
         allowed_methods={"GET"},
     )
-    connect_timeout_s = 5.0
-    read_timeout_s = 30.0
     with niquests.Session(retries=retries) as s:
         # reuse TCP connection for multiple scm requests
         s.auth = HTTPBasicAuth(
@@ -72,142 +70,141 @@ def prepare_for_distribution(database: Database, scope: Scope, reason: str):
             settings.CURA_SCMGR_PASSWORD.get_secret_value(),
         )
         for channel in channels_list:
-            channel_id = channel["channel_id"]
-            token_live_in_db = channel["is_tokens"]
-            if scope == Scope.weekly and not token_live_in_db:
-                logger.info(
-                    f"Channel '{channel_id}' scope: {scope}, token_live_in_db: {token_live_in_db}"
-                )
-                logger.warning(f"Skipping distribution for channel '{channel_id}'")
-                continue
-            is_new_airdrop = False
-            if not token_live_in_db:
-                # In Postgres, we don't know if channel token is launched;
-                # ...let's query Cura Smart Contract Manager to see if we need to do an airdrop
-                try:
-                    path = f"/token/lookupTokenForChannel/{channel_id}"
-                    logger.info(f"GET {path}")
-                    response = s.get(
-                        urllib.parse.urljoin(settings.CURA_SCMGR_URL, path),
-                        headers={
-                            "Accept": "application/json",
-                            "Content-Type": "application/json",
-                        },
-                        timeout=(connect_timeout_s, read_timeout_s),
-                    )
-                    if response.status_code == 200:
-                        channel_token = response.json()
-                        token_address = channel_token.get("tokenAddress")
-                        claim_contract_address = channel_token.get(
-                            "claimContractAddress"
-                        )
-                        if token_address and claim_contract_address:
-                            logger.info(
-                                f"Channel '{channel_id}' has token {channel_token}."
-                            )
-                            token_metadata = channel_token.get("tokenMetadata")
-                            if token_metadata:
-                                symbol = token_metadata.get("symbol")
-                                total_supply = (
-                                    int(token_metadata.get("supply") / 1e18)
-                                    if channel_token.get("supply")
-                                    else 1_000_000_000
-                                )  # 1 billion * 1e18
-                                creator_cut = (
-                                    int(token_metadata.get("creatorCut"))
-                                    if token_metadata.get("creatorCut")
-                                    else 500
-                                )  # 500 = 50%
-                                vesting_months = (
-                                    int(token_metadata.get("vestingPeriod"))
-                                    if token_metadata.get("vestingPeriod")
-                                    else 36
-                                )  # 36 months
-                                airdrop_pmil = (
-                                    int(token_metadata.get("airdropPermil"))
-                                    if token_metadata.get("airdropPermil")
-                                    else 50
-                                )  #  50 = 5%
-                                community_supply = int(
-                                    total_supply * creator_cut / (10 * 100)
-                                )
-                                token_airdrop_budget = int(
-                                    community_supply * airdrop_pmil / (10 * 100)
-                                )
-                                token_daily_budget = int(
-                                    (community_supply - token_airdrop_budget)
-                                    / ((vesting_months / 12) * 52 * 7)
-                                )
-                                logger.info(
-                                    f"Channel '{channel_id}'"
-                                    f" symbol: {symbol}"
-                                    f", total supply: {total_supply}"
-                                    f", creator cut: {creator_cut}"
-                                    f", vesting months: {vesting_months}"
-                                    f", airdrop pmil: {airdrop_pmil}"
-                                    f", community supply: {community_supply}"
-                                    f", token airdrop budget: {token_airdrop_budget}"
-                                    f", token daily budget: {token_daily_budget}"
-                                )
-                                channel_db_utils.update_channel_rewards_config(
-                                    logger=logger,
-                                    pg_dsn=pg_dsn,
-                                    timeout_ms=insert_timeout_ms,
-                                    channel_id=channel_id,
-                                    symbol=symbol,
-                                    total_supply=total_supply,
-                                    creator_cut=creator_cut,
-                                    vesting_months=vesting_months,
-                                    airdrop_pmil=airdrop_pmil,
-                                    community_supply=community_supply,
-                                    token_airdrop_budget=token_airdrop_budget,
-                                    token_daily_budget=token_daily_budget,
-                                )
-                            # this channel token is launched by SCM but we didn't see it in Postgres
-                            # ...therefore conclude that this is token launch
-                            # ...therefore conclude airdrop
-                            is_new_airdrop = True
-                            reason = "airdrop"
-                        else:
-                            logger.info(
-                                f"Channel '{channel_id}' token not fully launched: {channel_token}."
-                            )
-                    elif response.status_code == 404:
-                        logger.warning(
-                            f"404 Error: Skipping channel {channel_id} :{response.reason}"
-                        )
-                        continue
-                except Exception as e:
-                    logger.error(f"Failed to call smartcontractmgr: {e}")
-                    raise e
-            logger.info(
-                f"Channel '{channel_id}' scope: {scope}"
-                f", is_new_airdrop: {is_new_airdrop}, token_live_in_db: {token_live_in_db}"
-            )
-            if (scope == Scope.weekly and token_live_in_db) or (
-                scope == Scope.airdrop and is_new_airdrop
-            ):
-                # Token was already live in db and we are doing weekly distributions
-                # ...or token was just launched and we are doing airdrop
-                # ...let's prepare for distributing tokens.
-                logger.info(f"Prepping distribution for channel '{channel_id}'")
-                dist_id = channel_db_utils.insert_tokens_log(
-                    logger=logger,
-                    pg_dsn=pg_dsn,
-                    timeout_ms=insert_timeout_ms,
-                    channel_id=channel_id,
-                    reason=reason,
-                    is_airdrop=is_new_airdrop,
-                    batch_size=settings.CURA_SCMGR_BATCH_SIZE,
-                )
-                logger.info(
-                    f"Prepped distribution for channel '{channel_id}': {dist_id}"
-                )
-            else:
-                logger.info(f"Skipping distribution for channel '{channel_id}'")
+            _prepare_channel_for_distribution(channel, pg_dsn, reason, scope, s)
         channel_db_utils.fixup_tokens_log_addresses(
             logger=logger, pg_dsn=pg_dsn, timeout_ms=insert_timeout_ms
         )
+
+
+def _prepare_channel_for_distribution(channel, pg_dsn, reason, scope, s):
+    insert_timeout_ms = 120_000
+    connect_timeout_s = 5.0
+    read_timeout_s = 30.0
+    channel_id = channel["channel_id"]
+    token_live_in_db = channel["is_tokens"]
+    if scope == Scope.weekly and not token_live_in_db:
+        logger.info(
+            f"Channel '{channel_id}' scope: {scope}, token_live_in_db: {token_live_in_db}"
+        )
+        logger.warning(f"Skipping distribution for channel '{channel_id}'")
+        return
+    is_new_airdrop = False
+    if not token_live_in_db:
+        # In Postgres, we don't know if channel token is launched;
+        # ...let's query Cura Smart Contract Manager to see if we need to do an airdrop
+        try:
+            path = f"/token/lookupTokenForChannel/{channel_id}"
+            logger.info(f"GET {path}")
+            response = s.get(
+                urllib.parse.urljoin(settings.CURA_SCMGR_URL, path),
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                timeout=(connect_timeout_s, read_timeout_s),
+            )
+            if response.status_code == 200:
+                channel_token = response.json()
+                token_address = channel_token.get("tokenAddress")
+                claim_contract_address = channel_token.get("claimContractAddress")
+                if token_address and claim_contract_address:
+                    logger.info(f"Channel '{channel_id}' has token {channel_token}.")
+                    token_metadata = channel_token.get("tokenMetadata")
+                    if token_metadata:
+                        symbol = token_metadata.get("symbol")
+                        total_supply = (
+                            int(token_metadata.get("supply") / 1e18)
+                            if channel_token.get("supply")
+                            else 1_000_000_000
+                        )  # 1 billion * 1e18
+                        creator_cut = (
+                            int(token_metadata.get("creatorCut"))
+                            if token_metadata.get("creatorCut")
+                            else 500
+                        )  # 500 = 50%
+                        vesting_months = (
+                            int(token_metadata.get("vestingPeriod"))
+                            if token_metadata.get("vestingPeriod")
+                            else 36
+                        )  # 36 months
+                        airdrop_pmil = (
+                            int(token_metadata.get("airdropPermil"))
+                            if token_metadata.get("airdropPermil")
+                            else 50
+                        )  # 50 = 5%
+                        community_supply = int(total_supply * creator_cut / (10 * 100))
+                        token_airdrop_budget = int(
+                            community_supply * airdrop_pmil / (10 * 100)
+                        )
+                        token_daily_budget = int(
+                            (community_supply - token_airdrop_budget)
+                            / ((vesting_months / 12) * 52 * 7)
+                        )
+                        logger.info(
+                            f"Channel '{channel_id}'"
+                            f" symbol: {symbol}"
+                            f", total supply: {total_supply}"
+                            f", creator cut: {creator_cut}"
+                            f", vesting months: {vesting_months}"
+                            f", airdrop pmil: {airdrop_pmil}"
+                            f", community supply: {community_supply}"
+                            f", token airdrop budget: {token_airdrop_budget}"
+                            f", token daily budget: {token_daily_budget}"
+                        )
+                        channel_db_utils.update_channel_rewards_config(
+                            logger=logger,
+                            pg_dsn=pg_dsn,
+                            timeout_ms=insert_timeout_ms,
+                            channel_id=channel_id,
+                            symbol=symbol,
+                            total_supply=total_supply,
+                            creator_cut=creator_cut,
+                            vesting_months=vesting_months,
+                            airdrop_pmil=airdrop_pmil,
+                            community_supply=community_supply,
+                            token_airdrop_budget=token_airdrop_budget,
+                            token_daily_budget=token_daily_budget,
+                        )
+                    # this channel token is launched by SCM but we didn't see it in Postgres
+                    # ...therefore conclude that this is token launch
+                    # ...therefore conclude airdrop
+                    is_new_airdrop = True
+                    reason = "airdrop"
+                else:
+                    logger.info(
+                        f"Channel '{channel_id}' token not fully launched: {channel_token}."
+                    )
+            elif response.status_code == 404:
+                logger.warning(
+                    f"404 Error: Skipping channel {channel_id} :{response.reason}"
+                )
+                return
+        except Exception as e:
+            logger.error(f"Failed to call smartcontractmgr: {e}")
+            raise e
+    logger.info(
+        f"Channel '{channel_id}' scope: {scope}"
+        f", is_new_airdrop: {is_new_airdrop}, token_live_in_db: {token_live_in_db}"
+    )
+    if (scope == Scope.weekly and token_live_in_db) or (
+        scope == Scope.airdrop and is_new_airdrop
+    ):
+        # Token was already live in db and we are doing weekly distributions
+        # ...or token was just launched and we are doing airdrop
+        # ...let's prepare for distributing tokens.
+        logger.info(f"Prepping distribution for channel '{channel_id}'")
+        dist_id = channel_db_utils.insert_tokens_log(
+            logger=logger,
+            pg_dsn=pg_dsn,
+            timeout_ms=insert_timeout_ms,
+            channel_id=channel_id,
+            reason=reason,
+            is_airdrop=is_new_airdrop,
+            batch_size=settings.CURA_SCMGR_BATCH_SIZE,
+        )
+        logger.info(f"Prepped distribution for channel '{channel_id}': {dist_id}")
+    else:
+        logger.info(f"Skipping distribution for channel '{channel_id}'")
 
 
 def distribute_tokens():
