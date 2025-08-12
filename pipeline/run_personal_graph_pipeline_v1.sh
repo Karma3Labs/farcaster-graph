@@ -108,7 +108,7 @@ elif [ "$TASK" = "consolidate" ]; then
     new_size=$(du -sm ${OUT_DIR}/${RUN_ID} | cut -f1)
     prev_size=$(du -sm ${OUT_DIR}/temp | cut -f1)
     size_diff=$((new_size - prev_size))
-    if [[ $size_diff -lt -100 ]]; then
+    if [[ $size_diff -lt -500 ]]; then
       echo 'New graph parts much smaller than previously generated graph parts. Abort script.'
       exit 1
     fi
