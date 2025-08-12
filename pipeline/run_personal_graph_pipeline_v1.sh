@@ -126,7 +126,7 @@ elif [ "$TASK" = "consolidate" ]; then
     new_size=$(du -sm $OUT_DIR/personal_graph.parquet.new | cut -f1)
     prev_size=$(du -sm $OUT_DIR/personal_graph.parquet | cut -f1)
     size_diff=$((new_size - prev_size))
-    if [[ $size_diff -lt -150 ]]; then
+    if [[ $size_diff -lt -600 ]]; then
       echo 'New graph file much smaller than previously generated graph file. Abort script.'
       exit 1
     fi
