@@ -3294,3 +3294,19 @@ async def score_casts(
         pool=pool,
     )
     return [CastScore(**row) for row in rows]
+
+
+async def get_channel_config(channel_id: str, pool: Pool):
+    """Get channel configuration from k3l_channel_rewards_config table."""
+    sql_query = """
+        SELECT 
+            is_ranked,
+            is_points,
+            is_tokens
+        FROM k3l_channel_rewards_config
+        WHERE channel_id = $1
+    """
+    rows = await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
+    if rows:
+        return rows[0]
+    return None

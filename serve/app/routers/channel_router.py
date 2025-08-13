@@ -38,7 +38,32 @@ from ..models.feed_model import (
 from ..models.score_model import ScoreAgg, Weights
 from ..utils import fetch_channel
 
-router = APIRouter()
+router = APIRouter(tags=["Channels"])
+
+
+@router.get("/config/{channel}")
+async def get_channel_configuration(
+    channel: str,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    """
+    Get channel configuration.
+    Returns:
+
+    * `is_ranked` (bool) - whether OpenRank scores are calculated.
+    * `is_points` (bool) - whether channel points are calculated.
+    * `is_tokens` (bool) - whether the channel has a channel token.
+    """
+    config = await db_utils.get_channel_config(channel_id=channel, pool=pool)
+    if not config:
+        raise HTTPException(status_code=404, detail="Channel configuration not found")
+    return {
+        "result": {
+            "is_ranked": config["is_ranked"],
+            "is_points": config["is_points"],
+            "is_tokens": config["is_tokens"],
+        }
+    }
 
 
 @router.get("/openrank/{channel}", tags=["Experimental"])
