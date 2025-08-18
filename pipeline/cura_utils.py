@@ -104,7 +104,7 @@ def notify(
         "title": title,
         "body": body,
         "notificationId": notification_id,
-        "channelId": channel_id,
+        "channel_id": channel_id,
         "fids": fids,
         "screen": screen_name,
     }
