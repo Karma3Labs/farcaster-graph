@@ -209,8 +209,31 @@ async def get_tokens_distribution_details(
 @router.get("/top-channels/{fid}")
 async def get_top_channels_for_fid(fid: int, pool: Pool = Depends(db_pool.get_db)):
     # returns the top channels for the fid based on interactions from the last 30 days
-    channels = await db_utils.get_top_channels_for_fid(fid, pool)
-    return {"result": channels}
+    user_top_channels = await db_utils.get_top_channels_for_fid(fid, pool)
+
+    MIN_TOP_CHANNELS = 25
+
+    if len(user_top_channels) < MIN_TOP_CHANNELS:
+        user_top_channel_ids = set(
+            [channel["channel_id"] for channel in user_top_channels]
+        )
+        trending_channels = await db_utils.get_trending_channels(
+            max_cast_age=PARENT_CASTS_AGE[Query(ChannelTimeframe.WEEK)],
+            rank_threshold=10000,
+            offset=0,
+            limit=MIN_TOP_CHANNELS * 2,
+            pool=pool,
+        )
+        for trending_channel in trending_channels:
+            if trending_channel["id"] not in user_top_channel_ids:
+                user_top_channels.append(
+                    {
+                        "channel_id": trending_channel["id"],
+                        "num_actions": 0,
+                    }
+                )
+
+    return {"result": user_top_channels}
 
 
 @router.get("/rankings/{channel}", tags=["Deprecated"])
