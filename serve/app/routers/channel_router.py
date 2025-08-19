@@ -218,7 +218,7 @@ async def get_top_channels_for_fid(fid: int, pool: Pool = Depends(db_pool.get_db
             [channel["channel_id"] for channel in user_top_channels]
         )
         trending_channels = await db_utils.get_trending_channels(
-            max_cast_age=PARENT_CASTS_AGE[Query(ChannelTimeframe.WEEK)],
+            max_cast_age=PARENT_CASTS_AGE[ChannelTimeframe.WEEK],
             rank_threshold=10000,
             offset=0,
             limit=MIN_TOP_CHANNELS * 2,
