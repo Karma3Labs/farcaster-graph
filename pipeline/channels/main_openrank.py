@@ -225,7 +225,6 @@ def gen_category_files(
                     logger.info(
                         f"No local trust for channel {cid} for interval {interval}"
                     )
-                    return {cid: []}
                 else:
                     logger.error(
                         f"No local trust for channel {cid} for lifetime engagement"
@@ -234,19 +233,19 @@ def gen_category_files(
                     raise Exception(
                         f"No local trust for channel {cid} for lifetime engagement"
                     )
+            else:
+                pretrust_df = channel_utils.pretrust_list_to_df(pretrust_fid_list)
 
-            pretrust_df = channel_utils.pretrust_list_to_df(pretrust_fid_list)
+                # Future Feature: keep track and clean up seed fids that have had no engagement in channel
+                missing_seed_fids.append({cid: absent_fids})
 
-            # Future Feature: keep track and clean up seed fids that have had no engagement in channel
-            missing_seed_fids.append({cid: absent_fids})
-
-            write_openrank_files(
-                cid=cid,
-                interval=interval,
-                localtrust_df=localtrust_df,
-                pretrust_df=pretrust_df,
-                out_dir=out_dir,
-            )
+                write_openrank_files(
+                    cid=cid,
+                    interval=interval,
+                    localtrust_df=localtrust_df,
+                    pretrust_df=pretrust_df,
+                    out_dir=out_dir,
+                )
 
         except Exception as e:
             logger.error(f"failed to process a channel: {cid}: {e}")
