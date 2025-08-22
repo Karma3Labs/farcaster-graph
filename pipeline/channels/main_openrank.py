@@ -76,7 +76,7 @@ def fetch_results(
 
     try:
         openrank_utils.compute_watch(openrank_settings, req_id, out_dir)
-        openrank_utils.download_results(openrank_settings, req_id, out_dir)
+        openrank_utils.download_results(openrank_settings, req_id, out_folder)
 
         with open(os.path.join(out_dir, "metadata.json"), "r") as file:
             data = json.load(file)
