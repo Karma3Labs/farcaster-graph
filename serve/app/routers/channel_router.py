@@ -1,5 +1,6 @@
 import json
 import urllib.parse
+from datetime import datetime, timedelta
 from itertools import batched
 from typing import Annotated, Any
 
@@ -997,3 +998,51 @@ async def get_trending_channels(
         pool=pool,
     )
     return {"result": channels}
+
+
+@router.get("/casts/top/{channel}", tags=["Casts"])
+async def get_top_casts(
+    channel: str,
+    lookback: Annotated[timedelta, Query()] = timedelta(days=1),
+    end_time: Annotated[datetime | None, Query()] = None,
+    reaction_window: Annotated[timedelta | None, Query()] = timedelta(hours=24),
+    weights: Annotated[str, Query()] = 'L1C0R1Y1',
+    rank_timeframe: Annotated[
+        ChannelRankingsTimeframe, Query()
+    ] = ChannelRankingsTimeframe.SIXTY_DAYS,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    """
+    Get top channel casts.
+
+    Casts made within the given time range are ranked (`end_time` and `lookback`).
+    Each cast gets a time window, starting at its creation (`reaction_window`).
+    Reactions made within this window contribute to the cast's score.
+    Each reaction's worth is determined by the type of reaction (`weights`)
+    and the reacting user's channel score.
+    User's score is cube-root-normalized to the range [0, 1].
+
+    Arguments:
+        channel: The channel to get top casts for.
+        lookback: The time range of eligible casts. (Default: `"PT1D"` for 1 day)
+        end_time: Cast deadline, in ISO 8601 format. (Default: current time - `window`)
+        reaction_window: Reaction time window. (Default: `"PT24H"` for 24 hours)
+        weights: Reaction types and their weights. (Default: `"L1C0R1Y1"`)
+        rank_timeframe: User score's rank timeframe. (Default: `"60days"`)
+    """
+    try:
+        parsed_weights = Weights.from_str(weights)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid weights") from e
+    if end_time is None:
+        end_time = datetime.now() - reaction_window
+    casts = await db_utils.get_top_channel_casts(
+        channel_id=channel,
+        cast_at_or_after=end_time - lookback,
+        cast_before=end_time,
+        reaction_window=reaction_window,
+        weights=parsed_weights,
+        strategy_name=CHANNEL_RANKING_STRATEGY_NAMES[rank_timeframe],
+        pool=pool,
+    )
+    return {"result": casts}
