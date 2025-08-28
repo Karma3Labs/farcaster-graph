@@ -3357,14 +3357,14 @@ async def get_top_channel_casts(
                 SELECT ca.*
                 FROM params
                 INNER JOIN neynarv3.channels AS ch ON params.channel_id = ch.channel_id
-                INNER JOIN neynarv3.casts AS c ON ch.url = c.parent_url
+                INNER JOIN neynarv3.casts AS c ON ch.url = c.root_parent_url
                 INNER JOIN
                     k3l_cast_action AS ca
                     ON
                         c.hash = ca.cast_hash
                         AND c.timestamp <= ca.action_ts
                         AND ca.action_ts < c.timestamp + params.reaction_window
-                WHERE c.timestamp >= params.cast_at_or_after AND c.timestamp < params.cast_before
+                WHERE c.timestamp >= params.cast_at_or_after AND c.timestamp < params.cast_before AND c.parent_hash IS NULL
             ),
 
             c AS (
