@@ -3330,7 +3330,7 @@ async def get_top_channel_casts(
     if cast_before.tzinfo is None:
         cast_before = cast_before.astimezone()
     return await fetch_rows(
-        channel_id,
+        channel_id,  # $1
         cast_at_or_after.astimezone(UTC).replace(tzinfo=None),
         cast_before.astimezone(UTC).replace(tzinfo=None),
         reaction_window,
@@ -3340,55 +3340,49 @@ async def get_top_channel_casts(
         weights.reply,
         strategy_name,
         sql_query=f"""
-            WITH params AS (
-                SELECT
-                    $1::text AS channel_id,
-                    $2::timestamp AS cast_at_or_after,
-                    $3::timestamp AS cast_before,
-                    $4::interval AS reaction_window,
-                    $5::integer AS liked_weight,
-                    $6::integer AS casted_weight,
-                    $7::integer AS recasted_weight,
-                    $8::integer AS replied_weight,
-                    $9::text AS strategy_name
-            ),
-    
-            ca AS (
+            WITH ca AS (
                 SELECT ca.*
-                FROM params
-                INNER JOIN neynarv3.channels AS ch ON params.channel_id = ch.channel_id
-                INNER JOIN neynarv3.casts AS c ON ch.url = c.root_parent_url
+                FROM neynarv3.casts AS c
                 INNER JOIN
                     k3l_cast_action AS ca
                     ON
                         c.hash = ca.cast_hash
                         AND c.timestamp <= ca.action_ts
-                        AND ca.action_ts < c.timestamp + params.reaction_window
-                WHERE c.timestamp >= params.cast_at_or_after AND c.timestamp < params.cast_before AND c.parent_hash IS NULL
+                        AND ca.action_ts < c.timestamp + $4::interval
+                WHERE
+                    c.root_parent_url = (
+                        SELECT url
+                        FROM neynarv3.channels
+                        WHERE channel_id = $1::text
+                    )
+                    AND c.parent_hash IS NULL
+                    AND c.timestamp >= $2::timestamp
+                    AND c.timestamp < $3::timestamp
             ),
-
+            
             c AS (
                 SELECT
                     ca.cast_hash,
                     sum(
                         (
-                            ca.liked * params.liked_weight
-                            + ca.casted * params.casted_weight
-                            + ca.recasted * params.recasted_weight
-                            + ca.replied * params.replied_weight
+                            ca.liked * $5::integer
+                            + ca.casted * $6::integer
+                            + ca.recasted * $7::integer
+                            + ca.replied * $8::integer
                         )
                         * cbrt(cr.score)
                     ) AS score
-                FROM params
-                CROSS JOIN ca
+                FROM ca
                 INNER JOIN k3l_channel_rank AS cr ON ca.fid = cr.fid
-                WHERE cr.strategy_name = params.strategy_name AND cr.channel_id = params.channel_id
+                WHERE
+                    cr.strategy_name = $9::text
+                    AND cr.channel_id = $1::text
                 GROUP BY ca.cast_hash
             )
             
             SELECT
-                '0x' || encode(cast_hash, 'hex') AS cast_hash,
-                score
+                score,
+                '0x' || encode(cast_hash, 'hex') AS cast_hash
             FROM c
             ORDER BY score DESC
         """,
