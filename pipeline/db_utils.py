@@ -6,6 +6,7 @@ import pandas as pd
 import psycopg2
 from loguru import logger
 from sqlalchemy import create_engine
+from supabase import create_client
 
 import utils
 from config import settings
@@ -202,3 +203,11 @@ def fetch_channels_for_category(pg_url: str, category: str):
         raise e
     finally:
         sql_engine.dispose()
+
+
+def get_supabase_client():
+    """Get initialized Supabase client with service role key."""
+    return create_client(
+        settings.SUPABASE_URL,
+        settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
+    )
