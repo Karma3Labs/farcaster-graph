@@ -55,7 +55,7 @@ def compute_watch(openrank_settings: OpenRankSettings, req_id: str, out_file: Pa
     get_cmd = subprocess.run(
         [
             "openrank",
-            "meta-compute-watch",
+            "compute-watch",
             str(req_id),
             "--out-dir={}".format(str(out_file)),
         ],
@@ -85,7 +85,7 @@ def download_results(openrank_settings: OpenRankSettings, req_id: str, out_file:
     get_cmd = subprocess.run(
         [
             "openrank",
-            "meta-download-scores",
+            "download-scores",
             str(req_id),
             "--out-dir={}".format(str(out_file)),
         ],
@@ -117,7 +117,7 @@ def update_and_compute(
     compute_cmd = subprocess.run(
         [
             "openrank",
-            "meta-compute-request",
+            "compute-request",
             lt_folder,
             pt_folder,
         ],
