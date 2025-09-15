@@ -30,8 +30,7 @@ RUN /bin/bash -c "source /pipeline/.env"
 
 RUN pip install --upgrade pip
 
-# Use Airflow constraints file for compatible package versions
-RUN pip install -r /pipeline/requirements.txt --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.12.txt"
-RUN pip install apache-airflow-providers-pagerduty==3.7.2 discord-webhook==1.3.1 apache-airflow-providers-ssh==3.11.2 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.12.txt"
+RUN pip install -r /pipeline/requirements.txt
+RUN pip install apache-airflow-providers-pagerduty==3.7.2 discord-webhook==1.3.1 apache-airflow-providers-ssh==3.11.2
 
 
