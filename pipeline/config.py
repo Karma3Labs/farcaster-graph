@@ -72,7 +72,9 @@ class Settings(BaseSettings):
     TEST_CHANNEL_LIMIT: int = 2
 
     LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: str = "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
+    LOG_FORMAT: str = (
+        "[%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(funcName)s ] %(message)s"
+    )
     LOGURU_FORMAT: str = (
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green>"
         " | {name}:{function}:{line}"
@@ -124,6 +126,12 @@ class Settings(BaseSettings):
     CURA_FE_API_URL: str = "changeme"
     CURA_FE_API_KEY: str = "changeme"
     CURA_NOTIFY_CHUNK_SIZE: int = 100
+
+    SUPABASE_URL: str = "changeme"
+    SUPABASE_SERVICE_ROLE_KEY: SecretStr = "changeme"
+    FCM_WEBHOOK_URL: str = "https://api.neynar.com/v2/farcaster/webhook/"
+    FCM_WEBHOOK_TIMEOUT_SECS: int = 30
+    NEYNAR_API_KEY: str = "changeme"
 
     @computed_field
     @cached_property
