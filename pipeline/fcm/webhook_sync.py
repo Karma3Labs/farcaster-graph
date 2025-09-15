@@ -60,6 +60,7 @@ def update_webhook(fids: List[int]) -> None:
 
     headers = {
         "Content-Type": "application/json",
+        "x-api-key": settings.NEYNAR_API_KEY,
     }
 
     response = requests.post(
