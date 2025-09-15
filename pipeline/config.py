@@ -131,6 +131,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: SecretStr = "changeme"
     FCM_WEBHOOK_URL: str = "https://api.neynar.com/v2/farcaster/webhook/"
     FCM_WEBHOOK_TIMEOUT_SECS: int = 30
+    NEYNAR_API_KEY: str = "changeme"
 
     @computed_field
     @cached_property
