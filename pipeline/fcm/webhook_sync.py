@@ -63,7 +63,7 @@ def update_webhook(fids: List[int]) -> None:
         "x-api-key": settings.NEYNAR_API_KEY,
     }
 
-    response = requests.post(
+    response = requests.put(
         settings.FCM_WEBHOOK_URL,
         json=payload,
         headers=headers,
