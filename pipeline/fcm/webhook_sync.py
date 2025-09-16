@@ -53,7 +53,7 @@ def update_webhook(fids: List[int]) -> None:
             "reaction.created": {"target_fids": fids},
             "follow.created": {"target_fids": fids},
         },
-        "webhook_id": "01K4YQ2BFDRV2VF7DC0HB8HX27",
+        "webhook_id": "01K58G41EKAMD4FGF268ZY9BB4",
         "name": "test",
         "url": "https://notifications.cura.network/api/v1/neynar-webhook",
     }
