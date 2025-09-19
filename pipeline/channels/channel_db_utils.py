@@ -211,7 +211,9 @@ async def fetch_24h_active_channels(
         FROM neynarv3.casts
         WHERE parent_url IS NOT NULL AND "timestamp" >= NOW() - INTERVAL '24 hours'
     """
-    return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+    rows = await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+    logger.info(f"24h active channels: {len(rows)}")
+    return [row["parent_url"] for row in rows]
 
 
 @Timer(name="filter_channel_followers")
