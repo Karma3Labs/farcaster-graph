@@ -183,7 +183,7 @@ async def notify():
     pg_dsn = settings.ALT_POSTGRES_ASYNC_URI.get_secret_value()
 
     # Fetch active channels
-    parent_urls = await channel_db_utils.fetch_24h_active_channels(pg_dsn)
+    parent_urls = await channel_db_utils.fetch_24h_active_channels(logger, pg_dsn)
     logger.info(f"active channels: {parent_urls}")
     logger.info(f"active channels: {len(parent_urls)}")
     if not parent_urls:
