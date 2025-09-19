@@ -151,7 +151,7 @@ async def notify():
             body = top_cast_content
 
             notification_id = uuid.uuid4()
-            return cura_utils.notify(
+            cura_utils.notify(
                 session,
                 timeouts,
                 channel_id,
