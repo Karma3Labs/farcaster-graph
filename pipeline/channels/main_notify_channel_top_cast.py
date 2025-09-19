@@ -89,7 +89,7 @@ def get_top_cast(session: niquests.Session, channel_id: str, timeouts: tuple) ->
     """
     Get the top cast for a channel from K3L API
     """
-    url = f"https://graph.cast.k3l.io/channels/casts/top/{channel_id}"
+    url = f"https://graph.cast.k3l.io/channels/casts/popular/{channel_id}"
 
     try:
         logger.debug(f"Getting top cast for channel: {channel_id}")
