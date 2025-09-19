@@ -258,7 +258,7 @@ async def notify():
 
             # for fid, profile in profile_details.items():
             # display_name = profile["display_name"]
-            title = f"{top_cast_author_display_name}'s top cast in /{channel_id}"
+            title = f"{top_cast_author_display_name}'s top post in /{channel_id}"
             body = top_cast_content
 
             notification_id = uuid.uuid4()
