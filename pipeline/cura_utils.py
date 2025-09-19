@@ -24,6 +24,7 @@ class ScreenName(StrEnum):
     TOKENS = "token"
     LEADERBOARD = "leaderboard"
     DAILY_CAST = "feed"
+    TOP_CAST = "feed"
 
 
 def leaderboard_notify(
@@ -85,6 +86,31 @@ def weekly_mods_notify(
     title = f"Check out your /{channel_id} stats"
     body = "Your top casts and members stats are in, tap to look."
     screen_name = ScreenName.WEEKLY_MODS.value
+    return notify(
+        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
+    )
+
+
+def top_cast_notify(
+    session: niquests.Session,
+    timeouts: tuple,
+    channel_id: str,
+    fids: list[int],
+    cast_hash: str,
+    cast_text: str = "",
+):
+    utc_tz = pytz.timezone("UTC")
+    # hash is based on day so we don't risk sending out more than one notification
+    daily_str = datetime.datetime.now(utc_tz).strftime("%Y-%m-%d")
+    notification_id = hashlib.sha256(
+        f"{channel_id}-topcast-{daily_str}".encode("utf-8")
+    ).hexdigest()
+    logger.info(f"Sending top cast notification for channel {channel_id}-{daily_str}")
+    title = f"🔥 Top cast in /{channel_id}"
+    # Truncate cast text for notification body
+    truncated_text = cast_text[:80] + "..." if len(cast_text) > 80 else cast_text
+    body = f"{truncated_text}" if truncated_text else f"Check out the top cast in /{channel_id}!"
+    screen_name = ScreenName.TOP_CAST.value
     return notify(
         session, timeouts, channel_id, fids, notification_id, title, body, screen_name
     )
