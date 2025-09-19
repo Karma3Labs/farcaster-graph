@@ -223,6 +223,7 @@ async def notify():
 
     # Fetch active channels
     parent_urls = await fetch_active_channels(pg_dsn)
+    logger.info(f"active channels: {parent_urls}")
     if not parent_urls:
         logger.warning("No active channels found, exiting")
         return
