@@ -36,55 +36,6 @@ logger.add(
 load_dotenv()
 
 
-def lookup_channel_ids(
-    session: niquests.Session, parent_urls: list[str], timeouts: tuple
-) -> dict[str, str]:
-    """
-    Use Neynar API to convert parent URLs to channel IDs
-    """
-    channel_mapping = {}
-
-    # Neynar bulk channel lookup API
-    url = "https://api.neynar.com/v2/farcaster/channel/bulk"
-    headers = {
-        "Accept": "application/json",
-        "x-api-key": settings.NEYNAR_API_KEY,
-    }
-
-    # Process in batches of 100 (Neynar API limit)
-    for batch in batched(parent_urls, 100):
-        params = {"ids": ",".join(batch), "type": "parent_url"}
-
-        try:
-            logger.debug(f"Looking up channel IDs for batch: {batch}")
-            response = session.get(
-                url, params=params, headers=headers, timeout=timeouts
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                channels = data.get("channels", [])
-
-                for channel in channels:
-                    parent_url = channel.get("parent_url")
-                    channel_id = channel.get("id")
-                    if parent_url and channel_id:
-                        channel_mapping[parent_url] = channel_id
-
-                logger.info(f"Successfully mapped {len(channels)} channels in batch")
-            else:
-                logger.error(
-                    f"Neynar API error: {response.status_code} - {response.text}"
-                )
-
-        except Exception as e:
-            logger.error(f"Error calling Neynar API: {e}")
-            continue
-
-    logger.info(f"Total channel mappings: {len(channel_mapping)}")
-    return channel_mapping
-
-
 def get_top_cast(session: niquests.Session, channel_id: str, timeouts: tuple) -> dict:
     """
     Get the top cast for a channel from K3L API
@@ -115,68 +66,6 @@ def get_top_cast(session: niquests.Session, channel_id: str, timeouts: tuple) ->
     except Exception as e:
         logger.error(f"Error getting top cast for {channel_id}: {e}")
         return None
-
-
-def get_channel_members(
-    session: niquests.Session, channel_id: str, timeouts: tuple
-) -> list[int]:
-    """
-    Get channel members from Neynar API
-    """
-    url = f"https://api.neynar.com/v2/farcaster/channel/member/list"
-    headers = {
-        "Accept": "application/json",
-        "x-api-key": settings.NEYNAR_API_KEY,
-    }
-
-    params = {"channel_id": channel_id, "limit": 100}  # Max limit
-
-    all_members = []
-    cursor = None
-
-    try:
-        while True:
-            if cursor:
-                params["cursor"] = cursor
-
-            logger.debug(f"Getting members for channel: {channel_id}")
-            response = session.get(
-                url, params=params, headers=headers, timeout=timeouts
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                members = data.get("members", [])
-
-                # Extract FIDs
-                fids = [
-                    member.get("user", {}).get("fid")
-                    for member in members
-                    if member.get("user", {}).get("fid")
-                ]
-                all_members.extend(fids)
-
-                # Check for pagination
-                next_cursor = data.get("next", {}).get("cursor")
-                if next_cursor:
-                    cursor = next_cursor
-                    logger.debug(
-                        f"Found more members, continuing with cursor: {cursor}"
-                    )
-                else:
-                    break
-
-            else:
-                logger.error(
-                    f"Neynar members API error for {channel_id}: {response.status_code} - {response.text}"
-                )
-                break
-
-    except Exception as e:
-        logger.error(f"Error getting members for {channel_id}: {e}")
-
-    logger.info(f"Found {len(all_members)} members for channel {channel_id}")
-    return all_members
 
 
 async def notify():
