@@ -17,6 +17,7 @@ import cura_utils
 
 # local dependencies
 from config import settings
+from . import channel_db_utils
 
 # Configure logger
 logger.remove()
@@ -30,46 +31,6 @@ logger.add(
 )
 
 load_dotenv()
-
-
-async def fetch_active_channels(pg_dsn: str) -> list[str]:
-    """
-    Fetch channels that had casts in the last 24 hours
-    """
-    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
-
-    sql = """
-    SELECT DISTINCT parent_url
-    FROM neynarv3.casts
-    WHERE 
-        parent_url IS NOT NULL 
-        AND "timestamp" >= NOW() - INTERVAL '24 hours'
-    """
-
-    if settings.IS_TEST:
-        sql = f"{sql} LIMIT 5"
-
-    logger.info(f"Executing query: {sql}")
-
-    async with pool.acquire() as connection:
-        async with connection.transaction():
-            try:
-                rows = await connection.fetch(
-                    sql, timeout=settings.POSTGRES_TIMEOUT_SECS
-                )
-                parent_urls = [row["parent_url"] for row in rows]
-                logger.info(
-                    f"Found {len(parent_urls)} active channels in last 24 hours"
-                )
-                logger.debug(
-                    f"Active channels: {parent_urls[:10] if len(parent_urls) > 10 else parent_urls}"
-                )
-                return parent_urls
-            except Exception as e:
-                logger.error(f"Database query failed: {e}")
-                return []
-            finally:
-                await pool.close()
 
 
 def lookup_channel_ids(
@@ -222,8 +183,9 @@ async def notify():
     pg_dsn = settings.ALT_POSTGRES_ASYNC_URI.get_secret_value()
 
     # Fetch active channels
-    parent_urls = await fetch_active_channels(pg_dsn)
+    parent_urls = await channel_db_utils.fetch_24h_active_channels(pg_dsn)
     logger.info(f"active channels: {parent_urls}")
+    logger.info(f"active channels: {len(parent_urls)}")
     if not parent_urls:
         logger.warning("No active channels found, exiting")
         return

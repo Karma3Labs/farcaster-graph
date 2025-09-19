@@ -200,6 +200,20 @@ async def fetch_top_casters(
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
 
 
+@Timer(name="fetch_24h_active_channels")
+async def fetch_24h_active_channels(
+    logger: logging.Logger,
+    pg_dsn: str,
+):
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+    sql_query = f"""
+        SELECT DISTINCT parent_url
+        FROM neynarv3.casts
+        WHERE parent_url IS NOT NULL AND "timestamp" >= NOW() - INTERVAL '24 hours'
+    """
+    return await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+
+
 @Timer(name="filter_channel_followers")
 async def filter_channel_followers(
     logger: logging.Logger,
