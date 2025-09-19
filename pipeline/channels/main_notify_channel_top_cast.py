@@ -1,9 +1,11 @@
 # standard dependencies
+import uuid
 import argparse
 import asyncio
 import sys
 from itertools import batched
 import json
+from collections import defaultdict
 
 import niquests
 import asyncpg
@@ -17,7 +19,8 @@ import cura_utils
 
 # local dependencies
 from config import settings
-from . import channel_db_utils
+from . import channel_db_utils, neynar_db_utils
+from fcm.webhook_sync import get_mobile_app_user_fids
 
 # Configure logger
 logger.remove()
@@ -50,7 +53,7 @@ def lookup_channel_ids(
 
     # Process in batches of 100 (Neynar API limit)
     for batch in batched(parent_urls, 100):
-        params = {"urls": ",".join(batch)}
+        params = {"ids": ",".join(batch), "type": "parent_url"}
 
         try:
             logger.debug(f"Looking up channel IDs for batch: {batch}")
@@ -93,7 +96,7 @@ def get_top_cast(session: niquests.Session, channel_id: str, timeouts: tuple) ->
         response = session.get(url, timeout=timeouts)
 
         if response.status_code == 200:
-            data = response.json()
+            data = response.json()["result"]
             if isinstance(data, list) and len(data) > 0:
                 top_cast = data[0]  # Get the first (top) cast
                 logger.debug(
@@ -120,13 +123,13 @@ def get_channel_members(
     """
     Get channel members from Neynar API
     """
-    url = f"https://api.neynar.com/v2/farcaster/channel/members"
+    url = f"https://api.neynar.com/v2/farcaster/channel/member/list"
     headers = {
         "Accept": "application/json",
         "x-api-key": settings.NEYNAR_API_KEY,
     }
 
-    params = {"id": channel_id, "limit": 1000}  # Max limit
+    params = {"channel_id": channel_id, "limit": 100}  # Max limit
 
     all_members = []
     cursor = None
@@ -182,12 +185,22 @@ async def notify():
     """
     pg_dsn = settings.ALT_POSTGRES_ASYNC_URI.get_secret_value()
 
-    # Fetch active channels
-    parent_urls = await channel_db_utils.fetch_24h_active_channels(logger, pg_dsn)
-    logger.info(f"active channels: {parent_urls}")
-    if not parent_urls:
-        logger.warning("No active channels found, exiting")
-        return
+    user_fids = get_mobile_app_user_fids()
+    logger.info(f"mobile app user fids: {len(user_fids)}")
+
+    users_to_notify_by_channel_id = defaultdict(list)
+    for fid in user_fids:
+        top_channels = await channel_db_utils.get_top_channels_for_fid(
+            logger, pg_dsn, fid
+        )
+        if not top_channels:
+            logger.warning(f"No top channels found for {fid}, skipping")
+            continue
+        top_channel = top_channels[0]["channel_id"]
+        logger.info(f"fid: {fid},  top channel: {top_channel}")
+        users_to_notify_by_channel_id[top_channel].append(fid)
+
+    logger.info("Fetched top channels for all users")
 
     retries = Retry(
         total=3,
@@ -199,17 +212,18 @@ async def notify():
     read_timeout_s = 30.0
 
     with niquests.Session(retries=retries) as session:
+        session.headers.update(
+            {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
+            }
+        )
         timeouts = (connect_timeout_s, read_timeout_s)
 
-        # Convert parent URLs to channel IDs
-        channel_mapping = lookup_channel_ids(session, parent_urls, timeouts)
-        if not channel_mapping:
-            logger.warning("No channel mappings found, exiting")
-            return
-
-        # Process each channel
-        for parent_url, channel_id in channel_mapping.items():
-            logger.info(f"Processing channel: {channel_id} ({parent_url})")
+        for channel_id, fids_to_notify in users_to_notify_by_channel_id.items():
+            # Process each channel
+            logger.info(f"Processing channel: {channel_id} ({fids_to_notify})")
 
             # Get top cast
             top_cast = get_top_cast(session, channel_id, timeouts)
@@ -217,36 +231,48 @@ async def notify():
                 logger.warning(f"No top cast found for {channel_id}, skipping")
                 continue
 
-            # Get channel members
-            member_fids = get_channel_members(session, channel_id, timeouts)
-            if not member_fids:
-                logger.warning(f"No members found for {channel_id}, skipping")
+            top_casts = await neynar_db_utils.get_cast_content(
+                logger, pg_dsn, top_cast["cast_hash"]
+            )
+            if not top_casts:
+                logger.warning(
+                    f"No cast text found for {top_cast['cast_hash']}, skipping"
+                )
                 continue
 
-            # Send notifications in batches
-            if settings.IS_TEST:
-                # Limit to small test set
-                member_fids = member_fids[:10]
+            top_cast_content = top_casts[0]["text"]
+            top_cast_author_fid = top_casts[0]["fid"]
 
-            chunk_size = (
-                settings.CURA_NOTIFY_CHUNK_SIZE
-                if hasattr(settings, "CURA_NOTIFY_CHUNK_SIZE")
-                else 100
+            profile_details = await neynar_db_utils.get_profile_details(
+                logger, pg_dsn, [top_cast_author_fid]
             )
+            if not profile_details:
+                logger.warning(
+                    f"No profile details found for {fids_to_notify}, skipping"
+                )
+                continue
 
-            # for batch_fids in batched(member_fids, chunk_size):
-            #     batch_fids = list(batch_fids)
-            #     logger.info(f"Sending top cast notification for channel {channel_id} to {len(batch_fids)} members")
+            top_cast_author_display_name = profile_details[top_cast_author_fid][
+                "display_name"
+            ]
 
-            #     # Send notification using cura_utils
-            #     cura_utils.top_cast_notify(
-            #         session=session,
-            #         timeouts=timeouts,
-            #         channel_id=channel_id,
-            #         fids=batch_fids,
-            #         cast_hash=top_cast.get("hash"),
-            #         cast_text=top_cast.get("text", "")[:100],  # Truncate for notification
-            #     )
+            # for fid, profile in profile_details.items():
+            # display_name = profile["display_name"]
+            title = f"{top_cast_author_display_name}'s top cast in /{channel_id}"
+            body = top_cast_content
+
+            notification_id = uuid.uuid4()
+            return cura_utils.notify(
+                session,
+                timeouts,
+                channel_id,
+                fids_to_notify,
+                notification_id,
+                title,
+                body,
+                target_url=f"https://cura.network/{channel_id}?t=top",
+                target_client="mobile",
+            )
 
             logger.info(f"Completed notifications for channel {channel_id}")
 

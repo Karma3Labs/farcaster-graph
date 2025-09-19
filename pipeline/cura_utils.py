@@ -1,8 +1,10 @@
 # standard dependencies
 import datetime
 import hashlib
+import uuid
 import urllib.parse
 from enum import StrEnum
+from typing import Optional
 
 import niquests
 import pandas as pd
@@ -24,7 +26,6 @@ class ScreenName(StrEnum):
     TOKENS = "token"
     LEADERBOARD = "leaderboard"
     DAILY_CAST = "feed"
-    TOP_CAST = "feed"
 
 
 def leaderboard_notify(
@@ -91,31 +92,6 @@ def weekly_mods_notify(
     )
 
 
-def top_cast_notify(
-    session: niquests.Session,
-    timeouts: tuple,
-    channel_id: str,
-    fids: list[int],
-    cast_hash: str,
-    cast_text: str = "",
-):
-    utc_tz = pytz.timezone("UTC")
-    # hash is based on day so we don't risk sending out more than one notification
-    daily_str = datetime.datetime.now(utc_tz).strftime("%Y-%m-%d")
-    notification_id = hashlib.sha256(
-        f"{channel_id}-topcast-{daily_str}".encode("utf-8")
-    ).hexdigest()
-    logger.info(f"Sending top cast notification for channel {channel_id}-{daily_str}")
-    title = f"🔥 Top cast in /{channel_id}"
-    # Truncate cast text for notification body
-    truncated_text = cast_text[:80] + "..." if len(cast_text) > 80 else cast_text
-    body = f"{truncated_text}" if truncated_text else f"Check out the top cast in /{channel_id}!"
-    screen_name = ScreenName.TOP_CAST.value
-    return notify(
-        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
-    )
-
-
 def notify(
     session: niquests.Session,
     timeouts: tuple,
@@ -124,7 +100,9 @@ def notify(
     notification_id: str,
     title: str,
     body: str,
-    screen_name: str = None,
+    screen_name: str = "",
+    target_url: Optional[str] = None,
+    target_client: str = "all",
 ):
     req = {
         "title": title,
@@ -133,6 +111,8 @@ def notify(
         "channel_id": channel_id,
         "fids": fids,
         "screen": screen_name,
+        "target_url": target_url,
+        "target_client": target_client,
     }
     url = "https://notifications.cura.network/api/v1/notify"
     logger.info(f"{url}: {req}")
