@@ -200,6 +200,22 @@ async def fetch_top_casters(
     return await fetch_rows(logger=logger, sql_query=sql, pool=pool)
 
 
+@Timer(name="fetch_24h_active_channels")
+async def fetch_24h_active_channels(
+    logger: logging.Logger,
+    pg_dsn: str,
+):
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+    sql_query = f"""
+        SELECT DISTINCT parent_url
+        FROM neynarv3.casts
+        WHERE parent_url IS NOT NULL AND "timestamp" >= NOW() - INTERVAL '24 hours'
+    """
+    rows = await fetch_rows(logger=logger, sql_query=sql_query, pool=pool)
+    logger.info(f"24h active channels: {len(rows)}")
+    return [row["parent_url"] for row in rows]
+
+
 @Timer(name="filter_channel_followers")
 async def filter_channel_followers(
     logger: logging.Logger,
@@ -1530,3 +1546,22 @@ def upsert_weekly_metrics(
         raise e
     logger.info(f"db took {time.perf_counter() - start_time} secs")
     return
+
+
+@Timer(name="get_top_channels_for_fid")
+async def get_top_channels_for_fid(logger: logging.Logger, pg_dsn: str, fid: int):
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+    sql_query = """
+SELECT
+  channel_id, 
+  SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing key name for compatibility with frontend
+FROM
+  k3l_cast_action_v1
+WHERE
+  fid = $1
+  AND channel_id IS NOT NULL
+  AND action_ts >= NOW() - INTERVAL '1 month'
+  group by channel_id
+  order by num_actions desc;
+    """
+    return await fetch_rows(fid, logger=logger, sql_query=sql_query, pool=pool)

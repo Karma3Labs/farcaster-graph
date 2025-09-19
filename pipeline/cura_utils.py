@@ -1,8 +1,10 @@
 # standard dependencies
 import datetime
 import hashlib
+import uuid
 import urllib.parse
 from enum import StrEnum
+from typing import Optional
 
 import niquests
 import pandas as pd
@@ -98,7 +100,9 @@ def notify(
     notification_id: str,
     title: str,
     body: str,
-    screen_name: str = None,
+    screen_name: str = "",
+    target_url: Optional[str] = None,
+    target_client: str = "all",
 ):
     req = {
         "title": title,
@@ -107,6 +111,8 @@ def notify(
         "channel_id": channel_id,
         "fids": fids,
         "screen": screen_name,
+        "target_url": target_url,
+        "target_client": target_client,
     }
     url = "https://notifications.cura.network/api/v1/notify"
     logger.info(f"{url}: {req}")

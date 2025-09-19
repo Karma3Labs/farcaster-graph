@@ -18,7 +18,7 @@ from db_utils import get_supabase_client
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def fetch_distinct_fids_from_supabase() -> List[int]:
+def get_mobile_app_user_fids() -> List[int]:
     """Fetch distinct FIDs from Supabase fcm_registration table."""
     supabase = get_supabase_client()
 
@@ -113,7 +113,7 @@ def main():
         logger.info("Starting FCM webhook sync")
 
         # Fetch current FIDs from Supabase
-        current_fids = fetch_distinct_fids_from_supabase()
+        current_fids = get_mobile_app_user_fids()
 
         # Calculate hash for change detection
         current_hash = calculate_fids_hash(current_fids)
