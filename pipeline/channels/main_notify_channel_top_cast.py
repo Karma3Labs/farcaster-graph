@@ -120,13 +120,12 @@ async def notify():
                 logger.warning(f"No top cast found for {channel_id}, skipping")
                 continue
 
+            top_cast_hash = top_cast["cast_hash"]
             top_casts = await neynar_db_utils.get_cast_content(
-                logger, pg_dsn, top_cast["cast_hash"]
+                logger, pg_dsn, top_cast_hash
             )
             if not top_casts:
-                logger.warning(
-                    f"No cast text found for {top_cast['cast_hash']}, skipping"
-                )
+                logger.warning(f"No cast text found for {top_cast_hash}, skipping")
                 continue
 
             top_cast_content = top_casts[0]["text"]
@@ -159,7 +158,7 @@ async def notify():
                 notification_id,
                 title,
                 body,
-                target_url=f"https://cura.network/{channel_id}?t=top",
+                target_url=f"https://cura.network/p/{top_cast_hash}",
                 target_client="mobile",
                 notification_type="daily_top_cast",
             )
