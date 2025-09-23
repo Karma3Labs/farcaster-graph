@@ -161,6 +161,7 @@ async def notify():
                 body,
                 target_url=f"https://cura.network/{channel_id}?t=top",
                 target_client="mobile",
+                notification_type="daily_top_cast",
             )
 
             logger.info(f"Completed notifications for channel {channel_id}")

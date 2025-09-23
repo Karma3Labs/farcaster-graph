@@ -103,6 +103,7 @@ def notify(
     screen_name: str = "",
     target_url: Optional[str] = None,
     target_client: str = "all",
+    notification_type: str = "generic",
 ):
     req = {
         "title": title,
