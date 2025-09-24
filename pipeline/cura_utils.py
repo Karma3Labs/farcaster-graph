@@ -101,7 +101,7 @@ def notify(
     title: str,
     body: str,
     screen_name: str = "",
-    target_url: str = "",
+    target_url: Optional[str] = None,
     target_client: str = "all",
     notification_type: str = "generic",
 ):
@@ -112,9 +112,11 @@ def notify(
         "channel_id": channel_id,
         "fids": fids,
         "screen": screen_name,
-        "target_url": target_url,
         "target_client": target_client,
     }
+    if target_url:
+        req["target_url"] = target_url
+
     url = "https://notifications.cura.network/api/v1/notify"
     logger.info(f"{url}: {req}")
     if settings.IS_TEST:
