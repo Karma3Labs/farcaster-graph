@@ -101,7 +101,7 @@ def notify(
     title: str,
     body: str,
     screen_name: str = "",
-    target_url: Optional[str] = None,
+    target_url: str = "",
     target_client: str = "all",
     notification_type: str = "generic",
 ):
