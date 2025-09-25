@@ -45,10 +45,9 @@ def update_webhook(fids: List[int]) -> None:
     """Send updated FID list to webhook endpoint."""
     payload = {
         "subscription": {
-            "cast.deleted": {"minimum_author_score": 0},
             "cast.created": {
                 "parent_author_fids": fids,
-                "minimum_author_score": 0,
+                "mentioned_fids": fids,
             },
             "reaction.created": {"target_fids": fids},
             "follow.created": {"target_fids": fids},
