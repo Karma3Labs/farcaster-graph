@@ -155,7 +155,7 @@ class PopularFeed(BaseModel):
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
-    reactions_threshold: ReactionsThresholdField = 10
+    reactions_threshold: ReactionsThresholdField = 1
     weights: str = 'L1C1R1Y1'
     sorting_order: SortingOrderField = SortingOrder.SCORE
     time_decay: TimeDecayField = CastsTimeDecay.NEVER
