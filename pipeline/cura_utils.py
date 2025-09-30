@@ -86,9 +86,15 @@ def weekly_mods_notify(
     logger.info(f"Sending notification for channel {channel_id}-{current_week}")
     title = f"Check out your /{channel_id} stats"
     body = "Your top casts and members stats are in, tap to look."
-    screen_name = ScreenName.WEEKLY_MODS.value
     return notify(
-        session, timeouts, channel_id, fids, notification_id, title, body, screen_name
+        session,
+        timeouts,
+        channel_id,
+        fids,
+        notification_id,
+        title,
+        body,
+        target_url=f"https://cura.network/{channel_id}/moderation/stats",
     )
 
 
