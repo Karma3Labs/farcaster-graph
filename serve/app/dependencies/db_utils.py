@@ -837,14 +837,14 @@ async def get_tokens_distribution_details(
 async def get_top_channels_for_fid(fid: int, pool: Pool):
     sql_query = """
 SELECT
-  channel_id, 
+  channel_id,
   SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing key name for compatibility with frontend
 FROM
   k3l_cast_action_v1
 WHERE
   fid = $1
   AND channel_id IS NOT NULL
-  AND action_ts >= NOW() - INTERVAL '1 month'
+  AND action_ts >= NOW() - INTERVAL '1 week'
   group by channel_id
   order by num_actions desc;
     """
