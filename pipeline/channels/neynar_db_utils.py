@@ -4,8 +4,7 @@ import asyncpg
 from channels.channel_db_utils import fetch_rows
 
 
-async def get_profile_details(logger: logging.Logger, pg_dsn: str, fids: List[int]):
-    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+async def get_profile_details(logger: logging.Logger, pool: asyncpg.Pool, fids: List[int]):
     sql_query = """
 select * from neynarv3.profiles where fid = ANY($1);
     """
@@ -13,9 +12,7 @@ select * from neynarv3.profiles where fid = ANY($1);
     return {row["fid"]: row for row in rows}
 
 
-async def get_cast_content(logger: logging.Logger, pg_dsn: str, cast_hash: str):
-    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
-
+async def get_cast_content(logger: logging.Logger, pool: asyncpg.Pool, cast_hash: str):
     hash_bytes = bytes.fromhex(cast_hash[2:])
     sql_query = """
 select * from neynarv3.casts where hash=$1;

@@ -74,98 +74,104 @@ async def notify():
     """
     pg_dsn = settings.ALT_POSTGRES_ASYNC_URI.get_secret_value()
 
-    user_fids = get_mobile_app_user_fids()
-    logger.info(f"mobile app user fids: {len(user_fids)}")
+    # Create a single connection pool that will be reused throughout the function
+    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+    try:
+        user_fids = get_mobile_app_user_fids()
+        logger.info(f"mobile app user fids: {len(user_fids)}")
 
-    users_to_notify_by_channel_id = defaultdict(list)
-    for fid in user_fids:
-        top_channels = await channel_db_utils.get_top_channels_for_fid(
-            logger, pg_dsn, fid
-        )
-        if not top_channels:
-            logger.warning(f"No top channels found for {fid}, skipping")
-            continue
-        top_channel = top_channels[0]["channel_id"]
-        logger.info(f"fid: {fid},  top channel: {top_channel}")
-        users_to_notify_by_channel_id[top_channel].append(fid)
-
-    logger.info("Fetched top channels for all users")
-
-    retries = Retry(
-        total=3,
-        backoff_factor=0.1,
-        status_forcelist=[502, 503, 504],
-        allowed_methods={"GET"},
-    )
-    connect_timeout_s = 5.0
-    read_timeout_s = 30.0
-
-    with niquests.Session(retries=retries) as session:
-        session.headers.update(
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
-            }
-        )
-        timeouts = (connect_timeout_s, read_timeout_s)
-
-        for channel_id, fids_to_notify in users_to_notify_by_channel_id.items():
-            # Process each channel
-            logger.info(f"Processing channel: {channel_id} ({fids_to_notify})")
-
-            # Get top cast
-            top_cast = get_top_cast(session, channel_id, timeouts)
-            if not top_cast:
-                logger.warning(f"No top cast found for {channel_id}, skipping")
-                continue
-
-            top_cast_hash = top_cast["cast_hash"]
-            top_casts = await neynar_db_utils.get_cast_content(
-                logger, pg_dsn, top_cast_hash
+        users_to_notify_by_channel_id = defaultdict(list)
+        for fid in user_fids:
+            top_channels = await channel_db_utils.get_top_channels_for_fid(
+                logger, pool, fid
             )
-            if not top_casts:
-                logger.warning(f"No cast text found for {top_cast_hash}, skipping")
+            if not top_channels:
+                logger.warning(f"No top channels found for {fid}, skipping")
                 continue
+            top_channel = top_channels[0]["channel_id"]
+            logger.info(f"fid: {fid},  top channel: {top_channel}")
+            users_to_notify_by_channel_id[top_channel].append(fid)
 
-            top_cast_content = top_casts[0]["text"]
-            top_cast_author_fid = top_casts[0]["fid"]
+        logger.info("Fetched top channels for all users")
 
-            profile_details = await neynar_db_utils.get_profile_details(
-                logger, pg_dsn, [top_cast_author_fid]
+        retries = Retry(
+            total=3,
+            backoff_factor=0.1,
+            status_forcelist=[502, 503, 504],
+            allowed_methods={"GET"},
+        )
+        connect_timeout_s = 5.0
+        read_timeout_s = 30.0
+
+        with niquests.Session(retries=retries) as session:
+            session.headers.update(
+                {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
+                }
             )
-            if not profile_details:
-                logger.warning(
-                    f"No profile details found for {fids_to_notify}, skipping"
+            timeouts = (connect_timeout_s, read_timeout_s)
+
+            for channel_id, fids_to_notify in users_to_notify_by_channel_id.items():
+                # Process each channel
+                logger.info(f"Processing channel: {channel_id} ({fids_to_notify})")
+
+                # Get top cast
+                top_cast = get_top_cast(session, channel_id, timeouts)
+                if not top_cast:
+                    logger.warning(f"No top cast found for {channel_id}, skipping")
+                    continue
+
+                top_cast_hash = top_cast["cast_hash"]
+                top_casts = await neynar_db_utils.get_cast_content(
+                    logger, pool, top_cast_hash
                 )
-                continue
+                if not top_casts:
+                    logger.warning(f"No cast text found for {top_cast_hash}, skipping")
+                    continue
 
-            top_cast_author_display_name = profile_details[top_cast_author_fid][
-                "display_name"
-            ]
+                top_cast_content = top_casts[0]["text"]
+                top_cast_author_fid = top_casts[0]["fid"]
 
-            # for fid, profile in profile_details.items():
-            # display_name = profile["display_name"]
-            title = f"{top_cast_author_display_name}'s top post in /{channel_id}"
-            body = top_cast_content
+                profile_details = await neynar_db_utils.get_profile_details(
+                    logger, pool, [top_cast_author_fid]
+                )
+                if not profile_details:
+                    logger.warning(
+                        f"No profile details found for {fids_to_notify}, skipping"
+                    )
+                    continue
 
-            notification_id = uuid.uuid4()
-            cura_utils.notify(
-                session,
-                timeouts,
-                channel_id,
-                fids_to_notify,
-                notification_id,
-                title,
-                body,
-                target_url=f"https://cura.network/p/{top_cast_hash}",
-                target_client="mobile",
-                notification_type="daily_top_cast",
-            )
+                top_cast_author_display_name = profile_details[top_cast_author_fid][
+                    "display_name"
+                ]
 
-            logger.info(f"Completed notifications for channel {channel_id}")
+                # for fid, profile in profile_details.items():
+                # display_name = profile["display_name"]
+                title = f"{top_cast_author_display_name}'s top post in /{channel_id}"
+                body = top_cast_content
 
-    logger.info("All notifications completed")
+                notification_id = uuid.uuid4()
+                cura_utils.notify(
+                    session,
+                    timeouts,
+                    channel_id,
+                    fids_to_notify,
+                    notification_id,
+                    title,
+                    body,
+                    target_url=f"https://cura.network/p/{top_cast_hash}",
+                    target_client="mobile",
+                    notification_type="daily_top_cast",
+                )
+
+                logger.info(f"Completed notifications for channel {channel_id}")
+
+        logger.info("All notifications completed")
+    finally:
+        # Always close the connection pool, even if an error occurs
+        await pool.close()
 
 
 if __name__ == "__main__":
