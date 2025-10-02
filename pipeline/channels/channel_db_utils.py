@@ -1549,11 +1549,10 @@ def upsert_weekly_metrics(
 
 
 @Timer(name="get_top_channels_for_fid")
-async def get_top_channels_for_fid(logger: logging.Logger, pg_dsn: str, fid: int):
-    pool = await asyncpg.create_pool(pg_dsn, min_size=1, max_size=5)
+async def get_top_channels_for_fid(logger: logging.Logger, pool: asyncpg.Pool, fid: int):
     sql_query = """
 SELECT
-  channel_id, 
+  channel_id,
   SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing key name for compatibility with frontend
 FROM
   k3l_cast_action_v1
