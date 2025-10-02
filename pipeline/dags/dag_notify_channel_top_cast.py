@@ -10,7 +10,7 @@ from hooks.pagerduty import send_alert_pagerduty
 
 default_args = {
     "owner": "karma3labs",
-    "retries": 5,
+    "retries": 0,
     "retry_delay": timedelta(minutes=2),
     "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
@@ -18,12 +18,8 @@ default_args = {
 
 def _1amutc_time():
     utc_tz = pytz.timezone("UTC")
-    utc_1am_str = " ".join(
-        [datetime.now(utc_tz).strftime("%Y-%m-%d"), "01:00:00"]
-    )
-    utc_time = utc_tz.localize(
-        datetime.strptime(utc_1am_str, "%Y-%m-%d %H:%M:%S")
-    )
+    utc_1am_str = " ".join([datetime.now(utc_tz).strftime("%Y-%m-%d"), "01:00:00"])
+    utc_time = utc_tz.localize(datetime.strptime(utc_1am_str, "%Y-%m-%d %H:%M:%S"))
     return utc_time
 
 
