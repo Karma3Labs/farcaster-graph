@@ -23,7 +23,6 @@ with DAG(
     catchup=False,
     tags=["notifications", "fcm", "webhook"],
 ) as dag:
-
     sync_fcm_webhook = BashOperator(
         task_id="sync_fcm_webhook",
         bash_command="cd /pipeline && ./run_fcm_webhook_sync.sh -w . -v .venv",

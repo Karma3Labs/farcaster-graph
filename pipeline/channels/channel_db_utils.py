@@ -1549,7 +1549,9 @@ def upsert_weekly_metrics(
 
 
 @Timer(name="get_top_channels_for_fid")
-async def get_top_channels_for_fid(logger: logging.Logger, pool: asyncpg.Pool, fid: int):
+async def get_top_channels_for_fid(
+    logger: logging.Logger, pool: asyncpg.Pool, fid: int
+):
     sql_query = """
 SELECT
   channel_id,

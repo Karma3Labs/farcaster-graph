@@ -61,8 +61,7 @@ def fetch_results(
     if not os.path.exists(file):
         raise Exception(f"Missing file {file}")
 
-    openrank_manager_address = openrank_settings.MANAGER_ADDRESS;
-
+    openrank_manager_address = openrank_settings.MANAGER_ADDRESS
     req_ids_df = pd.read_csv(file, header=None, names=["channel_ids", "req_id"])
     # duplicates possible if process_category task was retried multiple times by Airflow dag
     req_ids_df = req_ids_df.drop_duplicates(subset=["req_id"], keep="last")

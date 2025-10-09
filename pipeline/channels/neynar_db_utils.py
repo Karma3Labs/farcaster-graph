@@ -1,10 +1,14 @@
 import logging
 from typing import List
+
 import asyncpg
+
 from channels.channel_db_utils import fetch_rows
 
 
-async def get_profile_details(logger: logging.Logger, pool: asyncpg.Pool, fids: List[int]):
+async def get_profile_details(
+    logger: logging.Logger, pool: asyncpg.Pool, fids: List[int]
+):
     sql_query = """
 select * from neynarv3.profiles where fid = ANY($1);
     """

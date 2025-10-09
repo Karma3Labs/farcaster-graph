@@ -1,8 +1,8 @@
 # standard dependencies
 import datetime
 import hashlib
-import uuid
 import urllib.parse
+import uuid
 from enum import StrEnum
 from typing import Optional
 

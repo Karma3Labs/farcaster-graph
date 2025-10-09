@@ -1,14 +1,14 @@
 # standard dependencies
-import uuid
 import argparse
 import asyncio
-import sys
-from itertools import batched
 import json
+import sys
+import uuid
 from collections import defaultdict
+from itertools import batched
 
-import niquests
 import asyncpg
+import niquests
 
 # 3rd party dependencies
 from dotenv import load_dotenv
@@ -19,8 +19,9 @@ import cura_utils
 
 # local dependencies
 from config import settings
-from . import channel_db_utils, neynar_db_utils
 from fcm.webhook_sync import get_mobile_app_user_fids
+
+from . import channel_db_utils, neynar_db_utils
 
 # Configure logger
 logger.remove()

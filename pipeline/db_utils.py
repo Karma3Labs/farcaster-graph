@@ -208,6 +208,5 @@ def fetch_channels_for_category(pg_url: str, category: str):
 def get_supabase_client():
     """Get initialized Supabase client with service role key."""
     return create_client(
-        settings.SUPABASE_URL,
-        settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
+        settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
     )
