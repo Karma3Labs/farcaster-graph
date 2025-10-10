@@ -1,6 +1,10 @@
 import csv
+import re
 import tempfile
+from collections.abc import Iterable
+from datetime import datetime
 from io import StringIO
+from typing import Any
 
 import pandas as pd
 import psycopg2
@@ -210,3 +214,128 @@ def get_supabase_client():
     return create_client(
         settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
     )
+
+
+def get_supabase_psycopg2_client() -> psycopg2.extensions.connection:
+    """Get Supabase sync (psycopg2) client."""
+    return psycopg2.connect(
+        host=settings.SUPABASE_DB_HOST,
+        port=settings.SUPABASE_DB_PORT,
+        user=settings.SUPABASE_DB_USER,
+        password=settings.SUPABASE_DB_PASSWORD.get_secret_value(),
+        dbname=settings.SUPABASE_DB_NAME,
+    )
+
+
+def fetch_cura_users(
+    *,
+    start_time: datetime | None = None,
+    end_time: datetime = None,
+    events: Iterable[str] | None = None,
+) -> Iterable[int]:
+    """
+    Fetch Cura users from the ``analytics_events`` table.
+
+    :param start_time: Earliest usage timestamp to include (default: unbounded).
+    :param end_time: Latest usage timestamp to include (default: unbounded).
+    :param events: List of event names to include (default: all events).
+    :return: Generator of Cura user FIDs.
+    """
+    query = f"""
+        SELECT DISTINCT fid
+        FROM analytics_events
+        WHERE fid IS NOT NULL
+            {"AND created_at >= %(start_time)s" if start_time is not None else ""}
+            {"AND created_at < %(end_time)s" if end_time is not None else ""}
+            {"AND event IN %(events)s" if events is not None else ""}
+    """
+
+    with get_supabase_psycopg2_client() as conn, conn.cursor() as cur:
+        cur.execute(
+            query, dict(start_time=start_time, end_time=end_time, events=tuple(events))
+        )
+        while rows := cur.fetchmany(100):
+            for (fid,) in rows:
+                yield fid
+
+
+def pyformat2format(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
+    """
+    Formats a SQL query string containing Python-style parameter placeholders into an
+    equivalent SQL string with SQL-standard placeholders and a list of corresponding
+    parameter values.
+
+    :param sql: SQL query string with Python-style (%s) placeholders.
+    :param poargs: Positional arguments for parameters referenced in the SQL string.
+    :param kwargs: Keyword arguments for named parameters referenced in the SQL string.
+    :return: A tuple containing the reformatted SQL string with SQL-standard placeholders
+        and the corresponding list of parameter values.
+
+    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5)
+    ('SELECT %s + %s', [5, 3])
+
+    Interpolate keyword parameters as many times as necessary:
+
+    >>> pyformat2format("SELECT %(name)s * %(name)s + %s", 3, name=5)
+    ('SELECT %s * %s + %s', [5, 5, 3])
+
+    Raise `ValueError` if required arguments are not provided:
+
+    >>> pyformat2format("SELECT %(name)s + %s + %s", 3, name=5)
+    Traceback (most recent call last):
+        ...
+    ValueError: not enough positional arguments
+    >>> pyformat2format("SELECT %(name)s + %(more)s + %(extra)s + %s", 3, name=5)
+    Traceback (most recent call last):
+        ...
+    ValueError: missing keyword argument: 'more'
+
+    Ignore extra positional/keyword arguments:
+
+    >>> pyformat2format("SELECT %(name)s + %s", 3, 4, name=5)
+    ('SELECT %s + %s', [5, 3])
+    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5, extra=4)
+    ('SELECT %s + %s', [5, 3])
+
+    Keep doubled (escaped) percent signs verbatim:
+
+    >>> pyformat2format("SELECT 'needle' LIKE '%%haystack%%'")
+    ("SELECT 'needle' LIKE '%%haystack%%'", [])
+
+    Recognize only valid percent sequences (``%s``, ``%(name)s``, and ``%%``):
+
+    >>> pyformat2format("SELECT 'needle' LIKE '%haystack%'")
+    Traceback (most recent call last):
+        ...
+    ValueError: invalid % sequence '%h' in SQL at index 22
+    """
+    pct_re = re.compile(
+        r"%(?:(?P<param>(?:\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\))?s)|(?P<passthrough>%)|(?P<unknown>.))"
+    )
+    new_sql = ""
+    new_args = []
+    pos = 0
+    for m in pct_re.finditer(sql):
+        new_sql += sql[pos : m.start()]
+        pos = m.end()
+        if m.group("param") is not None:
+            name = m.group("name")
+            if name is None:
+                try:
+                    arg, poargs = poargs[0], poargs[1:]
+                except IndexError:
+                    raise ValueError("not enough positional arguments") from None
+            else:
+                try:
+                    arg = kwargs[name]
+                except KeyError:
+                    raise ValueError(f"missing keyword argument: {name!r}") from None
+            new_sql += "%s"
+            new_args.append(arg)
+        elif m.group("passthrough") is not None:
+            new_sql += m.group()
+        elif (unknown := m.group("unknown")) is not None:
+            msg = f"invalid % sequence '%h' in SQL at index {m.start()}"
+            raise ValueError(msg)
+    new_sql += sql[pos:]
+    return new_sql, new_args

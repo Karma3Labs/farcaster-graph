@@ -127,6 +127,12 @@ class Settings(BaseSettings):
 
     SUPABASE_URL: str = "changeme"
     SUPABASE_SERVICE_ROLE_KEY: SecretStr = "changeme"
+    SUPABASE_DB_HOST: str
+    SUPABASE_DB_PORT: int = 5432
+    SUPABASE_DB_USER: str = "postgres"
+    SUPABASE_DB_PASSWORD: SecretStr
+    SUPABASE_DB_NAME: str = "postgres"
+
     FCM_WEBHOOK_URL: str = "https://api.neynar.com/v2/farcaster/webhook/"
     FCM_WEBHOOK_TIMEOUT_SECS: int = 30
     NEYNAR_API_KEY: str = "changeme"
