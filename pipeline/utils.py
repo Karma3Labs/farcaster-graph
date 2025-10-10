@@ -77,7 +77,7 @@ def gen_datetime_filepath(prefix, ext, basedir="/tmp/onchain-output"):
     return os.path.join(basedir, filename)
 
 
-def _9ampacific_in_utc_time(date_str: str = None):
+def pacific_9am_in_utc_time(date_str: str = None):
     # TODO move this to utils
     pacific_tz = pytz.timezone("US/Pacific")
     if date_str:
@@ -94,10 +94,10 @@ def _9ampacific_in_utc_time(date_str: str = None):
 
 
 def dow_utc_time(dow: DOW):
-    utc_time = _9ampacific_in_utc_time()
+    utc_time = pacific_9am_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value)
 
 
 def last_dow_utc_time(dow: DOW):
-    utc_time = _9ampacific_in_utc_time()
+    utc_time = pacific_9am_in_utc_time()
     return utc_time - datetime.timedelta(days=utc_time.weekday() - dow.value + 7)
