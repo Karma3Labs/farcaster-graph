@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 
 import db_utils
 from config import settings
+from db_utils import pyformat2format
 from timer import Timer
 
 
@@ -497,21 +498,18 @@ def fetch_weighted_fid_scores_df(
     date_str: str,
 ) -> pd.DataFrame:
     STRATEGY = "60d_engagement"
-    INTERVAL = "1 day"
+    interval = datetime.timedelta(days=1)
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
 
-    CUTOFF_UTC_TIMESTAMP = (
-        f"TO_TIMESTAMP('{_9ampacific_in_utc_time(date_str).strftime('%Y-%m-%d %H:%M:%S')}', 'YYYY-MM-DD HH24:MI:SS')"
-        " AT TIME ZONE 'UTC'"
-    )
+    cutoff = _9ampacific_in_utc_time(date_str)
 
     if not gapfill:
         exclude_condition = f"""
             (
                 -- IMPORTANT: don't generate points within last 23 hours
-                (now() > {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP})
+                (now() > %(cutoff)s AND insert_ts > %(cutoff)s)
                 OR
-                (now() < {CUTOFF_UTC_TIMESTAMP} AND insert_ts > {CUTOFF_UTC_TIMESTAMP} - interval '{INTERVAL}')
+                (now() < %(cutoff)s AND insert_ts > %(cutoff)s - %(interval)s)
             )
         """
     else:
@@ -520,10 +518,10 @@ def fetch_weighted_fid_scores_df(
             (
                 -- IMPORTANT: don't generate points if normal distribution happened for that day
                 -- or if gapfill has already happened
-                ( insert_ts > {CUTOFF_UTC_TIMESTAMP}
-                AND insert_ts <= {CUTOFF_UTC_TIMESTAMP} + interval '{INTERVAL}'
+                ( insert_ts > %(cutoff)s
+                AND insert_ts <= %(cutoff)s + %(interval)s
                 AND notes IS NULL)
-                OR notes = 'GAPFILL-{date_str}'
+                OR notes = 'GAPFILL-' || %(date_str)s'
             )
         """
     sql_query = f"""
@@ -533,7 +531,7 @@ def fetch_weighted_fid_scores_df(
         FROM k3l_channel_points_log
         WHERE
             {exclude_condition}
-            AND model_name = ANY(ARRAY{model_names})
+            AND model_name = ANY(%(model_names)s)
     ),
     eligible_casts AS (
         SELECT
@@ -547,8 +545,8 @@ def fetch_weighted_fid_scores_df(
         FROM {tbl_name} as actions
         INNER JOIN k3l_recent_parent_casts as casts -- to be able to join with warpcast_channels_data
             ON (actions.cast_hash = casts.hash
-                AND actions.action_ts >= {CUTOFF_UTC_TIMESTAMP} - interval '{INTERVAL}'
-                AND actions.action_ts < {CUTOFF_UTC_TIMESTAMP}
+                AND actions.action_ts >= %(cutoff)s - %(interval)s
+                AND actions.action_ts < %(cutoff)s
                     )
         INNER JOIN warpcast_channels_data as channels
             ON (channels.url = casts.root_parent_url)
@@ -568,17 +566,17 @@ def fetch_weighted_fid_scores_df(
         SELECT
             actions.cast_hash,
             SUM(
-                    + ({cast_wt} * ranks.score * actions.casted)
-                    + ({reply_wt} * ranks.score * actions.replied)
-                    + ({recast_wt} * ranks.score * actions.recasted)
-                    + ({like_wt} * ranks.score * actions.liked)
+                    + (%(cast_wt)s * ranks.score * actions.casted)
+                    + (%(reply_wt)s * ranks.score * actions.replied)
+                    + (%(recast_wt)s * ranks.score * actions.recasted)
+                    + (%(like_wt)s * ranks.score * actions.liked)
                 ) as cast_score,
             actions.channel_id as channel_id
         FROM eligible_casts as actions
         INNER JOIN k3l_channel_rank as ranks -- cura_hidden_fids already excluded in channel_rank
             ON (ranks.fid = actions.fid
                 AND ranks.channel_id=actions.channel_id
-                AND ranks.strategy_name='{STRATEGY}')
+                AND ranks.strategy_name=%(strategy)s)
         GROUP BY actions.channel_id, actions.cast_hash, ranks.fid
     ),
     cast_scores AS (
@@ -598,24 +596,36 @@ def fetch_weighted_fid_scores_df(
     INNER JOIN k3l_recent_parent_casts AS casts
         ON casts.hash = cast_scores.cast_hash
     GROUP BY casts.fid, cast_scores.channel_id
+    {"LIMIT 100" if settings.IS_TEST else ""}
     """
-    with tempfile.TemporaryFile() as tmpfile:
-        if settings.IS_TEST:
-            copy_sql = f"COPY ({sql_query} LIMIT 100) TO STDOUT WITH CSV HEADER"
-        else:
-            copy_sql = f"COPY ({sql_query}) TO STDOUT WITH CSV HEADER"
+    sql_query, args = pyformat2format(
+        sql_query,
+        cutoff=cutoff,
+        interval=interval,
+        date_str=date_str,
+        model_names=list(model_names),
+        cast_wt=cast_wt,
+        reply_wt=reply_wt,
+        recast_wt=recast_wt,
+        like_wt=like_wt,
+        strategy=STRATEGY,
+    )
+
+    with (
+        tempfile.TemporaryFile() as tmpfile,
+        psycopg2.connect(pg_dsn, options=f"-c statement_timeout={timeout_ms}") as conn,
+        conn.cursor() as cursor,
+    ):
+        sql_query = cursor.mogrify(sql_query, args).decode()
+        copy_sql = f"COPY ({sql_query}) TO STDOUT WITH CSV HEADER"
         logger.info(f"{copy_sql}")
-        with psycopg2.connect(
-            pg_dsn, options=f"-c statement_timeout={timeout_ms}"
-        ) as conn:
-            with conn.cursor() as cursor:
-                cursor.copy_expert(copy_sql, tmpfile)
-                tmpfile.seek(0)
-                df = pd.read_csv(
-                    tmpfile,
-                    dtype={"fid": "Int32", "channel_id": "str", "score": "Float64"},
-                )
-                return df
+        cursor.copy_expert(copy_sql, tmpfile)
+        tmpfile.seek(0)
+        df = pd.read_csv(
+            tmpfile,
+            dtype={"fid": "Int32", "channel_id": "str", "score": "Float64"},
+        )
+        return df
 
 
 @Timer(name="insert_reddit_points_log")
