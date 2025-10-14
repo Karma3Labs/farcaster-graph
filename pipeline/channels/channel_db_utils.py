@@ -400,7 +400,7 @@ def fetch_weighted_fid_scores_df(
                 ( insert_ts > %(cutoff)s
                 AND insert_ts <= %(cutoff)s + %(interval)s
                 AND notes IS NULL)
-                OR notes = 'GAPFILL-' || %(date_str)s'
+                OR notes = 'GAPFILL-' || %(date_str)s
             )
         """
     # noinspection SqlUnusedCte
