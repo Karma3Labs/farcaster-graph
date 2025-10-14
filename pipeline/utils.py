@@ -45,7 +45,7 @@ def log_memusage(logger: logging.Logger, prefix: str = ""):
     logger.info(f"{prefix}Free: {mem_usage.free / (1024**2):.2f}M")
 
 
-def setup_consolelogger(logger):
+def setup_console_logger(logger):
     # create a console handler
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
@@ -56,12 +56,12 @@ def setup_consolelogger(logger):
     logger.addHandler(ch)
 
 
-def setup_filelogger(logger, scriptpath):
+def setup_filelogger(logger, script_path):
     # create a file handler
-    logfilename = f"{Path(scriptpath).expanduser().resolve().stem}.log"
-    logfilepath = Path(settings.LOG_PATH) / logfilename
-    logfilepath.parent.mkdir(parents=True, exist_ok=True)
-    fh = logging.handlers.RotatingFileHandler(str(logfilepath))
+    filename = f"{Path(script_path).expanduser().resolve().stem}.log"
+    filepath = Path(settings.LOG_PATH) / filename
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    fh = logging.handlers.RotatingFileHandler(str(filepath))
     # fh = logging.handlers.RotatingFileHandler('/var/log/app/myfeed/%s.log' % programname)
     fh.setLevel(logging.INFO)
     # create a logging format

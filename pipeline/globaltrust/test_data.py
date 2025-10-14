@@ -20,7 +20,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     utils.setup_filelogger(logger, __file__)
     logger.setLevel(logging.DEBUG)
-    utils.setup_consolelogger(logger)
+    utils.setup_console_logger(logger)
 
     pg_dsn = settings.ALT_POSTGRES_DSN.get_secret_value()
 
