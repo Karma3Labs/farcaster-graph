@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from collections.abc import Awaitable, Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -2646,7 +2646,8 @@ async def get_top_channel_holders(
             0 as token_weekly_earnings,
             bal.update_ts as bal_update_ts,
             true as is_points_launched,
-            coalesce(config.is_tokens, false) as is_tokens_launched
+            coalesce(config.is_tokens, false) as is_tokens_launched,
+            plog.boost AS boost
         FROM
             k3l_channel_points_bal as bal
             LEFT JOIN k3l_rank on (bal.fid = k3l_rank.profile_id and k3l_rank.strategy_id = 9)
@@ -2701,6 +2702,7 @@ async def get_top_channel_holders(
             sum(weekly_earnings) as weekly_earnings,
             max(token_weekly_earnings) as token_weekly_earnings,
             max(bal_update_ts) as bal_update_ts,
+            COALESCE(max(boost), 1) > 1 AS boosted,
             bool_or(is_points_launched) as is_points_launched,
             bool_or(is_tokens_launched) as is_tokens_launched,
             min(memberat) as memberat,
@@ -3388,3 +3390,85 @@ async def get_top_channel_casts(
         """,
         pool=pool,
     )
+
+
+def pyformat2format(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
+    """
+    Formats a SQL query string containing Python-style parameter placeholders into an
+    equivalent SQL string with SQL-standard placeholders and a list of corresponding
+    parameter values.
+
+    :param sql: SQL query string with Python-style (%s) placeholders.
+    :param poargs: Positional arguments for parameters referenced in the SQL string.
+    :param kwargs: Keyword arguments for named parameters referenced in the SQL string.
+    :return: A tuple containing the reformatted SQL string with SQL-standard placeholders
+        and the corresponding list of parameter values.
+
+    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5)
+    ('SELECT %s + %s', [5, 3])
+
+    Interpolate keyword parameters as many times as necessary:
+
+    >>> pyformat2format("SELECT %(name)s * %(name)s + %s", 3, name=5)
+    ('SELECT %s * %s + %s', [5, 5, 3])
+
+    Raise `ValueError` if required arguments are not provided:
+
+    >>> pyformat2format("SELECT %(name)s + %s + %s", 3, name=5)
+    Traceback (most recent call last):
+        ...
+    ValueError: not enough positional arguments
+    >>> pyformat2format("SELECT %(name)s + %(more)s + %(extra)s + %s", 3, name=5)
+    Traceback (most recent call last):
+        ...
+    ValueError: missing keyword argument: 'more'
+
+    Ignore extra positional/keyword arguments:
+
+    >>> pyformat2format("SELECT %(name)s + %s", 3, 4, name=5)
+    ('SELECT %s + %s', [5, 3])
+    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5, extra=4)
+    ('SELECT %s + %s', [5, 3])
+
+    Keep doubled (escaped) percent signs verbatim:
+
+    >>> pyformat2format("SELECT 'needle' LIKE '%%haystack%%'")
+    ("SELECT 'needle' LIKE '%%haystack%%'", [])
+
+    Recognize only valid percent sequences (``%s``, ``%(name)s``, and ``%%``):
+
+    >>> pyformat2format("SELECT 'needle' LIKE '%haystack%'")
+    Traceback (most recent call last):
+        ...
+    ValueError: invalid % sequence '%h' in SQL at index 22
+    """
+    pct_re = re.compile(
+        r"%(?:(?P<param>(?:\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\))?s)|(?P<passthrough>%)|(?P<unknown>.))"
+    )
+    new_sql = ""
+    new_args = []
+    pos = 0
+    for m in pct_re.finditer(sql):
+        new_sql += sql[pos : m.start()]
+        pos = m.end()
+        if m.group("param") is not None:
+            name = m.group("name")
+            if name is None:
+                try:
+                    arg, poargs = poargs[0], poargs[1:]
+                except IndexError:
+                    raise ValueError("not enough positional arguments") from None
+            else:
+                try:
+                    arg = kwargs[name]
+                except KeyError:
+                    raise ValueError(f"missing keyword argument: {name!r}") from None
+            new_sql += "%s"
+            new_args.append(arg)
+        elif m.group("passthrough") is not None:
+            new_sql += m.group()
+        elif (unknown := m.group("unknown")) is not None:
+            msg = f"invalid % sequence '%h' in SQL at index {m.start()}"
+            raise ValueError(msg)
+    new_sql += sql[pos:]
+    return new_sql, new_args
