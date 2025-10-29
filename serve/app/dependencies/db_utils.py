@@ -8,6 +8,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any
 
+import asyncpg
 import pytz
 from asyncpg.pool import Pool
 from cashews import cache
@@ -139,7 +140,7 @@ def _last_dow_utc_timestamp_str(dow: DOW):
     )
 
 
-async def fetch_rows(*args, sql_query: str, pool: Pool):
+async def fetch_rows(*args, sql_query: str, pool: Pool) -> list[asyncpg.Record]:
     start_time = time.perf_counter()
     logger.debug(f"Execute query: {sql_query}")
     # Take a connection from the pool.
