@@ -41,7 +41,7 @@ class Token(BaseModel):
 def get_token(token: str = Path(description="ERC20 token address")) -> Token:
     try:
         return Token.from_str(token)
-    except ValidationError as e:
+    except ValidationError:
         raise HTTPException(status_code=422, detail=f"Invalid token {token!r}")
 
 
