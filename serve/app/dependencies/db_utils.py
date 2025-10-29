@@ -3389,52 +3389,52 @@ async def get_top_channel_casts(
     )
 
 
-def pyformat2format(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
+def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
     """
     Formats a SQL query string containing Python-style parameter placeholders into an
-    equivalent SQL string with SQL-standard placeholders and a list of corresponding
+    equivalent SQL string with dollar-style placeholders and a list of corresponding
     parameter values.
 
     :param sql: SQL query string with Python-style (%s) placeholders.
     :param poargs: Positional arguments for parameters referenced in the SQL string.
     :param kwargs: Keyword arguments for named parameters referenced in the SQL string.
-    :return: A tuple containing the reformatted SQL string with SQL-standard placeholders
+    :return: A tuple containing the reformatted SQL string with dollar-style placeholders
         and the corresponding list of parameter values.
 
-    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5)
-    ('SELECT %s + %s', [5, 3])
+    >>> pyformat2dollar("SELECT %(name)s + %s", 3, name=5)
+    ('SELECT $1 + $2', [5, 3])
 
     Interpolate keyword parameters as many times as necessary:
 
-    >>> pyformat2format("SELECT %(name)s * %(name)s + %s", 3, name=5)
-    ('SELECT %s * %s + %s', [5, 5, 3])
+    >>> pyformat2dollar("SELECT %(name)s * %(name)s + %s", 3, name=5)
+    ('SELECT $1 * $2 + $3', [5, 5, 3])
 
     Raise `ValueError` if required arguments are not provided:
 
-    >>> pyformat2format("SELECT %(name)s + %s + %s", 3, name=5)
+    >>> pyformat2dollar("SELECT %(name)s + %s + %s", 3, name=5)
     Traceback (most recent call last):
         ...
     ValueError: not enough positional arguments
-    >>> pyformat2format("SELECT %(name)s + %(more)s + %(extra)s + %s", 3, name=5)
+    >>> pyformat2dollar("SELECT %(name)s + %(more)s + %(extra)s + %s", 3, name=5)
     Traceback (most recent call last):
         ...
     ValueError: missing keyword argument: 'more'
 
     Ignore extra positional/keyword arguments:
 
-    >>> pyformat2format("SELECT %(name)s + %s", 3, 4, name=5)
-    ('SELECT %s + %s', [5, 3])
-    >>> pyformat2format("SELECT %(name)s + %s", 3, name=5, extra=4)
-    ('SELECT %s + %s', [5, 3])
+    >>> pyformat2dollar("SELECT %(name)s + %s", 3, 4, name=5)
+    ('SELECT $1 + $2', [5, 3])
+    >>> pyformat2dollar("SELECT %(name)s + %s", 3, name=5, extra=4)
+    ('SELECT $1 + $2', [5, 3])
 
     Keep doubled (escaped) percent signs verbatim:
 
-    >>> pyformat2format("SELECT 'needle' LIKE '%%haystack%%'")
+    >>> pyformat2dollar("SELECT 'needle' LIKE '%%haystack%%'")
     ("SELECT 'needle' LIKE '%%haystack%%'", [])
 
     Recognize only valid percent sequences (``%s``, ``%(name)s``, and ``%%``):
 
-    >>> pyformat2format("SELECT 'needle' LIKE '%haystack%'")
+    >>> pyformat2dollar("SELECT 'needle' LIKE '%haystack%'")
     Traceback (most recent call last):
         ...
     ValueError: invalid % sequence '%h' in SQL at index 22
@@ -3460,8 +3460,8 @@ def pyformat2format(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
                     arg = kwargs[name]
                 except KeyError:
                     raise ValueError(f"missing keyword argument: {name!r}") from None
-            new_sql += "%s"
             new_args.append(arg)
+            new_sql += f"${len(new_args)}"
         elif m.group("passthrough") is not None:
             new_sql += m.group()
         elif (unknown := m.group("unknown")) is not None:
