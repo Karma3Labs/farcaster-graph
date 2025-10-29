@@ -12,6 +12,7 @@ import asyncpg
 import pytz
 from asyncpg.pool import Pool
 from cashews import cache
+from eth_typing import ChecksumAddress
 from loguru import logger
 from memoize.configuration import (
     DefaultInMemoryCacheConfiguration,
@@ -3387,6 +3388,127 @@ async def get_top_channel_casts(
         """,
         pool=pool,
     )
+
+
+async def get_trader_leaderboard(
+    *,
+    chain_id: int,
+    token_address: ChecksumAddress,
+    start_time: datetime,
+    end_time: datetime,
+    global_trust_strategy_id: int,
+    weights: Weights,
+    pool: Pool,
+):
+    """
+    Fetches a trader leaderboard based on various parameters and criteria.
+
+    This function queries a database to generate a ranked leaderboard of traders
+    for a given ERC-20 token contract, over a specified time period, and according
+    to the provided trust strategy weights. It calculates points for each trader
+    based on their activities and normalizes the values accordingly.
+
+    :param chain_id: The blockchain chain ID to identify the relevant network.
+    :param token_address: The address of the ERC-20 token for which
+        the leaderboard is being generated.
+    :param start_time: The start of the time range for evaluating activity.
+        The date must be timezone-aware or UTC-naive.
+    :param end_time: The end of the time range for evaluating activity.
+        The date must be timezone-aware or UTC-naive.
+    :param global_trust_strategy_id: The ID of the global trust strategy to use
+        for calculating trader scores.
+    :param weights: A Weights object containing weight factors for specific
+        trader actions such as casts, likes, etc.
+    :param pool: A database connection pool used for executing queries.
+
+    :returns: A list of dictionaries where each dictionary represents a trader
+        and contains their ID (`fid`), leaderboard points, and associated hashes of their
+        casts.
+
+    :raises `ValueError`: If `end_time` is less than or equal to `start_time`.
+    """
+    if start_time.tzinfo is not None:
+        start_time = start_time.astimezone(UTC).replace(tzinfo=None)
+    if end_time.tzinfo is not None:
+        end_time = end_time.astimezone(UTC).replace(tzinfo=None)
+    if end_time <= start_time:
+        raise ValueError("end_time must be greater than start_time")
+    num_days = (end_time - start_time).total_seconds() / 86400
+    budget = num_days * 10000
+    sql, args = pyformat2dollar(
+        """
+            WITH
+            casts AS (
+                SELECT hash, fid
+                FROM neynarv3.casts
+                WHERE root_parent_url = 'eip155:' || %(chain_id)s || '/erc20:' || %(token_address)s
+            ),
+            actions AS (
+                SELECT *
+                FROM k3l_cast_action
+                WHERE
+                    action_ts >= %(start_time)s
+                    AND action_ts < %(end_time)s
+            ),
+            gt AS (
+                WITH latest AS (
+                    SELECT strategy_id, max(date) AS date
+                    FROM globaltrust
+                    WHERE strategy_id = %(globaltrust_strategy_id)s
+                    GROUP BY strategy_id
+                )
+                SELECT *
+                FROM globaltrust
+                JOIN latest USING (strategy_id, date)
+            ),
+            raw AS (
+                SELECT
+                    c.fid,
+                    sum(
+                        (
+                            a.casted * %(cast_weight)s +
+                            a.liked * %(like_weight)s +
+                            a.recasted * %(recast_weight)s +
+                            a.replied * %(reply_weight)s
+                        ) * gt.v
+                    ) AS value,
+                    array_agg(DISTINCT '0x' || encode(c.hash, 'hex')) AS cast_hashes
+                FROM casts c
+                JOIN actions a ON c.hash = a.cast_hash
+                JOIN gt ON a.fid = gt.i
+                GROUP BY c.fid
+            ),
+            normalized AS (
+                SELECT
+                    fid,
+                    cbrt(value) AS value
+                FROM raw
+                WHERE value > 0
+            ),
+            leaderboard AS (
+                SELECT
+                    fid,
+                    round(%(budget)s * value / (SELECT sum(value) FROM normalized))::bigint AS points
+                FROM normalized
+            )
+        SELECT fid, lb.points, raw.cast_hashes
+        FROM leaderboard lb
+        JOIN raw USING (fid)
+        WHERE points > 0
+        ORDER BY points DESC;
+        """,
+        chain_id=str(chain_id),
+        token_address=token_address.lower(),
+        start_time=start_time,
+        end_time=end_time,
+        globaltrust_strategy_id=global_trust_strategy_id,
+        cast_weight=weights.cast,
+        like_weight=weights.like,
+        recast_weight=weights.recast,
+        reply_weight=weights.reply,
+        budget=budget,
+    )
+    return await fetch_rows(*args, sql_query=sql, pool=pool)
 
 
 def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
