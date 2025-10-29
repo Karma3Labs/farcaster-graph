@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 from typing import Self
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool
 from ..dependencies.db_utils import get_all_token_balances, get_token_balances
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/{token}", tags=["Token"])
 
