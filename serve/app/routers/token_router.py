@@ -71,14 +71,14 @@ async def get_all_balances(  # noqa: D401
         None,
         gt=0,
         le=10000,
-        description="Optional cap on number of rows (useful for leaderboards)",
+        description="Optional cap on the number of rows (useful for leaderboards)",
     ),
     pool: Pool = Depends(db_pool.get_db),
 ):
     """Return **all** FID balances for *token*, sorted high→low.
 
     If `?limit=` is supplied, only the first *N* rows are returned.  This is
-    handy when building a public leaderboard (e.g. top‑100 holders).
+    handy when building a public leaderboard (e.g., top‑100 holders).
     """
 
     try:
