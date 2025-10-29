@@ -142,7 +142,7 @@ def _last_dow_utc_timestamp_str(dow: DOW):
 
 async def fetch_rows(*args, sql_query: str, pool: Pool) -> list[asyncpg.Record]:
     start_time = time.perf_counter()
-    logger.debug(f"Execute query: {sql_query}")
+    logger.debug(f"Execute query: {sql_query} with args: {args}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         logger.info(
