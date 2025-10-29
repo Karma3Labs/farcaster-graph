@@ -78,7 +78,6 @@ def gen_datetime_filepath(prefix, ext, basedir="/tmp/onchain-output"):
 
 
 def pacific_9am_in_utc_time(date_str: str = None):
-    # TODO move this to utils
     pacific_tz = pytz.timezone("US/Pacific")
     if date_str:
         pacific_9am_str = " ".join([date_str, "09:00:00"])
