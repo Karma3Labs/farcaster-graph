@@ -26,6 +26,7 @@ class Token(BaseModel):
     address: ChecksumAddress
 
     @field_validator("address", mode="before")
+    @classmethod
     def ensure_address(cls, v):
         try:
             return to_checksum_address(v)
