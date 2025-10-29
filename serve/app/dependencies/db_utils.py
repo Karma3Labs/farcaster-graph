@@ -3450,17 +3450,6 @@ async def get_trader_leaderboard(
                     action_ts >= %(start_time)s
                     AND action_ts < %(end_time)s
             ),
-            gt AS (
-                WITH latest AS (
-                    SELECT strategy_id, max(date) AS date
-                    FROM globaltrust
-                    WHERE strategy_id = %(globaltrust_strategy_id)s
-                    GROUP BY strategy_id
-                )
-                SELECT *
-                FROM globaltrust
-                JOIN latest USING (strategy_id, date)
-            ),
             raw AS (
                 SELECT
                     c.fid,
@@ -3470,12 +3459,12 @@ async def get_trader_leaderboard(
                             a.liked * %(like_weight)s +
                             a.recasted * %(recast_weight)s +
                             a.replied * %(reply_weight)s
-                        ) * gt.v
+                        ) * gt.score
                     ) AS value,
                     array_agg(DISTINCT '0x' || encode(c.hash, 'hex')) AS cast_hashes
                 FROM casts c
                 JOIN actions a ON c.hash = a.cast_hash
-                JOIN gt ON a.fid = gt.i
+                JOIN k3l_rank gt ON a.fid = gt.profile_id AND gt.strategy_id = %(global_trust_strategy_id)s
                 GROUP BY c.fid
             ),
             normalized AS (
@@ -3501,7 +3490,7 @@ async def get_trader_leaderboard(
         token_address=token_address.lower(),
         start_time=start_time,
         end_time=end_time,
-        globaltrust_strategy_id=global_trust_strategy_id,
+        global_trust_strategy_id=global_trust_strategy_id,
         cast_weight=weights.cast,
         like_weight=weights.like,
         recast_weight=weights.recast,
