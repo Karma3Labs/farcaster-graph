@@ -3480,9 +3480,16 @@ async def get_trader_leaderboard(
                     round(%(budget)s * value / (SELECT sum(value) FROM normalized))::bigint AS points
                 FROM normalized
             )
-        SELECT fid, lb.points, raw.cast_hashes
+        SELECT
+            rank() OVER (ORDER BY points DESC) AS order_rank,
+            fid,
+            p.pfp_url AS pfp,
+            p.username AS username,
+            lb.points AS score,
+            raw.cast_hashes
         FROM leaderboard lb
         JOIN raw USING (fid)
+        JOIN neynarv3.profiles p USING (fid)
         WHERE points > 0
         ORDER BY points DESC;
         """,
