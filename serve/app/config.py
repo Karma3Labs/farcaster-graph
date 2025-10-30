@@ -61,6 +61,7 @@ class Settings(BaseSettings):
         " | {level} | <level>{message}</level>"
     )
     SWAGGER_BASE_URL: str
+    NEYNAR_API_KEY: str
 
     FOLLOW_GRAPH_PATHPREFIX: str = "/tmp/fc_following_fid"
     ENGAGEMENT_GRAPH_PATHPREFIX: str = "/tmp/fc_engagement_fid"

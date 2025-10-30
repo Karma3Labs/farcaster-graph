@@ -1,8 +1,7 @@
 import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Self
-
+from typing import Annotated, Self, Optional
 from asyncpg import Pool
 from eth_typing import ChecksumAddress
 from eth_utils import to_bytes, to_checksum_address
@@ -10,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool, db_utils
+from ..dependencies.token_feed import get_token_feed
 from ..dependencies.db_utils import get_all_token_balances, get_token_balances
 from ..models.feed_model import WeightsField
 
@@ -142,3 +142,20 @@ async def get_trader_leaderboard(
         pool=pool,
     )
     return {"leaderboard": leaderboard}
+
+
+@router.get("/feed")
+async def get_feed(
+    *,
+    token: Token = Depends(get_token),
+    token_symbol: str,
+    int_chain_id: int,
+    viewer_fid: str,
+    cursor: Optional[str] = None,
+):
+    try:
+        return await get_token_feed(
+            int_chain_id, token.address, cursor, token_symbol, viewer_fid
+        )
+    except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
