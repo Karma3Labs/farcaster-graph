@@ -27,14 +27,15 @@ prometheus-client = "0.19.0"
 asgi-correlation-id = "^4.3.1"
 niquests = "^3.14.0"
 py-memoize = "^3.1.1"
-black = "^25.1.0"
 async-lru = "^2.0.5"
-isort = "^6.0.1"
 eth-typing = "^5.2.1"
 eth-utils = "^5.3.0"
 eth-hash = { extras = ["pycryptodome"], version = "^0.7.1" }
 cashews = { extras = ["diskcache"], version = "^7.4.0" }
 sqlfluff = "^3.4.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.14.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -45,11 +46,12 @@ name = "serve"
 version = "0.1.0"
 requires-python = ">=3.12"
 
-[tool.black]
-skip-string-normalization = true
-
 [tool.sqlfluff.core]
 dialect = "postgres"
 
 [tool.isort]
 skip_gitignore = true
+
+[tool.ruff.lint]
+# TODO(ek) - re-enable other check rules, by using extend-select instead
+select = ["I"]
