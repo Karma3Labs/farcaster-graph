@@ -70,13 +70,13 @@ DECLARE
     row_hash bytea;
     row_parent_hash bytea;
 BEGIN
-    FOR row_hash, row_parent_hash IN SELECT hash, parent_hash FROM casts LOOP
+    FOR row_hash, row_parent_hash IN SELECT hash, parent_hash FROM neynarv3.casts LOOP
         current_hash := row_hash;
         ancestor_hash := current_hash; -- Initialize with the current hash
 
         -- Loop to find the oldest ancestor
         WHILE current_hash IS NOT NULL LOOP
-            SELECT parent_hash INTO current_hash FROM casts WHERE hash = current_hash;
+            SELECT parent_hash INTO current_hash FROM neynarv3.casts WHERE hash = current_hash;
 
             -- Update ancestor_hash if a parent is found
             IF current_hash IS NOT NULL THEN
@@ -193,7 +193,7 @@ BEGIN
         -- Loop to find the furthest non-null parent hash
         LOOP
             SELECT parent_hash, parent_url INTO current_hash, root_parent_url
-            FROM casts
+            FROM neynarv3.casts
             WHERE hash = current_hash;
 
             -- Exit the loop if we've reached a cast without a parent

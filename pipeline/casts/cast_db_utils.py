@@ -54,7 +54,7 @@ def insert_cast_action(
             0 as liked,
             casts.timestamp as action_ts,
             casts.created_at
-        FROM casts CROSS JOIN max_cast_action
+        FROM neynarv3.casts CROSS JOIN max_cast_action
         LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE
             (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
@@ -74,7 +74,7 @@ def insert_cast_action(
             0 as liked,
             casts.timestamp as action_ts,
             casts.created_at
-        FROM casts CROSS JOIN max_cast_action
+        FROM neynarv3.casts CROSS JOIN max_cast_action
         LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
         WHERE
             (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
@@ -96,8 +96,8 @@ def insert_cast_action(
             CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
             reactions.timestamp as action_ts,
             reactions.created_at
-        FROM reactions CROSS JOIN max_cast_action
-        INNER JOIN casts as casts on (casts.hash = reactions.target_hash)
+        FROM neynarv3.reactions CROSS JOIN max_cast_action
+        INNER JOIN neynarv3.casts as casts on (casts.hash = reactions.target_hash)
         LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
         WHERE
             (casts.timestamp > now() - interval '5 days' AND casts.timestamp <= now())
@@ -197,7 +197,7 @@ def backfill_cast_action(
       0 as liked,
       casts.timestamp as action_ts,
       casts.created_at
-    FROM casts CROSS JOIN min_cast_action
+    FROM neynarv3.casts CROSS JOIN min_cast_action
     LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
     WHERE
       casts.timestamp >= min_cast_action.cutoff_ts
@@ -217,7 +217,7 @@ def backfill_cast_action(
       0 as liked,
       casts.timestamp as action_ts,
       casts.created_at
-    FROM casts CROSS JOIN min_cast_action
+    FROM neynarv3.casts CROSS JOIN min_cast_action
     LEFT JOIN warpcast_channels_data as ch ON (ch.url = casts.root_parent_url)
     WHERE
       casts.timestamp >= min_cast_action.cutoff_ts
@@ -239,8 +239,8 @@ def backfill_cast_action(
       CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
       reactions.timestamp as action_ts,
       reactions.created_at
-    FROM reactions CROSS JOIN min_cast_action
-    INNER JOIN casts as casts on (casts.hash = reactions.target_hash)
+    FROM neynarv3.reactions CROSS JOIN min_cast_action
+    INNER JOIN neynarv3.casts as casts on (casts.hash = reactions.target_hash)
     LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
     WHERE
       reactions.timestamp >= min_cast_action.cutoff_ts
@@ -295,7 +295,7 @@ def gapfill_cast_action(
           0 as liked,
           casts.timestamp as action_ts,
           casts.created_at
-        FROM casts
+        FROM neynarv3.casts
         LEFT JOIN {tbl_name}
           AS ca ON (
             casts.hash = ca.cast_hash
@@ -318,7 +318,7 @@ def gapfill_cast_action(
           0 as liked,
           casts.timestamp as action_ts,
           casts.created_at
-        FROM casts
+        FROM neynarv3.casts
         LEFT JOIN {tbl_name}
           AS ca ON (
             casts.parent_hash = ca.cast_hash
@@ -343,12 +343,12 @@ def gapfill_cast_action(
           CASE reactions.reaction_type WHEN 1 THEN 1 ELSE 0 END as liked,
           reactions.timestamp as action_ts,
           reactions.created_at
-        FROM reactions
+        FROM neynarv3.reactions
         LEFT JOIN {tbl_name}
           AS ca ON (
             reactions.target_hash = ca.cast_hash
           )
-        INNER JOIN casts on (casts.hash = reactions.target_hash)
+        INNER JOIN neynarv3.casts on (casts.hash = reactions.target_hash)
         LEFT JOIN warpcast_channels_data as ch on (ch.url = casts.root_parent_url)
         WHERE
           reactions.reaction_type IN (1,2)
@@ -390,9 +390,9 @@ def fetch_top_casters_df(logger: logging.Logger, pg_dsn: str, is_v1: bool = Fals
             ),
             new_fids AS (
             SELECT fid
-            FROM fids
-            WHERE registered_at::date BETWEEN (now() - interval '30 days') AND now()
-            ORDER BY registered_at DESC
+            FROM neynarv3.fids
+            WHERE timestamp::date BETWEEN (now() - interval '30 days') AND now()
+            ORDER BY timestamp DESC
             ),
             fid_cast_scores as (
                 SELECT
@@ -468,7 +468,7 @@ def fetch_top_spammers_df(
     WITH all_casts AS (
       SELECT
         fc.*
-      FROM casts fc
+      FROM neynarv3.casts fc
       WHERE created_at BETWEEN '{start_date_str}' AND '{end_date_str}'
     ),
     distinct_fids AS (
@@ -530,18 +530,10 @@ def fetch_top_spammers_df(
         END AS bottom_percentage
       FROM global_ranked_data
     )
-    ,
-    user_data_filtered AS (
-      SELECT
-        fid,
-        value
-      FROM user_data
-      WHERE type = 2
-    )
     -- Final output
     SELECT
       dfid.fid,
-      ud.value AS display_name,
+      ud.display_name,
       --bpd.bottom_percentage as bottom_global_percentage,
       COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0) as total_outgoing,
       (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0))/(r.v+1e10) as spammer_score,
@@ -555,7 +547,7 @@ def fetch_top_spammers_df(
     LEFT JOIN replies_with_parent_hash rp ON dfid.fid = rp.fid
     LEFT JOIN global_ranked_data r ON dfid.fid = r.i
     LEFT JOIN bottom_percentage_data bpd ON r.i = bpd.i
-    LEFT JOIN user_data_filtered ud ON dfid.fid = ud.fid
+    LEFT JOIN neynarv3.profiles ud ON dfid.fid = ud.fid
     WHERE (bpd.bottom_percentage != 'Above 95%' OR bpd.bottom_percentage IS NULL)
     AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
     ORDER BY spammer_score DESC

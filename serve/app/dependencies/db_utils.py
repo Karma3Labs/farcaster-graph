@@ -226,17 +226,17 @@ async def get_all_fid_addresses_for_handles(handles: list[str], pool: Pool):
 async def get_unique_fid_metadata_for_handles(handles: list[str], pool: Pool):
     sql_query = """
     SELECT
-        '0x' || encode(any_value(fids.custody_address), 'hex') as address,
+        '0x' || encode(any_value(neynarv3.fids.custody_address), 'hex') as address,
         any_value(fnames.fname) as fname,
-        any_value(user_data.value) as username,
+        any_value(profiles.username) as username,
         fids.fid as fid
-    FROM fids
-    INNER JOIN fnames ON (fids.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
+    FROM neynarv3.fids
+    INNER JOIN neynarv2.fnames ON (fids.fid = fnames.fid)
+    LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
     WHERE
         (fnames.fname = ANY($1::text[]))
         OR
-        (user_data.value = ANY($1::text[]))
+        (profiles.username = ANY($1::text[]))
     GROUP BY fids.fid
     LIMIT 1000 -- safety valve
     """
@@ -268,8 +268,8 @@ async def get_verified_addresses_for_fids(fids: list[str], pool: Pool):
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 3 then user_data.value end)),null) as bios,
         vaddr.fid as fid
     FROM verified_addresses as vaddr
-    LEFT JOIN fnames ON (vaddr.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = vaddr.fid)
+    LEFT JOIN neynarv2.fnames ON (vaddr.fid = fnames.fid)
+    LEFT JOIN neynarv3.profiles ON (profiles.fid = vaddr.fid)
     LEFT JOIN latest_global_rank as grank ON (grank.fid = vaddr.fid)
     WHERE created_order=1
     GROUP BY vaddr.fid, address

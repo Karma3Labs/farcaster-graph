@@ -1,12 +1,12 @@
 -- *****IMPORTANT NOTE****: ON EIGEN8
 SET ROLE neynar;
-CREATE INDEX CONCURRENTLY casts_timestamp_index ON neynarv2.casts USING btree ("timestamp");
-CREATE INDEX CONCURRENTLY casts_root_parent_url_idx ON neynarv2.casts USING btree (root_parent_url);
-CREATE INDEX CONCURRENTLY casts_deleted_at_idx ON neynarv2.casts USING btree (deleted_at);
+CREATE INDEX CONCURRENTLY k3l_casts_timestamp_index ON neynarv3.casts USING btree ("timestamp");
+CREATE INDEX CONCURRENTLY k3l_casts_root_parent_url_idx ON neynarv3.casts USING btree (root_parent_url);
+CREATE INDEX CONCURRENTLY k3l_casts_deleted_at_idx ON neynarv3.casts USING btree (deleted_at);
 CREATE INDEX CONCURRENTLY follows_fid_target_timestamp_idx ON neynarv3.follows(fid, target_fid, timestamp) WHERE deleted_at IS NULL;
-CREATE INDEX CONCURRENTLY reactions_type_target_timestamp_idx ON neynarv2.reactions(reaction_type, target_fid, timestamp) WHERE target_fid IS NOT NULL;
-CREATE INDEX CONCURRENTLY reactions_timestamp_type_idx ON neynarv2.reactions("timestamp", reaction_type) WHERE target_fid IS NOT NULL;
-CREATE INDEX CONCURRENTLY reactions_target_hash_deleted_at_timestamp_idx ON neynarv2.reactions
+CREATE INDEX CONCURRENTLY k3l_reactions_type_target_timestamp_idx ON neynarv3.reactions(reaction_type, target_fid, timestamp) WHERE target_fid IS NOT NULL;
+CREATE INDEX CONCURRENTLY k3l_reactions_timestamp_type_idx ON neynarv3.reactions("timestamp", reaction_type) WHERE target_fid IS NOT NULL;
+CREATE INDEX CONCURRENTLY k3l_reactions_target_hash_deleted_at_timestamp_idx ON neynarv3.reactions
 				USING btree (target_hash, deleted_at, "timestamp" DESC) WITH (deduplicate_items='false');
 ----------------------------------------------------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ GRANT SELECT,REFERENCES ON public.k3l_recent_frame_interaction TO k3l_readonly;
 CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
 SELECT
 	*
-FROM casts
+FROM neynarv3.casts
   WHERE casts.parent_hash IS NULL
   AND casts.deleted_at IS NULL
   AND casts.timestamp
@@ -508,7 +508,7 @@ CREATE VIEW public.warpcast_channels_data AS
     follower_count AS followercount,
     "timestamp" AS insert_ts
     FROM
-    neynarv2.channels;
+    neynarv3.channels;
 
 GRANT SELECT, REFERENCES ON TABLE public.warpcast_channels_data TO k3l_readonly;
 
@@ -622,7 +622,7 @@ CREATE VIEW public.warpcast_followers AS
         max(timestamp) AS insert_ts,
         channel_id
     FROM
-        neynarv2.channel_follows
+        neynarv3.channel_follows
     WHERE
         deleted_at IS NULL
     GROUP BY
@@ -649,11 +649,11 @@ GRANT SELECT,REFERENCES ON TABLE public.warpcast_members TO k3l_readonly;
 CREATE VIEW public.warpcast_members AS
     SELECT
         fid,
-        max(ROUND(EXTRACT(EPOCH FROM (timestamp)),0)) AS memberAt,
-        max(timestamp) AS insert_ts,
+        max(ROUND(EXTRACT(EPOCH FROM (member_at)),0)) AS memberAt,
+        max(member_at) AS insert_ts,
         channel_id
     FROM
-        neynarv2.channel_members
+        neynarv3.channel_members
     WHERE
         deleted_at IS NULL
     GROUP BY

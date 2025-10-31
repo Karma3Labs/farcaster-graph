@@ -8,7 +8,7 @@ WITH max_cast_dt AS (
   SELECT 
       labels.url_id as url_id,
       casts.id as cast_id
-  FROM casts 
+  FROM neynarv3.casts
     cross join lateral jsonb_array_elements(casts.embeds) as ems
     inner join max_cast_dt on (casts.created_at >= max_cast_dt.dt AND casts.deleted_at IS NULL)
      inner join 

@@ -121,7 +121,7 @@ def fetch_channel_casters(
     query_sql = f"""
     SELECT
       DISTINCT(fid)
-    FROM casts
+    FROM neynarv3.casts
     WHERE root_parent_url = '{channel_url}'
     """
     if settings.IS_TEST:
@@ -986,7 +986,7 @@ def insert_tokens_log(
         FROM k3l_channel_points_bal as bal
         INNER JOIN channel_totals as tot
     		ON (tot.channel_id = bal.channel_id)
-        INNER JOIN fids ON (fids.fid = bal.fid)
+        INNER JOIN neynarv3.fids ON (fids.fid = bal.fid)
         INNER JOIN k3l_channel_rewards_config as config
                 ON (config.channel_id = bal.channel_id AND config.is_tokens = true)
         LEFT JOIN latest_verified_address as vaddr
@@ -1067,7 +1067,7 @@ def insert_tokens_log(
                 INNER JOIN pts_distrib ON (pts_distrib.channel_id = eligible.channel_id)
                 INNER JOIN k3l_channel_rewards_config as config
                         ON (config.channel_id = eligible.channel_id AND config.is_tokens=true)
-                INNER JOIN fids ON (fids.fid = eligible.fid)
+                INNER JOIN neynarv3.fids ON (fids.fid = eligible.fid)
                 ORDER BY channel_id, fid DESC
             ),
             numfids AS (

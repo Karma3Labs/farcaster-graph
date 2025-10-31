@@ -82,7 +82,7 @@ def update_degen_tips():
             SELECT
                 casts.parent_hash AS cast_hash
             FROM
-                casts
+                neynarv3.casts
             WHERE
                 UPPER(casts.text) LIKE '%DEDEGEN%'
                 AND casts.fid = ANY(ARRAY[2904, 15983, 12493, 250874, 307834, 403619, 269694, 234616, 4482, 274, 243818, 385955, 210201, 3642, 539, 294226, 16405, 3827, 320215, 7637, 4027, 9135, 7258, 211186, 10174, 7464, 13505, 11299, 1048, 2341, 617, 191503, 4877, 3103, 12990, 390940, 7237, 5034, 195117, 8447, 20147, 262938, 307739, 17064, 351897, 426045, 326433, 273147, 270504, 419741, 446697, 354795])
@@ -96,7 +96,7 @@ def update_degen_tips():
             SELECT
                 casts.parent_hash AS cast_hash
             FROM
-                casts
+                neynarv3.casts
             WHERE
                 UPPER(casts.text) LIKE '%DEDEGEN%'
                 AND casts.fid IN (2904, 15983, 12493)
@@ -111,7 +111,7 @@ def update_degen_tips():
                 COALESCE(regexp_match[1], '0')::NUMERIC AS degen_amount,
                 (regexp_match IS NOT NULL) AS is_valid
             FROM
-                casts
+                neynarv3.casts
             LEFT JOIN LATERAL (
                 SELECT regexp_matches(casts.text, '(\\d+(?:\\.\\d+)?)\\s*\\$DEGEN') AS regexp_match
             ) AS regexp_matches ON TRUE
@@ -130,7 +130,7 @@ def update_degen_tips():
         FROM
             parsed_casts
         INNER JOIN
-            casts AS parent_casts ON parsed_casts.parent_hash = parent_casts.hash
+            neynarv3.casts AS parent_casts ON parsed_casts.parent_hash = parent_casts.hash
         WHERE
             parsed_casts.is_valid
             AND parsed_casts.parent_hash IS NOT NULL

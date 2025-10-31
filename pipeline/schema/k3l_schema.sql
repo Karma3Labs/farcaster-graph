@@ -1256,7 +1256,7 @@ CREATE VIEW public.warpcast_channels_data AS
     created_at AS createdat,
     follower_count AS followercount,
     "timestamp" AS insert_ts
-   FROM neynarv2.channels;
+   FROM neynarv3.channels;
 
 
 ALTER VIEW public.warpcast_channels_data OWNER TO k3l_user;
@@ -1283,7 +1283,7 @@ CREATE MATERIALIZED VIEW public.k3l_recent_parent_casts AS
     c.root_parent_hash,
     c.root_parent_url,
     ch.id AS channel_id
-   FROM (neynarv2.casts c
+   FROM (neynarv3.casts c
      LEFT JOIN public.warpcast_channels_data ch ON ((c.root_parent_url = ch.url)))
   WHERE ((c.parent_hash IS NULL) AND (c.deleted_at IS NULL) AND ((c."timestamp" >= (now() - '30 days'::interval)) AND (c."timestamp" <= now())))
   WITH NO DATA;
@@ -1480,7 +1480,7 @@ CREATE VIEW public.warpcast_followers AS
     max(round(EXTRACT(epoch FROM "timestamp"), 0)) AS followedat,
     max("timestamp") AS insert_ts,
     channel_id
-   FROM neynarv2.channel_follows
+   FROM neynarv3.channel_follows
   WHERE (deleted_at IS NULL)
   GROUP BY fid, channel_id;
 
@@ -1493,10 +1493,10 @@ ALTER VIEW public.warpcast_followers OWNER TO k3l_user;
 
 CREATE VIEW public.warpcast_members AS
  SELECT fid,
-    max(round(EXTRACT(epoch FROM "timestamp"), 0)) AS memberat,
-    max("timestamp") AS insert_ts,
+    max(round(EXTRACT(epoch FROM member_at), 0)) AS memberat,
+    max(member_at) AS insert_ts,
     channel_id
-   FROM neynarv2.channel_members
+   FROM neynarv3.channel_members
   WHERE (deleted_at IS NULL)
   GROUP BY fid, channel_id;
 

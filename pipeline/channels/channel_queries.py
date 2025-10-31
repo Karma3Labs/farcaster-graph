@@ -27,9 +27,9 @@ INTERACTIONS_SQL = SQL(
                 reactions.target_fid AS j,
                 COUNT(1) AS likes_v
             FROM
-                reactions
+                neynarv3.reactions
             INNER JOIN
-                casts ON casts.hash = reactions.target_hash
+                neynarv3.casts ON casts.hash = reactions.target_hash
             LEFT JOIN 
                 excluded_fids AS x1 ON (x1.fid = reactions.fid)
             LEFT JOIN 
@@ -50,7 +50,7 @@ INTERACTIONS_SQL = SQL(
                 casts.parent_fid AS j,
                 COUNT(1) AS replies_v
             FROM
-                casts
+                neynarv3.casts
             LEFT JOIN 
                 excluded_fids AS x1 ON (x1.fid = casts.fid)
             LEFT JOIN 
@@ -69,7 +69,7 @@ INTERACTIONS_SQL = SQL(
                 casts.fid AS author_fid,
                 unnest(casts.mentions) AS mention_fid
             FROM
-                casts
+                neynarv3.casts
             WHERE
                 casts.root_parent_url = '{channel_url}'
                 AND casts.deleted_at IS NULL
@@ -97,9 +97,9 @@ INTERACTIONS_SQL = SQL(
                 reactions.target_fid AS j,
                 COUNT(1) AS recasts_v
             FROM
-                reactions
+                neynarv3.reactions
             INNER JOIN
-                casts ON reactions.target_hash = casts.hash
+                neynarv3.casts ON reactions.target_hash = casts.hash
             LEFT JOIN 
                 excluded_fids AS x1 ON (x1.fid = reactions.fid)
             LEFT JOIN 
