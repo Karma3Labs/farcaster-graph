@@ -22,15 +22,17 @@ async def get_token_feed(
         before_ts = get_ts_in_search_query_format(get_ts_from_cursor(cursor))
 
     result = neynar_get(url).json()
-    fip2_casts_cursor = result['next']['cursor']
+    fip2_casts_next_cursor = result['next']['cursor']
     fip2_casts = result['casts']
     add_cast_type(fip2_casts, 'fip2')
     after_ts = None
-    if fip2_casts_cursor:
-        after_ts = get_ts_in_search_query_format(get_ts_from_cursor(fip2_casts_cursor))
+    if fip2_casts_next_cursor:
+        after_ts = get_ts_in_search_query_format(
+            get_ts_from_cursor(fip2_casts_next_cursor)
+        )
 
     # get search casts
-    search_casts, search_next_cursor = search_all_casts(
+    search_casts, search_casts_next_cursor = get_search_casts(
         f"${token_symbol}", viewer_fid, before_ts, after_ts
     )
     add_cast_type(search_casts, 'search')
@@ -39,9 +41,35 @@ async def get_token_feed(
     # sort the casts
     all_casts.sort(key=lambda x: x['timestamp'], reverse=True)
 
+    if search_casts_next_cursor and fip2_casts_next_cursor:
+        # We fetch only 1 page from both and data upto common cursor.
+        fip2_ts = get_ts_in_search_query_format(
+            get_ts_from_cursor(fip2_casts_next_cursor)
+        )
+        search_ts = get_ts_in_search_query_format(
+            get_ts_from_cursor(search_casts_next_cursor)
+        )
+        if fip2_ts > search_ts:
+            min_ts = search_ts
+            next_cursor = search_casts_next_cursor
+        else:
+            min_ts = fip2_ts
+            next_cursor = fip2_casts_next_cursor
+
+        # cut extra casts.
+        stripped_casts = []
+        for cast in all_casts:
+            if cast['timestamp'] >= min_ts:
+                stripped_casts.append(cast)
+
+        return {
+            "casts": stripped_casts,
+            "next": {"cursor": next_cursor},
+        }
+
     return {
         "casts": all_casts,
-        "next": {"cursor": fip2_casts_cursor or search_next_cursor},
+        "next": {"cursor": fip2_casts_next_cursor or search_casts_next_cursor},
     }
 
 
@@ -50,7 +78,7 @@ def add_cast_type(casts: List[dict], cast_type: str):
         cast['cast_type'] = cast_type
 
 
-def search_all_casts(
+def get_search_casts(
     search_str: str, viewer_fid: str, before_ts: Optional[str], after_ts: Optional[str]
 ):
     # fip2 feed is empty if `after_ts` is None, we only serve search feed going forward.
@@ -61,33 +89,16 @@ def search_all_casts(
     if before_ts:
         final_search_str += f" + before:{before_ts}"
 
-    next_cursor = None
-    search_casts = []
-    while True:
-        neynar_resp = neynar_get(
-            f"cast/search?q={final_search_str}&mode=literal&cursor={next_cursor if next_cursor else ''}&sort_type=algorithmic&viewer_fid={viewer_fid}"
-        )
-        if neynar_resp.ok:
-            data = neynar_resp.json()['result']
-        else:
-            logger.warning(f"failed to fetch search casts {neynar_resp.text}")
-            return []
+    neynar_resp = neynar_get(
+        f"cast/search?q={final_search_str}&mode=literal&sort_type=algorithmic&viewer_fid={viewer_fid}"
+    )
+    if neynar_resp.ok:
+        data = neynar_resp.json()['result']
+    else:
+        logger.warning(f"failed to fetch search casts {neynar_resp.text}")
+        return []
 
-        next_cursor = data['next']['cursor']
-        search_casts += data['casts']
-
-        logger.info(
-            f"Fetched a page of search results, getting next page with cursor {next_cursor}"
-        )
-
-        if not after_ts:
-            # fetch only 1 page if we are iterating over search feed only.
-            break
-
-        if not next_cursor:
-            break
-
-    return search_casts, next_cursor
+    return data['casts'], data['next']['cursor']
 
 
 def neynar_get(path: str):
