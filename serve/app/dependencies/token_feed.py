@@ -1,5 +1,5 @@
 from loguru import logger
-from typing import Dict, Optional, Self
+from typing import Dict, List, Optional
 import requests
 import json
 import base64, urllib.parse
@@ -14,8 +14,6 @@ async def get_token_feed(
     token_symbol: str,
     viewer_fid: str,
 ):
-    # TODO: Handle the case of empty in either of the feeds!
-
     # get neynar FIP 2 feed.
     url = f"feed/parent_urls/?with_recasts=true&limit=25&parent_urls=eip155%3A{int_chain_id}%2Ferc20%3A{token_address.lower()}"
     before_ts = None
@@ -26,6 +24,7 @@ async def get_token_feed(
     result = neynar_get(url).json()
     fip2_casts_cursor = result['next']['cursor']
     fip2_casts = result['casts']
+    add_cast_type(fip2_casts, 'fip2')
     after_ts = None
     if fip2_casts_cursor:
         after_ts = get_ts_in_search_query_format(get_ts_from_cursor(fip2_casts_cursor))
@@ -34,6 +33,7 @@ async def get_token_feed(
     search_casts, search_next_cursor = search_all_casts(
         f"${token_symbol}", viewer_fid, before_ts, after_ts
     )
+    add_cast_type(search_casts, 'search')
 
     all_casts = search_casts + fip2_casts
     # sort the casts
@@ -43,6 +43,11 @@ async def get_token_feed(
         "casts": all_casts,
         "next": {"cursor": fip2_casts_cursor or search_next_cursor},
     }
+
+
+def add_cast_type(casts: List[dict], cast_type: str):
+    for cast in casts:
+        cast['cast_type'] = cast_type
 
 
 def search_all_casts(
