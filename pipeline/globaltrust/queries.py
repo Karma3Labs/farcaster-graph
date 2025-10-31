@@ -125,7 +125,7 @@ class IVSql:
       1/11::numeric as v
 		FROM neynarv3.profiles
 		WHERE 
-			username in ('dwr.eth', 'varunsrin.eth', 'balajis.eth',
+			username in ('dwr.eth', 'varunsrin.eth', 'balajis.eth', 
     				  'vitalik.eth','ccarella.eth','tim',
 					  'lesgreys.eth','linda','ace',
 					  'vm','cdixon.eth')

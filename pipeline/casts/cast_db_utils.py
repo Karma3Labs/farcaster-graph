@@ -110,7 +110,7 @@ def insert_cast_action(
             AND
             reactions.target_hash IS NOT NULL
             AND reactions.deleted_at IS NULL
-        ORDER BY created_at ASC
+        ORDER BY created_at
         LIMIT {insert_limit}
         ON CONFLICT(cast_hash, fid, action_ts)
         DO NOTHING -- expect duplicates because of between clause
@@ -137,11 +137,11 @@ def backfill_cast_action(
     """
     This function performs backfilling of cast actions for a specified month.
     Parameters:
-    - logger (logging.Logger): The logger for logging information.
-    - pg_dsn (str): The PostgreSQL data source name for connection.
-    - insert_limit (int): The maximum number of rows to insert.
-    - target_month (datetime): The month for which to backfill data.
-    - is_v1 (bool, optional): A flag indicating versioning. Defaults to False.
+    :param logger: The logger for logging information.
+    :param pg_dsn: The PostgreSQL DSN.
+    :param insert_limit: The maximum number of rows to insert.
+    :param target_month: The month for which to backfill data.
+    :param is_v1: A flag indicating versioning. Defaults to False.
 
     Returns:
     - int: The number of rows inserted.
@@ -257,7 +257,7 @@ def backfill_cast_action(
     LIMIT {insert_limit}
     ON CONFLICT(cast_hash, fid, action_ts)
     DO NOTHING -- expect duplicates because of between clause
-  """
+    """
     with psycopg2.connect(
         pg_dsn,
         connect_timeout=settings.POSTGRES_TIMEOUT_SECS,
@@ -375,7 +375,7 @@ def gapfill_cast_action(
             logger.info(f"Executing: {insert_sql}")
             cursor.execute(insert_sql)
             rows = cursor.rowcount
-            logger.info(f"Gapfilled {rows} rows into {tbl_name}")
+            logger.info(f"Gap-filled {rows} rows into {tbl_name}")
             return rows
 
 
@@ -548,7 +548,7 @@ def fetch_top_spammers_df(
     LEFT JOIN global_ranked_data r ON dfid.fid = r.i
     LEFT JOIN bottom_percentage_data bpd ON r.i = bpd.i
     LEFT JOIN neynarv3.profiles ud ON dfid.fid = ud.fid
-    WHERE (bpd.bottom_percentage != 'Above 95%' OR bpd.bottom_percentage IS NULL)
+    WHERE (bpd.bottom_percentage != 'Above 95%')
     AND (COALESCE(pc.total_parent_casts, 0) + COALESCE(rp.total_replies_with_parent_hash, 0)) > 30
     ORDER BY spammer_score DESC
   """
