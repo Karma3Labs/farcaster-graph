@@ -41,7 +41,7 @@ level_per_module = {
 def custom_log_filter(record):
     # Reference https://github.com/Delgan/loguru/blob/master/loguru/_filters.py
     # https://loguru.readthedocs.io/en/stable/api/logger.html#record
-    record['correlation_id'] = correlation_id.get()
+    record["correlation_id"] = correlation_id.get()
     name = record["name"]
     if not name:
         return False
@@ -114,7 +114,7 @@ async def lifespan(_: FastAPI):
         min_size=1,
         max_size=settings.POSTGRES_POOL_SIZE,
     )
-    app_state['db_pool'] = await pool
+    app_state["db_pool"] = await pool
     logger.info("DB pool created")
 
     if settings.CACHE_DB_ENABLED:
@@ -124,35 +124,35 @@ async def lifespan(_: FastAPI):
             min_size=1,
             max_size=settings.CACHE_POSTGRES_POOL_SIZE,
         )
-        app_state['cache_db_pool'] = await pool
+        app_state["cache_db_pool"] = await pool
         logger.info("Cache DB pool created")
     else:
-        app_state['cache_db_pool'] = None
+        app_state["cache_db_pool"] = None
 
     logger.info("Loading graphs")
     # Create a singleton instance of GraphLoader
     # ... load graphs from the disk immediately
     # ... set the loader into the global state
     # ... that every API request has access to.
-    app_state['graph_loader'] = GraphLoader(server_status=server_status)
+    app_state["graph_loader"] = GraphLoader(server_status=server_status)
 
     # start a background thread that can reload graphs if necessary
-    app_state['graph_loader_task'] = asyncio.create_task(
-        _check_and_reload_models(app_state['graph_loader'])
+    app_state["graph_loader_task"] = asyncio.create_task(
+        _check_and_reload_models(app_state["graph_loader"])
     )
     logger.info("Graphs loaded")
 
     yield
     """Execute when the server is shutdown"""
     logger.info("Closing DB pool")
-    await app_state['db_pool'].close()
+    await app_state["db_pool"].close()
 
     if settings.CACHE_DB_ENABLED:
         logger.info("Closing the Cache DB pool")
-        await app_state['cache_db_pool'].close()
+        await app_state["cache_db_pool"].close()
 
     logger.info("Closing graph loader")
-    app_state['graph_loader_task'].cancel()
+    app_state["graph_loader_task"].cancel()
 
 
 # TODO: change this to os env var once blue-green deployment is set up
@@ -161,7 +161,7 @@ APP_NAME = "farcaster-graph-a"  # os.environ.get("APP_NAME", "farcaster-graph-a"
 app = FastAPI(
     lifespan=lifespan,
     dependencies=[Depends(logging.get_logger)],
-    title='Karma3Labs',
+    title="Karma3Labs",
     docs_url=None,
 )
 
@@ -175,18 +175,18 @@ app.add_middleware(CorrelationIdMiddleware)
 #     allow_headers=["*"],
 # )
 
-app.include_router(direct_router, prefix='/links')
-app.include_router(graph_router, prefix='/graph')
-app.include_router(metadata_router, prefix='/metadata')
-app.include_router(lt_router, prefix='/scores/personalized')
-app.include_router(gt_router, prefix='/scores/global')
+app.include_router(direct_router, prefix="/links")
+app.include_router(graph_router, prefix="/graph")
+app.include_router(metadata_router, prefix="/metadata")
+app.include_router(lt_router, prefix="/scores/personalized")
+app.include_router(gt_router, prefix="/scores/global")
 # Decommission Frames ranking due to lack of usage
 # ... and relevance with the introduction of Frames V2 by Warpcast
 # app.include_router(frame_router, prefix='/frames')
-app.include_router(cast_router, prefix='/casts')
-app.include_router(channel_router, prefix='/channels')
-app.include_router(user_router, prefix='/users')
-app.include_router(token_router, prefix='/tokens')
+app.include_router(cast_router, prefix="/casts")
+app.include_router(channel_router, prefix="/channels")
+app.include_router(user_router, prefix="/users")
+app.include_router(token_router, prefix="/tokens")
 
 app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -202,9 +202,9 @@ async def session_middleware(request: Request, call_next):
     """FastAPI automatically invokes this function for every http call"""
     start_time = time.perf_counter()
     logger.info(f"{request.method} {request.url}")
-    request.state.graphs = app_state['graph_loader'].get_graphs()
-    request.state.db_pool = app_state['db_pool']
-    request.state.cache_db_pool = app_state['cache_db_pool']
+    request.state.graphs = app_state["graph_loader"].get_graphs()
+    request.state.db_pool = app_state["db_pool"]
+    request.state.cache_db_pool = app_state["cache_db_pool"]
     # call_next is a built-in FastAPI function that calls the actual API
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
@@ -216,25 +216,25 @@ async def session_middleware(request: Request, call_next):
 def get_health(response: Response):
     app_status = server_status.status
     logger.info(f"health: {app_status}")
-    if app_status != 'accept':
+    if app_status != "accept":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         response.headers["Retry-After"] = "300"  # retry after 5 mins
-        return {'detail': 'Service Unavailable'}
-    return {'status': 'ok'}
+        return {"detail": "Service Unavailable"}
+    return {"status": "ok"}
 
 
 @app.get("/_pause", status_code=200, include_in_schema=False)
 def get_pause():
     logger.info("pausing app")
     server_status.pause()
-    return {'status': 'ok'}
+    return {"status": "ok"}
 
 
 @app.get("/_resume", status_code=200, include_in_schema=False)
 def get_resume():
     logger.info("resuming app")
     server_status.resume()
-    return {'status': 'ok'}
+    return {"status": "ok"}
 
 
 @app.get("/docs", include_in_schema=False)

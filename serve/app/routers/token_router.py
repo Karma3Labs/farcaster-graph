@@ -51,7 +51,7 @@ def get_token(token: str = Path(description="ERC20 token address")) -> Token:
 @router.get("/balances")
 async def get_balances(
     token: Token = Depends(get_token),
-    fids: Sequence[int] = Query(..., alias='fid', min_items=1),
+    fids: Sequence[int] = Query(..., alias="fid", min_items=1),
     pool: Pool = Depends(db_pool.get_db),
 ):
     rows = await get_token_balances(to_bytes(hexstr=token.address), fids, pool)

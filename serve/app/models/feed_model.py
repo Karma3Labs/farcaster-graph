@@ -18,43 +18,43 @@ from .score_model import ScoreAgg, Weights
 
 
 class SortingOrder(StrEnum):
-    SCORE = 'score'
-    POPULAR = 'popular'
-    RECENT = 'recent'
-    TIME_BUCKET = 'time_bucket'
-    HOUR = 'hour'
-    DAY = 'day'
-    REACTIONS = 'reactions'
-    BALANCE = 'balance'
+    SCORE = "score"
+    POPULAR = "popular"
+    RECENT = "recent"
+    TIME_BUCKET = "time_bucket"
+    HOUR = "hour"
+    DAY = "day"
+    REACTIONS = "reactions"
+    BALANCE = "balance"
 
 
 class ChannelTimeframe(StrEnum):
-    DAY = 'day'
-    WEEK = 'week'
-    MONTH = 'month'
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
 
 
 PARENT_CASTS_AGE = {
-    ChannelTimeframe.DAY: '1 day',
-    ChannelTimeframe.WEEK: '7 days',
-    ChannelTimeframe.MONTH: '30 days',
+    ChannelTimeframe.DAY: "1 day",
+    ChannelTimeframe.WEEK: "7 days",
+    ChannelTimeframe.MONTH: "30 days",
 }
 
 
 class CastsTimeframe(StrEnum):
-    DAY = 'day'
-    WEEK = 'week'
-    MONTH = 'month'
-    THREE_MONTHS = 'three_months'
-    SIX_MONTHS = 'six_months'
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+    THREE_MONTHS = "three_months"
+    SIX_MONTHS = "six_months"
 
 
 CASTS_AGE = {
-    CastsTimeframe.DAY: '1 day',
-    CastsTimeframe.WEEK: '1 week',
-    CastsTimeframe.MONTH: '1 month',
-    CastsTimeframe.THREE_MONTHS: '3 months',
-    CastsTimeframe.SIX_MONTHS: '6 months',
+    CastsTimeframe.DAY: "1 day",
+    CastsTimeframe.WEEK: "1 week",
+    CastsTimeframe.MONTH: "1 month",
+    CastsTimeframe.THREE_MONTHS: "3 months",
+    CastsTimeframe.SIX_MONTHS: "6 months",
 }
 
 CASTS_AGE_TD = {
@@ -67,10 +67,10 @@ CASTS_AGE_TD = {
 
 
 class CastsTimeDecay(StrEnum):
-    MINUTE = 'minute'
-    HOUR = 'hour'
-    DAY = 'day'
-    NEVER = 'never'
+    MINUTE = "minute"
+    HOUR = "hour"
+    DAY = "day"
+    NEVER = "never"
 
     @property
     def timedelta(self) -> timedelta:
@@ -134,13 +134,13 @@ WeightsField = Annotated[
 
 
 class TrendingFeed(BaseModel):
-    feed_type: Annotated[Literal['trending'], Field(alias="feedType")] = 'trending'
+    feed_type: Annotated[Literal["trending"], Field(alias="feedType")] = "trending"
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
     reactions_threshold: ReactionsThresholdField = 1
     cutoff_ptile: CutoffPtileField = 100
-    weights: str = 'L1C0R1Y1'
+    weights: str = "L1C0R1Y1"
     sorting_order: SortingOrderField = SortingOrder.DAY
     time_decay: TimeDecayField = CastsTimeDecay.HOUR
     normalize: bool = True
@@ -151,12 +151,12 @@ class TrendingFeed(BaseModel):
 
 
 class PopularFeed(BaseModel):
-    feed_type: Annotated[Literal['popular'], Field(alias="feedType")] = 'popular'
+    feed_type: Annotated[Literal["popular"], Field(alias="feedType")] = "popular"
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
     reactions_threshold: ReactionsThresholdField = 1
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.SCORE
     time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
@@ -166,13 +166,13 @@ class PopularFeed(BaseModel):
 
 
 class FarconFeed(BaseModel):
-    feed_type: Annotated[Literal['farcon'], Field(alias="feedType")] = 'farcon'
+    feed_type: Annotated[Literal["farcon"], Field(alias="feedType")] = "farcon"
     lookback: CastsTimeframe = CastsTimeframe.WEEK
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.0
     reactions_threshold: ReactionsThresholdField = 1
     cutoff_ptile: CutoffPtileField = 100
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.HOUR
     time_decay: TimeDecayField = CastsTimeDecay.HOUR
     normalize: bool = True
@@ -183,7 +183,7 @@ class FarconFeed(BaseModel):
 
 
 class TokenFeed(BaseModel):
-    feed_type: Annotated[Literal['token'], Field(alias="feedType")] = 'token'
+    feed_type: Annotated[Literal["token"], Field(alias="feedType")] = "token"
     token_address: TokenAddressField
     min_balance: MinBalanceField = Decimal(1)
     lookback: timedelta = timedelta(days=3)
@@ -191,7 +191,7 @@ class TokenFeed(BaseModel):
     score_threshold: ScoreThresholdField = 0.9
     reactions_threshold: ReactionsThresholdField = 1
     cutoff_ptile: CutoffPtileField = 100
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.DAY
     time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
     limit_casts: LimitCastsField = None
@@ -205,14 +205,14 @@ class TokenFeed(BaseModel):
 
 
 class NewUsersFeed(BaseModel):
-    feed_type: Annotated[Literal['newUsers'], Field(alias="feedType")] = 'newUsers'
+    feed_type: Annotated[Literal["newUsers"], Field(alias="feedType")] = "newUsers"
     caster_age: timedelta = timedelta(days=90)
     lookback: timedelta = timedelta(weeks=1)
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.0
     reaction_threshold: ReactionsThresholdField = 1
     cutoff_ptile: CutoffPtileField = 90
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.RECENT
     time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
     limit_casts: LimitCastsField = None
@@ -226,20 +226,20 @@ class NewUsersFeed(BaseModel):
 
 
 class SearchScores(BaseModel):
-    score_type: Annotated[Literal['search'], Field(alias="scoreType")] = 'search'
+    score_type: Annotated[Literal["search"], Field(alias="scoreType")] = "search"
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.SCORE
     time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
 
 
 class ReplyScores(BaseModel):
-    score_type: Annotated[Literal['reply'], Field(alias="scoreType")] = 'reply'
+    score_type: Annotated[Literal["reply"], Field(alias="scoreType")] = "reply"
     agg: ScoreAgg = ScoreAgg.SUM
     score_threshold: ScoreThresholdField = 0.000000001
-    weights: str = 'L1C1R1Y1'
+    weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.RECENT
     time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True

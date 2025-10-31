@@ -115,7 +115,7 @@ async def _get_personalized_scores_for_addresses(
     addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
 
     # extract fids from the fid-address pairs typecasting to int just to be sure
-    fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
+    fids = [int(addr_fid_handle["fid"]) for addr_fid_handle in addr_fid_handles]
     # multiple address can have the same fid, remove duplicates
     fids = list(set(fids))
 
@@ -341,11 +341,11 @@ async def _get_personalized_scores_for_fids(
     trust_scores = await graph.get_neighbors_scores(fids, graph_model, k, limit)
 
     if lite:
-        return sorted(trust_scores, key=lambda d: d['score'], reverse=True)
+        return sorted(trust_scores, key=lambda d: d["score"], reverse=True)
 
     # convert the list of fid scores into a lookup with fid as key
     # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
-    trusted_fid_score_map = {ts['fid']: ts['score'] for ts in trust_scores}
+    trusted_fid_score_map = {ts["fid"]: ts["score"] for ts in trust_scores}
 
     # extract fids from the trusted neighbor fid-score pairs
     trusted_fids = list(trusted_fid_score_map.keys())
@@ -361,24 +361,24 @@ async def _get_personalized_scores_for_fids(
     # for every handle-fid pair, get a score from corresponding fid
     # {address, fname, username, fid} into {address, fname, username, fid, score}
     def fn_include_score(trusted_fid_addr_handle: dict) -> dict:
-        score = trusted_fid_score_map[trusted_fid_addr_handle['fid']]
+        score = trusted_fid_score_map[trusted_fid_addr_handle["fid"]]
         # trusted_fid_addr_handle is an 'asyncpg.Record'
         # 'asyncpg.Record' object does not support item assignment
         # need to create a new object with score
         return {
-            'address': trusted_fid_addr_handle['address'],
-            'username': trusted_fid_addr_handle['username'],
-            'pfp': trusted_fid_addr_handle['pfp'],
-            'bio': trusted_fid_addr_handle['bio'],
-            'fid': trusted_fid_addr_handle['fid'],
-            'score': score,
-            'global_rank': trusted_fid_addr_handle['global_rank'],
+            "address": trusted_fid_addr_handle["address"],
+            "username": trusted_fid_addr_handle["username"],
+            "pfp": trusted_fid_addr_handle["pfp"],
+            "bio": trusted_fid_addr_handle["bio"],
+            "fid": trusted_fid_addr_handle["fid"],
+            "score": score,
+            "global_rank": trusted_fid_addr_handle["global_rank"],
         }
 
     # end of def fn_trust_score_with_handle_fid
 
     results = list(map(fn_include_score, trusted_fid_addr_handles))
     # sort by score
-    results = sorted(results, key=lambda d: d['score'], reverse=True)
+    results = sorted(results, key=lambda d: d["score"], reverse=True)
 
     return results

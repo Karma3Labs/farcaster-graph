@@ -4,28 +4,28 @@ from typing import NamedTuple, Self
 
 
 class ScoreAgg(StrEnum):
-    RMS = 'rms'
-    SUM_SQUARE = 'sumsquare'
-    SUM = 'sum'
-    SUM_CUBE_ROOT = 'sumcuberoot'
+    RMS = "rms"
+    SUM_SQUARE = "sumsquare"
+    SUM = "sum"
+    SUM_CUBE_ROOT = "sumcuberoot"
 
 
 class Voting(StrEnum):
-    SINGLE = 'single'
-    MULTIPLE = 'multiple'
+    SINGLE = "single"
+    MULTIPLE = "multiple"
     # TODO
     # QUADRATIC = 'quadratic'
 
 
 class QueryType(StrEnum):
-    SUPERLITE = 'superlite'
-    LITE = 'lite'
-    HEAVY = 'heavy'
+    SUPERLITE = "superlite"
+    LITE = "lite"
+    HEAVY = "heavy"
 
 
 class EngagementType(StrEnum):
-    V1 = '1.0'
-    V3 = '2.0'
+    V1 = "1.0"
+    V3 = "2.0"
 
 
 engagement_ids = {
@@ -43,7 +43,7 @@ class Weights(NamedTuple):
     @classmethod
     def from_str(cls, weights_str: str) -> Self:
         wts = re.search(
-            r'^([lL]([0-9]+))?([cC]([0-9]+))?([rR]([0-9]+))?([yY]([0-9]+))?$',
+            r"^([lL]([0-9]+))?([cC]([0-9]+))?([rR]([0-9]+))?([yY]([0-9]+))?$",
             weights_str,
         )
         if wts is None:

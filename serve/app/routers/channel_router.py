@@ -346,7 +346,7 @@ async def filter_channel_fids(
         filtered_fids = await db_utils.filter_channel_fids(
             channel_id=channel, fids=list(batch), filter_=filter_, pool=pool
         )
-        results.extend([d['fid'] for d in filtered_fids])
+        results.extend([d["fid"] for d in filtered_fids])
         i += 1
     return {"result": results}
 
@@ -495,7 +495,7 @@ async def get_popular_channel_casts(
         raise HTTPException(status_code=404, detail="Channel not found")
 
     # channel_url = fetch_channel(channel_id=channel)
-    channel_url = channel_urls[0]['url']
+    channel_url = channel_urls[0]["url"]
 
     if metadata and type(metadata) is PopularFeed:
         if lite:
@@ -724,7 +724,7 @@ async def get_trending_casts(
             description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
     ] = ScoreAgg.SUM,
-    weights: Annotated[str | None, Query()] = 'L1C0R1Y1',
+    weights: Annotated[str | None, Query()] = "L1C0R1Y1",
     time_decay: Annotated[bool, Query()] = True,
     normalize: Annotated[bool, Query()] = True,
     offset: Annotated[int | None, Query(ge=0)] = 0,
@@ -772,7 +772,7 @@ async def get_popular_casts_from_degen_graph(
             description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
     ] = ScoreAgg.SUM_SQUARE,
-    weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
+    weights: Annotated[str | None, Query()] = "L1C10R5Y1",
     offset: Annotated[int | None, Query()] = 0,
     limit: Annotated[int | None, Query(le=10000)] = 100,
     sorting_order: Annotated[SortingOrder, Query()] = SortingOrder.SCORE,
@@ -912,7 +912,7 @@ async def get_top_channel_holders(
         pool=pool,
     )
     results = [
-        {**f, 'order_rank': idx + offset} for idx, f in enumerate(followers, start=1)
+        {**f, "order_rank": idx + offset} for idx, f in enumerate(followers, start=1)
     ]
     return {"result": results}
 
@@ -986,7 +986,7 @@ async def get_top_casts(
     lookback: Annotated[timedelta, Query()] = timedelta(days=1),
     end_time: Annotated[datetime | None, Query()] = None,
     reaction_window: Annotated[timedelta | None, Query()] = timedelta(hours=24),
-    weights: Annotated[str, Query()] = 'L1C0R1Y1',
+    weights: Annotated[str, Query()] = "L1C0R1Y1",
     rank_timeframe: Annotated[
         ChannelRankingsTimeframe, Query()
     ] = ChannelRankingsTimeframe.SIXTY_DAYS,

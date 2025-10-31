@@ -193,7 +193,7 @@ async def get_popular_casts_for_fid(
 
         sorted_casts = sorted(casts, key=cast_key)
         for cast in sorted_casts:
-            del cast['channel_id']
+            del cast["channel_id"]
         return {"result": sorted_casts}
     else:
         try:

@@ -107,7 +107,7 @@ async def _get_neighbors_list_for_addresses(
     addr_fid_handles = await db_utils.get_handle_fid_for_addresses(addresses, pool)
 
     # extract fids from the fid-address pairs
-    fids = [int(addr_fid_handle['fid']) for addr_fid_handle in addr_fid_handles]
+    fids = [int(addr_fid_handle["fid"]) for addr_fid_handle in addr_fid_handles]
     # multiple address can have the same fid
     uniq_fids = list(set(fids))
 
@@ -121,9 +121,9 @@ async def _get_neighbors_list_for_addresses(
 
     # filter out input addresses and return only addresses
     res = [
-        neighbor['address']
+        neighbor["address"]
         for neighbor in neighbor_fid_addresses
-        if not neighbor['address'] in addresses
+        if not neighbor["address"] in addresses
     ]
 
     return res
@@ -226,7 +226,7 @@ async def _get_neighbors_list_for_handles(
     results = [
         neighbor
         for neighbor in neighbor_fid_handles
-        if not (neighbor['username'] in handles or neighbor['fname'] in handles)
+        if not (neighbor["username"] in handles or neighbor["fname"] in handles)
     ]
 
     return results
@@ -331,7 +331,7 @@ async def _get_neighbors_list_for_fids(
     results = [
         addr_handle
         for addr_handle in neighbor_addr_handles
-        if not addr_handle['fid'] in fids
+        if not addr_handle["fid"] in fids
     ]
 
     return results

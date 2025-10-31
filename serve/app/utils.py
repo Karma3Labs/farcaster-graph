@@ -13,17 +13,17 @@ from .config import settings
 
 def log_memusage(l):
     mem_usage = psutil.virtual_memory()
-    l.info(f"Total: {mem_usage.total / (1024 ** 2):.2f}M")
+    l.info(f"Total: {mem_usage.total / (1024**2):.2f}M")
     l.info(f"Used: {mem_usage.percent}%")
-    l.info(f"Used: {mem_usage.used / (1024 ** 2):.2f}M")
-    l.info(f"Free: {mem_usage.free / (1024 ** 2):.2f}M")
+    l.info(f"Used: {mem_usage.used / (1024**2):.2f}M")
+    l.info(f"Free: {mem_usage.free / (1024**2):.2f}M")
 
 
 def df_info_to_string(df: pd.DataFrame, with_sample: bool = False):
     buf = io.StringIO()
     df.info(verbose=True, buf=buf, memory_usage="deep", show_counts=True)
     if with_sample:
-        buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
+        buf.write(f"{'-' * 15}\n| Sample rows:\n{'-' * 15}\n")
         # noinspection PyUnresolvedReferences
         # (sample() has wrong type hint)
         df.sample(5).to_csv(buf, index=False)

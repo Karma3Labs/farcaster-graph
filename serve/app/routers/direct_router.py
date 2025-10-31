@@ -67,7 +67,6 @@ async def _get_direct_list_for_handles(
     pool: Pool,
     graph_model: Graph,
 ) -> list[dict]:
-
     # fetch fid-address pairs for given handles
     handle_fids = await db_utils.get_unique_fid_metadata_for_handles(handles, pool)
 
@@ -135,7 +134,7 @@ async def _get_direct_list_for_fids(
 
     # convert the list of fid scores into a lookup with fid as key
     # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
-    edge_score_map = {edge['j']: edge['v'] for edge in neighbor_edges}
+    edge_score_map = {edge["j"]: edge["v"] for edge in neighbor_edges}
 
     edge_fids = list(edge_score_map.keys())
 
@@ -147,16 +146,16 @@ async def _get_direct_list_for_fids(
     # for every handle-fid pair, get the score from corresponding fid
     # {address, fname, username, fid} into {address, fname, username, fid, score}
     def fn_include_score(edge_fid_handle: dict) -> dict:
-        score = edge_score_map[edge_fid_handle['fid']]
+        score = edge_score_map[edge_fid_handle["fid"]]
         # trusted_fid_addr_handle is an 'asyncpg.Record'
         # 'asyncpg.Record' object does not support item assignment
         # need to create a new object with score
         return {
-            'address': edge_fid_handle['address'],
-            'fname': edge_fid_handle['fname'],
-            'username': edge_fid_handle['username'],
-            'fid': edge_fid_handle['fid'],
-            'score': score,
+            "address": edge_fid_handle["address"],
+            "fname": edge_fid_handle["fname"],
+            "username": edge_fid_handle["username"],
+            "fid": edge_fid_handle["fid"],
+            "score": score,
         }
 
     # end of def fn_trust_score_with_handle_fid
@@ -164,6 +163,6 @@ async def _get_direct_list_for_fids(
     results = list(map(fn_include_score, edge_fid_handles))
 
     # sort by score
-    results = sorted(results, key=lambda d: d['score'], reverse=True)
+    results = sorted(results, key=lambda d: d["score"], reverse=True)
 
     return results

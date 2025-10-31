@@ -90,12 +90,12 @@ def sql_for_decay(
 
 
 def _9am_pacific_in_utc_time():
-    pacific_tz = pytz.timezone('US/Pacific')
-    pacific_9am_str = ' '.join(
-        [datetime.now(pacific_tz).strftime("%Y-%m-%d"), '09:00:00']
+    pacific_tz = pytz.timezone("US/Pacific")
+    pacific_9am_str = " ".join(
+        [datetime.now(pacific_tz).strftime("%Y-%m-%d"), "09:00:00"]
     )
     pacific_time = pacific_tz.localize(
-        datetime.strptime(pacific_9am_str, '%Y-%m-%d %H:%M:%S')
+        datetime.strptime(pacific_9am_str, "%Y-%m-%d %H:%M:%S")
     )
     utc_time = pacific_time.astimezone(pytz.utc)
     return utc_time
@@ -316,7 +316,7 @@ async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
 async def get_top_profiles(
     strategy_id: int, offset: int, limit: int, pool: Pool, query_type: str
 ):
-    if query_type == 'lite':
+    if query_type == "lite":
         sql_query = """
         WITH total AS (
             SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
@@ -336,7 +336,7 @@ async def get_top_profiles(
         OFFSET $2
         LIMIT $3
         """
-    elif query_type == 'superlite':
+    elif query_type == "superlite":
         sql_query = """
         WITH total AS (
             SELECT count(*) as total from k3l_rank WHERE strategy_id = $1
@@ -523,17 +523,16 @@ async def get_channel_cast_metrics(channel_id: str, pool: Pool):
 async def get_channel_fid_metrics(
     channel_id: str, fid_type: ChannelFidType, pool: Pool
 ):
-
-    timestamp_col = 'followedat' if fid_type == ChannelFidType.FOLLOWER else 'memberat'
+    timestamp_col = "followedat" if fid_type == ChannelFidType.FOLLOWER else "memberat"
     table_name = (
-        'warpcast_followers'
+        "warpcast_followers"
         if fid_type == ChannelFidType.FOLLOWER
-        else 'warpcast_members'
+        else "warpcast_members"
     )
     metric_name = (
-        'cumulative_weekly_followers'
+        "cumulative_weekly_followers"
         if fid_type == ChannelFidType.FOLLOWER
-        else 'cumulative_weekly_members'
+        else "cumulative_weekly_members"
     )
     sql_query = f"""
     WITH
@@ -607,9 +606,9 @@ async def get_top_channel_earnings(
     if orderby == ChannelEarningsOrderBy.DAILY:
         orderby_clause = "ORDER BY daily_earnings DESC, balance DESC"
 
-    table_name = 'k3l_channel_points_bal'
+    table_name = "k3l_channel_points_bal"
     if earnings_type == ChannelEarningsType.TOKENS:
-        table_name = 'k3l_channel_tokens_bal'
+        table_name = "k3l_channel_tokens_bal"
 
     if lite:
         sql_query = f"""
@@ -690,7 +689,7 @@ async def get_tokens_distribution_details(
     # ... so optional params is not pretty
     # ... sanitize int input and use pyformat
     dist_filter = (
-        f' AND dist_id = {int(dist_id)} ' if dist_id else ' ORDER BY insert_ts DESC'
+        f" AND dist_id = {int(dist_id)} " if dist_id else " ORDER BY insert_ts DESC"
     )
 
     sql_query = f"""
@@ -826,7 +825,6 @@ async def get_fid_channel_token_balance(channel_id: str, fid: int, pool: Pool):
 async def get_points_distribution_preview(
     channel_id: str, offset: int, limit: int, pool: Pool
 ):
-
     sql_query = """
         WITH latest as (
             SELECT channel_id, model_name, max(insert_ts) as insert_ts
@@ -1053,9 +1051,9 @@ async def filter_channel_fids(
     channel_id: str, fids: list[int], filter_: ChannelFidType, pool: Pool
 ):
     if filter_ == ChannelFidType.FOLLOWER:
-        table_name = 'warpcast_followers'
+        table_name = "warpcast_followers"
     elif filter_ == ChannelFidType.MEMBER:
-        table_name = 'warpcast_members'
+        table_name = "warpcast_members"
     else:
         return []
     sql_query = f"""
@@ -1210,7 +1208,7 @@ async def get_top_frames(
     decay: bool,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight * weights.decay_factor')
+    agg_sql = sql_for_agg(agg, "weights.score * weights.weight * weights.decay_factor")
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels
@@ -1262,7 +1260,7 @@ async def get_top_frames_with_cast_details(
     decay: bool,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight * weights.decay_factor')
+    agg_sql = sql_for_agg(agg, "weights.score * weights.weight * weights.decay_factor")
     if recent:
         time_filter_sql = """
             INNER JOIN k3l_url_labels as labels
@@ -1335,7 +1333,7 @@ async def get_neighbors_frames(
     recent: bool,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'weights.score * weights.weight')
+    agg_sql = sql_for_agg(agg, "weights.score * weights.weight")
 
     if recent:
         time_filter_sql = """
@@ -1345,7 +1343,7 @@ async def get_neighbors_frames(
     else:
         time_filter_sql = ""
 
-    wt_score_sql = 'k3l_rank.score'
+    wt_score_sql = "k3l_rank.score"
     wt_weight_sql = f"""
                         case interactions.action_type
                             when 'cast' then {weights.cast}
@@ -1353,10 +1351,10 @@ async def get_neighbors_frames(
                             else {weights.like}
                             end
                         """
-    wt_group_by_sql = ''
+    wt_group_by_sql = ""
     match voting:
         case Voting.SINGLE:
-            wt_score_sql = 'max(score)'
+            wt_score_sql = "max(score)"
             wt_weight_sql = f"""
                             max(case interactions.action_type
                                 when 'cast' then {weights.cast}
@@ -1364,7 +1362,7 @@ async def get_neighbors_frames(
                                 else {weights.like}
                                 end)
                             """
-            wt_group_by_sql = 'GROUP BY interactions.url, interactions.fid'
+            wt_group_by_sql = "GROUP BY interactions.url, interactions.fid"
 
     sql_query = f"""
     WITH weights AS
@@ -1405,7 +1403,7 @@ async def get_popular_neighbors_casts(
     lite: bool,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     resp_fields = (
         "'0x' || encode(hash, 'hex') as cast_hash,"
@@ -1435,9 +1433,13 @@ async def get_popular_neighbors_casts(
                         + ({weights.like} * trust.score * ci.liked)
                     )
                     *
-                    {sql_for_decay("CURRENT_TIMESTAMP - action_ts",
-                                   CastsTimeDecay.HOUR,
-                                   base=(1 - 1 / (365 * 24)))}
+                    {
+        sql_for_decay(
+            "CURRENT_TIMESTAMP - action_ts",
+            CastsTimeDecay.HOUR,
+            base=(1 - 1 / (365 * 24)),
+        )
+    }
                 ) as cast_score
             FROM json_to_recordset($1::json)
                 AS trust(fid int, score numeric)
@@ -1507,16 +1509,22 @@ async def get_recent_neighbors_casts(
             casts.embeds,
             casts.mentions,
             casts.timestamp,
-            {sql_for_decay("CURRENT_TIMESTAMP - casts.timestamp",
-                           CastsTimeDecay.HOUR,
-                           base=(1 - 1 / (365 * 24)))}
+            {
+        sql_for_decay(
+            "CURRENT_TIMESTAMP - casts.timestamp",
+            CastsTimeDecay.HOUR,
+            base=(1 - 1 / (365 * 24)),
+        )
+    }
             * trust.score as cast_score,
         row_number() over(partition by date_trunc('hour', casts.timestamp) order by random()) as rn
         FROM k3l_recent_parent_casts as casts
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric)
                 ON casts.fid = trust.fid
-        {'LEFT' if lite else 'INNER'} JOIN neynarv3.profiles ON (profiles.fid = casts.fid)
+        {
+        "LEFT" if lite else "INNER"
+    } JOIN neynarv3.profiles ON (profiles.fid = casts.fid)
         WHERE casts.deleted_at IS NULL
         ORDER BY casts.timestamp DESC, cast_score desc
         OFFSET $2
@@ -1867,11 +1875,11 @@ async def get_popular_degen_casts(
     sorting_order: str,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     ordering = (
         "casts.timestamp DESC"
-        if sorting_order == 'recent'
+        if sorting_order == "recent"
         else "date_trunc('day',c.timestamp) DESC, cast_score DESC"
     )
 
@@ -1887,9 +1895,11 @@ async def get_popular_degen_casts(
                         + ({weights.like} * scores.v * ca.liked)
                     )
                     *
-                    {sql_for_decay("CURRENT_TIMESTAMP - dt.parent_timestamp",
-                                   CastsTimeDecay.HOUR,
-                                   base=0.99)} -- After 24 hours: 0.78584693
+                    {
+        sql_for_decay(
+            "CURRENT_TIMESTAMP - dt.parent_timestamp", CastsTimeDecay.HOUR, base=0.99
+        )
+    } -- After 24 hours: 0.78584693
                 ) as cast_score
             FROM k3l_degen_tips dt
             INNER JOIN k3l_cast_action ca ON (ca.cast_hash = dt.parent_hash AND ca.action_ts = dt.parent_timestamp)
@@ -1979,14 +1989,14 @@ async def get_popular_channel_casts_lite(
 ):
     logger.info("get_popular_channel_casts_lite")
 
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
-    order_sql = 'cast_score DESC'
+    order_sql = "cast_score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_score DESC'
+            order_sql = "cast_score DESC"
         case SortingOrder.RECENT:
-            order_sql = 'cast_ts DESC'
+            order_sql = "cast_ts DESC"
         case SortingOrder.HOUR:
             order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
@@ -1997,9 +2007,9 @@ async def get_popular_channel_casts_lite(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fid_score_sql = 'cbrt(fids.score)'
+        fid_score_sql = "cbrt(fids.score)"
     else:
-        fid_score_sql = 'fids.score'
+        fid_score_sql = "fids.score"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -2082,14 +2092,14 @@ async def get_popular_channel_casts_heavy(
     pool: Pool,
 ):
     logger.info("get_popular_channel_casts_heavy")
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
-    order_sql = 'cast_score DESC'
+    order_sql = "cast_score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_score DESC'
+            order_sql = "cast_score DESC"
         case SortingOrder.RECENT:
-            order_sql = 'cast_ts DESC'
+            order_sql = "cast_ts DESC"
         case SortingOrder.HOUR:
             order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
@@ -2100,9 +2110,9 @@ async def get_popular_channel_casts_heavy(
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fid_score_sql = 'cbrt(fids.score)'
+        fid_score_sql = "cbrt(fids.score)"
     else:
-        fid_score_sql = 'fids.score'
+        fid_score_sql = "fids.score"
 
     sql_query = f"""
         with fid_cast_scores as (
@@ -2180,7 +2190,7 @@ async def get_trending_casts_lite(
     limit: int,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     sql_query = f"""
         with
@@ -2200,9 +2210,13 @@ async def get_trending_casts_lite(
                         + ({weights.like} * fids.score * ci.liked)
                     )
                     *
-                    {sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts",
-                                   CastsTimeDecay.HOUR,
-                                   base=(1 - 1 / (365 * 24)))}
+                    {
+        sql_for_decay(
+            "CURRENT_TIMESTAMP - ci.action_ts",
+            CastsTimeDecay.HOUR,
+            base=(1 - 1 / (365 * 24)),
+        )
+    }
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -2246,7 +2260,7 @@ async def get_trending_casts_heavy(
     limit: int,
     pool: Pool,
 ):
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     sql_query = f"""
         with
@@ -2266,9 +2280,13 @@ async def get_trending_casts_heavy(
                         + ({weights.like} * fids.score * ci.liked)
                     )
                     *
-                    {sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts",
-                                   CastsTimeDecay.HOUR,
-                                   base=(1 - 1 / (365 * 24)))}
+                    {
+        sql_for_decay(
+            "CURRENT_TIMESTAMP - ci.action_ts",
+            CastsTimeDecay.HOUR,
+            base=(1 - 1 / (365 * 24)),
+        )
+    }
                 ) as cast_score,
                 MIN(ci.action_ts) as cast_ts
             FROM k3l_recent_parent_casts as casts
@@ -2340,7 +2358,6 @@ async def get_top_spammers(offset: int, limit: int, pool: Pool):
 async def get_top_channel_followers(
     channel_id: str, strategy_name: str, offset: int, limit: int, pool: Pool
 ):
-
     monday_utc_timestamp = _dow_utc_timestamp_str(DOW.MONDAY)
     tuesday_utc_timestamp = _dow_utc_timestamp_str(DOW.TUESDAY)
     last_tuesday_utc_timestamp = _last_dow_utc_timestamp_str(DOW.TUESDAY)
@@ -2354,8 +2371,10 @@ async def get_top_channel_followers(
         channel_id
     FROM warpcast_followers
     WHERE channel_id = $1
-    {"AND insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
-        if settings.DB_VERSION == DBVersion.EIGEN2 else ""
+    {
+        "AND insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
+        if settings.DB_VERSION == DBVersion.EIGEN2
+        else ""
     }
     ),
     followers_data as (
@@ -2375,7 +2394,9 @@ async def get_top_channel_followers(
         END as daily_earnings,
         0 as token_daily_earnings,
         CASE
-            WHEN (now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}) THEN false
+            WHEN (now() BETWEEN {monday_utc_timestamp} AND {
+        tuesday_utc_timestamp
+    }) THEN false
             ELSE true
         END as is_weekly_earnings_available,
         CASE
@@ -2388,9 +2409,13 @@ async def get_top_channel_followers(
         tok.latest_earnings as token_latest_earnings,
         CASE
             WHEN (
-                    (now() > {monday_utc_timestamp} AND plog.insert_ts > {tuesday_utc_timestamp})
+                    (now() > {monday_utc_timestamp} AND plog.insert_ts > {
+        tuesday_utc_timestamp
+    })
                     OR
-                    (now() < {monday_utc_timestamp} AND plog.insert_ts > {last_tuesday_utc_timestamp})
+                    (now() < {monday_utc_timestamp} AND plog.insert_ts > {
+        last_tuesday_utc_timestamp
+    })
                 ) THEN plog.earnings
             ELSE 0
         END as weekly_earnings,
@@ -2630,14 +2655,20 @@ async def get_top_channel_repliers(
           LEFT JOIN warpcast_members as wm
             ON (wm.fid = wf.fid
                 AND wm.channel_id = wf.channel_id
-                {"AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)"
-                    if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
+                {
+        "AND wm.insert_ts=(select max(insert_ts) FROM warpcast_members where channel_id=$1)"
+        if settings.DB_VERSION == DBVersion.EIGEN2
+        else ""
+    }
                )
           INNER JOIN warpcast_channels_data as ch on (wf.channel_id = ch.id and ch.id=$1)
           WHERE
           wm.fid IS NULL
-          {"AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
-                if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
+          {
+        "AND wf.insert_ts=(select max(insert_ts) FROM warpcast_followers where channel_id=$1)"
+        if settings.DB_VERSION == DBVersion.EIGEN2
+        else ""
+    }
         ),
         followers_data as (
             SELECT
@@ -2705,32 +2736,32 @@ async def get_trending_channel_casts_heavy(
     pool: Pool,
 ):
     logger.info("get_trending_channel_casts_heavy")
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fid_score_sql = 'cbrt(fids.score)'
+        fid_score_sql = "cbrt(fids.score)"
     else:
-        fid_score_sql = 'fids.score'
+        fid_score_sql = "fids.score"
 
     if shuffle:
-        shuffle_sql = 'random(),'
+        shuffle_sql = "random(),"
     else:
-        shuffle_sql = ''
+        shuffle_sql = ""
 
-    order_sql = 'cast_score DESC'
+    order_sql = "cast_score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_score DESC'
+            order_sql = "cast_score DESC"
         case SortingOrder.RECENT:
-            order_sql = 'cast_ts DESC'
+            order_sql = "cast_ts DESC"
         case SortingOrder.HOUR:
-            order_sql = f'age_hours ASC, {shuffle_sql} cast_score DESC'
+            order_sql = f"age_hours ASC, {shuffle_sql} cast_score DESC"
         case SortingOrder.DAY:
-            order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
+            order_sql = f"age_days ASC, {shuffle_sql} cast_score DESC"
         case SortingOrder.REACTIONS:
-            order_sql = f'reaction_count DESC, {shuffle_sql} cast_score DESC'
+            order_sql = f"reaction_count DESC, {shuffle_sql} cast_score DESC"
 
     sql_query = f"""
     WITH
@@ -2902,32 +2933,32 @@ async def get_trending_channel_casts_lite(
 ):
     logger.info("get_trending_channel_casts_lite")
 
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fid_score_sql = 'cbrt(fids.score)'
+        fid_score_sql = "cbrt(fids.score)"
     else:
-        fid_score_sql = 'fids.score'
+        fid_score_sql = "fids.score"
 
     if shuffle:
-        shuffle_sql = 'random(),'
+        shuffle_sql = "random(),"
     else:
-        shuffle_sql = ''
+        shuffle_sql = ""
 
-    order_sql = 'cast_score DESC'
+    order_sql = "cast_score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_score DESC'
+            order_sql = "cast_score DESC"
         case SortingOrder.RECENT:
-            order_sql = 'cast_ts DESC'
+            order_sql = "cast_ts DESC"
         case SortingOrder.HOUR:
-            order_sql = f'age_hours ASC, {shuffle_sql} cast_score DESC'
+            order_sql = f"age_hours ASC, {shuffle_sql} cast_score DESC"
         case SortingOrder.DAY:
-            order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
+            order_sql = f"age_days ASC, {shuffle_sql} cast_score DESC"
         case SortingOrder.REACTIONS:
-            order_sql = 'reaction_count DESC, cast_score DESC'
+            order_sql = "reaction_count DESC, cast_score DESC"
 
     sql_query = f"""
     WITH
@@ -3013,29 +3044,28 @@ async def get_channel_casts_scores_lite(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-
     logger.info("get_channel_casts_scores_lite")
-    agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
     if normalize:
-        fid_score_sql = 'cbrt(fids.score)'
+        fid_score_sql = "cbrt(fids.score)"
     else:
-        fid_score_sql = 'fids.score'
+        fid_score_sql = "fids.score"
 
-    order_sql = 'cast_score DESC'
+    order_sql = "cast_score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
-            order_sql = 'cast_score DESC'
+            order_sql = "cast_score DESC"
         case SortingOrder.RECENT:
-            order_sql = 'cast_ts DESC'
+            order_sql = "cast_ts DESC"
         case SortingOrder.HOUR:
-            order_sql = 'age_hours ASC, cast_score DESC'
+            order_sql = "age_hours ASC, cast_score DESC"
         case SortingOrder.DAY:
-            order_sql = 'age_days ASC, cast_score DESC'
+            order_sql = "age_days ASC, cast_score DESC"
         case SortingOrder.REACTIONS:
-            order_sql = 'reaction_count DESC, cast_score DESC'
+            order_sql = "reaction_count DESC, cast_score DESC"
 
     sql_query = f"""
     WITH
@@ -3118,7 +3148,7 @@ async def get_trending_channels(
     SELECT
         ch.id,
         top_channels.score
-        {', ch.pinnedcasthash' if settings.DB_VERSION == DBVersion.EIGEN2 else ''}
+        {", ch.pinnedcasthash" if settings.DB_VERSION == DBVersion.EIGEN2 else ""}
     FROM top_channels
     INNER JOIN warpcast_channels_data as ch ON (ch.url = top_channels.url)
     ORDER BY top_channels.score DESC

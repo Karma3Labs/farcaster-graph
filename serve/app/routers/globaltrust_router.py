@@ -31,8 +31,8 @@ async def get_top_following_profiles(
         query_type=query_type,
     )
 
-    if query_type == 'superlite':
-        converted_ranks = {'fids': [record['fid'] for record in ranks]}
+    if query_type == "superlite":
+        converted_ranks = {"fids": [record["fid"] for record in ranks]}
         return {"result": converted_ranks}
     return {"result": ranks}
 
@@ -60,8 +60,8 @@ async def get_top_engagement_profiles(
         pool=pool,
         query_type=query_type,
     )
-    if query_type == 'superlite':
-        converted_ranks = {'fids': [record['fid'] for record in ranks]}
+    if query_type == "superlite":
+        converted_ranks = {"fids": [record["fid"] for record in ranks]}
         return {"result": converted_ranks}
     return {"result": ranks}
 

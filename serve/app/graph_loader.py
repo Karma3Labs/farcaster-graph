@@ -14,7 +14,6 @@ from .serverstatus import ServerStatus
 
 
 class GraphLoader:
-
     def __init__(self, *poargs, server_status: ServerStatus, **kwargs) -> None:
         super().__init__(*poargs, **kwargs)
         self.graphs = self.load_graphs()
@@ -85,7 +84,7 @@ class GraphLoader:
                 logger.debug(
                     f"In-memory mtime {model.mtime},"
                     f" OS mtime {os.path.getmtime(model.success_file)}"
-                    f" {"are not close" if is_graph_modified else "are close"}"
+                    f" {'are not close' if is_graph_modified else 'are close'}"
                 )
                 if is_graph_modified:
                     # signal to the load balancer to stop sending new requests
