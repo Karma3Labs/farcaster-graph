@@ -14,11 +14,11 @@ class IJVSql:
     LIKES = SQL(
         "LIKES",
         """
-    SELECT reactions.fid as i, reactions.target_fid as j, count(1) as likes_v 
-    FROM neynarv3.reactions 
-    INNER JOIN neynarv3.fids ON fids.fid = reactions.target_fid
+    SELECT actions.fid as i, actions.target_fid as j, count(1) as likes_v 
+    FROM neynarv3.reactions AS actions
+    INNER JOIN neynarv3.fids ON fids.fid = actions.target_fid
     WHERE reaction_type=1
-    AND reactions.target_fid IS NOT NULL
+    AND actions.target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
     """,
@@ -35,7 +35,7 @@ class IJVSql:
         "REPLIES",
         """
     SELECT fid as i, parent_fid as j, count(1) as replies_v 
-    FROM neynarv3.casts
+    FROM neynarv3.casts AS actions
     WHERE parent_hash IS NOT NULL
     {condition}
     GROUP by i, j
@@ -50,8 +50,8 @@ class IJVSql:
 		)
 		SELECT 
 			author_fid as i, mention_fid as j, count(1) as mentions_v
-		FROM mention
-    INNER JOIN neynarv3.fids ON fids.fid = mention.mention_fid
+		FROM mention AS actions
+    INNER JOIN neynarv3.fids ON fids.fid = actions.mention_fid
     {condition}
 		GROUP BY i, j
     """,
@@ -59,11 +59,11 @@ class IJVSql:
     RECASTS = SQL(
         "RECASTS",
         """
-    SELECT reactions.fid as i, reactions.target_fid as j, count(1) as recasts_v 
-    FROM neynarv3.reactions 
-    INNER JOIN neynarv3.fids ON fids.fid = reactions.target_fid
+    SELECT actions.fid as i, actions.target_fid as j, count(1) as recasts_v 
+    FROM neynarv3.reactions AS actions
+    INNER JOIN neynarv3.fids ON fids.fid = actions.target_fid
     WHERE reaction_type=2
-    AND reactions.target_fid IS NOT NULL
+    AND actions.target_fid IS NOT NULL
     {condition}
     GROUP BY i, j
     """,
@@ -72,11 +72,11 @@ class IJVSql:
         "FOLLOWS",
         """
     SELECT 
-        links.fid as i, 
-        links.target_fid as j,
+        actions.fid as i, 
+        actions.target_fid as j,
         1 as follows_v
-    FROM links 
-    INNER JOIN neynarv3.fids ON fids.fid = links.target_fid
+    FROM links AS actions
+    INNER JOIN neynarv3.fids ON fids.fid = actions.target_fid
     WHERE type = 'follow'::text
     {condition}
     ORDER BY i, j, follows_v desc

@@ -55,12 +55,12 @@ def _fetch_interactions_df(
     if _interactions_df is not None:
         return _interactions_df
 
-    # All the tables referred to in this function def have the same timestamp field
+    # All the tables referred to in this function have the same actions.timestamp field
     where_clause = (
-        f"timestamp >= now() - interval '{interval} days'"
+        f"actions.timestamp >= now() - interval '{interval} days'"
         if interval > 0
         else (
-            f"timestamp <= '{target_date}'::date + interval '1 day'"
+            f"actions.timestamp <= '{target_date}'::date + interval '1 day'"
             if target_date is not None
             else None
         )
