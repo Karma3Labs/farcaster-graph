@@ -381,6 +381,12 @@ def fetch_weighted_fid_scores_df(
     tbl_name = f"k3l_cast_action{'_v1' if is_v1 else ''}"
 
     cutoff = pacific_9am_in_utc_time(date_str)
+    cura_users = tuple(
+        db_utils.fetch_cura_users(
+            start_time=cutoff - interval, end_time=cutoff, events=["post", "quote_post"]
+        )
+    )
+    logger.info(f"Number of cura users: {len(cura_users)}")
 
     if not gapfill:
         exclude_condition = f"""
@@ -468,7 +474,8 @@ def fetch_weighted_fid_scores_df(
         FROM cast_scores_by_channel_fid
         WHERE cast_score > 0
         GROUP BY cast_hash, channel_id
-    )
+    ),
+    scores AS (
     SELECT
         casts.fid as fid,
         cast_scores.channel_id as channel_id,
@@ -477,6 +484,22 @@ def fetch_weighted_fid_scores_df(
     INNER JOIN k3l_recent_parent_casts AS casts
         ON casts.hash = cast_scores.cast_hash
     GROUP BY casts.fid, cast_scores.channel_id
+    ),
+    boosts AS (
+        SELECT channel_id, boost
+        FROM k3l_cura_boosts
+        WHERE %(cutoff_date)s <@ dates
+    )
+    SELECT
+        fid, channel_id, score * (
+            CASE
+            WHEN fid IN %(cura_users)s
+            THEN COALESCE(boost, 1)
+            ELSE 1
+            END
+        ) as score
+    FROM scores
+    LEFT OUTER JOIN boosts USING (channel_id)
     {"LIMIT 100" if settings.IS_TEST else ""}
     """
     sql_query, args = pyformat2format(
@@ -490,6 +513,8 @@ def fetch_weighted_fid_scores_df(
         recast_wt=recast_wt,
         like_wt=like_wt,
         strategy=strategy,
+        cura_users=cura_users,
+        cutoff_date=cutoff.date(),
     )
 
     with (
