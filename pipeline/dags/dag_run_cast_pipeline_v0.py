@@ -24,11 +24,6 @@ with DAG(
     is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
-    insert = BashOperator(
-        task_id="insert_cast_actions",
-        bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ ",
-    )
-
     insert8 = BashOperator(
         task_id="insert_cast_actions_e8",
         bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ -p eigen8 ",
@@ -38,13 +33,6 @@ with DAG(
     #     task_id="update_interactions",
     #     bash_command="cd /pipeline/ && ./run_cast_pipeline.sh -v ./.venv/ -f populate_interactions -p eigen8 ",
     # )
-
-    refresh = BashOperator(
-        task_id="refresh_parent_casts_view",
-        bash_command="""cd /pipeline/ && ./run_eigen2_postgres_sql.sh -w . "
-        REFRESH MATERIALIZED VIEW CONCURRENTLY k3l_recent_parent_casts;"
-        """,
-    )
 
     refresh8 = BashOperator(
         task_id="refresh_parent_casts_view_e8",
@@ -61,8 +49,6 @@ with DAG(
             f" -f gapfill -p {db} -t '{yesterday.strftime('%Y-%m-%d %H:%M:%S')}'"
         )
 
-    gapfill = gapfill_task.override(task_id="gapfill_cast_actions")("eigen2")
     gapfill8 = gapfill_task.override(task_id="gapfill_cast_actions_e8")("eigen8")
 
-    insert >> refresh >> gapfill
     insert8 >> refresh8 >> gapfill8
