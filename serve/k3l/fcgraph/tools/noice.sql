@@ -152,7 +152,7 @@ SELECT DISTINCT
 
         SELECT sum(cgt.v)
         FROM noice_gt AS cgt
-        INNER JOIN fids ON cgt.i = fids.i
+        INNER JOIN neynarv3.fids ON cgt.i = fids.i
     ), 0) AS tipped_fids_openrank_score
 FROM noice_tippers_final AS t
 LEFT JOIN noice_gt AS gt ON t.fid = gt.i;
@@ -557,7 +557,7 @@ SELECT
 
         SELECT sum(cgt2.v)
         FROM noice_gt AS cgt2
-        INNER JOIN fids USING (i)
+        INNER JOIN neynarv3.fids USING (i)
     ), 0) AS tipped_fids_openrank_score,
     ft.tipped_fids
 FROM noice_top_tippers AS t

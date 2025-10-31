@@ -367,7 +367,6 @@ async def _get_personalized_scores_for_fids(
         # need to create a new object with score
         return {
             'address': trusted_fid_addr_handle['address'],
-            'fname': trusted_fid_addr_handle['fname'],
             'username': trusted_fid_addr_handle['username'],
             'pfp': trusted_fid_addr_handle['pfp'],
             'bio': trusted_fid_addr_handle['bio'],

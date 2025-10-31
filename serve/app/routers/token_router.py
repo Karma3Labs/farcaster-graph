@@ -1,7 +1,8 @@
 import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Self, Optional
+from typing import Annotated, Optional, Self
+
 from asyncpg import Pool
 from eth_typing import ChecksumAddress
 from eth_utils import to_bytes, to_checksum_address
@@ -9,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool, db_utils
-from ..dependencies.token_feed import get_token_feed
 from ..dependencies.db_utils import get_all_token_balances, get_token_balances
+from ..dependencies.token_feed import get_token_feed
 from ..models.feed_model import WeightsField
 
 _logger = logging.getLogger(__name__)

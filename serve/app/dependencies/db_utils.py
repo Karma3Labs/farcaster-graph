@@ -162,23 +162,19 @@ async def get_handle_fid_for_addresses(addresses: list[str], pool: Pool):
     (
         SELECT
             verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            user_data.value as username,
+            profiles.username as username,
             verifications.fid as fid
         FROM verifications
-        LEFT JOIN fnames ON (verifications.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = verifications.fid and user_data.type=6)
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = verifications.fid)
         WHERE
             verifications.claim->>'address' = ANY($1::text[])
     UNION
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            user_data.value as username,
+            profiles.username as username,
             fids.fid as fid
-        FROM fids
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid and user_data.type=6)
+        FROM neynarv3.fids
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
             WHERE
                 '0x' || encode(fids.custody_address, 'hex') = ANY($1::text[])
     )
@@ -193,29 +189,21 @@ async def get_all_fid_addresses_for_handles(handles: list[str], pool: Pool):
     (
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN fids ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+            profiles.username as username,
+            fids.fid as fid
+        FROM neynarv3.fids
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
         WHERE
-            (fnames.fname = ANY($1::text[]))
-            OR
-            (user_data.value = ANY($1::text[]))
+            profiles.username = ANY($1::text[])
     UNION
         SELECT
             verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            user_data.value as username,
-            fnames.fid as fid
-        FROM fnames
-        INNER JOIN verifications ON (verifications.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fnames.fid and user_data.type=6)
+            profiles.username as username,
+            verifications.fid as fid
+        FROM verifications
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = verifications.fid)
         WHERE
-            (fnames.fname = ANY($1::text[]))
-            OR
-            (user_data.value = ANY($1::text[]))
+            profiles.username = ANY($1::text[])
     )
     ORDER BY username
     LIMIT 1000 -- safety valve
@@ -227,16 +215,12 @@ async def get_unique_fid_metadata_for_handles(handles: list[str], pool: Pool):
     sql_query = """
     SELECT
         '0x' || encode(any_value(neynarv3.fids.custody_address), 'hex') as address,
-        any_value(fnames.fname) as fname,
         any_value(profiles.username) as username,
         fids.fid as fid
     FROM neynarv3.fids
-    INNER JOIN neynarv2.fnames ON (fids.fid = fnames.fid)
     LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
     WHERE
-        (fnames.fname = ANY($1::text[]))
-        OR
-        (profiles.username = ANY($1::text[]))
+        profiles.username = ANY($1::text[])
     GROUP BY fids.fid
     LIMIT 1000 -- safety valve
     """
@@ -255,20 +239,18 @@ async def get_verified_addresses_for_fids(fids: list[str], pool: Pool):
             fids.fid as fid,
             ROW_NUMBER() OVER(PARTITION BY verifications.fid
                                 ORDER BY verifications.timestamp DESC) AS created_order
-        FROM fids
+        FROM neynarv3.fids
         INNER JOIN verifications ON (verifications.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     )
     SELECT
         vaddr.address as address,
-        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(fnames.fname)), null) as fnames,
-        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 6 then user_data.value end)), null) as usernames,
-        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 1 then user_data.value end)), null) as pfp,
-        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(case when user_data.type = 3 then user_data.value end)),null) as bios,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(profiles.username)), null) as usernames,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(profiles.pfp_url)), null) as pfp,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT(profiles.bio)),null) as bios,
         vaddr.fid as fid
     FROM verified_addresses as vaddr
-    LEFT JOIN neynarv2.fnames ON (vaddr.fid = fnames.fid)
     LEFT JOIN neynarv3.profiles ON (profiles.fid = vaddr.fid)
     LEFT JOIN latest_global_rank as grank ON (grank.fid = vaddr.fid)
     WHERE created_order=1
@@ -288,28 +270,24 @@ async def get_all_handle_addresses_for_fids(fids: list[str], pool: Pool):
     (
         SELECT
             '0x' || encode(fids.custody_address, 'hex') as address,
-            fnames.fname as fname,
-            case when user_data.type = 6 then user_data.value end as username,
-            case when user_data.type = 1 then user_data.value end as pfp,
-            case when user_data.type = 3 then user_data.value end as bio,
+            profiles.username as username,
+            profiles.pfp_url as pfp,
+            profiles.bio as bio,
             fids.fid as fid
-        FROM fids
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid)
+        FROM neynarv3.fids
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     UNION
         SELECT
             verifications.claim->>'address' as address,
-            fnames.fname as fname,
-            case when user_data.type = 6 then user_data.value end as username,
-            case when user_data.type = 1 then user_data.value end as pfp,
-            case when user_data.type = 3 then user_data.value end as bio,
+            profiles.username as username,
+            profiles.pfp_url as pfp,
+            profiles.bio as bio,
             fids.fid as fid
-        FROM fids
+        FROM neynarv3.fids
         INNER JOIN verifications ON (verifications.fid = fids.fid)
-        LEFT JOIN fnames ON (fids.fid = fnames.fid)
-        LEFT JOIN user_data ON (user_data.fid = fids.fid)
+        LEFT JOIN neynarv3.profiles ON (profiles.fid = fids.fid)
         WHERE
             fids.fid = ANY($1::integer[])
     )
@@ -332,7 +310,7 @@ async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
     ),
     addresses AS (
     SELECT fid,'0x' || encode(fids.custody_address, 'hex') as address
-    FROM fids where fid=ANY($1::integer[])
+    FROM neynarv3.fids where fid=ANY($1::integer[])
     UNION ALL
     SELECT fid, v.claim->>'address' as address
     FROM verifications v where fid=ANY($1::integer[])
@@ -345,13 +323,11 @@ async def get_unique_handle_metadata_for_fids(fids: list[str], pool: Pool):
     )
     SELECT agg_addresses.*,
         latest_global_rank.global_rank,
-        ANY_VALUE(fnames.fname) as fname,
-        ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
-        ANY_VALUE(case when user_data.type = 1 then user_data.value end)  as pfp,
-        ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio
+        ANY_VALUE(profiles.username) as username,
+        ANY_VALUE(profiles.pfp_url)  as pfp,
+        ANY_VALUE(profiles.bio) as bio
         from agg_addresses
-    LEFT JOIN fnames ON (agg_addresses.fid = fnames.fid)
-    LEFT JOIN user_data ON (user_data.fid = agg_addresses.fid)
+    LEFT JOIN neynarv3.profiles ON (profiles.fid = agg_addresses.fid)
     LEFT JOIN latest_global_rank on (agg_addresses.fid = latest_global_rank.fid)
     GROUP BY agg_addresses.fid,agg_addresses.address,latest_global_rank.global_rank
     LIMIT 1000 -- safety valve
@@ -369,13 +345,13 @@ async def get_top_profiles(
         )
         SELECT
             profile_id as fid,
-            any_value(user_data.value) as username,
+            any_value(profiles.username) as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_rank
         CROSS JOIN total
-        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+        LEFT JOIN neynarv3.profiles on (profiles.fid = profile_id)
         WHERE strategy_id = $1
         GROUP BY profile_id,rank,score,percentile
         ORDER BY rank
@@ -409,15 +385,13 @@ async def get_top_profiles(
         )
         SELECT
             profile_id as fid,
-            any_value(fnames.fname) as fname,
-            any_value(user_data.value) as username,
+            any_value(profiles.username) as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_rank
         CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = profile_id)
-        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+        LEFT JOIN neynarv3.profiles on (profiles.fid = profile_id)
         WHERE strategy_id = $1
         GROUP BY profile_id,rank,score,percentile
         ORDER BY rank
@@ -715,7 +689,7 @@ async def get_top_channel_earnings(
         sql_query = f"""
         WITH addresses as (
             SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
-            FROM fids
+            FROM neynarv3.fids
             UNION ALL
             SELECT v.claim->>'address' as address, fid
             FROM verifications v
@@ -723,10 +697,9 @@ async def get_top_channel_earnings(
         top_records as (
             SELECT
                 bal.fid,
-                fnames.fname as fname,
-                case when user_data.type = 6 then user_data.value end as username,
-                case when user_data.type = 1 then user_data.value end as pfp,
-                case when user_data.type = 3 then user_data.value end as bio,
+                profiles.username as username,
+                profiles.pfp_url as pfp,
+                profiles.bio as bio,
                 bal.balance as balance,
                 CASE
                     WHEN (bal.update_ts < now() - interval '1 days') THEN 0
@@ -736,8 +709,7 @@ async def get_top_channel_earnings(
                 bal.latest_earnings as latest_earnings,
                 bal.update_ts as bal_update_ts
             FROM {table_name} as bal
-            LEFT JOIN fnames on (fnames.fid = bal.fid)
-            LEFT JOIN user_data on (user_data.fid = bal.fid)
+            LEFT JOIN neynarv3.profiles on (profiles.fid = bal.fid)
             WHERE
                 bal.channel_id = $1
             {orderby_clause}
@@ -749,7 +721,6 @@ async def get_top_channel_earnings(
         )
         SELECT
             fid,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp,
             any_value(bio) as bio,
@@ -795,10 +766,9 @@ async def get_tokens_distribution_details(
             tlog.batch_id,
             tlog.fid,
             fid_address,
-            fnames.fname as fname,
-            case when user_data.type = 6 then user_data.value end as username,
-            case when user_data.type = 1 then user_data.value end as pfp,
-            case when user_data.type = 3 then user_data.value end as bio,
+            profiles.username as username,
+            profiles.pfp_url as pfp,
+            profiles.bio as bio,
             tlog.amt,
             tlog.txn_hash
         FROM k3l_channel_tokens_log AS tlog
@@ -806,8 +776,7 @@ async def get_tokens_distribution_details(
             ON (tlog.channel_id = dist_id.channel_id
                 AND dist_id.dist_id = tlog.dist_id
                 AND dist_id.batch_id = tlog.batch_id)
-        LEFT JOIN fnames on (fnames.fid = tlog.fid)
-        LEFT JOIN user_data on (user_data.fid = tlog.fid)
+        LEFT JOIN neynarv3.profiles on (profiles.fid = tlog.fid)
     )
     SELECT
         fid,
@@ -815,7 +784,6 @@ async def get_tokens_distribution_details(
         any_value(dist_id) as dist_id,
         any_value(batch_id) as batch_id,
         any_value(fid_address) as fid_address,
-        any_value(fname) as fname,
         any_value(username) as username,
         any_value(pfp) as pfp,
         any_value(bio) as bio,
@@ -923,10 +891,9 @@ async def get_points_distribution_preview(
         )
         SELECT
             l.channel_id, l.fid,
-            any_value(fnames.fname) as fname,
-            any_value(case when user_data.type = 6 then user_data.value end) as username,
-            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
-            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            any_value(profiles.username) as username,
+            any_value(profiles.pfp_url) as pfp,
+            any_value(profiles.bio) as bio,
             any_value(case when l.model_name = 'default' then earnings end) as default_earnings,
             any_value(case when l.model_name = 'sqrt_weighted' then earnings end) as sqrt_earnings,
             any_value(case when l.model_name = 'cbrt_weighted' then earnings end) as cbrt_earnings,
@@ -939,8 +906,7 @@ async def get_points_distribution_preview(
             and latest.model_name = l.model_name
             and latest.insert_ts <= l.insert_ts
             )
-        LEFT JOIN fnames on (fnames.fid = l.fid)
-        LEFT JOIN user_data on (user_data.fid = l.fid)
+        LEFT JOIN neynarv3.profiles on (profiles.fid = l.fid)
         GROUP BY l.channel_id, l.fid
         ORDER BY default_earnings desc NULLS LAST
         OFFSET $2
@@ -975,21 +941,19 @@ async def get_tokens_distribution_preview(
             SELECT
                 bal.fid as fid,
                 COALESCE(vaddr.address, encode(fids.custody_address,'hex')) as fid_address,
-                fnames.fname as fname,
-                case when user_data.type = 6 then user_data.value end as username,
-                case when user_data.type = 1 then user_data.value end as pfp,
-                case when user_data.type = 3 then user_data.value end as bio,
+                profiles.username as username,
+                profiles.pfp_url as pfp,
+                profiles.bio as bio,
                 bal.channel_id as channel_id,
                 round(bal.{points_col},0) as amt
             FROM k3l_channel_points_bal as bal
             LEFT JOIN latest_log as tlog
                 ON (tlog.channel_id = bal.channel_id AND tlog.fid = bal.fid
                     AND tlog.max_points_ts = bal.update_ts)
-            INNER JOIN fids ON (fids.fid = bal.fid)
+            INNER JOIN neynarv3.fids ON (fids.fid = bal.fid)
             LEFT JOIN latest_verified_address as vaddr
                 ON (vaddr.fid=bal.fid)
-            LEFT JOIN fnames on (fnames.fid = bal.fid)
-            LEFT JOIN user_data on (user_data.fid = bal.fid)
+            LEFT JOIN neynarv3.profiles on (profiles.fid = bal.fid)
             WHERE
                 tlog.channel_id IS NULL
                 AND bal.channel_id = $1
@@ -998,7 +962,6 @@ async def get_tokens_distribution_preview(
         SELECT
             fid,
             any_value(fid_address) as fid_address,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp,
             any_value(bio) as bio,
@@ -1037,7 +1000,7 @@ async def get_top_channel_profiles(
         ),
         addresses as (
             SELECT '0x' || encode(fids.custody_address, 'hex') as address, fid
-            FROM fids
+            FROM neynarv3.fids
             UNION ALL
             SELECT v.claim->>'address' as address, fid
             FROM verifications v
@@ -1045,10 +1008,9 @@ async def get_top_channel_profiles(
         top_records as (
             SELECT
                 ch.fid,
-                fnames.fname as fname,
-                case when user_data.type = 6 then user_data.value end as username,
-                case when user_data.type = 1 then user_data.value end as pfp,
-                case when user_data.type = 3 then user_data.value end as bio,
+                profiles.username as username,
+                profiles.pfp_url as pfp,
+                profiles.bio as bio,
                 rank,
                 score,
                 ((total.total - (rank - 1))*100 / total.total) as percentile,
@@ -1062,8 +1024,7 @@ async def get_top_channel_profiles(
                 bal.update_ts as bal_update_ts
             FROM k3l_channel_rank as ch
             CROSS JOIN total
-            LEFT JOIN fnames on (fnames.fid = ch.fid)
-            LEFT JOIN user_data on (user_data.fid = ch.fid)
+            LEFT JOIN neynarv3.profiles on (profiles.fid = ch.fid)
             LEFT JOIN k3l_channel_points_bal as bal
                 on (bal.channel_id=ch.channel_id and bal.fid=ch.fid)
             WHERE
@@ -1080,7 +1041,6 @@ async def get_top_channel_profiles(
         )
         SELECT
             fid,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp,
             any_value(bio) as bio,
@@ -1108,13 +1068,13 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
                 )
                 SELECT
                     profile_id as fid,
-                    any_value(user_data.value) as username,
+                    any_value(profiles.username) as username,
                     rank,
                     score,
                     ((total.total - (rank - 1))*100 / total.total) as percentile
                 FROM k3l_rank
                 CROSS JOIN total
-                LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+                LEFT JOIN neynarv3.profiles on (profiles.fid = profile_id)
                 WHERE
                     strategy_id = $1
                     AND profile_id = ANY($2::integer[])
@@ -1128,15 +1088,13 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
         )
         SELECT
             profile_id as fid,
-            any_value(fnames.fname) as fname,
-            any_value(user_data.value) as username,
+            any_value(profiles.username) as username,
             rank,
             score,
             ((total.total - (rank - 1))*100 / total.total) as percentile
         FROM k3l_rank
         CROSS JOIN total
-        LEFT JOIN fnames on (fnames.fid = profile_id)
-        LEFT JOIN user_data on (user_data.fid = profile_id and user_data.type=6)
+        LEFT JOIN neynarv3.profiles on (profiles.fid = profile_id)
         WHERE
             strategy_id = $1
             AND profile_id = ANY($2::integer[])
@@ -1257,21 +1215,18 @@ async def get_channel_profile_ranks(
         bio_data AS (
           SELECT
                 top_records.fid,
-                any_value(fnames.fname) as fname,
-                any_value(case when user_data.type = 6 then user_data.value end) as username,
-                any_value(case when user_data.type = 1 then user_data.value end) as pfp,
-                any_value(case when user_data.type = 3 then user_data.value end) as bio,
+                any_value(profiles.username) as username,
+                any_value(profiles.pfp_url) as pfp,
+                any_value(profiles.bio) as bio,
                 ARRAY_AGG(DISTINCT v.claim->>'address') as address
           FROM top_records
-          LEFT JOIN fnames on (fnames.fid = top_records.fid)
-          LEFT JOIN user_data on (user_data.fid = top_records.fid and user_data.type in (6,1,3))
+          LEFT JOIN neynarv3.profiles on (profiles.fid = top_records.fid)
           LEFT JOIN verifications v on (v.fid = top_records.fid and v.deleted_at is null)
           GROUP BY top_records.fid
         )
         SELECT
             top_records.fid,
             channel_id,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp,
             any_value(bio) as bio,
@@ -1412,15 +1367,15 @@ async def get_top_frames_with_cast_details(
         (array_agg(distinct('0x' || encode(casts.hash, 'hex'))))[1:100] as cast_hashes,
         (array_agg(
             'https://warpcast.com/'||
-            fnames.fname||
+            profiles.username||
             '/0x' ||
             substring(encode(casts.hash, 'hex'), 1, 8)
         order by casts.created_at
         ))[1:$2] as warpcast_urls
     FROM top_frames
 	INNER JOIN k3l_cast_embed_url_mapping as url_map on (url_map.url_id = top_frames.url_id)
-    INNER JOIN casts on (casts.id = url_map.cast_id)
-    INNER JOIN fnames on (fnames.fid = casts.fid)
+    INNER JOIN neynarv3.casts on (casts.id = url_map.cast_id)
+    INNER JOIN neynarv3.profiles on (profiles.fid = casts.fid)
     GROUP BY top_frames.url
     ORDER BY score DESC
     """
@@ -1486,11 +1441,9 @@ async def get_neighbors_frames(
         weights.url as url,
         {agg_sql} as score,
         array_agg(distinct(weights.fid::integer)) as interacted_by_fids,
-        array_agg(distinct(fnames.fname)) as interacted_by_fnames,
-        array_agg(distinct(user_data.value)) as interacted_by_usernames
+        array_agg(distinct(profiles.username)) as interacted_by_usernames
     FROM weights
-    LEFT JOIN fnames on (fnames.fid = weights.fid)
-    LEFT JOIN user_data on (user_data.fid = weights.fid and user_data.type=6)
+    LEFT JOIN neynarv3.profiles on (profiles.fid = weights.fid)
     GROUP BY weights.url
     ORDER by score DESC
     LIMIT $2
@@ -1606,7 +1559,7 @@ async def get_recent_neighbors_casts(
         SELECT
             '0x' || encode(casts.hash, 'hex') as cast_hash,
             casts.fid,
-            fnames.fname,
+            profiles.username,
             casts.text,
             casts.embeds,
             casts.mentions,
@@ -1620,7 +1573,7 @@ async def get_recent_neighbors_casts(
         INNER JOIN  json_to_recordset($1::json)
             AS trust(fid int, score numeric)
                 ON casts.fid = trust.fid
-        {'LEFT' if lite else 'INNER'} JOIN fnames ON (fnames.fid = casts.fid)
+        {'LEFT' if lite else 'INNER'} JOIN neynarv3.profiles ON (profiles.fid = casts.fid)
         WHERE casts.deleted_at IS NULL
         ORDER BY casts.timestamp DESC, cast_score desc
         OFFSET $2
@@ -1639,7 +1592,7 @@ async def get_recent_casts_by_fids(
     sql_query = """
         SELECT
             '0x' || encode( casts.hash, 'hex') as cast_hash
-        FROM casts
+        FROM neynarv3.casts
         WHERE
             casts.fid = ANY($1::integer[])
         ORDER BY casts.timestamp DESC
@@ -1881,11 +1834,11 @@ async def _get_new_user_casts_all(
     sql_query = f"""
                 WITH new_users AS (
                     SELECT fid
-                    FROM fids
+                    FROM neynarv3.fids
                     WHERE created_at >= $4
                     UNION DISTINCT
                     SELECT fid
-                    FROM channel_follows
+                    FROM neynarv3.channel_follows
                     WHERE channel_id = $1
                     GROUP BY fid
                     HAVING min(created_at) >= $4
@@ -2014,7 +1967,7 @@ async def get_popular_degen_casts(
                 c.timestamp,
               row_number() over ( partition by date_trunc('day',c.timestamp) order by date_trunc('day',c.timestamp), cast_score ) row_num
             FROM filtered_actions fa
-            INNER JOIN casts c ON (c.hash = fa.cast_hash)
+            INNER JOIN neynarv3.casts c ON (c.hash = fa.cast_hash)
             ORDER BY {ordering}
         )
         SELECT cast_hash, timestamp, cast_score, fid, text, embeds, mentions
@@ -2519,20 +2472,17 @@ async def get_top_channel_followers(
     bio_data AS (
         SELECT
             followers_data.fid,
-            any_value(fnames.fname) as fname,
-            any_value(case when user_data.type = 6 then user_data.value end) as username,
-            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
-            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            any_value(profiles.username) as username,
+            any_value(profiles.pfp_url) as pfp,
+            any_value(profiles.bio) as bio,
             ARRAY_AGG(DISTINCT v.claim->>'address') as address
         FROM followers_data
-        LEFT JOIN fnames on (fnames.fid = followers_data.fid)
-        LEFT JOIN user_data on (user_data.fid = followers_data.fid and user_data.type in (6,1,3))
+        LEFT JOIN neynarv3.profiles on (profiles.fid = followers_data.fid)
         LEFT JOIN verifications v on (v.fid = followers_data.fid and v.deleted_at is null)
         GROUP BY followers_data.fid
       )
     SELECT
         followers_data.fid,
-        any_value(fname) as fname,
         any_value(username) as username,
         any_value(pfp) as pfp,
         any_value(bio) as bio,
@@ -2666,22 +2616,19 @@ async def get_top_channel_holders(
     bio_data AS (
         SELECT
             balance_data.fid,
-            any_value(fnames.fname) as fname,
-            any_value(case when user_data.type = 6 then user_data.value end) as username,
-            any_value(case when user_data.type = 1 then user_data.value end) as pfp,
-            any_value(case when user_data.type = 3 then user_data.value end) as bio,
+            any_value(profiles.username) as username,
+            any_value(profiles.pfp_url) as pfp,
+            any_value(profiles.bio) as bio,
             ARRAY_AGG(DISTINCT v.claim->>'address') as address,
-            min(user_data.timestamp) as approx_fid_origints
+            min(profiles.created_at) as approx_fid_origints
         FROM balance_data
-        LEFT JOIN fnames on (fnames.fid = balance_data.fid)
-        LEFT JOIN user_data on (user_data.fid = balance_data.fid and user_data.type in (6,1,3))
+        LEFT JOIN neynarv3.profiles on (profiles.fid = balance_data.fid)
         LEFT JOIN verifications v on (v.fid = balance_data.fid AND v.deleted_at IS NULL)
         GROUP BY balance_data.fid
     ),
     leaderboard AS (
         SELECT
             balance_data.fid,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp,
             any_value(bio) as bio,
@@ -2754,16 +2701,11 @@ async def get_top_channel_repliers(
                 '0x' || encode(casts.hash, 'hex') as cast_hash,
                 klcr.rank as channel_rank,
                 k3l_rank.rank as global_rank,
-                fnames.fname as fname,
-                case user_data.type
-                    when 6 then user_data.value
-                end username,
-                case user_data.type
-                    when 1 then user_data.value
-                end pfp
+                profiles.username username,
+                profiles.pfp_url pfp
             FROM
                 non_member_followers as nmf
-                INNER JOIN casts
+                INNER JOIN neynarv3.casts
                     ON (casts.fid = nmf.fid
                         AND casts.root_parent_url = nmf.channel_url
                         AND casts.parent_hash IS NOT NULL
@@ -2775,8 +2717,7 @@ async def get_top_channel_repliers(
                 LEFT JOIN k3l_rank on (nmf.fid = k3l_rank.profile_id  and k3l_rank.strategy_id = 9)
                 LEFT JOIN k3l_channel_rank klcr
                     on (nmf.fid = klcr.fid and nmf.channel_id  = klcr.channel_id and klcr.strategy_name = $2)
-                LEFT JOIN fnames on (fnames.fid = nmf.fid)
-                LEFT JOIN user_data on (user_data.fid = nmf.fid and user_data.type in (6,1))
+                LEFT JOIN neynarv3.profiles on (profiles.fid = nmf.fid)
         )
         SELECT
             fid,
@@ -2784,7 +2725,6 @@ async def get_top_channel_repliers(
             channel_rank,
             global_rank,
             (array_agg(distinct(cast_hash)))[1:1] as cast_hash,
-            any_value(fname) as fname,
             any_value(username) as username,
             any_value(pfp) as pfp
         FROM followers_data
@@ -2919,10 +2859,9 @@ async def get_trending_channel_casts_heavy(
             MIN(cast_details.channel_rank) as channel_rank,
             MIN(cast_details.global_rank) as global_rank,
             MIN(cast_details.ptile) as ptile,
-            ANY_VALUE(fnames.fname) as fname,
-            ANY_VALUE(case when user_data.type = 6 then user_data.value end) as username,
-            ANY_VALUE(case when user_data.type = 1 then user_data.value end) as pfp,
-            ANY_VALUE(case when user_data.type = 3 then user_data.value end) as bio,
+            ANY_VALUE(profiles.username) as username,
+            ANY_VALUE(profiles.pfp_url) as pfp,
+            ANY_VALUE(profiles.bio) as bio,
             MAX(cast_details.cast_score) as cast_score,
             MAX(cast_details.reaction_count) as reaction_count,
             MIN(cast_details.age_hours) as age_hours,
@@ -2930,8 +2869,7 @@ async def get_trending_channel_casts_heavy(
             MIN(cast_details.cast_ts) as cast_ts,
             ANY_VALUE(cast_details.text) as text
         FROM cast_details
-        LEFT JOIN fnames ON (cast_details.fid = fnames.fid)
-        LEFT JOIN user_data ON (cast_details.fid = user_data.fid)
+        LEFT JOIN neynarv3.profiles ON (cast_details.fid = profiles.fid)
         GROUP BY cast_details.cast_hash
     )
     SELECT * FROM feed
@@ -3462,7 +3400,7 @@ async def get_trader_leaderboard(
                         ) * gt.score
                     ) AS value,
                     array_agg(DISTINCT '0x' || encode(c.hash, 'hex')) AS cast_hashes
-                FROM casts c
+                FROM neynarv3.casts c
                 JOIN actions a ON c.hash = a.cast_hash
                 JOIN k3l_rank gt ON a.fid = gt.profile_id AND gt.strategy_id = %(global_trust_strategy_id)s
                 GROUP BY c.fid
