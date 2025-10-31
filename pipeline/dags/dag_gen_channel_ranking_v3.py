@@ -205,19 +205,12 @@ def create_dag():
 
     @task_group(group_id="sync_data")
     def tg_sync():
-        # push_to_dune = BashOperator(
-        #     task_id='overwrite_channel_rank_in_dune_v3',
-        #     bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh overwrite_channel_rank_in_dune_v3"
-        # )
-
         push_to_dune = EmptyOperator(task_id="overwrite_channel_rank_in_dune_v3")
 
-        # push_to_s3 = BashOperator(
-        #     task_id='backup_channel_rank_s3',
-        #     bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3"
-        # )
-
-        push_to_s3 = EmptyOperator(task_id="backup_channel_rank_s3")
+        push_to_s3 = BashOperator(
+            task_id="backup_channel_rank_s3",
+            bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh upload_channel_rank_to_s3",
+        )
 
         push_to_dune >> push_to_s3
 

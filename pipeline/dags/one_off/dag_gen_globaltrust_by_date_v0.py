@@ -33,11 +33,6 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-    push_to_dune = BashOperator(
-        task_id="push_to_dune",
-        bash_command="cd /pipeline/dags/pg_to_dune && ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3 ",
-    )
-
     task1 = BashOperator(
         task_id="06-05",
         bash_command="cd /pipeline && ./run_globaltrust_pipeline.sh -w . -v ./.venv -d 2024-06-05",
@@ -68,4 +63,4 @@ with DAG(
         bash_command="cd /pipeline && ./run_globaltrust_pipeline.sh -w . -v ./.venv -d 2024-06-15 ",
     )
 
-    task1 >> task2 >> task3 >> push_to_dune >> task5 >> task6 >> task7
+    task1 >> task2 >> task3 >> task5 >> task6 >> task7

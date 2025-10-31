@@ -51,12 +51,6 @@ with DAG(
         dag=dag,
     )
 
-    upload_to_dune = BashOperator(
-        task_id="upload_to_dune",
-        bash_command="cd /pipeline/dags/pg_to_dune; ./upload_to_dune.sh overwrite_globaltrust_in_dune_v3",
-        dag=dag,
-    )
-
     trigger_refresh_views = TriggerDagRunOperator(
         task_id="trigger_refresh_views",
         trigger_dag_id="refresh_rank_view_v0",
@@ -74,7 +68,6 @@ with DAG(
         >> prep_globaltrust
         >> compute_engagement
         >> insert_db
-        >> upload_to_dune
         >> trigger_refresh_views
         # >> trigger_sync_sandbox
     )
