@@ -24,24 +24,37 @@ async def get_token_feed(
         before_ts = get_ts_in_search_query_format(get_ts_from_cursor(cursor))
 
     result = neynar_get(url).json()
-    decode_cursor = result['next']['cursor']
+    fip2_casts_cursor = result['next']['cursor']
     fip2_casts = result['casts']
-    after_ts = get_ts_in_search_query_format(get_ts_from_cursor(decode_cursor))
+    after_ts = None
+    if fip2_casts_cursor:
+        after_ts = get_ts_in_search_query_format(get_ts_from_cursor(fip2_casts_cursor))
 
     # get search casts
-    search_casts = search_all_casts(f"${token_symbol}", viewer_fid, before_ts, after_ts)
+    search_casts, search_next_cursor = search_all_casts(
+        f"${token_symbol}", viewer_fid, before_ts, after_ts
+    )
 
     all_casts = search_casts + fip2_casts
     # sort the casts
     all_casts.sort(key=lambda x: x['timestamp'], reverse=True)
 
-    return {"casts": all_casts, "next": {"cursor": decode_cursor}}
+    return {
+        "casts": all_casts,
+        "next": {"cursor": fip2_casts_cursor or search_next_cursor},
+    }
 
 
-def search_all_casts(search_str: str, viewer_fid: str, before_ts: str, after_ts: str):
-    final_search_str = f"{search_str} + after:{after_ts}"
+def search_all_casts(
+    search_str: str, viewer_fid: str, before_ts: Optional[str], after_ts: Optional[str]
+):
+    # fip2 feed is empty if `after_ts` is None, we only serve search feed going forward.
+
+    final_search_str = f"{search_str}"
+    if after_ts:
+        final_search_str += f" + after:{after_ts}"
     if before_ts:
-        final_search_str += f" before:{before_ts}"
+        final_search_str += f" + before:{before_ts}"
 
     next_cursor = None
     search_casts = []
@@ -62,10 +75,14 @@ def search_all_casts(search_str: str, viewer_fid: str, before_ts: str, after_ts:
             f"Fetched a page of search results, getting next page with cursor {next_cursor}"
         )
 
+        if not after_ts:
+            # fetch only 1 page if we are iterating over search feed only.
+            break
+
         if not next_cursor:
             break
 
-    return search_casts
+    return search_casts, next_cursor
 
 
 def neynar_get(path: str):
