@@ -36,6 +36,7 @@ sqlfluff = "^3.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.14.3"
+pandas-stubs = "^2.2.2"
 
 [build-system]
 requires = ["poetry-core"]
