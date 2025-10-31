@@ -1,15 +1,15 @@
 # Pre-requisites
-1. Generate graph artifacts by running the [pipeline](../pipeline/Readme.md) from the `pipeline` sub-project in the parent folder. *Note: if you are in a rush or developing locally, you can just use the sample graphs found in the `samples` folder of this sub-project*
+1. Generate graph artifacts by running the [pipeline](../pipeline/README.md) from the `pipeline` subproject in the parent folder. *Note: if you are in a rush or developing locally, you can just use the sample graphs found in the `samples` folder of this subproject*
 2. An instance of Postgres DB with data from Farcaster (installed locally or on a remote server) 
 3. Run an instance of [go-eigentrust](https://github.com/Karma3Labs/go-eigentrust) locally.
-4. Copy/rename `.env.sample` to `.env` and udpate the properties.
+4. Copy/rename `.env.sample` to `.env` and update the properties.
 5. Install [Python 3.12](https://www.python.org/downloads/)
-6. Install [Poetry](https://python-poetry.org) for depenedency management:
+6. Install [Poetry](https://python-poetry.org) for dependency management:
 `curl -sSL https://install.python-poetry.org | python3 -`
 7. Create a [virtualenv](https://docs.python.org/3/library/venv.html) somewhere on your machine - for example,`python3 -m venv .venv` will create a virtualenv in your current directory.
 
 ## Setup virtual environment
-1. Activate the virtual environment that your created in the steps above: `source .venv/bin/activate`
+1. Activate the virtual environment that you created in the steps above: `source .venv/bin/activate`
 2. Install dependencies `poetry install`
 
 # Start the server

@@ -1,4 +1,3 @@
-import json
 from typing import Annotated
 
 from asyncpg.pool import Pool
@@ -23,21 +22,14 @@ async def get_direct_engagement_for_handles(
     ],
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
-    graph_model: Graph = Depends(graph.get_ninetydays_graph),
+    graph_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input handles, return a list of handles
       that **only** the input handles have **directly engaged** with. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     """
-    if not (1 <= len(handles) <= 100):
-        raise HTTPException(
-            status_code=400, detail="Input should have between 1 and 100 entries"
-        )
-    logger.debug(handles)
-    res = await _get_direct_list_for_handles(handles, limit, pool, graph_model)
-    logger.debug(f"Result has {len(res)} rows")
-    return {"result": res}
+    return await get_direct_following_for_handles(handles, limit, pool, graph_model)
 
 
 @router.post("/following/handles")
@@ -56,7 +48,7 @@ async def get_direct_following_for_handles(
 ):
     """
     Given a list of input handles, return a list of handles
-      that **only** the input handles are **direcly** following. \n
+      that **only** the input handles are **directly** following. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     """
     if not (1 <= len(handles) <= 100):
@@ -95,21 +87,14 @@ async def get_direct_engagement_for_fids(
     ],
     limit: Annotated[int | None, Query(le=1000)] = 100,
     pool: Pool = Depends(db_pool.get_db),
-    graph_model: Graph = Depends(graph.get_ninetydays_graph),
+    graph_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input fids, return a list of fids
       that **only** the input fids have **directly** engaged with. \n
     Example: [1, 2] \n
     """
-    if not (1 <= len(fids) <= 100):
-        raise HTTPException(
-            status_code=400, detail="Input should have between 1 and 100 entries"
-        )
-    logger.debug(fids)
-    res = await _get_direct_list_for_fids(fids, limit, pool, graph_model)
-    logger.debug(f"Result has {len(res)} rows")
-    return {"result": res}
+    return await get_direct_following_for_fids(fids, limit, pool, graph_model)
 
 
 @router.post("/following/fids")
@@ -126,7 +111,7 @@ async def get_direct_following_for_fids(
 ):
     """
     Given a list of input fids, return a list of fids
-      that **only** the input fids are **direcly** following. \n
+      that **only** the input fids are **directly** following. \n
     Example: [1, 2] \n
     """
     if not (1 <= len(fids) <= 100):
@@ -148,7 +133,7 @@ async def _get_direct_list_for_fids(
     # get neighbors using fids
     neighbor_edges = await graph.get_direct_edges_list(fids, graph_model, limit)
 
-    # convert list of fid scores into a lookup with fid as key
+    # convert the list of fid scores into a lookup with fid as key
     # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
     edge_score_map = {edge['j']: edge['v'] for edge in neighbor_edges}
 
@@ -159,8 +144,8 @@ async def _get_direct_list_for_fids(
         edge_fids, pool
     )
 
-    # for every handle-fid pair, get score from corresponding fid
-    # {address,fname,username,fid} into {address,fname,username,fid,score}
+    # for every handle-fid pair, get the score from corresponding fid
+    # {address, fname, username, fid} into {address, fname, username, fid, score}
     def fn_include_score(edge_fid_handle: dict) -> dict:
         score = edge_score_map[edge_fid_handle['fid']]
         # trusted_fid_addr_handle is an 'asyncpg.Record'

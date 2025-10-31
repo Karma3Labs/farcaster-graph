@@ -5,9 +5,9 @@ from typing import NamedTuple, Self
 
 class ScoreAgg(StrEnum):
     RMS = 'rms'
-    SUMSQUARE = 'sumsquare'
+    SUM_SQUARE = 'sumsquare'
     SUM = 'sum'
-    SUMCUBEROOT = 'sumcuberoot'
+    SUM_CUBE_ROOT = 'sumcuberoot'
 
 
 class Voting(StrEnum):
@@ -28,9 +28,10 @@ class EngagementType(StrEnum):
     V3 = '2.0'
 
 
-engagement_ids = dict()
-engagement_ids[EngagementType.V1] = 3
-engagement_ids[EngagementType.V3] = 9
+engagement_ids = {
+    EngagementType.V1: 3,
+    EngagementType.V3: 9,
+}
 
 
 class Weights(NamedTuple):

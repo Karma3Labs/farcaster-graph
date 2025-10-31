@@ -3,7 +3,7 @@ import json
 import re
 import time
 from collections.abc import Awaitable, Iterable
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -19,8 +19,7 @@ from memoize.configuration import (
     MutableCacheConfiguration,
 )
 from memoize.wrapper import memoize
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.models.channel_model import (
     ChannelEarningsOrderBy,
@@ -47,44 +46,23 @@ class DOW(Enum):
 
 
 engine = create_async_engine(
-    settings.POSTGRES_ASYNC_URI.get_secret_value(),
+    settings.postgres_async_uri.get_secret_value(),
     echo=settings.POSTGRES_ECHO,
     future=True,
     pool_size=max(5, settings.POSTGRES_POOL_SIZE),
 )
-
-SessionLocal = sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False,
-    expire_on_commit=False,
-    class_=AsyncSession,
-)
-
-
-# async def get_db_session():
-#     async with SessionLocal() as session:
-#         try:
-#             yield session
-#         except Exception as e:
-#             await session.rollback()
-#             raise e
-#         finally:
-#             await session.close()
 
 
 def sql_for_agg(agg: ScoreAgg, score_expr: str) -> str:
     match agg:
         case ScoreAgg.SUM:
             return f"sum({score_expr})"
-        case ScoreAgg.SUMSQUARE:
+        case ScoreAgg.SUM_SQUARE:
             return f"sum(power({score_expr}, 2))"
         case ScoreAgg.RMS:
             return f"sqrt(avg(power({score_expr}, 2)))"
-        case ScoreAgg.SUMCUBEROOT:
+        case ScoreAgg.SUM_CUBE_ROOT:
             return f"sum(power({score_expr}, 1.0/3))"
-        case _:
-            return f"sum({score_expr})"
 
 
 def sql_for_decay(
@@ -577,7 +555,7 @@ async def get_channel_fid_metrics(
     metric_values as (
         SELECT
             metric_ts,
-            sum(int_value) over (order by metric_ts asc rows between unbounded preceding and current row) as int_value
+            sum(int_value) over (order by metric_ts rows between unbounded preceding and current row) as int_value
         FROM metric
     )
     SELECT
@@ -771,7 +749,7 @@ async def get_top_channels_for_fid(fid: int, pool: Pool):
     sql_query = """
 SELECT
   channel_id,
-  SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing key name for compatibility with frontend
+  SUM(casted * 2 + replied * 2 + recasted * 2 + liked * 1) as num_actions -- not changing the key name for compatibility with frontend
 FROM
   k3l_cast_action_v1
 WHERE
@@ -815,7 +793,7 @@ async def get_tokens_distribution_overview(
     FROM k3l_channel_tokens_log
     WHERE channel_id = $1
     GROUP BY channel_id, dist_id, batch_id
-    ORDER BY dist_id DESC, batch_id ASC
+    ORDER BY dist_id DESC, batch_id
     OFFSET $2
     LIMIT $3
     """
@@ -956,7 +934,7 @@ async def get_top_channel_profiles(
             channel_id = $1
             AND strategy_name = $2
             AND rank > $3 AND rank <= ($3 + $4)
-        ORDER BY rank ASC
+        ORDER BY rank
         """
     else:
         sql_query = """
@@ -999,7 +977,7 @@ async def get_top_channel_profiles(
                 AND
                 ch.strategy_name=$2
                 AND rank > $3 AND rank <= ($3 + $4)
-            ORDER BY rank ASC
+            ORDER BY rank
         ),
         mapped_records as (
             SELECT top_records.*,addresses.address
@@ -1020,7 +998,7 @@ async def get_top_channel_profiles(
             any_value(bal_update_ts) as bal_update_ts
         FROM mapped_records
         GROUP BY fid
-        ORDER by rank ASC
+        ORDER by rank
         """
     return await fetch_rows(
         channel_id, strategy_name, offset, limit, sql_query=sql_query, pool=pool
@@ -1072,11 +1050,11 @@ async def get_profile_ranks(strategy_id: int, fids: list[int], pool: Pool, lite:
 
 
 async def filter_channel_fids(
-    channel_id: str, fids: list[int], filter: ChannelFidType, pool: Pool
+    channel_id: str, fids: list[int], filter_: ChannelFidType, pool: Pool
 ):
-    if filter == ChannelFidType.FOLLOWER:
+    if filter_ == ChannelFidType.FOLLOWER:
         table_name = 'warpcast_followers'
-    elif filter == ChannelFidType.MEMBER:
+    elif filter_ == ChannelFidType.MEMBER:
         table_name = 'warpcast_members'
     else:
         return []
@@ -1107,9 +1085,9 @@ async def get_channel_profile_ranks(
         ORDER BY rank
         """
     else:
-        MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
-        TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
-        LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+        monday_utc_timestamp = _dow_utc_timestamp_str(DOW.MONDAY)
+        tuesday_utc_timestamp = _dow_utc_timestamp_str(DOW.TUESDAY)
+        last_tuesday_utc_timestamp = _last_dow_utc_timestamp_str(DOW.TUESDAY)
 
         sql_query = f"""
         WITH
@@ -1135,23 +1113,22 @@ async def get_channel_profile_ranks(
                 END as daily_earnings,
                 0 as token_daily_earnings,
                 CASE
-                    WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+                    WHEN (now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}) THEN false
                     ELSE true
                 END as is_weekly_earnings_available,
                 CASE
                     WHEN (
-                        now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
-                        AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
-                        AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+                        now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}
+                        AND plog.insert_ts > {last_tuesday_utc_timestamp}
+                        AND plog.insert_ts < {tuesday_utc_timestamp}
                     ) THEN plog.earnings
-                    ELSE NULL
                 END as latest_earnings,
                 tok.latest_earnings as token_latest_earnings,
                 CASE
                     WHEN (
-                        (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                        (now() > {monday_utc_timestamp} AND plog.insert_ts > {tuesday_utc_timestamp})
                         OR
-                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
+                        (now() < {monday_utc_timestamp} AND plog.insert_ts > {last_tuesday_utc_timestamp})
                     ) THEN plog.earnings
                     ELSE 0
                 END as weekly_earnings,
@@ -1368,6 +1345,15 @@ async def get_neighbors_frames(
     else:
         time_filter_sql = ""
 
+    wt_score_sql = 'k3l_rank.score'
+    wt_weight_sql = f"""
+                        case interactions.action_type
+                            when 'cast' then {weights.cast}
+                            when 'recast' then {weights.recast}
+                            else {weights.like}
+                            end
+                        """
+    wt_group_by_sql = ''
     match voting:
         case Voting.SINGLE:
             wt_score_sql = 'max(score)'
@@ -1379,16 +1365,6 @@ async def get_neighbors_frames(
                                 end)
                             """
             wt_group_by_sql = 'GROUP BY interactions.url, interactions.fid'
-        case _:
-            wt_score_sql = 'k3l_rank.score'
-            wt_weight_sql = f"""
-                            case interactions.action_type
-                                when 'cast' then {weights.cast}
-                                when 'recast' then {weights.recast}
-                                else {weights.like}
-                                end
-                            """
-            wt_group_by_sql = ''
 
     sql_query = f"""
     WITH weights AS
@@ -1588,9 +1564,13 @@ async def get_all_token_balances(
     """
     if limit is not None:
         sql_query += "\nLIMIT $2"
-        return await fetch_rows(token_address, limit, sql_query=sql_query, pool=pool)
+        return records2dicts(
+            await fetch_rows(token_address, limit, sql_query=sql_query, pool=pool)
+        )
 
-    return await fetch_rows(token_address, sql_query=sql_query, pool=pool)
+    return records2dicts(
+        await fetch_rows(token_address, sql_query=sql_query, pool=pool)
+    )
 
 
 async def get_token_balances(
@@ -1601,7 +1581,9 @@ async def get_token_balances(
         FROM k3l_token_holding_fids
         WHERE token_address = $1::bytea AND fid = ANY($2::bigint[])
     """
-    return await fetch_rows(token_address, fids, sql_query=sql_query, pool=pool)
+    return records2dicts(
+        await fetch_rows(token_address, fids, sql_query=sql_query, pool=pool)
+    )
 
 
 TOKEN_FEED_CACHE_SIZE = 1000
@@ -1652,6 +1634,7 @@ async def _get_token_holder_casts_all(
     )
     now = datetime.now(UTC).replace(tzinfo=None)
     min_timestamp = now - max_cast_age
+    order_by = f"ORDER BY score DESC"
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_by = f"ORDER BY score DESC"
@@ -1669,8 +1652,6 @@ async def _get_token_holder_casts_all(
             order_by = f"ORDER BY time_bucket ASC, balance_raw DESC, score DESC"
             if limit_casts is None:
                 limit_casts = 3
-        case _:
-            order_by = f"ORDER BY score DESC"
     if limit_casts is None:
         limit_casts_condition = ""
     else:
@@ -1762,6 +1743,7 @@ async def get_token_holder_casts(
     return all_casts[offset : (offset + limit)]
 
 
+# noinspection PyUnusedLocal
 async def _get_new_user_casts_all(
     channel_id: str,
     caster_age: timedelta,
@@ -1999,6 +1981,7 @@ async def get_popular_channel_casts_lite(
 
     agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
+    order_sql = 'cast_score DESC'
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
@@ -2010,8 +1993,6 @@ async def get_popular_channel_casts_lite(
             order_sql = "age_days ASC, cast_score DESC"
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
-        case _:
-            order_sql = 'cast_score DESC'
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
@@ -2103,6 +2084,7 @@ async def get_popular_channel_casts_heavy(
     logger.info("get_popular_channel_casts_heavy")
     agg_sql = sql_for_agg(agg, 'fid_cast_scores.cast_score')
 
+    order_sql = 'cast_score DESC'
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
@@ -2114,8 +2096,6 @@ async def get_popular_channel_casts_heavy(
             order_sql = "age_days ASC, cast_score DESC"
         case SortingOrder.REACTIONS:
             order_sql = "reaction_count DESC, cast_score DESC"
-        case _:
-            order_sql = 'cast_score DESC'
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
 
@@ -2361,9 +2341,9 @@ async def get_top_channel_followers(
     channel_id: str, strategy_name: str, offset: int, limit: int, pool: Pool
 ):
 
-    MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
-    TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
-    LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+    monday_utc_timestamp = _dow_utc_timestamp_str(DOW.MONDAY)
+    tuesday_utc_timestamp = _dow_utc_timestamp_str(DOW.TUESDAY)
+    last_tuesday_utc_timestamp = _last_dow_utc_timestamp_str(DOW.TUESDAY)
 
     sql_query = f"""
     WITH
@@ -2395,23 +2375,22 @@ async def get_top_channel_followers(
         END as daily_earnings,
         0 as token_daily_earnings,
         CASE
-            WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+            WHEN (now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}) THEN false
             ELSE true
         END as is_weekly_earnings_available,
         CASE
             WHEN (
-                now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
-                AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
-                AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+                now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}
+                AND plog.insert_ts > {last_tuesday_utc_timestamp}
+                AND plog.insert_ts < {tuesday_utc_timestamp}
             ) THEN plog.earnings
-            ELSE NULL
         END as latest_earnings,
         tok.latest_earnings as token_latest_earnings,
         CASE
             WHEN (
-                    (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                    (now() > {monday_utc_timestamp} AND plog.insert_ts > {tuesday_utc_timestamp})
                     OR
-                    (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
+                    (now() < {monday_utc_timestamp} AND plog.insert_ts > {last_tuesday_utc_timestamp})
                 ) THEN plog.earnings
             ELSE 0
         END as weekly_earnings,
@@ -2495,9 +2474,9 @@ async def get_top_channel_holders(
     if orderby == ChannelEarningsOrderBy.WEEKLY:
         orderby_clause = "ORDER BY weekly_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.DAILY:
-        orderby_clause = "ORDER BY daily_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+        orderby_clause = "ORDER BY daily_earnings DESC NULLS LAST, channel_rank, global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.LATEST:
-        orderby_clause = "ORDER BY latest_earnings DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
+        orderby_clause = "ORDER BY latest_earnings DESC NULLS LAST, channel_rank, global_rank NULLS LAST"
     elif orderby == ChannelEarningsOrderBy.TOTAL:
         orderby_clause = (
             "ORDER BY balance DESC NULLS LAST, channel_rank,global_rank NULLS LAST"
@@ -2506,9 +2485,9 @@ async def get_top_channel_holders(
         orderby_clause = "ORDER BY channel_rank,global_rank NULLS LAST"
 
     # CLOSEST_SUNDAY = 'now()::DATE - EXTRACT(DOW FROM now())::INTEGER'
-    MONDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.MONDAY)
-    TUESDAY_UTC_TIMESTAMP = _dow_utc_timestamp_str(DOW.TUESDAY)
-    LAST_TUESDAY_UTC_TIMESTAMP = _last_dow_utc_timestamp_str(DOW.TUESDAY)
+    monday_utc_timestamp = _dow_utc_timestamp_str(DOW.MONDAY)
+    tuesday_utc_timestamp = _dow_utc_timestamp_str(DOW.TUESDAY)
+    last_tuesday_utc_timestamp = _last_dow_utc_timestamp_str(DOW.TUESDAY)
 
     sql_query = f"""
     WITH
@@ -2538,23 +2517,22 @@ async def get_top_channel_holders(
             END as daily_earnings,
             0 as token_daily_earnings,
             CASE
-                WHEN (now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}) THEN false
+                WHEN (now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}) THEN false
                 ELSE true
             END as is_weekly_earnings_available,
             CASE
                 WHEN (
-                    now() BETWEEN {MONDAY_UTC_TIMESTAMP} AND {TUESDAY_UTC_TIMESTAMP}
-                    AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP}
-                    AND plog.insert_ts < {TUESDAY_UTC_TIMESTAMP}
+                    now() BETWEEN {monday_utc_timestamp} AND {tuesday_utc_timestamp}
+                    AND plog.insert_ts > {last_tuesday_utc_timestamp}
+                    AND plog.insert_ts < {tuesday_utc_timestamp}
                 ) THEN plog.earnings
-                ELSE NULL
             END as latest_earnings,
             tok.latest_earnings as token_latest_earnings,
             CASE
                 WHEN (
-                        (now() > {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {TUESDAY_UTC_TIMESTAMP})
+                        (now() > {monday_utc_timestamp} AND plog.insert_ts > {tuesday_utc_timestamp})
                         OR
-                        (now() < {MONDAY_UTC_TIMESTAMP} AND plog.insert_ts > {LAST_TUESDAY_UTC_TIMESTAMP})
+                        (now() < {monday_utc_timestamp} AND plog.insert_ts > {last_tuesday_utc_timestamp})
                     ) THEN plog.earnings
                 ELSE 0
             END as weekly_earnings,
@@ -2668,7 +2646,7 @@ async def get_top_channel_repliers(
                 '0x' || encode(casts.hash, 'hex') as cast_hash,
                 klcr.rank as channel_rank,
                 k3l_rank.rank as global_rank,
-                profiles.username username,
+                profiles.username AS username,
                 profiles.pfp_url pfp
             FROM
                 non_member_followers as nmf
@@ -2741,6 +2719,7 @@ async def get_trending_channel_casts_heavy(
     else:
         shuffle_sql = ''
 
+    order_sql = 'cast_score DESC'
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
@@ -2752,8 +2731,6 @@ async def get_trending_channel_casts_heavy(
             order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = f'reaction_count DESC, {shuffle_sql} cast_score DESC'
-        case _:
-            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -2939,6 +2916,7 @@ async def get_trending_channel_casts_lite(
     else:
         shuffle_sql = ''
 
+    order_sql = 'cast_score DESC'
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
@@ -2950,8 +2928,6 @@ async def get_trending_channel_casts_lite(
             order_sql = f'age_days ASC, {shuffle_sql} cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
-        case _:
-            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -3048,6 +3024,7 @@ async def get_channel_casts_scores_lite(
     else:
         fid_score_sql = 'fids.score'
 
+    order_sql = 'cast_score DESC'
     match sorting_order:
         case SortingOrder.SCORE | SortingOrder.POPULAR:
             order_sql = 'cast_score DESC'
@@ -3059,8 +3036,6 @@ async def get_channel_casts_scores_lite(
             order_sql = 'age_days ASC, cast_score DESC'
         case SortingOrder.REACTIONS:
             order_sql = 'reaction_count DESC, cast_score DESC'
-        case _:
-            order_sql = 'cast_score DESC'
 
     sql_query = f"""
     WITH
@@ -3128,7 +3103,7 @@ async def get_trending_channels(
         FROM
             k3l_rank
         WHERE strategy_id=9 AND rank <= $1
-        ORDER BY rank ASC
+        ORDER BY rank
     ),
     top_channels AS (
         SELECT
@@ -3367,7 +3342,7 @@ async def get_trader_leaderboard(
                         ) * gt.score
                     ) AS value,
                     array_agg(DISTINCT '0x' || encode(c.hash, 'hex')) AS cast_hashes
-                FROM neynarv3.casts c
+                FROM casts c
                 JOIN actions a ON c.hash = a.cast_hash
                 JOIN k3l_rank gt ON a.fid = gt.profile_id AND gt.strategy_id = %(global_trust_strategy_id)s
                 GROUP BY c.fid
@@ -3419,8 +3394,8 @@ def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
     parameter values.
 
     :param sql: SQL query string with Python-style (%s) placeholders.
-    :param poargs: Positional arguments for parameters referenced in the SQL string.
-    :param kwargs: Keyword arguments for named parameters referenced in the SQL string.
+    :param poargs: Positional arguments for the parameters referenced in the SQL string.
+    :param kwargs: Keyword arguments for the named parameters referenced in the SQL string.
     :return: A tuple containing the reformatted SQL string with dollar-style placeholders
         and the corresponding list of parameter values.
 
@@ -3487,8 +3462,16 @@ def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
             new_sql += f"${len(new_args)}"
         elif m.group("passthrough") is not None:
             new_sql += m.group()
-        elif (unknown := m.group("unknown")) is not None:
+        elif (_unknown := m.group("unknown")) is not None:
             msg = f"invalid % sequence '%h' in SQL at index {m.start()}"
             raise ValueError(msg)
     new_sql += sql[pos:]
     return new_sql, new_args
+
+
+def record2dict(record: asyncpg.Record) -> dict[str, Any]:
+    return {key: value for key, value in record.items()}
+
+
+def records2dicts(records: list[asyncpg.Record]) -> list[dict[str, Any]]:
+    return [record2dict(record) for record in records]

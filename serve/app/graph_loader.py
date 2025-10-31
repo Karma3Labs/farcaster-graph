@@ -23,53 +23,55 @@ class GraphLoader:
     def get_graphs(self):
         return self.graphs
 
-    def load_graph(self, path_prefix, graph_type: GraphType):
-        sfile = f"{path_prefix}_SUCCESS"
-        dfile = f"{path_prefix}_df.pkl"
+    @staticmethod
+    def load_graph(path_prefix, graph_type: GraphType):
+        s_file = f"{path_prefix}_SUCCESS"
+        d_file = f"{path_prefix}_df.pkl"
 
         utils.log_memusage(logger)
-        logger.info(f"unpickling {dfile}")
-        df = pandas.read_pickle(dfile)
+        logger.info(f"unpickling {d_file}")
+        df = pandas.read_pickle(d_file)
         logger.info(utils.df_info_to_string(df, with_sample=True))
         utils.log_memusage(logger)
 
         # logger.info(f"creating graph from dataframe ")
         # g = igraph.Graph.DataFrame(df, directed=True, use_vids=False)
         # logger.info(g.summary())
-        gfile = f"{path_prefix}_ig.pkl"
-        # logger.info(f"reading {gfile}")
-        # with open(gfile, 'rb') as pickle_file:
+        g_file = f"{path_prefix}_ig.pkl"
+        # logger.info(f"reading {g_file}")
+        # with open(g_file, 'rb') as pickle_file:
         #   pickled_data = bytearray(pickle_file.read())
-        logger.info(f"unpickling {gfile}")
+        logger.info(f"unpickling {g_file}")
         # g = pickle.loads(pickled_data)
-        g = igraph.Graph.Read_Pickle(gfile)
+        g = igraph.Graph.Read_Pickle(g_file)
         utils.log_memusage(logger)
 
         return Graph(
-            success_file=sfile,
+            success_file=s_file,
             df=df,
             graph=g,
             type=graph_type,
-            mtime=os.path.getmtime(sfile),
+            mtime=os.path.getmtime(s_file),
         )
 
     def load_graphs(self) -> dict:
         # TODO use TypedDict or a pydantic model
-        graphs = {}
+        graphs = {
+            GraphType.following: self.load_graph(
+                settings.FOLLOW_GRAPH_PATH_PREFIX, GraphType.following
+            )
+        }
 
         # TODO fix hardcoding of name -> file, type of model
-        graphs[GraphType.following] = self.load_graph(
-            settings.FOLLOW_GRAPH_PATHPREFIX, GraphType.following
-        )
         logger.info(f"loaded {graphs[GraphType.following]}")
 
-        # graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATHPREFIX, GraphType.engagement)
+        # graphs[GraphType.engagement] = self.load_graph(settings.ENGAGEMENT_GRAPH_PATH_PREFIX, GraphType.engagement)
         # logger.info(f"loaded {graphs[GraphType.engagement]}")
 
-        graphs[GraphType.ninetydays] = self.load_graph(
-            settings.NINETYDAYS_GRAPH_PATHPREFIX, GraphType.ninetydays
+        graphs[GraphType.ninety_days] = self.load_graph(
+            settings.NINETY_DAYS_GRAPH_PATH_PREFIX, GraphType.ninety_days
         )
-        logger.info(f"loaded {graphs[GraphType.ninetydays]}")
+        logger.info(f"loaded {graphs[GraphType.ninety_days]}")
 
         return graphs
 
@@ -99,6 +101,4 @@ class GraphLoader:
                     break
         except Exception as e:
             logger.error(e)
-        except:
-            logger.error("something bad happened")
         return

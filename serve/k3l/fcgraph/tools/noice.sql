@@ -152,7 +152,7 @@ SELECT DISTINCT
 
         SELECT sum(cgt.v)
         FROM noice_gt AS cgt
-        INNER JOIN neynarv3.fids ON cgt.i = fids.i
+        INNER JOIN fids ON cgt.i = fids.i
     ), 0) AS tipped_fids_openrank_score
 FROM noice_tippers_final AS t
 LEFT JOIN noice_gt AS gt ON t.fid = gt.i;
@@ -366,6 +366,8 @@ SELECT
 FROM noice_casts_hydrated_10k;
 
 DROP MATERIALIZED VIEW IF EXISTS noice_tipping_actions CASCADE;
+-- noinspection SqlResolve
+-- (for json_value)
 CREATE MATERIALIZED VIEW noice_tipping_actions AS
 WITH a AS (
     SELECT
@@ -379,21 +381,29 @@ WITH a AS (
                 THEN coalesce(
                     json_value(raw_payload, '$.data.cast.hash'),
                     json_value(raw_payload, '$.data.hash')
-                     )
-            END AS cast_hash
-    FROM noice_txs tx
+                )
+        END AS cast_hash
+    FROM noice_txs
     WHERE type IN ('comment', 'like', 'recast') AND raw_payload IS NOT NULL
 )
 
-SELECT a.from_fid, a.to_fid, a.type, a.cast_hash
+SELECT
+    a.from_fid,
+    a.to_fid,
+    a.type,
+    a.cast_hash
 FROM a
-JOIN noice_casts_hydrated_10k AS c ON lower(a.cast_hash) = lower('0x' || encode(c.hash, 'hex'))
+INNER JOIN noice_casts_hydrated_10k AS c
+    ON lower(a.cast_hash) = lower('0x' || encode(c.hash, 'hex'))
 WHERE a.cast_hash IS NOT NULL;
 ALTER MATERIALIZED VIEW noice_tipping_actions OWNER TO k3l_user;
 GRANT SELECT ON TABLE noice_tipping_actions TO k3l_readonly;
-CREATE INDEX noice_tipping_actions_cast_hash_idx ON noice_tipping_actions (cast_hash);
-CREATE INDEX noice_tipping_actions_from_fid_idx ON noice_tipping_actions (from_fid, to_fid, type);
-CREATE INDEX noice_tipping_actions_to_fid_idx ON noice_tipping_actions (to_fid, from_fid, type);
+CREATE INDEX noice_tipping_actions_cast_hash_idx
+ON noice_tipping_actions (cast_hash);
+CREATE INDEX noice_tipping_actions_from_fid_idx
+ON noice_tipping_actions (from_fid, to_fid, type);
+CREATE INDEX noice_tipping_actions_to_fid_idx
+ON noice_tipping_actions (to_fid, from_fid, type);
 
 DROP VIEW IF EXISTS noice_tipping_stats CASCADE;
 CREATE VIEW noice_tipping_stats AS
@@ -557,7 +567,7 @@ SELECT
 
         SELECT sum(cgt2.v)
         FROM noice_gt AS cgt2
-        INNER JOIN neynarv3.fids USING (i)
+        INNER JOIN fids USING (i)
     ), 0) AS tipped_fids_openrank_score,
     ft.tipped_fids
 FROM noice_top_tippers AS t

@@ -27,17 +27,17 @@ async def get_personalized_engagement_for_addresses(
     ],
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input addresses, return a list of addresses
       trusted by the extended network of the input addresses. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social engagement graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -84,9 +84,9 @@ async def get_personalized_following_for_addresses(
     Given a list of input addresses, return a list of addresses
       trusted by the extended network of the input addresses. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social following graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -120,7 +120,7 @@ async def _get_personalized_scores_for_addresses(
     fids = list(set(fids))
 
     res = await _get_personalized_scores_for_fids(
-        fetch_all_addrs=True,
+        fetch_all_addresses=True,
         fids=fids,
         k=k,
         limit=limit,
@@ -144,17 +144,17 @@ async def get_personalized_engagement_for_handles(
     ],
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input handles, return a list of handles
       trusted by the extended network of the input handles. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social engagement graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -194,9 +194,9 @@ async def get_personalized_following_for_handles(
     Given a list of input handles, return a list of handles
       trusted by the extended network of the input handles. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social following graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -225,7 +225,7 @@ async def _get_personalized_scores_for_handles(
     # extract fids from the handle-fid pairs
     fids = [hf["fid"] for hf in handle_fids]
     res = await _get_personalized_scores_for_fids(
-        fetch_all_addrs=False,
+        fetch_all_addresses=False,
         fids=fids,
         k=k,
         limit=limit,
@@ -248,19 +248,19 @@ async def get_personalized_engagement_for_fids(
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=5000)] = 100,
     lite: Annotated[bool, Query()] = False,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input fids, return a list of fids
       trusted by the extended network of the input fids. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social engagement graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     The API returns fnames and usernames by default.
-      If you want a lighter and faster response, just pass in `lite=true`. \n
+      If you want a lighter and faster response, pass in just `lite=true`. \n
     Example: [1, 2] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -271,7 +271,7 @@ async def get_personalized_engagement_for_fids(
     logger.debug(fids)
     logger.debug(timeframe)
     res = await _get_personalized_scores_for_fids(
-        fetch_all_addrs=False,
+        fetch_all_addresses=False,
         fids=fids,
         k=k,
         limit=limit,
@@ -301,11 +301,11 @@ async def get_personalized_following_for_fids(
     Given a list of input fids, return a list of fids
       trusted by the extended network of the input fids. \n
     The addresses in the result are ranked by a relative scoring mechanism
-      that is based on the EigenTrust algorithm. \n
+       based on the EigenTrust algorithm. \n
     The extended network is derived based on a BFS traversal of the social following graph
-      upto **k** degrees and until **limit** is reached. \n
+      up to **k** degrees and until **limit** is reached. \n
     The API returns fnames and usernames by default.
-      If you want a lighter and faster response, just pass in `lite=true`. \n
+      If you want a lighter and faster response, pass in just `lite=true`. \n
     Example: [1, 2] \n
     **IMPORTANT**: Please use HTTP POST method and not GET method.
     """
@@ -315,7 +315,7 @@ async def get_personalized_following_for_fids(
         )
     logger.debug(fids)
     res = await _get_personalized_scores_for_fids(
-        fetch_all_addrs=False,
+        fetch_all_addresses=False,
         fids=fids,
         k=k,
         limit=limit,
@@ -329,7 +329,7 @@ async def get_personalized_following_for_fids(
 
 async def _get_personalized_scores_for_fids(
     # Example: -d '[1, 2]'
-    fetch_all_addrs: bool,
+    fetch_all_addresses: bool,
     fids: list[int],
     k: int,
     limit: int,
@@ -343,7 +343,7 @@ async def _get_personalized_scores_for_fids(
     if lite:
         return sorted(trust_scores, key=lambda d: d['score'], reverse=True)
 
-    # convert list of fid scores into a lookup with fid as key
+    # convert the list of fid scores into a lookup with fid as key
     # [{fid1,score},{fid2,score}] -> {fid1:score, fid2:score}
     trusted_fid_score_map = {ts['fid']: ts['score'] for ts in trust_scores}
 
@@ -354,12 +354,12 @@ async def _get_personalized_scores_for_fids(
 
     trusted_fid_addr_handles = (
         await db_utils.get_all_handle_addresses_for_fids(trusted_fids, pool)
-        if fetch_all_addrs
+        if fetch_all_addresses
         else await db_utils.get_unique_handle_metadata_for_fids(trusted_fids, pool)
     )
 
-    # for every handle-fid pair, get score from corresponding fid
-    # {address,fname,username,fid} into {address,fname,username,fid,score}
+    # for every handle-fid pair, get a score from corresponding fid
+    # {address, fname, username, fid} into {address, fname, username, fid, score}
     def fn_include_score(trusted_fid_addr_handle: dict) -> dict:
         score = trusted_fid_score_map[trusted_fid_addr_handle['fid']]
         # trusted_fid_addr_handle is an 'asyncpg.Record'

@@ -1,4 +1,3 @@
-import json
 from typing import Annotated
 
 from asyncpg.pool import Pool
@@ -28,15 +27,15 @@ async def get_neighbors_engagement(
     ],
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input addresses, return a list of addresses
       that the input addresses have engaged with. \n
     We do a BFS traversal of the social engagement graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     """
     if not (1 <= len(addresses) <= 100):
@@ -80,7 +79,7 @@ async def get_neighbors_following(
     Given a list of input addresses, return a list of addresses
       that the input addresses are following. \n
     We do a BFS traversal of the social follower graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     """
     if not (1 <= len(addresses) <= 100):
@@ -116,14 +115,14 @@ async def _get_neighbors_list_for_addresses(
     neighbor_fids = await graph.get_neighbors_list(uniq_fids, graph_model, k, limit)
 
     # fetch address-fids pairs for neighbor fids
-    neighbor_fid_addrs = await db_utils.get_all_handle_addresses_for_fids(
+    neighbor_fid_addresses = await db_utils.get_all_handle_addresses_for_fids(
         neighbor_fids, pool
     )
 
     # filter out input addresses and return only addresses
     res = [
         neighbor['address']
-        for neighbor in neighbor_fid_addrs
+        for neighbor in neighbor_fid_addresses
         if not neighbor['address'] in addresses
     ]
 
@@ -142,15 +141,15 @@ async def get_neighbors_engagement_for_handles(
     ],
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input handles, return a list of handles
       that the input handles have engaged with. \n
     We do a BFS traversal of the social engagement graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     """
     if not (1 <= len(handles) <= 100):
@@ -189,7 +188,7 @@ async def get_neighbors_following_for_handles(
     Given a list of input handles, return a list of handles
       that the input handles are following. \n
     We do a BFS traversal of the social follower graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     Example: ["farcaster.eth", "varunsrin.eth", "farcaster", "v"] \n
     """
     if not (1 <= len(handles) <= 100):
@@ -244,17 +243,17 @@ async def get_neighbors_engagement_for_fids(
     k: Annotated[int, Query(le=5)] = 2,
     lite: Annotated[bool, Query()] = False,
     limit: Annotated[int | None, Query(le=1000)] = 100,
-    timeframe: GraphTimeframe = Query(GraphTimeframe.ninetydays),
+    timeframe: GraphTimeframe = Query(GraphTimeframe.ninety_days),
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input fids, return a list of fids
       that the input fids have engaged with. \n
     We do a BFS traversal of the social engagement graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     The API returns fnames and usernames by default.
-      If you want a lighter and faster response, just pass in `lite=true`. \n
+      If you want a lighter and faster response, pass in just `lite=true`. \n
     Example: [1, 2] \n
     """
     if not (1 <= len(fids) <= 100):
@@ -293,9 +292,9 @@ async def get_neighbors_following_for_fids(
     Given a list of input fids, return a list of fids
       that the input fids are following. \n
     We do a BFS traversal of the social follower graph
-      upto **k** degrees and terminate traversal when **limit** is reached. \n
+      up to **k** degrees and terminate the traversal when **limit** is reached. \n
     The API returns fnames and usernames by default.
-      If you want a lighter and faster response, just pass in `lite=true`. \n
+      If you want a lighter and faster response, pass in just `lite=true`. \n
     Example: [1, 2] \n
     """
     if not (1 <= len(fids) <= 100):
@@ -316,7 +315,7 @@ async def _get_neighbors_list_for_fids(
     lite: bool,
     pool: Pool,
     graph_model: Graph,
-) -> list[dict]:
+) -> list[dict] | list[str]:
     # get neighbors using fids
     neighbor_fids = await graph.get_neighbors_list(fids, graph_model, k, limit)
 

@@ -187,7 +187,7 @@ class TokenFeed(BaseModel):
     token_address: TokenAddressField
     min_balance: MinBalanceField = Decimal(1)
     lookback: timedelta = timedelta(days=3)
-    agg: ScoreAgg = ScoreAgg.SUMCUBEROOT
+    agg: ScoreAgg = ScoreAgg.SUM_CUBE_ROOT
     score_threshold: ScoreThresholdField = 0.9
     reactions_threshold: ReactionsThresholdField = 1
     cutoff_ptile: CutoffPtileField = 100

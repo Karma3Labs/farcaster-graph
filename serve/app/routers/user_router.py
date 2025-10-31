@@ -1,12 +1,15 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Depends, Header, Query
-from loguru import logger
 
-from ..dependencies import db_pool, db_utils, graph
+from ..dependencies import db_pool, db_utils
 
 router = APIRouter(tags=["User Labels (Requires API Key)"])
+
+
+def unused(*_):
+    pass
 
 
 @router.get("/labels/global/top_casters")
@@ -26,6 +29,7 @@ async def get_top_global_casters(
     Header 'x-api-key' is used to authenticate the user. Please contact hello@karma3labs.com or <a href="https://t.me/Karma3Labs" target=_blank>https://t.me/Karma3Labs</a> to get the trial API key. \n
     """
 
+    unused(x_api_key)
     top_casters = await db_utils.get_top_casters(offset=offset, limit=limit, pool=pool)
     return {"result": top_casters}
 
@@ -47,6 +51,7 @@ async def get_top_global_spammers(
     Header 'x-api-key' is used to authenticate the user. Please contact hello@karma3labs.com or <a href="https://t.me/Karma3Labs" target=_blank>https://t.me/Karma3Labs</a> to get the trial API key. \n
     """
 
+    unused(x_api_key)
     top_spammers = await db_utils.get_top_spammers(
         offset=offset, limit=limit, pool=pool
     )

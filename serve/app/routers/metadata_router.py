@@ -84,9 +84,13 @@ async def get_addresses_for_fids(
     logger.debug(fids)
     start_time = time.perf_counter()
     if verified_only:
-        rows = await db_utils.get_verified_addresses_for_fids(fids, pool)
+        rows = await db_utils.get_verified_addresses_for_fids(
+            [str(fid) for fid in fids], pool
+        )
     else:
-        rows = await db_utils.get_all_handle_addresses_for_fids(fids, pool)
+        rows = await db_utils.get_all_handle_addresses_for_fids(
+            [str(fid) for fid in fids], pool
+        )
     logger.info(f"query took {time.perf_counter() - start_time} secs")
     return {"result": rows}
 

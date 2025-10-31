@@ -1,10 +1,9 @@
 import json
 import urllib.parse
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from itertools import batched
 from typing import Annotated, Any
 
-import pytz
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
@@ -21,7 +20,6 @@ from ..models.channel_model import (
     ChannelFidType,
     ChannelPointsOrderBy,
     ChannelRankingsTimeframe,
-    OpenrankCategory,
 )
 from ..models.feed_model import (
     CASTS_AGE,
@@ -194,9 +192,9 @@ async def get_top_channels_for_fid(fid: int, pool: Pool = Depends(db_pool.get_db
     # returns the top channels for the fid based on interactions from the last 30 days
     user_top_channels = await db_utils.get_top_channels_for_fid(fid, pool)
 
-    MIN_TOP_CHANNELS = 25
+    min_top_channels = 25
 
-    if len(user_top_channels) < MIN_TOP_CHANNELS:
+    if len(user_top_channels) < min_top_channels:
         user_top_channel_ids = set(
             [channel["channel_id"] for channel in user_top_channels]
         )
@@ -204,7 +202,7 @@ async def get_top_channels_for_fid(fid: int, pool: Pool = Depends(db_pool.get_db
             max_cast_age=PARENT_CASTS_AGE[ChannelTimeframe.WEEK],
             rank_threshold=10000,
             offset=0,
-            limit=MIN_TOP_CHANNELS * 2,
+            limit=min_top_channels * 2,
             pool=pool,
         )
         for trending_channel in trending_channels:
@@ -241,7 +239,7 @@ async def get_top_channel_profiles(
     Parameter 'limit' is used to specify the number of results to return. \n
     Parameter 'lite' is used to indicate if additional details like
       fnames and percentile should be returned or not. \n
-    By default, limit is 100, offset is 0 and lite is True, i.e., returns top 100 fids.
+    By default, the limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     ranks = await db_utils.get_top_channel_profiles(
         channel_id=channel,
@@ -335,7 +333,7 @@ async def filter_channel_fids(
       that are filtered by the given filter. \n
       Example: [1, 2] \n
     Parameter 'filter' is used to indicate if the list should be filtered by followers or members. \n
-    By default, filter is 'follower'
+    By default, 'filter' is 'follower'
     """
     if not (1 <= len(fids) <= 100_000):
         raise HTTPException(
@@ -346,7 +344,7 @@ async def filter_channel_fids(
     for batch in batched(fids, settings.FID_BATCH_SIZE):
         logger.info(f"Processing batch {i}")
         filtered_fids = await db_utils.filter_channel_fids(
-            channel_id=channel, fids=list(batch), filter=filter_, pool=pool
+            channel_id=channel, fids=list(batch), filter_=filter_, pool=pool
         )
         results.extend([d['fid'] for d in filtered_fids])
         i += 1
@@ -723,7 +721,7 @@ async def get_trending_casts(
     agg: Annotated[
         ScoreAgg | None,
         Query(
-            description="Define the aggregation function" " - `rms`, `sumsquare`, `sum`"
+            description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
     ] = ScoreAgg.SUM,
     weights: Annotated[str | None, Query()] = 'L1C0R1Y1',
@@ -771,9 +769,9 @@ async def get_popular_casts_from_degen_graph(
     agg: Annotated[
         ScoreAgg | None,
         Query(
-            description="Define the aggregation function" " - `rms`, `sumsquare`, `sum`"
+            description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
-    ] = ScoreAgg.SUMSQUARE,
+    ] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = 'L1C10R5Y1',
     offset: Annotated[int | None, Query()] = 0,
     limit: Annotated[int | None, Query(le=10000)] = 100,
@@ -784,7 +782,7 @@ async def get_popular_casts_from_degen_graph(
     Get a list of recent casts that are the most popular
       based on Eigentrust scores of fids in the channel. \n
     This API takes optional parameters -
-      agg, weights, offset, limit and lite. \n
+      agg, weights, offset, limit, and lite. \n
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
     Parameter 'weights' is used to define the weights to be assigned
@@ -833,7 +831,7 @@ async def get_top_channel_followers(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
+    By default, the limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_followers(
         channel_id=channel,
@@ -903,7 +901,7 @@ async def get_top_channel_holders(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
+    By default, the limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_holders(
         channel_id=channel,
@@ -936,7 +934,7 @@ async def get_top_channel_repliers(
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return.
-    By default, limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
+    By default, the limit is 100, offset is 0, and lite is True, i.e., returns top 100 fids.
     """
     followers = await db_utils.get_top_channel_repliers(
         channel_id=channel,
@@ -961,10 +959,10 @@ async def get_trending_channels(
     """
     Get a list of trending channels
       based on Eigentrust rankings of fids. \n
-    This API takes optional parameters - lookback, rankThreshold, offset and limit. \n
+    This API takes optional parameters - lookback, rankThreshold, offset, and limit. \n
     Parameter 'lookback' is used to specify how far back to look for casts.\n
     Parameter 'rankThreshold' is used to specify
-      the minimum rank for an fid's activity to be considered. \n
+      the minimum rank for an FID's activity to be considered. \n
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
     Parameter 'limit' is used to specify the number of results to return. \n
@@ -1011,6 +1009,7 @@ async def get_top_casts(
         reaction_window: Reaction time window. (Default: `"PT24H"` for 24 hours)
         weights: Reaction types and their weights. (Default: `"L1C0R1Y1"`)
         rank_timeframe: User score's rank timeframe. (Default: `"60days"`)
+        pool: (internal, don't specify in the request)
     """
     try:
         parsed_weights = Weights.from_str(weights)

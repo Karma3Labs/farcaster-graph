@@ -11,12 +11,12 @@ from urllib3.util import Retry
 from .config import settings
 
 
-def log_memusage(logger: logger):
+def log_memusage(l):
     mem_usage = psutil.virtual_memory()
-    logger.info(f"Total: {mem_usage.total/(1024**2):.2f}M")
-    logger.info(f"Used: {mem_usage.percent}%")
-    logger.info(f"Used: {mem_usage.used/(1024**2):.2f}M")
-    logger.info(f"Free: {mem_usage.free/(1024**2):.2f}M")
+    l.info(f"Total: {mem_usage.total / (1024 ** 2):.2f}M")
+    l.info(f"Used: {mem_usage.percent}%")
+    l.info(f"Used: {mem_usage.used / (1024 ** 2):.2f}M")
+    l.info(f"Free: {mem_usage.free / (1024 ** 2):.2f}M")
 
 
 def df_info_to_string(df: pd.DataFrame, with_sample: bool = False):
@@ -24,6 +24,8 @@ def df_info_to_string(df: pd.DataFrame, with_sample: bool = False):
     df.info(verbose=True, buf=buf, memory_usage="deep", show_counts=True)
     if with_sample:
         buf.write(f"{'-' *15}\n| Sample rows:\n{'-' *15}\n")
+        # noinspection PyUnresolvedReferences
+        # (sample() has wrong type hint)
         df.sample(5).to_csv(buf, index=False)
     return buf.getvalue()
 
@@ -51,7 +53,7 @@ def fetch_channel(channel_id: str) -> str:
     return data.get("url")
 
 
-async def fetch_channel_token(channel_id: str) -> dict:
+async def fetch_channel_token(channel_id: str) -> dict | None:
     retries = Retry(
         total=3,
         backoff_factor=0.1,
@@ -79,7 +81,7 @@ async def fetch_channel_token(channel_id: str) -> dict:
             logger.warning(
                 f"404 Error: No tokens for Channel {channel_id} :{response.reason}"
             )
-            return
+            return None
         else:
             logger.error(f"Server error: {response.status_code}:{response.reason}")
             raise Exception(f"Server error: {response.status_code}:{response.reason}")

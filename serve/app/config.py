@@ -63,9 +63,9 @@ class Settings(BaseSettings):
     SWAGGER_BASE_URL: str
     NEYNAR_API_KEY: str
 
-    FOLLOW_GRAPH_PATHPREFIX: str = "/tmp/fc_following_fid"
-    ENGAGEMENT_GRAPH_PATHPREFIX: str = "/tmp/fc_engagement_fid"
-    NINETYDAYS_GRAPH_PATHPREFIX: str = "/tmp/fc_90dv3_fid"
+    FOLLOW_GRAPH_PATH_PREFIX: str = "/tmp/fc_following_fid"
+    ENGAGEMENT_GRAPH_PATH_PREFIX: str = "/tmp/fc_engagement_fid"
+    NINETY_DAYS_GRAPH_PATH_PREFIX: str = "/tmp/fc_90dv3_fid"
     RELOAD_FREQ_SECS: int = 3600
     PAUSE_BEFORE_RELOAD_SECS: int = 300
 
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     TOKEN_FEED_CACHE_SIZE: int = 1000
 
     @computed_field
-    def POSTGRES_URI(self) -> SecretStr:
+    def postgres_uri(self) -> SecretStr:
         return SecretStr(
             f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -88,7 +88,7 @@ class Settings(BaseSettings):
         )
 
     @computed_field
-    def POSTGRES_ASYNC_URI(self) -> SecretStr:
+    def postgres_async_uri(self) -> SecretStr:
         return SecretStr(
             f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD.get_secret_value()}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         )
 
     @computed_field
-    def CACHE_POSTGRES_URI(self) -> SecretStr:
+    def cache_postgres_uri(self) -> SecretStr:
         return SecretStr(
             f"postgresql://{self.CACHE_DB_USERNAME}:{self.CACHE_DB_PASSWORD.get_secret_value()}"
             f"@{self.CACHE_DB_HOST}:{self.CACHE_DB_PORT}/{self.CACHE_DB_NAME}"
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
         )
 
     @computed_field
-    def CACHE_POSTGRES_ASYNC_URI(self) -> SecretStr:
+    def cache_postgres_async_uri(self) -> SecretStr:
         return SecretStr(
             f"postgresql+asyncpg://{self.CACHE_DB_USERNAME}:{self.CACHE_DB_PASSWORD.get_secret_value()}"
             f"@{self.CACHE_DB_HOST}:{self.CACHE_DB_PORT}/{self.CACHE_DB_NAME}"
@@ -119,5 +119,11 @@ class OpenRankSettings(BaseSettings):
     MANAGER_ADDRESS: str
 
 
+# The types below require variables without defaults, but they are actually not strictly required
+# to be specified here because they can (and should) be specified in the `.env` file,
+# so disable argument list checks.
+
+# noinspection PyArgumentList
 settings = Settings()
+# noinspection PyArgumentList
 openrank_settings = OpenRankSettings()

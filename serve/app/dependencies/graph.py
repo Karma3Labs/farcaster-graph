@@ -25,15 +25,17 @@ def get_following_graph(request: Request) -> Graph:
 #     return request.state.graphs[GraphType.engagement]
 
 
-def get_ninetydays_graph(request: Request) -> Graph:
-    return request.state.graphs[GraphType.ninetydays]
+def get_90_days_graph(request: Request) -> Graph:
+    return request.state.graphs[GraphType.ninety_days]
 
 
-def find_vertex_idx(ig: igraph.GraphBase, fid: int) -> int:
+def find_vertex_idx(ig: igraph.GraphBase, fid: int) -> int | None:
+    # noinspection PyBroadException
     try:
         logger.debug(fid)
+        # noinspection PyUnresolvedReferences
         return ig.vs.find(name=fid).index
-    except:
+    except Exception:
         return None
 
 
@@ -77,11 +79,11 @@ async def go_eigentrust(
     if response.status_code != 200:
         logger.error(f"Server error: {response.status_code}:{response.reason}")
         raise HTTPException(status_code=500, detail="Unknown error")
-    trustscores = response.json()['entries']
+    trust_scores = response.json()['entries']
     logger.info(
-        f"eigentrust took {time.perf_counter() - start_time} secs for {len(trustscores)} scores"
+        f"eigentrust took {time.perf_counter() - start_time} secs for {len(trust_scores)} scores"
     )
-    return trustscores
+    return trust_scores
 
 
 async def get_neighbors_scores(
@@ -109,13 +111,13 @@ async def get_neighbors_scores(
     logger.trace(pseudo_id)
     logger.trace(orig_id)
 
-    # pseudo_df is a new dataframe to avoid modifying existing shared global df
+    # pseudo_df is a new dataframe to avoid modifying the existing shared global df
     pseudo_df = pandas.Series(pseudo_id, index=stacked.index).unstack()
-    pseudo_df.loc[:, ('v')] = df.loc[:, ('v')]
+    pseudo_df.loc[:, 'v'] = df.loc[:, 'v']
 
     fids_set = set(fids)
     if len(fids) > 1:
-        # when more than 1 fid in input list, the neighbor edges may not have some input fids.
+        # when more than 1 fid in the input list, the neighbor edges may not have some input fids.
         pt_fids = orig_id.where(orig_id.isin(fids_set))
     else:
         pt_fids = fids_set
@@ -163,7 +165,7 @@ async def get_neighbors_list(
     graph: Graph,
     max_degree: Annotated[int, Query(le=5)] = 2,
     max_neighbors: Annotated[int | None, Query(le=1000)] = 100,
-) -> str:
+) -> list[str]:
     df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
     # WARNING we are operating on a shared dataframe...
     # ...inplace=False by default, explicitly setting here for emphasis
@@ -192,7 +194,7 @@ async def _get_neighbors_edges(
     if max_neighbors > 0 and max_degree > 1:
 
         start_time = time.perf_counter()
-        k_set_next = await _fetch_korder_neighbors(
+        k_set_next = await _fetch_k_order_neighbors(
             fids, graph, max_degree, max_neighbors, min_degree=2
         )
         logger.info(
@@ -228,7 +230,9 @@ async def _get_neighbors_edges(
     return neighbors_df
 
 
-async def _fetch_korder_neighbors(
+# noinspection SpellCheckingInspection
+# (for "vids")
+async def _fetch_k_order_neighbors(
     fids: list[int],
     graph: Graph,
     max_degree: int,
@@ -258,7 +262,7 @@ async def _fetch_korder_neighbors(
             klists.append(graph.graph.vs[neighbors[0][:limit]]["name"])
             limit = limit - len(neighbors[0])
             if limit <= 0:
-                break  # we have reached limit of neighbors
+                break  # we have reached the limit of neighbors
             mindist_and_order += 1
         # end of while
         return set(itertools.chain(*klists))

@@ -45,7 +45,7 @@ async def get_token_feed(
     all_casts.sort(key=lambda x: x['timestamp'], reverse=True)
 
     if search_casts_next_cursor and fip2_casts_next_cursor:
-        # We fetch only 1 page from both and data upto common cursor.
+        # We fetch only 1 page from both and data up to the common cursor.
         fip2_ts = get_ts_in_search_query_format(
             get_ts_from_cursor(fip2_casts_next_cursor)
         )

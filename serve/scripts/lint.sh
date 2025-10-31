@@ -1,5 +1,5 @@
 #!/bin/sh
-unset -v tooldir verbose opt
+unset -v tool_dir verbose opt
 verbose=false
 OPTIND=1
 while getopts :b:v opt
@@ -7,14 +7,14 @@ do
 	case "${opt}" in
 		'?') echo "unrecognized option -${OPTARG}" >&2; exit 64;;
 		':') echo "missing argument for -${OPTARG}" >&2; exit 64;;
-		b) tooldir="${OPTARG}";;
+		b) tool_dir="${OPTARG}";;
 		v) verbose=true;;
 		*) echo "unhandled option -${opt}" >&2; exit 70;;
 	esac
 done
 shift $((OPTIND - 1))
-case "${tooldir+set}" in
-	set) PATH="${tooldir}${PATH+":${PATH}"}"; export PATH;;
+case "${tool_dir+set}" in
+	set) PATH="${tool_dir}${PATH+":${PATH}"}"; export PATH;;
 esac
 case $# in
         0)

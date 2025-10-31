@@ -1,6 +1,5 @@
 import asyncio
 import logging as log
-import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -10,7 +9,6 @@ import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import Depends, FastAPI, Request, Response, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +20,6 @@ from .graph_loader import GraphLoader
 from .routers.cast_router import router as cast_router
 from .routers.channel_router import router as channel_router
 from .routers.direct_router import router as direct_router
-from .routers.frame_router import router as frame_router
 from .routers.globaltrust_router import router as gt_router
 from .routers.graph_router import router as graph_router
 from .routers.localtrust_router import router as lt_router
@@ -68,7 +65,7 @@ logger.add(
 log.basicConfig(handlers=[logging.InterceptHandler()], level=0, force=True)
 log.getLogger("uvicorn").handlers = [logging.InterceptHandler()]
 log.getLogger("uvicorn.access").handlers = [logging.InterceptHandler()]
-# Since we launch uvicorn from command-line and not in code uvicorn.run,
+# Since we launch uvicorn from the command-line and not in code uvicorn.run,
 # changing LOGGING_CONFIG has no effect.
 # from uvicorn.config import LOGGING_CONFIG
 # LOGGING_CONFIG["formatters"]["access"]["fmt"] = \
@@ -100,27 +97,29 @@ async def _check_and_reload_models(loader: GraphLoader):
     logger.info("Starting graph loader loop")
     while True:
         await asyncio.sleep(settings.RELOAD_FREQ_SECS)
+        # noinspection PyTypeChecker
+        # (erroneously calls out that arguments are missing - they're optional)
         await loop.run_in_executor(executor=None, func=loader.reload_if_required)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Automatically called by FastAPI when server is started"""
+async def lifespan(_: FastAPI):
+    """Automatically called by FastAPI when the server is started"""
     logger.warning(f"{settings}")
 
     # create a DB connection pool
     logger.info("Creating DB pool")
-    app_state['db_pool'] = await asyncpg.create_pool(
-        settings.POSTGRES_URI.get_secret_value(),
+    app_state['db_pool'] = asyncpg.create_pool(
+        settings.postgres_uri.get_secret_value(),
         min_size=1,
         max_size=settings.POSTGRES_POOL_SIZE,
     )
     logger.info("DB pool created")
 
     if settings.CACHE_DB_ENABLED:
-        logger.info("Creating Cache DB pool")
-        app_state['cache_db_pool'] = await asyncpg.create_pool(
-            settings.CACHE_POSTGRES_URI.get_secret_value(),
+        logger.info("Creating a Cache DB pool")
+        app_state['cache_db_pool'] = asyncpg.create_pool(
+            settings.cache_postgres_uri.get_secret_value(),
             min_size=1,
             max_size=settings.CACHE_POSTGRES_POOL_SIZE,
         )
@@ -130,7 +129,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Loading graphs")
     # Create a singleton instance of GraphLoader
-    # ... load graphs from disk immediately
+    # ... load graphs from the disk immediately
     # ... set the loader into the global state
     # ... that every API request has access to.
     app_state['graph_loader'] = GraphLoader(server_status=server_status)
@@ -142,12 +141,12 @@ async def lifespan(app: FastAPI):
     logger.info("Graphs loaded")
 
     yield
-    """Execute when server is shutdown"""
+    """Execute when the server is shutdown"""
     logger.info("Closing DB pool")
     await app_state['db_pool'].close()
 
     if settings.CACHE_DB_ENABLED:
-        logger.info("Closing Cache DB pool")
+        logger.info("Closing the Cache DB pool")
         await app_state['cache_db_pool'].close()
 
     logger.info("Closing graph loader")
@@ -164,6 +163,7 @@ app = FastAPI(
     docs_url=None,
 )
 
+# noinspection PyTypeChecker
 app.add_middleware(CorrelationIdMiddleware)
 # app.add_middleware(
 #     CORSMiddleware,
@@ -190,6 +190,7 @@ app.openapi = custom_openapi
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Setting metrics middleware
+# noinspection PyTypeChecker
 app.add_middleware(PrometheusMiddleware, app_name=APP_NAME)
 app.add_route("/metrics", metrics)
 
@@ -199,7 +200,6 @@ async def session_middleware(request: Request, call_next):
     """FastAPI automatically invokes this function for every http call"""
     start_time = time.perf_counter()
     logger.info(f"{request.method} {request.url}")
-    response = Response("Internal server error", status_code=500)
     request.state.graphs = app_state['graph_loader'].get_graphs()
     request.state.db_pool = app_state['db_pool']
     request.state.cache_db_pool = app_state['cache_db_pool']

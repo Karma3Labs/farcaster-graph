@@ -18,6 +18,8 @@ def main():
         output_filename = input_filename
     else:
         output_filename = args.output_filename
+    # noinspection PyAbstractClass
+    # (ExitStack is not abstract)
     with ExitStack() as stack:
         if input_filename is None:
             input_file = sys.stdin
@@ -26,7 +28,7 @@ def main():
         if output_filename is None:
             output_file = sys.stdout
         else:
-            output_fd, output_tmpname = tempfile.mkstemp(
+            output_fd, output_tmp_name = tempfile.mkstemp(
                 dir=output_filename.parent,
                 prefix=output_filename.stem + ".",
             )
@@ -40,7 +42,7 @@ def main():
         backup_filename = input_filename.with_suffix(new_suffix)
         _rename(input_filename, backup_filename)
     if output_filename is not None:
-        _rename(output_tmpname, output_filename)
+        _rename(output_tmp_name, output_filename)
 
 
 def _rename(src, dst):
@@ -69,7 +71,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--in-place",
         "-i",
         metavar="EXT",
-        help="""Modify input file in-place, renaming the original file
+        help="""Modify the input file in-place, renaming the original file
                 by adding the given extension, e.g. -i .bak""",
     )
     output.add_argument(

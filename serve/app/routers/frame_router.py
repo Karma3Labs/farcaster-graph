@@ -13,8 +13,8 @@ router = APIRouter(tags=["Frames"])
 
 @router.get("/global/rankings")
 async def get_top_frames(
-    # TODO consider using path parameter for better observality
-    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
+    # TODO consider using path parameter for better observability
+    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = 'L1C10R5',
     details: Annotated[bool | None, Query()] = False,
     offset: Annotated[int | None, Query()] = 0,
@@ -28,13 +28,13 @@ async def get_top_frames(
       agg, weights, details, offset and limit. \n
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
-    Parameter 'weights' is used to define the weights to be assigned
+    Parameter 'weights' are used to define the weights to be assigned
       to like, cast and recast actions by profiles. \n
     Parameter 'details' is used to specify whether
       the original cast list should be returned for each frame in the ranking. \n
-    Parameter 'recent' is used to specify whether or not
+    Parameter 'recent' is used to specify whether
       the age of the cast interaction should be considered.\n
-    (Note: cast hashes and warpcast urls are returned in chronological order ie., **oldest first**)
+    (Note: cast hashes and warpcast urls are returned in chronological order i.e., **the oldest first**)
     (*NOTE*: `details=True` will result in a few extra hundred milliseconds in response times).\n
     (**NOTE**: the API returns upto a max of 100 cast hashes and 100 warpcast urls when details=True).\n
     Parameter 'offset' is used to specify how many results to skip
@@ -81,15 +81,15 @@ async def get_personalized_frames_for_fids(
             title="Farcaster IDs", description="A list of FIDs.", examples=[[1, 2, 3]]
         ),
     ],
-    # TODO consider using path parameter for better observality
-    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
+    # TODO consider using path parameter for better observability
+    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = 'L1C10R5',
     voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
     recent: Annotated[bool | None, Query()] = True,
     pool: Pool = Depends(db_pool.get_db),
-    graph_model: Graph = Depends(graph.get_ninetydays_graph),
+    graph_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input fids, return a list of frame urls
@@ -100,7 +100,7 @@ async def get_personalized_frames_for_fids(
     Parameter 'weights' is used to define the weights to be assigned
       to like, cast and recast actions by profiles. \n
     Parameter 'voting' is used to decide whether there is a single vote per neighbor
-      or multiple votes per neigbor when deriving the frames score. \n
+      or multiple votes per neighbor when deriving the frame's score. \n
     Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
     By default, agg=rms, weights='L1C10R5', voting='single', k=2 and limit=100.
     """
@@ -142,15 +142,15 @@ async def get_personalized_frames_for_handles(
             examples=[["farcaster.eth", "varunsrin.eth", "farcaster", "v"]],
         ),
     ],
-    # TODO consider using path parameter for better observality
-    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUMSQUARE,
+    # TODO consider using path parameter for better observability
+    agg: Annotated[ScoreAgg | None, Query()] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = 'L1C10R5',
     voting: Annotated[Voting | None, Query()] = Voting.SINGLE,
     k: Annotated[int, Query(le=5)] = 2,
     limit: Annotated[int | None, Query(le=1000)] = 100,
     recent: Annotated[bool | None, Query()] = True,
     pool: Pool = Depends(db_pool.get_db),
-    graph_model: Graph = Depends(graph.get_ninetydays_graph),
+    graph_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
     Given a list of input handles, return a list of frame urls
@@ -161,7 +161,7 @@ async def get_personalized_frames_for_handles(
     Parameter 'weights' is used to define the weights to be assigned
       to like, cast and recast actions by profiles. \n
     Parameter 'voting' is used to decide whether there is a single vote per neighbor
-      or multiple votes per neigbor when deriving the frames score. \n
+      or multiple votes per neighbor when deriving the frame's score. \n
     Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
     By default, agg=rms, weights='L1C10R5', voting='single', k=2 and limit=100.
     """

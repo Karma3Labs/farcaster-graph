@@ -1,7 +1,5 @@
 from enum import Enum, StrEnum
 
-from pydantic import BaseModel
-
 
 class ChannelRankingsTimeframe(str, Enum):
     LIFETIME = 'lifetime'

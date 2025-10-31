@@ -2,7 +2,6 @@ from typing import Annotated
 
 from asyncpg.pool import Pool
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from loguru import logger
 
 from ..dependencies import db_pool, db_utils
 from ..models.graph_model import GraphType
@@ -19,10 +18,10 @@ async def get_top_following_profiles(
     pool: Pool = Depends(db_pool.get_db),
 ):
     """
-    Get a list of fids based on the follows relationships in the Fracaster network
+    Get a list of fids based on the follows relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
     This API takes two optional parameters - offset and limit. \n
-    By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
+    By default, the limit is 100, and the offset is 0, i.e., returns top 100 fids.
     """
     ranks = await db_utils.get_top_profiles(
         strategy_id=GraphType.following.value,
@@ -47,15 +46,12 @@ async def get_top_engagement_profiles(
     pool: Pool = Depends(db_pool.get_db),
 ):
     """
-    Get a list of fids based on the engagement relationships in the Fracaster network
+    Get a list of fids based on the engagement relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
     This API takes two optional parameters - offset and limit. \n
-    By default, limit is 100 and offset is 0 i.e., returns top 100 fids.
+    By default, the limit is 100, and the offset is 0 i.e., returns top 100 fids.
     """
-    if engagement_type == EngagementType.V1:
-        strategy_id = engagement_ids[EngagementType.V1]
-    elif engagement_type == EngagementType.V3:
-        strategy_id = engagement_ids[EngagementType.V3]
+    strategy_id = engagement_ids[engagement_type]
 
     ranks = await db_utils.get_top_profiles(
         strategy_id=strategy_id,
@@ -83,7 +79,7 @@ async def get_following_rank_for_fids(
 ):
     """
     Given a list of input fids, return a list of fids
-      that are ranked based on the follows relationships in the Fracaster network
+      that are ranked based on the follows relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
       Example: [1, 2] \n
     """
@@ -112,7 +108,7 @@ async def get_following_rank_for_handles(
 ):
     """
     Given a list of input handles, return a list of fids
-      that are ranked based on the follows relationships in the Fracaster network
+      that are ranked based on the follows relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
       Example: ["dwr.eth", "varunsrin.eth"] \n
     """
@@ -146,7 +142,7 @@ async def get_engagement_rank_for_fids(
 ):
     """
     Given a list of input fids, return a list of fids
-      that are ranked based on the engagement relationships in the Fracaster network
+      that are ranked based on the engagement relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
       Example: [1, 2] \n
     """
@@ -154,13 +150,8 @@ async def get_engagement_rank_for_fids(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    if engagement_type == EngagementType.V1:
-        strategy_id = engagement_ids[EngagementType.V1]
-    elif engagement_type == EngagementType.V3:
-        strategy_id = engagement_ids[EngagementType.V3]
-
     ranks = await db_utils.get_profile_ranks(
-        strategy_id=strategy_id, fids=fids, pool=pool, lite=lite
+        strategy_id=engagement_ids[engagement_type], fids=fids, pool=pool, lite=lite
     )
     return {"result": ranks}
 
@@ -181,7 +172,7 @@ async def get_engagement_rank_for_handles(
 ):
     """
     Given a list of input fids, return a list of fids
-      that are ranked based on the engagement relationships in the Fracaster network
+      that are ranked based on the engagement relationships in the Farcaster network
       and scored by Eigentrust algorithm. \n
       Example: ["dwr.eth", "varunsrin.eth"] \n
     """
@@ -196,12 +187,7 @@ async def get_engagement_rank_for_handles(
     fids = [hf["fid"] for hf in handle_fids]
     print(fids)
 
-    if engagement_type == EngagementType.V1:
-        strategy_id = engagement_ids[EngagementType.V1]
-    elif engagement_type == EngagementType.V3:
-        strategy_id = engagement_ids[EngagementType.V3]
-
     ranks = await db_utils.get_profile_ranks(
-        strategy_id=strategy_id, fids=fids, pool=pool, lite=lite
+        strategy_id=engagement_ids[engagement_type], fids=fids, pool=pool, lite=lite
     )
     return {"result": ranks}

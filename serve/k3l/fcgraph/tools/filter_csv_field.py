@@ -18,6 +18,8 @@ def main():
         output_filename = input_filename
     else:
         output_filename = args.output_filename
+    # noinspection PyAbstractClass
+    # (ExitStack is not abstract)
     with ExitStack() as stack:
         if input_filename is None:
             input_file = sys.stdin
@@ -66,7 +68,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--invert-match",
         "-v",
         action="store_true",
-        help="""Output rows that does not match the filter.""",
+        help="""Output rows that do not match the filter.""",
     )
     parser.add_argument(
         "input_filename",
@@ -80,7 +82,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--in-place",
         "-i",
         metavar="EXT",
-        help="""Modify input file in-place, renaming the original file
+        help="""Modify the input file in-place, renaming the original file
                 by adding the given extension, e.g. -i .bak""",
     )
     output.add_argument(

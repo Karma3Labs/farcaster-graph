@@ -11,7 +11,7 @@ This is a FastAPI-based service that provides reputation graphs based on social 
 ### Core Components
 
 - **FastAPI Application** (`app/main.py`): Main application with CORS, telemetry, and multiple routers
-- **Graph Models**: Pre-computed engagement and following graphs stored as pickled pandas DataFrames and igraph objects
+- **Graph Models**: Pre-computed engagement and the following graphs stored as pickled pandas DataFrames and igraph objects
 - **Database Layer**: AsyncPG connection pool for PostgreSQL queries (Farcaster data)
 - **EigenTrust Integration**: External Go service for trust computations (`GO_EIGENTRUST_URL`)
 - **Caching**: Multi-level caching with memoization and optional disk cache (cashews)
@@ -28,9 +28,9 @@ This is a FastAPI-based service that provides reputation graphs based on social 
 ### Graph Loading
 
 Graphs are loaded from pickle files at startup:
-- Engagement graph: `ENGAGEMENT_GRAPH_PATHPREFIX` + `_df.pkl` / `_ig.pkl`
-- Following graph: `FOLLOW_GRAPH_PATHPREFIX` + `_df.pkl` / `_ig.pkl`
-- 90-day graph: `NINETYDAYS_GRAPH_PATHPREFIX` + `_df.pkl` / `_ig.pkl`
+- "Engagement" graph: `ENGAGEMENT_GRAPH_PATH_PREFIX` + `_df.pkl` / `_ig.pkl`
+- "Following" graph: `FOLLOW_GRAPH_PATH_PREFIX` + `_df.pkl` / `_ig.pkl`
+- 90-day graph: `NINETYDAYS_GRAPH_PATH_PREFIX` + `_df.pkl` / `_ig.pkl`
 
 ## Development Commands
 
@@ -80,7 +80,7 @@ sqlfluff lint --dialect postgres app/
 Environment variables (`.env` file):
 - `DB_*`: PostgreSQL connection for Farcaster data
 - `GO_EIGENTRUST_URL`: EigenTrust service endpoint
-- `*_GRAPH_PATHPREFIX`: Paths to graph pickle files
+- `*_GRAPH_PATH_PREFIX`: Paths to graph pickle files
 - `EIGENTRUST_*`: Algorithm parameters (alpha, epsilon, max_iter)
 - `LOG_LEVEL`, `LOG_LEVEL_CORE`: Logging configuration
 

@@ -10,12 +10,12 @@ class GraphType(Enum):
     following = 1
     #   engagement = 3
     #   v3engagement = 9
-    ninetydays = 5
+    ninety_days = 5
 
 
 class GraphTimeframe(str, Enum):
     #   lifetime = "lifetime"
-    ninetydays = "90d"
+    ninety_days = "90d"
 
 
 class Graph(NamedTuple):

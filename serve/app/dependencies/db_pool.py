@@ -1,7 +1,7 @@
 from fastapi import Request
 
 
-# dependency to make it explicit that routers are accessing hidden state
+# dependency to make it explicit that routers are accessing a hidden state
 def get_db(request: Request):
     return request.state.db_pool
 

@@ -68,6 +68,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         ).inc()
         REQUESTS.labels(method=method, path=path, app_name=self.app_name).inc()
         before_time = time.perf_counter()
+        status_code = 0
         try:
             response = await call_next(request)
         except BaseException as e:
@@ -112,7 +113,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         return request.url.path, False
 
 
-def metrics(request: Request) -> Response:
+def metrics(_: Request) -> Response:
     return Response(
         generate_latest(REGISTRY), headers={"Content-Type": CONTENT_TYPE_LATEST}
     )
@@ -136,4 +137,5 @@ def setting_otlp(
     if log_correlation:
         LoggingInstrumentor().instrument(set_logging_format=True)
 
+    # noinspection PyTypeChecker
     FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer)

@@ -80,7 +80,7 @@ async def get_popular_casts_for_fid(
         Query(
             description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
-    ] = ScoreAgg.SUMSQUARE,
+    ] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = "L1C10R5Y1",
     k: Annotated[int, Query(le=5)] = 1,
     offset: Annotated[int | None, Query()] = 0,
@@ -89,7 +89,7 @@ async def get_popular_casts_for_fid(
     lite: Annotated[bool, Query()] = True,
     provider_metadata: Annotated[str | None, Query()] = None,
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
       Get a list of casts that have been interacted with the most
@@ -267,13 +267,13 @@ async def get_personalized_casts_for_fid(
     graph_limit: Annotated[int | None, Query(le=1000)] = 100,
     lite: Annotated[bool, Query()] = True,
     pool: Pool = Depends(db_pool.get_db),
-    ninetyday_model: Graph = Depends(graph.get_ninetydays_graph),
+    ninetyday_model: Graph = Depends(graph.get_90_days_graph),
 ):
     """
       Get a list of casts that have been cast by the
         popular profiles in a user's extended network. \n
     This API takes optional parameters -
-      k, offset, limit, graph_limit and lite. \n
+      k, offset, limit, graph_limit, and lite. \n
     Parameter 'k' is used to constrain the social graph to k-degrees of separation. \n
     Parameter 'offset' is used to specify how many results to skip
       and can be useful for paginating through results. \n
@@ -335,7 +335,7 @@ async def get_trending_casts(
         Query(
             description="Define the aggregation function - `rms`, `sumsquare`, `sum`"
         ),
-    ] = ScoreAgg.SUMSQUARE,
+    ] = ScoreAgg.SUM_SQUARE,
     weights: Annotated[str | None, Query()] = "L1C10R5Y1",
     score_mask: Annotated[int | None, Query(ge=0, le=10)] = 5,
     offset: Annotated[int | None, Query(ge=0)] = 0,
@@ -347,7 +347,7 @@ async def get_trending_casts(
       Get a list of casts that have been cast by the
         popular profiles in a user's extended network. \n
     This API takes optional parameters -
-      agg, weights, offset, limit and lite. \n
+      agg, weights, offset, limit, and lite. \n
     Parameter 'agg' is used to define the aggregation function and
       can take any of the following values - `rms`, `sumsquare`, `sum`. \n
     Parameter 'weights' is used to define the weights to be assigned

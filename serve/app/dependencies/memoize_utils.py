@@ -4,23 +4,27 @@ from memoize.key import KeyExtractor
 
 
 class EncodedMethodNameAndArgsExcludedKeyExtractor(KeyExtractor):
-    """Encodes method name, args & kwargs to string and uses that as cache entry key.
-    This KeyExtractor is class-centric and creates same keys for all objects of the same type.
+    """Encodes method name, args & kwargs to string and uses that as the cache entry key.
+    This KeyExtractor is class-centric and creates the same keys for all objects of the same type.
     You can exclude args and kwargs by setting 'skip_args' and 'skip_kwargs' flags.
 
-    Note: If wrapped function is a method (has 'self' as first positional arg) you may want to exclude 'self' from key
-    by setting 'skip_first_arg_as_self' flag.
-    For static methods of ordinary functions flag should be set to 'False'.
+    Note: If the wrapped function is a method (has 'self' as the first positional arg), you may want to exclude 'self' from the key
+    by setting the 'skip_first_arg_as_self' flag.
+    For static methods of ordinary functions, the flag should be set to 'False'.
 
     Warning: uses method name only, so be cautious and do not wrap methods of different classes with the same names
-    while using same store and 'skip_first_arg_as_self' set to False."""
+    while using the same store and 'skip_first_arg_as_self' set to False."""
 
     def __init__(
         self,
         skip_first_arg_as_self=False,
-        skip_args: list[int] = [],
-        skip_kwargs: list[str] = [],
+        skip_args=None,
+        skip_kwargs=None,
     ) -> None:
+        if skip_args is None:
+            skip_args = []
+        if skip_kwargs is None:
+            skip_kwargs = []
         self._skip_first_arg_as_self = skip_first_arg_as_self
         self._skip_args = skip_args
         self._skip_kwargs = skip_kwargs
