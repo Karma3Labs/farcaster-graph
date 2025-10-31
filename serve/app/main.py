@@ -109,20 +109,22 @@ async def lifespan(_: FastAPI):
 
     # create a DB connection pool
     logger.info("Creating DB pool")
-    app_state['db_pool'] = asyncpg.create_pool(
+    pool = asyncpg.create_pool(
         settings.postgres_uri.get_secret_value(),
         min_size=1,
         max_size=settings.POSTGRES_POOL_SIZE,
     )
+    app_state['db_pool'] = await pool
     logger.info("DB pool created")
 
     if settings.CACHE_DB_ENABLED:
         logger.info("Creating a Cache DB pool")
-        app_state['cache_db_pool'] = asyncpg.create_pool(
+        pool = asyncpg.create_pool(
             settings.cache_postgres_uri.get_secret_value(),
             min_size=1,
             max_size=settings.CACHE_POSTGRES_POOL_SIZE,
         )
+        app_state['cache_db_pool'] = await pool
         logger.info("Cache DB pool created")
     else:
         app_state['cache_db_pool'] = None
