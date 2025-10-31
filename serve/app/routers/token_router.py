@@ -142,7 +142,7 @@ async def get_trader_leaderboard(
         weights=weights,
         pool=pool,
     )
-    return {"leaderboard": leaderboard}
+    return {"result": leaderboard}
 
 
 @router.get("/feed")
