@@ -68,25 +68,6 @@ async def get_channel_configuration(
     }
 
 
-@router.get("/openrank/{channel}", tags=["Experimental"])
-async def get_top_openrank_channel_profiles(
-    channel: str,
-    category: OpenrankCategory = Query(OpenrankCategory.PROD),
-    offset: Annotated[int | None, Query()] = 0,
-    limit: Annotated[int | None, Query(le=1000)] = 100,
-    pool: Pool = Depends(db_pool.get_db),
-):
-    # noinspection PyTypeChecker
-    ranks = await db_utils.get_top_openrank_channel_profiles(
-        channel_id=channel,
-        category=category.value,
-        offset=offset,
-        limit=limit,
-        pool=pool,
-    )
-    return {"result": ranks}
-
-
 @router.get("/points/{channel}", tags=["Deprecated"])
 async def get_top_channel_balances(
     channel: str,

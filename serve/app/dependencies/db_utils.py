@@ -593,39 +593,6 @@ async def get_channel_fid_metrics(
     return await fetch_rows(channel_id, sql_query=sql_query, pool=pool)
 
 
-async def get_top_openrank_channel_profiles(
-    channel_id: str, category: str, offset: int, limit: int, pool: Pool
-):
-    sql_query = """
-    WITH latest AS (
-        SELECT
-            max(results.insert_ts) as latest_ts,
-            results.channel_domain_id
-        FROM
-                k3l_channel_openrank_results as results
-            INNER JOIN k3l_channel_domains as domains
-                    ON (domains.id = results.channel_domain_id and domains.category=$2
-                AND domains.channel_id=$1)
-        GROUP BY results.channel_domain_id
-    )
-    SELECT
-        fid,
-        score,
-        rank,
-        req_id,
-        insert_ts as compute_ts
-    FROM
-        k3l_channel_openrank_results as results, latest
-    WHERE
-        results.insert_ts = latest.latest_ts AND results.channel_domain_id = latest.channel_domain_id
-    OFFSET $3
-    LIMIT $4
-    """
-    return await fetch_rows(
-        channel_id, category, offset, limit, sql_query=sql_query, pool=pool
-    )
-
-
 async def get_top_channel_balances(
     channel_id: str,
     offset: int,
