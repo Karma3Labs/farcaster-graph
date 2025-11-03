@@ -80,48 +80,6 @@ services:
       retries: 5
     restart: always
 
-  # ~/.ssh/config
-  # host postgres-tunnel # You can use any name
-  #   HostName change_to_host_ip # Tunnel
-  #   IdentityFile ~/.ssh/your_private_key # Private key location
-  #   User ubuntu # Username to connect to SSH service
-  #   ForwardAgent yes
-  #   TCPKeepAlive yes
-  sshtunnel:
-    build:
-      dockerfile: sshtunnel.Dockerfile
-    container_name: sshtunnel
-    restart: unless-stopped
-    command: |
-      -N -L ${SSH_LISTEN_PORT}:${SSH_LISTEN_HOST}:${SANDBOX_REMOTE_PORT}
-      ${SANDBOX_REMOTE_USER}@${SANDBOX_REMOTE_HOST}
-    volumes:
-      - ${SSH_KEY_PATH}:/root/.ssh/id_rsa:ro
-    extra_hosts:
-      - docker-host:172.17.0.1
-    networks:
-      - sshtunnel
-    ports:
-      - ${SSH_LISTEN_PORT}:${SSH_LISTEN_PORT}
-
-  pgbouncer:
-    image: bitnami/pgbouncer:latest
-    environment:
-      - PGBOUNCER_DATABASE=${SANDBOX_DB_NAME} # pgbouncer has same name as sandbox
-      - PGBOUNCER_PORT=${SANDBOX_DB_PORT} # pgbouncer listens on same port as sandbox
-      - POSTGRESQL_USERNAME=${SANDBOX_DB_USER}
-      - POSTGRESQL_PASSWORD=${SANDBOX_DB_PASSWORD}
-      - POSTGRESQL_DATABASE=${SANDBOX_DB_NAME}
-      - POSTGRESQL_HOST=172.17.0.1 # ssh tunnel is on localhost
-      - POSTGRESQL_PORT=${SSH_LISTEN_PORT}
-      - PGBOUNCER_POOL_MODE=transaction
-      - PGBOUNCER_AUTH_TYPE=scram-sha-256 # remove/comment this line if using postgres:13 and lower
-      - PGBOUNCER_ADMIN_USERS=postgres,dbuser
-    ports:
-      - "${SANDBOX_DB_PORT}:${SANDBOX_DB_PORT}" # pgbouncer listens on same port as sandbox
-    depends_on:
-      - sshtunnel
-
   airflow-webserver:
     <<: *airflow-common
     command: webserver
@@ -160,8 +118,3 @@ services:
 
 volumes:
   postgres-db-volume:
-
-
-networks:
-  sshtunnel:
-    driver: bridge
