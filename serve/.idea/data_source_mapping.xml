@@ -3,6 +3,5 @@
   <component name="DataSourcePerFileMappings">
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/27027aa9-6ffe-4816-a090-291b895797a1/console.sql" value="27027aa9-6ffe-4816-a090-291b895797a1" />
     <file url="file://$PROJECT_DIR$/app/dependencies/db_utils.py" value="27027aa9-6ffe-4816-a090-291b895797a1" />
-    <file url="file://$PROJECT_DIR$/k3l/fcgraph/tools/noice.sql" value="27027aa9-6ffe-4816-a090-291b895797a1" />
   </component>
 </project>
