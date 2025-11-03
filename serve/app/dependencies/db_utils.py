@@ -3442,7 +3442,7 @@ async def get_trending_fip2(
                 WHERE
                     c.root_parent_url SIMILAR TO 'eip155:' || %(chain_id)s || '/erc20:0x[0-9a-f]{40}'
                     AND c.parent_url = c.root_parent_url
-                    AND CASE WHEN %(start_time)s::timestamp IS NOT NULL THEN c."timestamp" >= %(start_time)s ELSE TRUE END
+                    AND COALESCE(c."timestamp" >= %(start_time)s, TRUE)
                     AND c."timestamp" < %(end_time)s
                 GROUP BY c.root_parent_url
             )
