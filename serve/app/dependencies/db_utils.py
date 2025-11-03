@@ -3480,7 +3480,7 @@ def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
     Interpolate keyword parameters as many times as necessary:
 
     >>> pyformat2dollar("SELECT %(name)s * %(name)s + %s", 3, name=5)
-    ('SELECT $1 * $2 + $3', [5, 5, 3])
+    ('SELECT $1 * $1 + $2', [5, 3])
 
     Raise `ValueError` if required arguments are not provided:
 
@@ -3515,6 +3515,7 @@ def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
     pct_re = re.compile(
         r"%(?:(?P<param>(?:\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\))?s)|(?P<passthrough>%)|(?P<unknown>.))"
     )
+    kwarg_indices: dict[str, int] = {}
     new_sql = ""
     new_args = []
     pos = 0
@@ -3528,13 +3529,20 @@ def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[An
                     arg, poargs = poargs[0], poargs[1:]
                 except IndexError:
                     raise ValueError("not enough positional arguments") from None
+                new_args.append(arg)
+                index = len(new_args)
             else:
                 try:
                     arg = kwargs[name]
                 except KeyError:
                     raise ValueError(f"missing keyword argument: {name!r}") from None
-            new_args.append(arg)
-            new_sql += f"${len(new_args)}"
+                try:
+                    index = kwarg_indices[name]
+                except KeyError:
+                    new_args.append(arg)
+                    index = len(new_args)
+                    kwarg_indices[name] = index
+            new_sql += f"${index}"
         elif m.group("passthrough") is not None:
             new_sql += m.group()
         elif (_unknown := m.group("unknown")) is not None:
