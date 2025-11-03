@@ -16,7 +16,9 @@ from ..models.feed_model import WeightsField
 
 _logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/{token}", tags=["Token"])
+router = APIRouter(tags=["Token"])
+token_router = APIRouter(prefix="/{token}", tags=["Token"])
+router.include_router(token_router)
 
 
 class Token(BaseModel):
@@ -66,7 +68,7 @@ async def get_balances(
 # ---------------------------------------------------------------------------
 # New endpoint: /balances/all – full or top‑N leaderboard
 # ---------------------------------------------------------------------------
-@router.get("/balances/all")
+@token_router.get("/balances/all")
 async def get_all_balances(  # noqa: D401
     *,
     token: Token = Depends(get_token),
@@ -98,7 +100,7 @@ async def get_all_balances(  # noqa: D401
     }
 
 
-@router.get("/leaderboards/trader")
+@token_router.get("/leaderboards/trader")
 async def get_trader_leaderboard(
     *,
     token: Token = Depends(get_token),
@@ -145,7 +147,7 @@ async def get_trader_leaderboard(
     return {"result": leaderboard}
 
 
-@router.get("/feed")
+@token_router.get("/feed")
 async def get_feed(
     *,
     token: Token = Depends(get_token),
@@ -160,3 +162,48 @@ async def get_feed(
         )
     except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/trending-fip2")
+async def get_trending_fip2(
+    *,
+    chain_id: int = Query(8453, description="chain ID"),
+    start_time: datetime | None = Query(
+        None,
+        description="Minimum action timestamp (default: `end_time` - `duration`",
+    ),
+    end_time: datetime | None = Query(
+        None,
+        description="Maximum action timestamp (default: now)",
+    ),
+    duration: timedelta | None = Query(
+        None,
+        description="Action duration (default: 1 day)",
+    ),
+    decay_rate: float = Query(0.9, description="exponential decay rate per day"),
+    offset: int = Query(0, ge=0, description="offset"),
+    limit: int = Query(100, ge=1, le=1000, description="limit"),
+    pool: Pool = Depends(db_pool.get_db),
+):
+    if end_time is None:
+        end_time = datetime.now(tz=UTC)
+    if start_time is None:
+        if duration is None:
+            duration = timedelta(days=1)
+        start_time = end_time - duration
+    elif duration is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot specify both `start_time` and `duration`",
+        )
+    return {
+        "result": await db_utils.get_trending_fip2(
+            start_time=start_time,
+            end_time=end_time,
+            decay_rate=decay_rate,
+            chain_id=chain_id,
+            offset=offset,
+            limit=limit,
+            pool=pool,
+        )
+    }

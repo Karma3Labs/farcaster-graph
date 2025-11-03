@@ -3417,6 +3417,51 @@ async def get_trader_leaderboard(
     return await fetch_rows(*args, sql_query=sql, pool=pool)
 
 
+async def get_trending_fip2(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    decay_rate: float,
+    chain_id: int,
+    offset: int,
+    limit: int,
+    pool: Pool,
+):
+    if start_time.tzinfo is not None:
+        start_time = start_time.astimezone(UTC).replace(tzinfo=None)
+    if end_time.tzinfo is not None:
+        end_time = end_time.astimezone(UTC).replace(tzinfo=None)
+    sql, args = pyformat2dollar(
+        """
+            WITH raw AS (
+                SELECT
+                    REGEXP_REPLACE(root_parent_url, '.*:', '') AS token,
+                    sum(%(decay_rate)s ^ (EXTRACT(EPOCH FROM (%(end_time)s - c."timestamp")) / 86400) * r.score) AS score
+                FROM neynarv3.casts c
+                JOIN k3l_rank r ON c.fid = r.profile_id
+                WHERE
+                    c.root_parent_url SIMILAR TO 'eip155:' || %(chain_id)s || '/erc20:0x[0-9a-f]{40}'
+                    AND c.parent_url = c.root_parent_url
+                    AND CASE WHEN %(start_time)s::timestamp IS NOT NULL THEN c."timestamp" >= %(start_time)s ELSE TRUE END
+                    AND c."timestamp" < %(end_time)s
+                GROUP BY c.root_parent_url
+            )
+            SELECT *
+            FROM raw
+            ORDER BY score DESC
+            OFFSET %(offset)s
+            LIMIT %(limit)s;
+        """,
+        start_time=start_time,
+        end_time=end_time,
+        decay_rate=decay_rate,
+        chain_id=str(chain_id),
+        offset=offset,
+        limit=limit,
+    )
+    return await fetch_rows(*args, sql_query=sql, pool=pool)
+
+
 def pyformat2dollar(sql: str, *poargs: Any, **kwargs: Any) -> tuple[str, list[Any]]:
     """
     Formats a SQL query string containing Python-style parameter placeholders into an
