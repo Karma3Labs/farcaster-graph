@@ -38,8 +38,7 @@
 ---
 # version: '3'
 x-airflow-common: &airflow-common
-  build: .
-  image: ${AIRFLOW_IMAGE_NAME:-extending_airflow:latest}
+  image: ${AIRFLOW_IMAGE_NAME:-karma3labs/fcgraph-pipeline:latest}
   container_name: airflow-common
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
