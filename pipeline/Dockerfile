@@ -18,10 +18,6 @@ WORKDIR /pipeline
 
 # Copy only the necessary files for initial setup
 COPY requirements.txt /pipeline/requirements.txt
-COPY .env /pipeline/.env
-
-# Source environment variables
-RUN /bin/bash -c "source /pipeline/.env"
 
 RUN pip install --upgrade pip
 
