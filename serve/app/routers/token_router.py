@@ -17,8 +17,6 @@ from ..models.feed_model import WeightsField
 _logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Token"])
-token_router = APIRouter(prefix="/{token}", tags=["Token"])
-router.include_router(token_router)
 
 
 class Token(BaseModel):
@@ -68,7 +66,7 @@ async def get_balances(
 # ---------------------------------------------------------------------------
 # New endpoint: /balances/all – full or top‑N leaderboard
 # ---------------------------------------------------------------------------
-@token_router.get("/balances/all")
+@router.get("/{token}/balances/all")
 async def get_all_balances(  # noqa: D401
     *,
     token: Token = Depends(get_token),
@@ -100,7 +98,7 @@ async def get_all_balances(  # noqa: D401
     }
 
 
-@token_router.get("/leaderboards/trader")
+@router.get("/{token}/leaderboards/trader")
 async def get_trader_leaderboard(
     *,
     token: Token = Depends(get_token),
@@ -147,7 +145,7 @@ async def get_trader_leaderboard(
     return {"result": leaderboard}
 
 
-@token_router.get("/feed")
+@router.get("/{token}/feed")
 async def get_feed(
     *,
     token: Token = Depends(get_token),
