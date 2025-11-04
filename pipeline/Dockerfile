@@ -2,13 +2,7 @@ FROM apache/airflow:2.10.3
 # Switch to root to install additional packages
 USER root
 
-# Fix potential permission issues and update package list
-RUN chmod -R a+rX /var/lib/apt/lists /var/cache/apt/archives && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/* && \
-  mkdir -p /var/lib/apt/lists/partial && \
-  apt-get update && \
-  apt-get -y install zip
+RUN apt-get update && apt-get -y install unzip
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 RUN unzip awscliv2.zip
