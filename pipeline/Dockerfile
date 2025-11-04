@@ -2,12 +2,13 @@ FROM apache/airflow:2.10.3
 # Switch to root to install additional packages
 USER root
 
-RUN apt-get update && apt-get -y install unzip
-
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-RUN unzip awscliv2.zip
-
-RUN ./aws/install
+RUN \
+	apt-get update && \
+	apt-get -y install zip && \
+	mkdir -p aws-installer && \
+	curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "aws-installer/awscliv2.zip" && \
+	(cd aws-installer && unzip awscliv2.zip && ./aws/install) && \
+	rm -rf aws-installer
 
 # Switch back to the airflow user
 USER airflow
