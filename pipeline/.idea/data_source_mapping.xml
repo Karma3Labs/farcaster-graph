@@ -4,5 +4,6 @@
     <file url="file://$PROJECT_DIR$/casts/cast_db_utils.py" value="9ca70a5b-3d27-4747-91dd-6b8db9646317" />
     <file url="file://$PROJECT_DIR$/dags/dag_gen_channel_ranking_v4.py" value="9ca70a5b-3d27-4747-91dd-6b8db9646317" />
     <file url="file://$PROJECT_DIR$/frames/incremental_load_labels.sql" value="9ca70a5b-3d27-4747-91dd-6b8db9646317" />
+    <file url="file://$PROJECT_DIR$/schema/supabase-token-distribution.sql" value="bb22ad1e-53bd-4a85-803d-165b45ad45d6" />
   </component>
 </project>
