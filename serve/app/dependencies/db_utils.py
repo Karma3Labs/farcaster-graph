@@ -3352,6 +3352,7 @@ async def get_trader_leaderboard(
                 SELECT hash, fid
                 FROM neynarv3.casts
                 WHERE root_parent_url = 'eip155:' || %(chain_id)s || '/erc20:' || %(token_address)s
+                AND parent_hash IS NULL
             ),
             actions AS (
                 SELECT *
@@ -3441,7 +3442,7 @@ async def get_trending_fip2(
                 JOIN k3l_rank r ON c.fid = r.profile_id
                 WHERE
                     c.root_parent_url SIMILAR TO 'eip155:' || %(chain_id)s || '/erc20:0x[0-9a-f]{40}'
-                    AND c.parent_url = c.root_parent_url
+                    AND c.parent_hash IS NULL
                     AND COALESCE(c."timestamp" >= %(start_time)s, TRUE)
                     AND c."timestamp" < %(end_time)s
                 GROUP BY c.root_parent_url
