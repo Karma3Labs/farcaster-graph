@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rjWGaoXE8DXT8vJleserXMYb5Oe3J3OKxNq8gYftLu5j8lW2jmuJAQ8roFygO0X
+\restrict DMixlE8tj8pTnRQdXB6GLSjrIQSzOq9moZKck32nCVEaFDorSTGy1oxYUeKa9ec
 
 -- Dumped from database version 15.6
 -- Dumped by pg_dump version 18.0 (Ubuntu 18.0-1.pgdg25.10+3)
@@ -48,6 +48,18 @@ CREATE DOMAIN token_distribution.ethereum_tx_hash AS bytea
 
 ALTER DOMAIN token_distribution.ethereum_tx_hash OWNER TO postgres;
 
+--
+-- Name: round_method; Type: TYPE; Schema: token_distribution; Owner: postgres
+--
+
+CREATE TYPE token_distribution.round_method AS ENUM (
+    'uniform',
+    'proportional'
+);
+
+
+ALTER TYPE token_distribution.round_method OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -63,6 +75,7 @@ CREATE TABLE token_distribution.funding_txs (
     hash token_distribution.ethereum_tx_hash NOT NULL,
     sender token_distribution.ethereum_address NOT NULL,
     amount numeric NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT funding_txs_amount_check CHECK ((amount > (0)::numeric))
 );
 
@@ -93,7 +106,11 @@ CREATE TABLE token_distribution.logs (
     receiver token_distribution.ethereum_address NOT NULL,
     amount numeric NOT NULL,
     tx_hash bytea,
-    CONSTRAINT logs_amount_check CHECK ((amount > (0)::numeric))
+    fid bigint NOT NULL,
+    points numeric NOT NULL,
+    CONSTRAINT logs_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT logs_fid_check CHECK ((fid > 0)),
+    CONSTRAINT logs_points_check CHECK ((points > (0)::numeric))
 );
 
 
@@ -109,7 +126,11 @@ CREATE TABLE token_distribution.requests (
     chain_id bigint DEFAULT 8453 NOT NULL,
     token_address token_distribution.ethereum_address NOT NULL,
     amount numeric NOT NULL,
-    CONSTRAINT requests_amount_check CHECK ((amount > (0)::numeric))
+    round_method token_distribution.round_method NOT NULL,
+    num_recipients_per_round bigint NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT requests_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT requests_num_recipients_per_round_check CHECK ((num_recipients_per_round >= 0))
 );
 
 
@@ -138,7 +159,11 @@ CREATE TABLE token_distribution.rounds (
     "timestamp" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     scheduled timestamp with time zone NOT NULL,
     amount numeric NOT NULL,
-    CONSTRAINT rounds_amount_check CHECK ((amount > (0)::numeric))
+    method token_distribution.round_method,
+    num_recipients bigint,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT rounds_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT rounds_num_recipients_check CHECK ((num_recipients >= 0))
 );
 
 
@@ -239,8 +264,91 @@ ALTER TABLE ONLY token_distribution.rounds
 
 
 --
+-- Name: requests Allow service role full access; Type: POLICY; Schema: token_distribution; Owner: postgres
+--
+
+CREATE POLICY "Allow service role full access" ON token_distribution.requests TO service_role USING (true) WITH CHECK (true);
+
+
+--
+-- Name: requests; Type: ROW SECURITY; Schema: token_distribution; Owner: postgres
+--
+
+ALTER TABLE token_distribution.requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: SCHEMA token_distribution; Type: ACL; Schema: -; Owner: postgres
+--
+
+GRANT USAGE ON SCHEMA token_distribution TO service_role;
+
+
+--
+-- Name: TABLE funding_txs; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.funding_txs TO service_role;
+
+
+--
+-- Name: TABLE funding_totals; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.funding_totals TO service_role;
+
+
+--
+-- Name: TABLE logs; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.logs TO service_role;
+
+
+--
+-- Name: TABLE requests; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.requests TO service_role;
+
+
+--
+-- Name: TABLE round_totals; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.round_totals TO service_role;
+
+
+--
+-- Name: TABLE rounds; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.rounds TO service_role;
+
+
+--
+-- Name: TABLE totals; Type: ACL; Schema: token_distribution; Owner: postgres
+--
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE token_distribution.totals TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: token_distribution; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA token_distribution GRANT SELECT,USAGE ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: token_distribution; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA token_distribution GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLES TO service_role;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rjWGaoXE8DXT8vJleserXMYb5Oe3J3OKxNq8gYftLu5j8lW2jmuJAQ8roFygO0X
+\unrestrict DMixlE8tj8pTnRQdXB6GLSjrIQSzOq9moZKck32nCVEaFDorSTGy1oxYUeKa9ec
 

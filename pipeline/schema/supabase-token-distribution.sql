@@ -7,12 +7,19 @@ CREATE DOMAIN ethereum_address AS bytea CHECK (bit_length(value) = 160);
 
 CREATE DOMAIN ethereum_tx_hash AS bytea CHECK (bit_length(value) = 256);
 
+CREATE TYPE round_method AS ENUM ('uniform', 'proportional');
+
 CREATE TABLE requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     timestamp timestamp with time zone NOT NULL DEFAULT current_timestamp,
     chain_id bigint NOT NULL DEFAULT 8453,
     token_address ethereum_address NOT NULL,
-    amount decimal NOT NULL CHECK (amount > 0)
+    amount decimal NOT NULL CHECK (amount > 0),
+    round_method round_method NOT NULL,
+    num_recipients_per_round bigint NOT NULL CHECK (
+        num_recipients_per_round >= 0
+    ),
+    metadata jsonb NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE funding_txs (
@@ -22,6 +29,7 @@ CREATE TABLE funding_txs (
     hash ethereum_tx_hash NOT NULL,
     sender ethereum_address NOT NULL,
     amount numeric NOT NULL CHECK (amount > 0),
+    metadata jsonb NOT NULL DEFAULT '{}',
     UNIQUE (request_id, hash)
 );
 
@@ -31,6 +39,9 @@ CREATE TABLE rounds (
     timestamp timestamp with time zone NOT NULL DEFAULT current_timestamp,
     scheduled timestamp with time zone NOT NULL,
     amount decimal NOT NULL CHECK (amount > 0),
+    method round_method,
+    num_recipients bigint CHECK (num_recipients >= 0),
+    metadata jsonb NOT NULL DEFAULT '{}',
     UNIQUE (request_id, scheduled)
 );
 
@@ -41,6 +52,8 @@ CREATE TABLE logs (
     receiver ethereum_address NOT NULL,
     amount decimal NOT NULL CHECK (amount > 0),
     tx_hash bytea,
+    fid bigint NOT NULL CHECK (fid > 0),
+    points numeric NOT NULL CHECK (points > 0),
     UNIQUE (round_id, receiver)
 );
 
