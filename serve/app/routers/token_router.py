@@ -178,6 +178,12 @@ async def get_trending_fip2(
         None,
         description="Action duration (default: 1 day)",
     ),
+    weights: Annotated[
+        WeightsField,
+        Query(
+            description="action weights, in L*C*R*Y* form (default: `L1C10R5Y1`)",
+        ),
+    ] = "L1C1R1Y1",
     decay_rate: float = Query(0.9, description="exponential decay rate per day"),
     offset: int = Query(0, ge=0, description="offset"),
     limit: int = Query(100, ge=1, le=1000, description="limit"),
@@ -203,5 +209,6 @@ async def get_trending_fip2(
             offset=offset,
             limit=limit,
             pool=pool,
+            weights=weights,
         )
     }

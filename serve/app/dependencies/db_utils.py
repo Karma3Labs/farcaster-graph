@@ -3426,6 +3426,7 @@ async def get_trending_fip2(
     chain_id: int,
     offset: int,
     limit: int,
+    weights: Weights,
     pool: Pool,
 ):
     if start_time.tzinfo is not None:
@@ -3437,14 +3438,24 @@ async def get_trending_fip2(
             WITH raw AS (
                 SELECT
                     REGEXP_REPLACE(root_parent_url, '.*:', '') AS token,
-                    sum(%(decay_rate)s ^ (EXTRACT(EPOCH FROM (%(end_time)s - c."timestamp")) / 86400) * r.score) AS score
+                    sum(
+                        %(decay_rate)s ^ (EXTRACT(EPOCH FROM (%(end_time)s - c."timestamp")) / 86400) *
+                        (
+                            ca.liked * %(like_weight)s +
+                            ca.casted * %(cast_weight)s +
+                            ca.recasted * %(recast_weight)s +
+                            ca.replied * %(reply_weight)s
+                        ) *
+                        r.score
+                    ) AS score
                 FROM neynarv3.casts c
-                JOIN k3l_rank r ON c.fid = r.profile_id
+                JOIN k3l_cast_action ca ON c.hash = ca.cast_hash
+                JOIN k3l_rank r ON ca.fid = r.profile_id
                 WHERE
                     c.root_parent_url SIMILAR TO 'eip155:' || %(chain_id)s || '/erc20:0x[0-9a-f]{40}'
                     AND c.parent_hash IS NULL
-                    AND COALESCE(c."timestamp" >= %(start_time)s, TRUE)
-                    AND c."timestamp" < %(end_time)s
+                    AND COALESCE(ca.action_ts >= %(start_time)s, TRUE)
+                    AND ca.action_ts < %(end_time)s
                 GROUP BY c.root_parent_url
             )
             SELECT *
@@ -3455,6 +3466,10 @@ async def get_trending_fip2(
         """,
         start_time=start_time,
         end_time=end_time,
+        like_weight=weights.like,
+        cast_weight=weights.cast,
+        recast_weight=weights.recast,
+        reply_weight=weights.reply,
         decay_rate=decay_rate,
         chain_id=str(chain_id),
         offset=offset,
