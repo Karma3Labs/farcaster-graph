@@ -3447,7 +3447,9 @@ async def get_trending_fip2(
                             ca.replied * %(reply_weight)s
                         ) *
                         r.score
-                    ) AS score
+                    ) AS score,
+                    count(DISTINCT c.hash) AS num_casts,
+                    count(*) FILTER (WHERE ca.liked + ca.recasted + ca.replied > 0) AS num_reactions
                 FROM neynarv3.casts c
                 JOIN k3l_cast_action ca ON c.hash = ca.cast_hash
                 JOIN k3l_rank r ON ca.fid = r.profile_id
