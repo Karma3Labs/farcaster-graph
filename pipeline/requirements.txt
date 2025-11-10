@@ -24,3 +24,4 @@ tomlkit==0.13.2
 hvac==2.1.0
 httpx>=0.26.0
 supabase==2.9.0
+web3==7.14.0

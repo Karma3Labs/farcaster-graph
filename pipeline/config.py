@@ -134,6 +134,13 @@ class Settings(BaseSettings):
     FCM_WEBHOOK_TIMEOUT_SECS: int = 30
     NEYNAR_API_KEY: str = "changeme"
 
+    CURA_TOKEN_DISTRIBUTION_WALLET_ADDRESS: str
+    CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY: SecretStr
+
+    # Web3/Blockchain configuration for token distribution
+    ETH_RPC_URL: str = "https://mainnet.base.org"
+    CHAIN_ID: int = 8453  # Base mainnet
+
     @computed_field
     @cached_property
     def POSTGRES_TIMEOUT_MS(self) -> int:
