@@ -16,7 +16,6 @@ import logging
 import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import aiohttp
@@ -34,18 +33,17 @@ from db_utils import get_supabase_psycopg2_client
 logger = logging.getLogger(__name__)
 
 
-def fix_double_encoded_address(address_bytes) -> Optional[ChecksumAddress]:
+def fix_double_encoded_address(
+    address_bytes: bytes | memoryview | None,
+) -> ChecksumAddress | None:
     """
     Fix Neynar's buggy double-encoded addresses.
 
     Sometimes Neynar stores ASCII bytes of the hex string instead of raw bytes.
-    E.g., instead of b'\x00\x00...' they store b'0x0000...' as ASCII.
+    E.g., instead of b'\\x00\\x00...' they store b'0x0000...' as ASCII.
 
-    Args:
-        address_bytes: Raw bytes/memoryview from database (could be double-encoded)
-
-    Returns:
-        ChecksumAddress or None if invalid
+    :param address_bytes: Raw bytes/memoryview from database (could be double-encoded)
+    :returns: Valid checksum address or None if invalid
     """
     if not address_bytes:
         return None
@@ -147,11 +145,8 @@ def get_last_successful_round_timestamp(round_id: str) -> datetime:
     """
     Get the timestamp of the last successfully processed round before the given round.
 
-    Args:
-        round_id: UUID string of the current round
-
-    Returns:
-        Datetime of the last successful round, or epoch (2000-01-01) if none exists
+    :param round_id: UUID string of the current round
+    :returns: Datetime of the last successful round, or epoch (2000-01-01) if none exists
     """
     query = """
     WITH current_round AS (
@@ -178,15 +173,12 @@ def get_last_successful_round_timestamp(round_id: str) -> datetime:
             return last_timestamp
 
 
-def gather_rounds_due(execution_date: datetime) -> List[str]:
+def gather_rounds_due(execution_date: datetime) -> list[str]:
     """
     Gather all rounds that are due for processing as of the execution date.
 
-    Args:
-        execution_date: Datetime object representing the DAG execution date
-
-    Returns:
-        List of round UUID strings that need processing
+    :param execution_date: Datetime object representing the DAG execution date
+    :returns: List of round UUID strings that need processing
     """
     query = """
     SELECT r.id
@@ -208,15 +200,12 @@ def gather_rounds_due(execution_date: datetime) -> List[str]:
             return round_ids
 
 
-async def fetch_leaderboard_async(round_id: str) -> Dict:
+async def fetch_leaderboard_async(round_id: str) -> dict:
     """
     Async function to fetch leaderboard data for a specific round.
 
-    Args:
-        round_id: UUID string of the round
-
-    Returns:
-        Dict containing round_id and leaderboard data
+    :param round_id: UUID string of the round
+    :returns: Dict containing round_id and leaderboard data
     """
     # First get round details
     query = """
@@ -298,30 +287,24 @@ async def fetch_leaderboard_async(round_id: str) -> Dict:
     }
 
 
-def fetch_leaderboard(round_id: str) -> Dict:
+def fetch_leaderboard(round_id: str) -> dict:
     """
     Synchronous wrapper for fetch_leaderboard_async.
 
-    Args:
-        round_id: UUID string of the round
-
-    Returns:
-        Dict containing round_id and leaderboard data
+    :param round_id: UUID string of the round
+    :returns: Dict containing round_id and leaderboard data
     """
     return asyncio.run(fetch_leaderboard_async(round_id))
 
 
 async def get_wallet_addresses_async(
-    fids: List[int],
-) -> Dict[int, Optional[ChecksumAddress]]:
+    fids: list[int],
+) -> dict[int, ChecksumAddress | None]:
     """
     Fetch primary wallet addresses for FIDs from neynarv3.profiles.
 
-    Args:
-        fids: List of Farcaster IDs
-
-    Returns:
-        Dictionary mapping FID to ChecksumAddress
+    :param fids: List of Farcaster IDs
+    :returns: Dictionary mapping FID to ChecksumAddress
     """
     query = """
     SELECT fid, primary_eth_address
@@ -352,15 +335,12 @@ async def get_wallet_addresses_async(
         await pool.close()
 
 
-def calculate(round_data: Dict) -> List[str]:
+def calculate(round_data: dict) -> list[str]:
     """
     Calculate distribution amounts and atomically insert into logs table.
 
-    Args:
-        round_data: Dict containing round_id, amount, method, and leaderboard
-
-    Returns:
-        List of log UUID strings that were created
+    :param round_data: Dict containing round_id, amount, method, and leaderboard
+    :returns: List of log UUID strings that were created
     """
     round_id = round_data["round_id"]
     amount = Decimal(round_data["amount"])
@@ -500,19 +480,14 @@ def calculate(round_data: Dict) -> List[str]:
     return log_ids
 
 
-def verify(log_ids: List[str], round_id: str) -> List[str]:
+def verify(log_ids: list[str], round_id: str) -> list[str]:
     """
     Verify that calculated distributions match the round budget.
 
-    Args:
-        log_ids: List of log UUID strings to verify
-        round_id: UUID string of the round
-
-    Returns:
-        List of log UUID strings (pass-through for next task)
-
-    Raises:
-        ValueError: If calculated amount doesn't match expected amount
+    :param log_ids: List of log UUID strings to verify
+    :param round_id: UUID string of the round
+    :returns: List of log UUID strings (pass-through for next task)
+    :raises ValueError: If calculated amount doesn't match expected amount
     """
     if not log_ids:
         logger.info(f"No logs to verify for round {round_id}")
@@ -556,17 +531,14 @@ def verify(log_ids: List[str], round_id: str) -> List[str]:
     return log_ids
 
 
-def submit_txs(log_ids_nested: List[List[str]]) -> List[str]:
+def submit_txs(log_ids_nested: list[list[str]]) -> list[str]:
     """
     Submit blockchain transactions for all verified distributions.
 
     This task handles all transactions serially to manage nonce properly.
 
-    Args:
-        log_ids_nested: Nested list of log UUID strings from multiple rounds
-
-    Returns:
-        List of transaction hashes that were submitted
+    :param log_ids_nested: Nested list of log UUID strings from multiple rounds
+    :returns: List of transaction hashes that were submitted
     """
     # Flatten nested lists
     all_log_ids = [log_id for sublist in log_ids_nested for log_id in sublist]
@@ -649,15 +621,12 @@ def submit_txs(log_ids_nested: List[List[str]]) -> List[str]:
     return tx_hashes
 
 
-def wait_for_confirmations(tx_hashes: List[str]) -> None:
+def wait_for_confirmations(tx_hashes: list[str]) -> None:
     """
     Wait for all transaction confirmations on the blockchain.
 
-    Args:
-        tx_hashes: List of transaction hashes to wait for
-
-    Raises:
-        ValueError: If any transaction is reverted
+    :param tx_hashes: List of transaction hashes to wait for
+    :raises ValueError: If any transaction is reverted
     """
     if not tx_hashes:
         logger.info("No transactions to wait for")
@@ -675,7 +644,7 @@ def wait_for_confirmations(tx_hashes: List[str]) -> None:
 
 # Production Web3 implementation (commented out for now)
 """
-def submit_txs_production(log_ids_nested: List[List[str]]) -> List[str]:
+def submit_txs_production(log_ids_nested: list[list[str]]) -> list[str]:
     # Production implementation with real Web3 integration
 
     all_log_ids = [log_id for sublist in log_ids_nested for log_id in sublist]
@@ -753,7 +722,7 @@ def submit_txs_production(log_ids_nested: List[List[str]]) -> List[str]:
     return tx_hashes
 
 
-def wait_for_confirmations_production(tx_hashes: List[str]) -> None:
+def wait_for_confirmations_production(tx_hashes: list[str]) -> None:
     # Production implementation with real Web3 integration
 
     if not tx_hashes:
