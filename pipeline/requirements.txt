@@ -25,3 +25,5 @@ hvac==2.1.0
 httpx>=0.26.0
 supabase==2.9.0
 web3==7.14.0
+eth_typing==5.2.1
+eth_utils==5.3.1

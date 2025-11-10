@@ -22,6 +22,8 @@ from uuid import UUID
 import aiohttp
 import asyncpg
 import psycopg2
+from eth_typing import ChecksumAddress
+from eth_utils import to_bytes, to_checksum_address
 from psycopg2.extras import RealDictCursor
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
@@ -30,6 +32,51 @@ from config import settings
 from db_utils import get_supabase_psycopg2_client
 
 logger = logging.getLogger(__name__)
+
+
+def fix_double_encoded_address(address_bytes) -> Optional[ChecksumAddress]:
+    """
+    Fix Neynar's buggy double-encoded addresses.
+
+    Sometimes Neynar stores ASCII bytes of the hex string instead of raw bytes.
+    E.g., instead of b'\x00\x00...' they store b'0x0000...' as ASCII.
+
+    Args:
+        address_bytes: Raw bytes/memoryview from database (could be double-encoded)
+
+    Returns:
+        ChecksumAddress or None if invalid
+    """
+    if not address_bytes:
+        return None
+
+    # First, try normal conversion (for correctly stored addresses)
+    try:
+        return to_checksum_address(address_bytes)
+    except Exception:
+        pass
+
+    # If that fails, check if it's double-encoded ASCII
+    if isinstance(address_bytes, memoryview):
+        address_bytes = address_bytes.tobytes()
+
+    try:
+        address_str = address_bytes.decode("ascii")
+    except Exception:  # Expected for non-ASCII bytes
+        pass
+    else:
+        # Decoding succeeded, check if it's a hex-encoded address
+        address_without_0x = address_str.lower().removeprefix("0x")
+        if len(address_without_0x) == 40 and all(
+            c in "0123456789abcdef" for c in address_without_0x
+        ):
+            # This is double-encoded, convert the string to address
+            return to_checksum_address("0x" + address_without_0x)
+        # Decoding succeeded but it's not a hex address, continue to other cases
+
+    # Out of all options
+    logger.warning(f"Could not parse address from database: {address_bytes!r}")
+    return None
 
 
 def validate_funding(round_id: str, amount: Decimal) -> bool:
@@ -194,18 +241,8 @@ async def fetch_leaderboard_async(round_id: str) -> Dict:
             if not round_data:
                 raise ValueError(f"Round {round_id} not found")
 
-    # Convert token address from bytes/memoryview to hex string
-    token_addr_raw = round_data["token_address"]
-    if isinstance(token_addr_raw, memoryview):
-        token_address = f"0x{token_addr_raw.tobytes().hex()}"
-    elif isinstance(token_addr_raw, bytes):
-        token_address = f"0x{token_addr_raw.hex()}"
-    elif isinstance(token_addr_raw, str):
-        token_address = (
-            token_addr_raw if token_addr_raw.startswith("0x") else f"0x{token_addr_raw}"
-        )
-    else:
-        raise ValueError(f"Unexpected token_address type: {type(token_addr_raw)}")
+    # Convert token address to ChecksumAddress (handles bytes/memoryview/str)
+    token_address: ChecksumAddress = to_checksum_address(round_data["token_address"])
 
     # Get time window for leaderboard
     # Start time is the last successful round timestamp or epoch
@@ -274,7 +311,9 @@ def fetch_leaderboard(round_id: str) -> Dict:
     return asyncio.run(fetch_leaderboard_async(round_id))
 
 
-async def get_wallet_addresses_async(fids: List[int]) -> Dict[int, Optional[str]]:
+async def get_wallet_addresses_async(
+    fids: List[int],
+) -> Dict[int, Optional[ChecksumAddress]]:
     """
     Fetch primary wallet addresses for FIDs from neynarv3.profiles.
 
@@ -282,10 +321,10 @@ async def get_wallet_addresses_async(fids: List[int]) -> Dict[int, Optional[str]
         fids: List of Farcaster IDs
 
     Returns:
-        Dictionary mapping FID to wallet address
+        Dictionary mapping FID to ChecksumAddress
     """
     query = """
-    SELECT fid, custody_address
+    SELECT fid, primary_eth_address
     FROM neynarv3.profiles
     WHERE fid = ANY($1::int[])
     """
@@ -304,7 +343,11 @@ async def get_wallet_addresses_async(fids: List[int]) -> Dict[int, Optional[str]
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch(query, fids)
-            return {row["fid"]: row["custody_address"] for row in rows}
+            # Convert bytea to ChecksumAddress at the database boundary, handling Neynar's double-encoding bug
+            return {
+                row["fid"]: fix_double_encoded_address(row["primary_eth_address"])
+                for row in rows
+            }
     finally:
         await pool.close()
 
@@ -352,24 +395,27 @@ def calculate(round_data: Dict) -> List[str]:
     # Calculate distributions based on method
     distributions = []
 
-    # Filter out entries without wallet addresses
-    valid_entries = []
-    for entry in leaderboard:
-        wallet_address = wallet_addresses.get(entry["fid"])
-        if not wallet_address:
-            logger.warning(f"No wallet address found for FID {entry['fid']}, skipping")
-            continue
-        valid_entries.append((entry, wallet_address))
-
-    if not valid_entries:
-        logger.warning(f"No valid recipients for round {round_id}")
+    # Process all entries, including those without wallet addresses
+    if not leaderboard:
+        logger.warning(f"No recipients for round {round_id}")
         return []
+
+    # Count how many have wallet addresses for logging
+    with_wallet_count = sum(
+        1 for entry in leaderboard if wallet_addresses.get(entry["fid"])
+    )
+    without_wallet_count = len(leaderboard) - with_wallet_count
+    if without_wallet_count > 0:
+        logger.info(
+            f"Round {round_id}: {with_wallet_count} users have wallets, {without_wallet_count} do not (will record with NULL receiver)"
+        )
 
     if method == "uniform":
         # Equal distribution to all recipients
-        amount_per_recipient = amount / len(valid_entries)
+        amount_per_recipient = amount / len(leaderboard)
 
-        for entry, wallet_address in valid_entries:
+        for entry in leaderboard:
+            wallet_address = wallet_addresses.get(entry["fid"])  # May be None
             distributions.append(
                 {
                     "fid": entry["fid"],
@@ -381,7 +427,7 @@ def calculate(round_data: Dict) -> List[str]:
 
     elif method == "proportional":
         # Proportional distribution based on scores
-        total_score = sum(entry["score"] for entry, _ in valid_entries)
+        total_score = sum(entry["score"] for entry in leaderboard)
 
         if total_score == 0:
             logger.warning(
@@ -389,7 +435,8 @@ def calculate(round_data: Dict) -> List[str]:
             )
             return []
 
-        for entry, wallet_address in valid_entries:
+        for entry in leaderboard:
+            wallet_address = wallet_addresses.get(entry["fid"])  # May be None
             percentage = entry["score"] / total_score
             dist_amount = amount * Decimal(str(percentage))
 
@@ -411,11 +458,11 @@ def calculate(round_data: Dict) -> List[str]:
         with conn.cursor() as cur:
             try:
                 for dist in distributions:
-                    # Convert wallet address to bytes
-                    receiver_bytes = bytes.fromhex(
-                        dist["wallet_address"][2:]
-                        if dist["wallet_address"].startswith("0x")
-                        else dist["wallet_address"]
+                    # Convert ChecksumAddress to bytes for database storage, or None for NULL
+                    receiver_bytes = (
+                        to_bytes(hexstr=dist["wallet_address"])
+                        if dist["wallet_address"]
+                        else None
                     )
 
                     cur.execute(
@@ -534,13 +581,14 @@ def submit_txs(log_ids_nested: List[List[str]]) -> List[str]:
 
     with get_supabase_psycopg2_client() as conn:
         with conn.cursor() as cur:
-            # Fetch all logs that need transactions
+            # Fetch all logs that need transactions (excluding NULL receivers)
             cur.execute(
                 """
                 SELECT id, receiver, amount, fid
                 FROM token_distribution.logs
                 WHERE id = ANY(%s::uuid[])
                   AND tx_hash IS NULL
+                  AND receiver IS NOT NULL  -- Skip users without wallet addresses
                 ORDER BY id  -- Deterministic order
             """,
                 (all_log_ids,),
@@ -548,8 +596,25 @@ def submit_txs(log_ids_nested: List[List[str]]) -> List[str]:
 
             logs_to_submit = cur.fetchall()
 
+            # Count logs with NULL receivers
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM token_distribution.logs
+                WHERE id = ANY(%s::uuid[])
+                  AND receiver IS NULL
+            """,
+                (all_log_ids,),
+            )
+            null_receiver_count = cur.fetchone()[0]
+
+            if null_receiver_count > 0:
+                logger.info(
+                    f"Skipping {null_receiver_count} distributions with NULL receivers (users without wallets)"
+                )
+
             if not logs_to_submit:
-                logger.info("All logs already have transactions")
+                logger.info("No logs with valid receivers to submit transactions for")
                 return []
 
             logger.info(f"Submitting {len(logs_to_submit)} transactions")
@@ -573,9 +638,10 @@ def submit_txs(log_ids_nested: List[List[str]]) -> List[str]:
 
                 tx_hashes.append(mock_tx_hash)
 
-                receiver_hex = f"0x{receiver.hex()}"
+                # Convert receiver bytes to ChecksumAddress for logging
+                receiver_address: ChecksumAddress = to_checksum_address(receiver)
                 logger.info(
-                    f"Submitted tx {mock_tx_hash} for {amount} to {receiver_hex} (FID {fid})"
+                    f"Submitted tx {mock_tx_hash} for {amount} to {receiver_address} (FID {fid})"
                 )
 
             conn.commit()
@@ -629,7 +695,7 @@ def submit_txs_production(log_ids_nested: List[List[str]]) -> List[str]:
     tx_hashes = []
     with get_supabase_psycopg2_client() as conn:
         with conn.cursor() as cur:
-            # Fetch logs needing submission
+            # Fetch logs needing submission (excluding NULL receivers)
             cur.execute('''
                 SELECT l.id, l.receiver, l.amount, req.token_address
                 FROM token_distribution.logs l
@@ -637,6 +703,7 @@ def submit_txs_production(log_ids_nested: List[List[str]]) -> List[str]:
                 JOIN token_distribution.requests req ON r.request_id = req.id
                 WHERE l.id = ANY(%s::uuid[])
                   AND l.tx_hash IS NULL
+                  AND l.receiver IS NOT NULL  -- Skip users without wallet addresses
                 ORDER BY l.id
             ''', (all_log_ids,))
 
@@ -645,9 +712,9 @@ def submit_txs_production(log_ids_nested: List[List[str]]) -> List[str]:
                 # This assumes token_address is an ERC20 token
                 # Would need to handle native token transfers differently
 
-                # Convert receiver to checksum address
-                receiver_address = w3.to_checksum_address(f"0x{receiver.hex()}")
-                token_address_checksum = w3.to_checksum_address(f"0x{token_address.hex()}")
+                # Convert receiver bytes and token bytes to ChecksumAddress
+                receiver_address: ChecksumAddress = to_checksum_address(receiver)
+                token_address_checksum: ChecksumAddress = to_checksum_address(token_address)
 
                 # Build transfer data
                 # transfer(address to, uint256 amount)
