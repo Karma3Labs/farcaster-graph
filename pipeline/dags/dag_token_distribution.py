@@ -17,7 +17,6 @@ Task Flow:
 """
 
 from datetime import datetime, timedelta
-from uuid import UUID
 
 from airflow import DAG
 from airflow.decorators import task, task_group
@@ -46,7 +45,7 @@ with DAG(
 ) as dag:
     # Task to gather rounds that are due
     @task
-    def gather_rounds(**context) -> list[UUID]:
+    def gather_rounds(**context) -> list[str]:
         """
         Airflow task wrapper to gather rounds due for processing.
         Extracts execution date from Airflow context and passes to business logic.
@@ -57,7 +56,7 @@ with DAG(
 
     # Task to fetch leaderboard for a specific round
     @task(map_index_template="{{ task.op_kwargs['round_id'] }}")
-    def fetch_round_leaderboard(round_id: UUID) -> dict:
+    def fetch_round_leaderboard(round_id: str) -> dict:
         """Airflow task wrapper to fetch leaderboard data."""
         return td_tasks.fetch_leaderboard(round_id)
 
@@ -75,19 +74,21 @@ with DAG(
 
     # Task to submit transactions
     @task(max_active_tis_per_dag=1)  # Ensure only one instance runs at a time
-    def submit_transactions(log_ids_nested: list[list[str]]) -> list[str]:
+    def submit_transactions(log_ids_nested: list[list[str]]) -> list:
         """Airflow task wrapper to submit blockchain transactions."""
+        # Returns list[HexBytes] but Airflow serializes it as list
         return td_tasks.submit_txs(log_ids_nested)
 
     # Task to wait for confirmations
     @task
-    def wait_for_tx_confirmations(tx_hashes: list[str]) -> None:
+    def wait_for_tx_confirmations(tx_hashes: list) -> None:
         """Airflow task wrapper to wait for blockchain confirmations."""
+        # tx_hashes is list[HexBytes] from submit_transactions
         td_tasks.wait_for_confirmations(tx_hashes)
 
     # Task group for per-round processing
     @task_group(group_id="process_rounds")
-    def process_rounds_group(round_ids: list[UUID]):
+    def process_rounds_group(round_ids: list[str]) -> list[list[str]]:
         """Process each round in parallel."""
 
         # Fetch leaderboards in parallel
@@ -114,7 +115,7 @@ with DAG(
     # Process rounds in parallel if any exist
     # We use a branch to handle the case where no rounds are due
     @task.branch
-    def check_rounds(round_ids: list[UUID]) -> str:
+    def check_rounds(round_ids: list[str]) -> str:
         """Check if there are rounds to process."""
         if round_ids:
             return "process_rounds_wrapper"
@@ -124,7 +125,7 @@ with DAG(
     no_rounds = EmptyOperator(task_id="no_rounds")
 
     @task_group(group_id="process_rounds_wrapper")
-    def process_rounds_wrapper(round_ids: list[UUID]):
+    def process_rounds_wrapper(round_ids: list[str]) -> None:
         """Wrapper for processing rounds."""
         # Process all rounds in parallel
         verified_logs = process_rounds_group(round_ids)
