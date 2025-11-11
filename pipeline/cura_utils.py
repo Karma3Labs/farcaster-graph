@@ -101,7 +101,7 @@ def weekly_mods_notify(
 def notify(
     session: niquests.Session,
     timeouts: tuple,
-    channel_id: str,
+    channel_id: Optional[str],
     fids: list[int],
     notification_id: str,
     title: str,
