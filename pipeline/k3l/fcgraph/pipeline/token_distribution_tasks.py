@@ -828,7 +828,7 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
             cura_utils.notify(
                 session=session,
                 timeouts=timeouts,
-                channel_id=None,
+                channel_id="",
                 fids=fids,
                 notification_id=notification_id,
                 title=title,
