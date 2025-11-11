@@ -141,6 +141,33 @@ class Settings(BaseSettings):
     ETH_RPC_URL: str = "https://mainnet.base.org"
     CHAIN_ID: int = 8453  # Base mainnet
 
+    # Token metadata fetching configuration
+    TOKEN_QUERY_BATCH_SIZE: int = 100  # Number of tokens to query per batch
+    RPC_RATE_LIMIT_DELAY: float = (
+        0.1  # Delay in seconds between individual RPC calls to avoid 429 errors
+    )
+
+    # Multicall3 addresses - default for most chains
+    # Override with MULTICALL3_ADDRESS_{chain_id} environment variable
+    MULTICALL3_ADDRESS_DEFAULT: str = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+    # Per-chain Multicall3 address overrides (if needed)
+    # Example: MULTICALL3_ADDRESS_1: str = "0x..."
+
+    def get_multicall3_address(self, chain_id: int) -> str:
+        """Get Multicall3 address for a specific chain, with fallback to default."""
+        import os
+
+        # First check for chain-specific override in environment
+        env_var = f"MULTICALL3_ADDRESS_{chain_id}"
+        if env_var in os.environ:
+            return os.environ[env_var]
+        # Check if we have it as an attribute (from .env file)
+        if hasattr(self, env_var):
+            return getattr(self, env_var)
+        # Fall back to default
+        return self.MULTICALL3_ADDRESS_DEFAULT
+
     @computed_field
     @cached_property
     def POSTGRES_TIMEOUT_MS(self) -> int:

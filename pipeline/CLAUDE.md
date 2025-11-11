@@ -79,3 +79,9 @@ The system uses multiple PostgreSQL instances configured via environment variabl
 
 ## Testing Approach
 The codebase uses pytest but specific test commands should be discovered from existing test files when needed.
+- Use Python 3.12+ native type annotation constructs, e.g. instead of `Optional[List[Union[int, str]]]`, use `list[int | str] | None`.
+- DAGs in `dags/dag_*.py` should be a wrapper around the actual logic in a module somewhere under the `k3l.fcgraph.pipeline` package.  See the existing `dags/dag_token_distribution.py` for example.
+- Always annotate functions with parameter types and return types.
+- When using databases, convert on-database types to/from Python-native types at the edge, i.e., right before/after the DB query.  Use native types for business logic.  For example, Ethereum addresses should be passed around as `eth_typing.ChecksumAddress`, and be converted right before/after the query using `eth_utils.to_checksum_address()` and friends.  See `dags/dag_token_distribution.py` for examples.
+- Do document classes and methods/functions using Sphinx/reStructuredText syntax.  When documenting, omit type definitions so that Sphinx can infer those from type annotations.
+- Avoid using Napoleon-style docstrings.  Use Sphinx-style syntax instead, e.g. `:param xyz: ...` and `:return: ...`.
