@@ -10,7 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool, db_utils
-from ..dependencies.db_utils import get_all_token_balances, get_token_balances
+from ..dependencies.db_utils import (
+    Fip2Token,
+    get_all_token_balances,
+    get_token_balances,
+    search_fip2_tokens,
+)
 from ..dependencies.token_feed import get_token_feed
 from ..models.feed_model import WeightsField
 
@@ -212,3 +217,37 @@ async def get_trending_fip2(
             weights=weights,
         )
     }
+
+
+@router.get("/search-fip2", response_model=list[Fip2Token])
+async def search_tokens_fip2(
+    *,
+    term: str = Query(
+        ...,
+        description="Search term: 0x-prefixed full address, $-prefixed symbol, or description substring",
+        min_length=1,
+    ),
+    chain_id: int | None = Query(
+        None,
+        description="Optional chain ID to filter results to a specific chain",
+    ),
+    pool: Pool = Depends(db_pool.get_db),
+) -> list[Fip2Token]:
+    """
+    Search for FIP-2 tokens based on the provided search term.
+
+    - **0x-prefixed full address (42 chars)**: Exact match against token address
+    - **$-prefixed symbol**: Prefix match against symbol field (matches both $XXX and XXX in DB)
+    - **Other text**: Case-insensitive substring match against description field
+    - **chain_id (optional)**: Filter results to a specific blockchain (e.g., 1 for Ethereum, 8453 for Base)
+
+    Returns an array of matching tokens with chain_id, address (0x-prefixed hex), symbol, and description.
+    """
+    try:
+        results = await search_fip2_tokens(term, pool, chain_id=chain_id)
+        return results
+    except Exception as exc:
+        _logger.error(
+            f"Error searching tokens with term {term!r} and chain_id {chain_id}: {exc}"
+        )
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

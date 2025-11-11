@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict
 
 import asyncpg
 import pytz
@@ -1592,6 +1592,106 @@ async def get_token_balances(
     return records2dicts(
         await fetch_rows(token_address, fids, sql_query=sql_query, pool=pool)
     )
+
+
+class Fip2Token(TypedDict):
+    """TypedDict for FIP-2 token search results."""
+
+    chain_id: int
+    address: str  # hex string with 0x prefix
+    symbol: str
+    description: str
+
+
+async def search_fip2_tokens(
+    term: str,
+    pool: Pool,
+    chain_id: int | None = None,
+) -> list[Fip2Token]:
+    """
+    Search for FIP-2 tokens based on the search term.
+
+    - If term starts with '0x' and is a full 40-char hex address: exact match on address
+    - If term starts with '$': prefix match on symbol (with or without $ in DB)
+    - Otherwise: case-insensitive substring match on description
+    - If chain_id is provided, constrain search to that chain only
+    """
+    if term.startswith("0x") and len(term) == 42:  # 0x + 40 hex chars
+        # Exact address match
+        try:
+            # Convert hex string to bytes for comparison
+            address_bytes = bytes.fromhex(term[2:])
+        except ValueError:
+            # Invalid hex, return empty result
+            return []
+
+        sql, args = pyformat2dollar(
+            """
+            SELECT
+                chain_id,
+                '0x' || encode(address, 'hex') AS address,
+                symbol,
+                description
+            FROM k3l.erc20_tokens
+            WHERE address = %(address)s::bytea
+                AND CASE WHEN %(chain_id)s::bigint IS NULL THEN TRUE ELSE chain_id = %(chain_id)s::bigint END
+            """,
+            address=address_bytes,
+            chain_id=chain_id,
+        )
+    elif term.startswith("$"):
+        # Symbol prefix match (handle both with and without $ in DB)
+        symbol_prefix = term[1:]  # Remove the leading $
+        sql, args = pyformat2dollar(
+            """
+            SELECT
+                chain_id,
+                '0x' || encode(address, 'hex') AS address,
+                symbol,
+                description
+            FROM k3l.erc20_tokens
+            WHERE (symbol ILIKE %(prefix_with_dollar)s || '%%'
+                   OR symbol ILIKE %(prefix_without_dollar)s || '%%')
+                AND CASE WHEN %(chain_id)s::bigint IS NULL THEN TRUE ELSE chain_id = %(chain_id)s::bigint END
+            ORDER BY
+                CASE
+                    WHEN symbol ILIKE %(prefix_without_dollar)s || '%%' THEN 0
+                    ELSE 1
+                END,
+                symbol
+            """,
+            prefix_with_dollar="$" + symbol_prefix,
+            prefix_without_dollar=symbol_prefix,
+            chain_id=chain_id,
+        )
+    else:
+        # Description substring match (case-insensitive)
+        sql, args = pyformat2dollar(
+            """
+            SELECT
+                chain_id,
+                '0x' || encode(address, 'hex') AS address,
+                symbol,
+                description
+            FROM k3l.erc20_tokens
+            WHERE description ILIKE '%%' || %(term)s || '%%'
+                AND CASE WHEN %(chain_id)s::bigint IS NULL THEN TRUE ELSE chain_id = %(chain_id)s::bigint END
+            ORDER BY description
+            """,
+            term=term,
+            chain_id=chain_id,
+        )
+
+    rows = await pool.fetch(sql, *args)
+    return [
+        Fip2Token(
+            chain_id=row["chain_id"],
+            address=row["address"],
+            symbol=row["symbol"],
+            description=row["description"],
+        )
+        for row in rows
+    ]
 
 
 TOKEN_FEED_CACHE_SIZE = 1000
