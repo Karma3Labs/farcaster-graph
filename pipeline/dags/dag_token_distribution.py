@@ -6,6 +6,7 @@ This DAG implements a scalable architecture with:
 - Serialized transaction submission (nonce management)
 - Proper idempotency and error recovery
 - Clear task boundaries for observability
+- Notification to reward recipients after confirmation
 
 Task Flow:
 1. gather_rounds_due() → [round_ids]
@@ -14,6 +15,7 @@ Task Flow:
 4. verify.expand(log_ids, round_id) → [log_ids]
 5. submit_txs([log_ids]) → [tx_hashes]
 6. wait_for_confirmations(tx_hashes) → complete
+7. notify_recipients([log_ids]) → complete
 """
 
 from datetime import datetime, timedelta
@@ -86,6 +88,12 @@ with DAG(
         # tx_hashes is list[HexBytes] from submit_transactions
         td_tasks.wait_for_confirmations(tx_hashes)
 
+    # Task to notify recipients
+    @task
+    def notify_reward_recipients(log_ids_nested: list[list[str]]) -> None:
+        """Airflow task wrapper to notify recipients of their rewards."""
+        td_tasks.notify_recipients(log_ids_nested)
+
     # Task group for per-round processing
     @task_group(group_id="process_rounds")
     def process_rounds_group(round_ids: list[str]) -> list[list[str]]:
@@ -135,6 +143,9 @@ with DAG(
 
         # Wait for all confirmations
         wait_for_tx_confirmations(tx_hashes)
+
+        # Notify all recipients after confirmations
+        notify_reward_recipients(verified_logs)
 
     # Build the DAG flow
     branch_result = check_rounds(rounds)

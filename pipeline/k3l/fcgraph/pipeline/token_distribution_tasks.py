@@ -11,20 +11,25 @@ This module implements the new task-based architecture for token distribution:
 """
 
 import asyncio
+import hashlib
 import logging
 import time
 from datetime import datetime
 from decimal import Decimal
+from typing import List
 
 import aiohttp
 import asyncpg
+import niquests
 from eth_typing import ChecksumAddress
 from eth_utils import to_bytes, to_checksum_address
 from hexbytes import HexBytes
 from psycopg2.extras import RealDictCursor
+from urllib3.util import Retry
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
 
+import cura_utils
 from config import settings
 from db_utils import get_supabase_psycopg2_client
 
@@ -698,3 +703,140 @@ def wait_for_confirmations(tx_hashes: list[HexBytes]) -> None:
             )
 
     logger.info("All transactions confirmed successfully")
+
+
+def notify_recipients(log_ids_nested: list[list[str]]) -> None:
+    """Send notifications to all recipients who received rewards.
+
+    Notification message format:
+    - With token_symbol: "Your trades & casts for {TOKEN} paid off. You've earned
+      an airdrop from the Believer Leaderboard. Check rank"
+    - Without token_symbol: "Your trades & casts paid off. You've earned an airdrop
+      from the Believer Leaderboard. Check rank"
+
+    Target URL: ``https://cura.network/{token_address}/leaderboard?category=believers``
+
+    :param log_ids_nested: Nested list of log UUID strings from multiple rounds
+    """
+    # Flatten nested lists
+    all_log_ids = [log_id for sublist in log_ids_nested for log_id in sublist]
+
+    if not all_log_ids:
+        logger.info("No logs to send notifications for")
+        return
+
+    logger.info(f"Sending notifications for {len(all_log_ids)} distribution logs")
+
+    # Query database to get FIDs and metadata grouped by round and token
+    with get_supabase_psycopg2_client() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    l.round_id,
+                    req.token_address,
+                    ARRAY_AGG(l.fid) as fids,
+                    r.metadata as round_metadata,
+                    req.metadata as request_metadata
+                FROM token_distribution.logs l
+                JOIN token_distribution.rounds r ON l.round_id = r.id
+                JOIN token_distribution.requests req ON r.request_id = req.id
+                WHERE l.id = ANY(%s::uuid[])
+                GROUP BY l.round_id, req.token_address, r.metadata, req.metadata
+                """,
+                (all_log_ids,),
+            )
+
+            rounds_data = cur.fetchall()
+
+    if not rounds_data:
+        logger.warning("No round data found for notification logs")
+        return
+
+    # Setup HTTP session for notifications
+    retries = Retry(
+        total=3,
+        backoff_factor=0.1,
+        status_forcelist=[502, 503, 504],
+        allowed_methods={"POST"},
+    )
+    connect_timeout_s = 5.0
+    read_timeout_s = 30.0
+
+    with niquests.Session(retries=retries) as session:
+        session.headers.update(
+            {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.CURA_FE_API_KEY}",
+            }
+        )
+        timeouts = (connect_timeout_s, read_timeout_s)
+
+        # Process each round
+        for round_data in rounds_data:
+            round_id = round_data["round_id"]
+            fids = round_data["fids"]
+
+            # Convert token_address from bytea to ChecksumAddress
+            token_address_raw = round_data["token_address"]
+            token_address = fix_double_encoded_address(token_address_raw)
+
+            if not token_address:
+                logger.error(
+                    f"Could not convert token_address for round {round_id}, skipping notifications"
+                )
+                continue
+
+            # Extract token_symbol from metadata
+            # Check round_metadata first, then request_metadata
+            token_symbol = None
+
+            if round_data["round_metadata"]:
+                token_symbol = round_data["round_metadata"].get("token_symbol")
+
+            if not token_symbol and round_data["request_metadata"]:
+                token_details = round_data["request_metadata"].get("token") or {}
+                token_symbol = token_details.get("symbol")
+
+            # Generate notification message
+            title = "Believer Leaderboard earnings"
+
+            if token_symbol:
+                body = f"Your trades & casts for {token_symbol} paid off. Check rank"
+            else:
+                body = "Your trades & casts paid off. Check rank"
+                logger.info(
+                    f"No token_symbol found in metadata for round {round_id}, using generic message"
+                )
+
+            # Generate unique notification_id using round_id and token_address
+            notification_id = hashlib.sha256(
+                f"token-distribution-{round_id}-{token_address}".encode("utf-8")
+            ).hexdigest()
+
+            # Generate target URL with token address
+            target_url = (
+                f"https://cura.network/{token_address}/leaderboard?category=believers"
+            )
+
+            logger.info(
+                f"Sending notifications for round {round_id} to {len(fids)} recipients "
+                f"token={token_symbol or 'N/A'}, address={token_address})"
+            )
+
+            cura_utils.notify(
+                session=session,
+                timeouts=timeouts,
+                channel_id="",
+                fids=fids,
+                notification_id=notification_id,
+                title=title,
+                body=body,
+                target_url=target_url,
+            )
+
+    logger.info(
+        f"Successfully sent notifications for {len(rounds_data)} rounds "
+        f"covering {len(all_log_ids)} recipients"
+    )
