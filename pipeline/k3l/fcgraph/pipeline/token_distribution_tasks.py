@@ -663,17 +663,17 @@ def submit_txs(log_ids_nested: list[list[str]]) -> list[HexBytes]:
     return tx_hashes
 
 
-def wait_for_confirmations(tx_hashes: list[HexBytes]) -> None:
-    """
-    Wait for all transaction confirmations on the blockchain.
+def wait_for_confirmations(tx_hashes: list[HexBytes]) -> list[HexBytes]:
+    """Wait for all transaction confirmations on the blockchain.
 
     :param tx_hashes: List of transaction hashes as HexBytes.
+    :return: The same list of transaction hashes after confirmation.
     :raises ValueError: If any transaction is reverted.
     :raises TimeoutError: If the transaction is not confirmed within timeout.
     """
     if not tx_hashes:
         logger.info("No transactions to wait for")
-        return
+        return []
 
     logger.info(f"Waiting for {len(tx_hashes)} transaction confirmations")
 
@@ -703,6 +703,7 @@ def wait_for_confirmations(tx_hashes: list[HexBytes]) -> None:
             )
 
     logger.info("All transactions confirmed successfully")
+    return tx_hashes
 
 
 def notify_recipients(log_ids_nested: list[list[str]]) -> None:

@@ -83,15 +83,22 @@ with DAG(
 
     # Task to wait for confirmations
     @task
-    def wait_for_tx_confirmations(tx_hashes: list) -> None:
+    def wait_for_tx_confirmations(tx_hashes: list) -> list:
         """Airflow task wrapper to wait for blockchain confirmations."""
         # tx_hashes is list[HexBytes] from submit_transactions
-        td_tasks.wait_for_confirmations(tx_hashes)
+        return td_tasks.wait_for_confirmations(tx_hashes)
 
     # Task to notify recipients
     @task
-    def notify_reward_recipients(log_ids_nested: list[list[str]]) -> None:
-        """Airflow task wrapper to notify recipients of their rewards."""
+    def notify_reward_recipients(
+        log_ids_nested: list[list[str]], tx_hashes_confirmed: list
+    ) -> None:
+        """Airflow task wrapper to notify recipients of their rewards.
+
+        The tx_hashes_confirmed parameter creates an explicit dependency on transaction
+        confirmation, ensuring notifications are only sent after confirmations complete.
+        """
+        # tx_hashes_confirmed is used for dependency only, not in the function logic
         td_tasks.notify_recipients(log_ids_nested)
 
     # Task group for per-round processing
@@ -142,10 +149,11 @@ with DAG(
         tx_hashes = submit_transactions(verified_logs)
 
         # Wait for all confirmations
-        wait_for_tx_confirmations(tx_hashes)
+        tx_hashes_confirmed = wait_for_tx_confirmations(tx_hashes)
 
         # Notify all recipients after confirmations
-        notify_reward_recipients(verified_logs)
+        # tx_hashes_confirmed creates explicit dependency: notifications only after confirmations
+        notify_reward_recipients(verified_logs, tx_hashes_confirmed)
 
     # Build the DAG flow
     branch_result = check_rounds(rounds)
