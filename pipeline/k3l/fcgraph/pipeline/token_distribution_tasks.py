@@ -800,12 +800,12 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
                 token_symbol = token_details.get("symbol")
 
             # Generate notification message
-            title = "You've earned from the Believer Leaderboard"
+            title = "Believer Leaderboard earnings"
 
             if token_symbol:
-                body = f"Your trades & casts for {token_symbol} paid off. You've earned an airdrop from the Believer Leaderboard. Check rank"
+                body = f"Your trades & casts for {token_symbol} paid off. Check rank"
             else:
-                body = "Your trades & casts paid off. You've earned an airdrop from the Believer Leaderboard. Check rank"
+                body = "Your trades & casts paid off. Check rank"
                 logger.info(
                     f"No token_symbol found in metadata for round {round_id}, using generic message"
                 )
