@@ -3506,6 +3506,8 @@ async def get_fip2_cast_hashes(*, cast_hashes: List[str], chain_id: int, pool: P
     # Convert hex strings to bytes (remove '0x' prefix with [2:])
     cast_hashes_bytes = [bytes.fromhex(h[2:]) for h in cast_hashes]
 
+    logger.info(f"cast_hashes_bytes {cast_hashes_bytes}")
+
     sql = """
 SELECT hash
 FROM neynarv3.casts
