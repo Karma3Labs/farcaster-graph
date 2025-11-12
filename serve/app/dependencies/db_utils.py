@@ -3434,6 +3434,7 @@ async def get_believer_leaderboard(
     *,
     chain_id: int,
     token_address: ChecksumAddress,
+    tx_only: bool,
     start_time: datetime,
     end_time: datetime,
     global_trust_strategy_id: int,
@@ -3451,6 +3452,7 @@ async def get_believer_leaderboard(
     :param chain_id: The blockchain chain ID to identify the relevant network.
     :param token_address: The address of the ERC-20 token for which
         the leaderboard is being generated.
+    :param tx_only: Whether to consider only casts with embedded TX URL.
     :param start_time: The start of the time range for evaluating activity.
         The date must be timezone-aware or UTC-naive.
     :param end_time: The end of the time range for evaluating activity.
@@ -3485,6 +3487,7 @@ async def get_believer_leaderboard(
                     is_eip155_erc20_url(parent_url)
                     AND eip155_chain(parent_url) = %(chain_id)s::bigint
                     AND eip155_erc20_token(parent_url) = %(token_address)s::bytea
+                    AND CASE WHEN %(tx_only)s::bool THEN (embeds_eip155_tx_hashes(embeds, %(chain_id)s::bigint))[1] IS NOT NULL ELSE TRUE END
                     AND parent_hash IS NULL
             ),
             actions AS (
@@ -3539,6 +3542,7 @@ async def get_believer_leaderboard(
         """,
         chain_id=chain_id,
         token_address=to_bytes(hexstr=token_address),
+        tx_only=tx_only,
         start_time=start_time,
         end_time=end_time,
         global_trust_strategy_id=global_trust_strategy_id,
@@ -3557,6 +3561,7 @@ async def get_trending_fip2(
     end_time: datetime,
     decay_rate: float,
     chain_id: int,
+    tx_only: bool,
     offset: int,
     limit: int,
     weights: Weights,
@@ -3589,6 +3594,7 @@ async def get_trending_fip2(
                 WHERE
                     is_eip155_erc20_url(c.parent_url)
                     AND eip155_chain(c.parent_url) = %(chain_id)s::bigint
+                    AND CASE WHEN %(tx_only)s::bool THEN (embeds_eip155_tx_hashes(embeds, %(chain_id)s::bigint))[1] IS NOT NULL ELSE TRUE END
                     AND c.parent_hash IS NULL
                     AND COALESCE(ca.action_ts >= %(start_time)s, TRUE)
                     AND ca.action_ts < %(end_time)s
@@ -3608,6 +3614,7 @@ async def get_trending_fip2(
         reply_weight=weights.reply,
         decay_rate=decay_rate,
         chain_id=chain_id,
+        tx_only=tx_only,
         offset=offset,
         limit=limit,
     )

@@ -119,6 +119,10 @@ async def get_trader_leaderboard(
         None,
         description="Action duration (default: 1 day)",
     ),
+    tx_only: bool = Query(
+        True,
+        description="Only consider casts with transactions (default: true)",
+    ),
     weights: Annotated[
         WeightsField,
         Query(
@@ -141,6 +145,7 @@ async def get_trader_leaderboard(
     leaderboard = await db_utils.get_believer_leaderboard(
         chain_id=8453,
         token_address=token.address,
+        tx_only=tx_only,
         start_time=start_time,
         end_time=end_time,
         global_trust_strategy_id=9,
@@ -179,6 +184,10 @@ async def get_trending_fip2(
         None,
         description="Maximum action timestamp (default: now)",
     ),
+    tx_only: bool = Query(
+        True,
+        description="Only consider casts with transactions (default: true)",
+    ),
     duration: timedelta | None = Query(
         None,
         description="Action duration (default: 1 day)",
@@ -211,6 +220,7 @@ async def get_trending_fip2(
             end_time=end_time,
             decay_rate=decay_rate,
             chain_id=chain_id,
+            tx_only=tx_only,
             offset=offset,
             limit=limit,
             pool=pool,
