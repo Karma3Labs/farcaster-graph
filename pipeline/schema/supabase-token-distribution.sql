@@ -19,7 +19,8 @@ CREATE TABLE requests (
     num_recipients_per_round bigint NOT NULL CHECK (
         num_recipients_per_round >= 0
     ),
-    metadata jsonb NOT NULL DEFAULT '{}'
+    metadata jsonb NOT NULL DEFAULT '{}',
+    recipient_token_community ethereum_address NOT NULL
 );
 
 CREATE TABLE funding_txs (

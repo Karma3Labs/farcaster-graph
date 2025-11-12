@@ -16,7 +16,6 @@ import logging
 import time
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 import aiohttp
 import asyncpg
@@ -219,7 +218,8 @@ async def fetch_leaderboard_async(round_id: str) -> dict:
         COALESCE(r.method, req.round_method) AS method,
         COALESCE(r.num_recipients, req.num_recipients_per_round) AS num_recipients,
         req.token_address,
-        req.chain_id
+        req.chain_id,
+        req.recipient_token_community
     FROM token_distribution.rounds r
     JOIN token_distribution.requests req ON r.request_id = req.id
     WHERE r.id = %s
@@ -235,6 +235,9 @@ async def fetch_leaderboard_async(round_id: str) -> dict:
 
     # Convert the token address to ChecksumAddress (handles bytes/memoryview/str)
     token_address: ChecksumAddress = to_checksum_address(round_data["token_address"])
+    recipient_token_community: ChecksumAddress = to_checksum_address(
+        round_data["recipient_token_community"]
+    )
 
     # Get time window for leaderboard
     # Start time is the last successful round timestamp or epoch
@@ -244,7 +247,7 @@ async def fetch_leaderboard_async(round_id: str) -> dict:
 
     # Fetch leaderboard from API
     api_base = "https://graph.cast.k3l.io"
-    url = f"{api_base}/tokens/{token_address}/leaderboards/trader"
+    url = f"{api_base}/tokens/{recipient_token_community}/leaderboards/trader"
 
     # If no limit, fetch a large number (API default or max)
     limit = round_data["num_recipients"]
@@ -258,7 +261,7 @@ async def fetch_leaderboard_async(round_id: str) -> dict:
     }
 
     logger.info(
-        f"Fetching leaderboard for token {token_address} "
+        f"Fetching leaderboard for token {recipient_token_community} "
         f"from {start_time} to {end_time}"
     )
 
