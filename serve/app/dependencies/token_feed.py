@@ -8,8 +8,7 @@ from typing import Dict, List, Optional
 import requests
 from loguru import logger
 
-from serve.app.dependencies.db_utils import get_fip2_cast_hashes
-
+from .db_utils import get_fip2_cast_hashes
 from ..config import settings
 
 
