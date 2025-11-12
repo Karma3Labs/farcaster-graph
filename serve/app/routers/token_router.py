@@ -11,6 +11,7 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool, db_utils
 from ..dependencies.db_utils import (
+    BelieverLeaderboardRow,
     Fip2Token,
     get_all_token_balances,
     get_token_balances,
@@ -103,6 +104,10 @@ async def get_all_balances(  # noqa: D401
     }
 
 
+class BelieverLeaderboardResponse(BaseModel):
+    result: list[BelieverLeaderboardRow]
+
+
 @router.get("/{token}/leaderboards/trader")
 async def get_trader_leaderboard(
     *,
@@ -130,7 +135,7 @@ async def get_trader_leaderboard(
         ),
     ] = "L1C0R1Y1",
     pool: Pool = Depends(db_pool.get_db),
-):
+) -> BelieverLeaderboardResponse:
     if end_time is None:
         end_time = datetime.now(tz=UTC)
     if start_time is None:
@@ -152,7 +157,7 @@ async def get_trader_leaderboard(
         weights=weights,
         pool=pool,
     )
-    return {"result": leaderboard}
+    return BelieverLeaderboardResponse(result=leaderboard)
 
 
 @router.get("/{token}/feed")

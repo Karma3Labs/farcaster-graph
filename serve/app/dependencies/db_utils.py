@@ -20,6 +20,7 @@ from memoize.configuration import (
     MutableCacheConfiguration,
 )
 from memoize.wrapper import memoize
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.models.channel_model import (
@@ -3363,6 +3364,15 @@ async def get_top_channel_casts(
     )
 
 
+class BelieverLeaderboardRow(BaseModel):
+    order_rank: int
+    fid: int
+    pfp: str
+    username: str
+    score: int
+    cast_hashes: list[str]
+
+
 async def get_believer_leaderboard(
     *,
     chain_id: int,
@@ -3373,7 +3383,7 @@ async def get_believer_leaderboard(
     global_trust_strategy_id: int,
     weights: Weights,
     pool: Pool,
-):
+) -> list[BelieverLeaderboardRow]:
     """
     Fetches a trader leaderboard based on various parameters and criteria.
 
@@ -3485,7 +3495,10 @@ async def get_believer_leaderboard(
         reply_weight=weights.reply,
         budget=budget,
     )
-    return await fetch_rows(*args, sql_query=sql, pool=pool)
+    return [
+        BelieverLeaderboardRow(**row)
+        for row in await fetch_rows(*args, sql_query=sql, pool=pool)
+    ]
 
 
 async def get_trending_fip2(
