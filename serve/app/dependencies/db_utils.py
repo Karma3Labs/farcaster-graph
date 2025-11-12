@@ -3503,13 +3503,16 @@ async def get_believer_leaderboard(
 
 
 async def get_fip2_cast_hashes(*, cast_hashes: List[str], chain_id: int, pool: Pool):
+    # Convert hex strings to bytes (remove '0x' prefix with [2:])
+    cast_hashes_bytes = [bytes.fromhex(h[2:]) for h in cast_hashes]
+
     sql = """
 SELECT hash
 FROM neynarv3.casts
 WHERE hash = ANY($1::bytea[])
   AND cardinality(embeds_eip155_tx_hashes(embeds, $2)) > 0;
     """
-    return await fetch_rows(cast_hashes, chain_id, sql_query=sql, pool=pool)
+    return await fetch_rows(cast_hashes_bytes, chain_id, sql_query=sql, pool=pool)
 
 
 async def get_trending_fip2(
