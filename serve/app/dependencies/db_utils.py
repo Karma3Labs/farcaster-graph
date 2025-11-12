@@ -3509,14 +3509,15 @@ async def get_fip2_cast_hashes(*, cast_hashes: list[str], chain_id: int, pool: P
     logger.info(f"hexes {hexes}")
 
     sql = """
-    WITH input(hash) AS (
-        SELECT decode(x, 'hex')::bytea
-        FROM unnest($1::text[]) AS t(x)
+    SELECT hash
+    FROM neynarv3.casts
+    WHERE hash = ANY (
+        ARRAY(
+            SELECT decode(x, 'hex')::bytea
+            FROM unnest($1::text[]) AS t(x)
+        )
     )
-    SELECT c.hash
-    FROM neynarv3.casts AS c
-    JOIN input i ON i.hash = c.hash
-    WHERE cardinality(embeds_eip155_tx_hashes(c.embeds, $2)) > 0;
+      AND cardinality(embeds_eip155_tx_hashes(embeds, $2)) > 0;
     """
     return await fetch_rows(hexes, chain_id, sql_query=sql, pool=pool)
 
