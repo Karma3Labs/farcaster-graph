@@ -45,7 +45,7 @@ async def get_token_feed(
 
     all_casts = search_casts + fip2_casts
 
-    flag_fip2_casts(all_casts, pool)
+    await flag_fip2_casts(all_casts, pool)
 
     # sort the casts
     all_casts.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -87,10 +87,10 @@ def add_cast_type(casts: List[dict], cast_type: str):
         cast["cast_type"] = cast_type
 
 
-def flag_fip2_casts(casts: List[dict], pool: Pool):
+async def flag_fip2_casts(casts: List[dict], pool: Pool):
     cast_hashes = set(cast["hash"] for cast in casts)
 
-    fip2_cast_hashes = get_fip2_cast_hashes(
+    fip2_cast_hashes = await get_fip2_cast_hashes(
         cast_hashes=cast_hashes, chain_id=8453, pool=pool
     )
 
