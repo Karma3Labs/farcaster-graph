@@ -138,7 +138,7 @@ async def get_trader_leaderboard(
             status_code=400,
             detail="Cannot specify both `start_time` and `duration`",
         )
-    leaderboard = await db_utils.get_trader_leaderboard(
+    leaderboard = await db_utils.get_believer_leaderboard(
         chain_id=8453,
         token_address=token.address,
         start_time=start_time,

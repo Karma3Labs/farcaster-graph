@@ -3429,7 +3429,7 @@ async def get_top_channel_casts(
     )
 
 
-async def get_trader_leaderboard(
+async def get_believer_leaderboard(
     *,
     chain_id: int,
     token_address: ChecksumAddress,
