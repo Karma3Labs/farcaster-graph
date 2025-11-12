@@ -1724,17 +1724,11 @@ async def search_fip2_tokens(
     ]
 
 
-TOKEN_FEED_CACHE_SIZE = 1000
-TOKEN_FEED_CACHE_TTL = timedelta(minutes=5)
-
-
 @pr.refresh(
-    if_slower_than=settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD,
-    in_=settings.TOKEN_FEED_CACHE_EARLY_TTL,
+    if_slower_than=settings.CACHE_SLOW_QUERY_THRESHOLD,
+    in_=settings.CACHE_EARLY_TTL,
 )
-@cache.early(
-    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
-)
+@cache.early(ttl=settings.CACHE_TTL, early_ttl=settings.CACHE_EARLY_TTL)
 async def get_token_holder_casts(
     agg: ScoreAgg,
     weights: Weights,
@@ -1846,12 +1840,10 @@ async def get_token_holder_casts(
 
 # noinspection PyUnusedLocal
 @pr.refresh(
-    if_slower_than=settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD,
-    in_=settings.TOKEN_FEED_CACHE_EARLY_TTL,
+    if_slower_than=settings.CACHE_SLOW_QUERY_THRESHOLD,
+    in_=settings.CACHE_EARLY_TTL,
 )
-@cache.early(
-    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
-)
+@cache.early(ttl=settings.CACHE_TTL, early_ttl=settings.CACHE_EARLY_TTL)
 async def get_new_user_casts(
     channel_id: str,
     caster_age: timedelta,

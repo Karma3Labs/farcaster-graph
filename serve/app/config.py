@@ -74,10 +74,9 @@ class Settings(BaseSettings):
     DB_VERSION: DBVersion = DBVersion.EIGEN2
 
     # TODO(ek): rename to FEED_CACHE_*
-    TOKEN_FEED_CACHE_TTL: timedelta = timedelta(minutes=5)
-    TOKEN_FEED_CACHE_EARLY_TTL: timedelta = timedelta(minutes=4)
-    TOKEN_FEED_CACHE_REFRESH_THRESHOLD: timedelta = timedelta(seconds=3)
-    TOKEN_FEED_CACHE_SIZE: int = 1000
+    CACHE_TTL: timedelta = timedelta(minutes=5)
+    CACHE_EARLY_TTL: timedelta = timedelta(minutes=4)
+    CACHE_SLOW_QUERY_THRESHOLD: timedelta = timedelta(seconds=3)
 
     @computed_field
     def postgres_uri(self) -> SecretStr:
