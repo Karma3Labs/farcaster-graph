@@ -257,6 +257,16 @@ async def _get_token_feed(
     return rows
 
 
+@router.get("/tokens")
+async def get_token_casts(
+    metadata: TokenFeed = Depends(),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    return await _get_token_feed(metadata, offset, limit, pool)
+
+
 @router.get("/personalized/recent/{fid}")
 async def get_personalized_casts_for_fid(
     fid: int,

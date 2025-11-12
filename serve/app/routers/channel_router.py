@@ -647,6 +647,17 @@ async def _get_new_users_feed(
     return paginate(rows, offset, limit)
 
 
+@router.get("/casts/new-users/{channel}", tags=["Channel Feed"])
+async def get_new_users_channel_casts(
+    channel: str,
+    metadata: NewUsersFeed = Depends(),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    pool: Pool = Depends(db_pool.get_db),
+):
+    return await _get_new_users_feed(channel, metadata, offset, limit, pool)
+
+
 @router.post("/casts/scores/{channel}", tags=["Channel Feed"])
 async def get_channel_casts_scores(
     cast_hashes: list[str],
