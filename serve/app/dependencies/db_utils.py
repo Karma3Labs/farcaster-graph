@@ -1,8 +1,7 @@
-import asyncio
 import json
 import re
 import time
-from collections.abc import Awaitable, Iterable
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -34,6 +33,7 @@ from app.models.feed_model import CastScore, CastsTimeDecay, SortingOrder
 from app.models.score_model import ScoreAgg, Voting, Weights
 
 from ..config import DBVersion, settings
+from .cache import pr
 from .memoize_utils import EncodedMethodNameAndArgsExcludedKeyExtractor
 
 
@@ -1728,21 +1728,14 @@ TOKEN_FEED_CACHE_SIZE = 1000
 TOKEN_FEED_CACHE_TTL = timedelta(minutes=5)
 
 
-# TODO(ek) - move setup to somewhere more suitable
-cache.setup("disk://", directory="/tmp/farcaster-serve-diskcache")
-
-refresh_tasks: set[asyncio.Task] = set()
-
-
-async def schedule_refresh(aw: Awaitable):
-    try:
-        await asyncio.sleep(settings.TOKEN_FEED_CACHE_EARLY_TTL.total_seconds())
-        await aw
-    finally:
-        refresh_tasks.discard(asyncio.current_task())
-
-
-async def _get_token_holder_casts_all(
+@pr.refresh(
+    if_slower_than=settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD,
+    in_=settings.TOKEN_FEED_CACHE_EARLY_TTL,
+)
+@cache.early(
+    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
+)
+async def get_token_holder_casts(
     agg: ScoreAgg,
     weights: Weights,
     score_threshold: float,
@@ -1851,38 +1844,15 @@ async def _get_token_holder_casts_all(
     ]
 
 
-# TODO(ek) fix copy-pastism
+# noinspection PyUnusedLocal
+@pr.refresh(
+    if_slower_than=settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD,
+    in_=settings.TOKEN_FEED_CACHE_EARLY_TTL,
+)
 @cache.early(
     ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
 )
-async def get_token_holder_casts_all(*poargs, **kwargs) -> list[dict[str, Any]]:
-    loop = asyncio.get_running_loop()
-    start_time = loop.time()
-    result = [dict(row) for row in await _get_token_holder_casts_all(*poargs, **kwargs)]
-    end_time = loop.time()
-    elapsed = end_time - start_time
-    if timedelta(seconds=elapsed) > settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD:
-        logger.debug(
-            f"slow token feed {kwargs=}, scheduling preemptive refresh in {settings.TOKEN_FEED_CACHE_EARLY_TTL}"
-        )
-        refresh_task = asyncio.create_task(
-            schedule_refresh(get_token_holder_casts_all(*poargs, **kwargs))
-        )
-        refresh_tasks.add(refresh_task)
-        refresh_task.add_done_callback(refresh_tasks.discard)
-    return result
-
-
-# TODO(ek) fix copy-pastism
-async def get_token_holder_casts(
-    *poargs, offset: int, limit: int, **kwargs
-) -> list[dict[str, Any]]:
-    all_casts = await get_token_holder_casts_all(*poargs, **kwargs)
-    return all_casts[offset : (offset + limit)]
-
-
-# noinspection PyUnusedLocal
-async def _get_new_user_casts_all(
+async def get_new_user_casts(
     channel_id: str,
     caster_age: timedelta,
     agg: ScoreAgg,
@@ -1966,36 +1936,6 @@ async def _get_new_user_casts_all(
             pool=pool,
         )
     ]
-
-
-# TODO(ek) fix copy-pastism
-@cache.early(
-    ttl=settings.TOKEN_FEED_CACHE_TTL, early_ttl=settings.TOKEN_FEED_CACHE_EARLY_TTL
-)
-async def get_new_user_casts_all(*poargs, **kwargs) -> list[dict[str, Any]]:
-    loop = asyncio.get_running_loop()
-    start_time = loop.time()
-    result = [dict(row) for row in await _get_new_user_casts_all(*poargs, **kwargs)]
-    end_time = loop.time()
-    elapsed = end_time - start_time
-    if timedelta(seconds=elapsed) > settings.TOKEN_FEED_CACHE_REFRESH_THRESHOLD:
-        logger.debug(
-            f"slow new user feed {kwargs=}, scheduling preemptive refresh in {settings.TOKEN_FEED_CACHE_EARLY_TTL}"
-        )
-        refresh_task = asyncio.create_task(
-            schedule_refresh(get_new_user_casts_all(*poargs, **kwargs))
-        )
-        refresh_tasks.add(refresh_task)
-        refresh_task.add_done_callback(refresh_tasks.discard)
-    return result
-
-
-# TODO(ek) fix copy-pastism
-async def get_new_user_casts(
-    *poargs, offset: int, limit: int, **kwargs
-) -> list[dict[str, Any]]:
-    all_casts = await get_new_user_casts_all(*poargs, **kwargs)
-    return all_casts[offset : (offset + limit)]
 
 
 async def get_popular_degen_casts(

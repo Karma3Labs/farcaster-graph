@@ -12,6 +12,7 @@ from pydantic_core import ValidationError
 from .. import utils
 from ..config import DBVersion, openrank_settings, settings
 from ..dependencies import db_pool, db_utils
+from ..dependencies.utils import paginate
 from ..models.channel_model import (
     CHANNEL_RANKING_STRATEGY_NAMES,
     ChannelEarningsOrderBy,
@@ -641,11 +642,9 @@ async def _get_new_users_feed(
         sorting_order=metadata.sorting_order,
         time_bucket_length=metadata.time_bucket_length,
         limit_casts=metadata.limit_casts,
-        offset=offset,
-        limit=limit,
         pool=pool,
     )
-    return rows
+    return paginate(rows, offset, limit)
 
 
 @router.post("/casts/scores/{channel}", tags=["Channel Feed"])

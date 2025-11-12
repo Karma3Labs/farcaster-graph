@@ -8,6 +8,7 @@ import asyncpg
 import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
+from cashews import cache
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -28,6 +29,9 @@ from .routers.token_router import router as token_router
 from .routers.user_router import router as user_router
 from .serverstatus import ServerStatus
 from .telemetry import PrometheusMiddleware, metrics
+
+cache.setup("disk://", directory="/tmp/farcaster-serve-diskcache")
+
 
 logger.remove()
 level_per_module = {

@@ -12,6 +12,7 @@ from pydantic_core import ValidationError
 
 from ..config import settings
 from ..dependencies import db_pool, db_utils, graph
+from ..dependencies.utils import paginate
 from ..models import HexBytes
 from ..models.channel_model import ChannelRankingsTimeframe
 from ..models.feed_model import (
@@ -247,13 +248,11 @@ async def _get_token_feed(
         sorting_order=metadata.sorting_order,
         time_bucket_length=metadata.time_bucket_length,
         limit_casts=metadata.limit_casts,
-        offset=offset,
-        limit=limit,
         pool=pool,
     )
     rows = [
         {k: str(v) if k in ["balance_raw", "value_raw"] else v for k, v in row.items()}
-        for row in rows
+        for row in paginate(rows, offset, limit)
     ]
     return rows
 
