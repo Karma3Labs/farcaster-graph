@@ -120,9 +120,37 @@ def _last_dow_utc_timestamp_str(dow: DOW):
     )
 
 
+def quote_sql_str(value: str):
+    return f"'{value.replace("'", "''")}'"
+
+
+def literal(value: Any) -> str:
+    if value is None:
+        return "NULL"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, datetime):
+        return quote_sql_str(value.isoformat(sep=" "))
+    if isinstance(value, dict):
+        return quote_sql_str(json.dumps(value, indent=0, ensure_ascii=False))
+    if isinstance(value, list):
+        return f"ARRAY[{', '.join(literal(element) for element in value)}]"
+    if isinstance(value, tuple):
+        return f"ROW({', '.join(literal(field) for field in value)})"
+    if isinstance(value, str):
+        return quote_sql_str(value)
+    if isinstance(value, bytes):
+        return quote_sql_str(rf"\x{value.hex()}")
+    return quote_sql_str(str(value))
+
+
 async def fetch_rows(*args, sql_query: str, pool: Pool) -> list[asyncpg.Record]:
     start_time = time.perf_counter()
-    logger.debug(f"Execute query: {dedent(sql_query)} with args: {args}")
+    logger.debug(
+        f"Execute query: {dedent(sql_query)}\nwith args: ({', '.join(literal(arg) for arg in args)})"
+    )
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         logger.info(
