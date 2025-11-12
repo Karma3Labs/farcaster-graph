@@ -3373,6 +3373,7 @@ class BelieverLeaderboardRow(BaseModel):
     cast_hashes: list[str]
 
 
+@cache.early(ttl=settings.CACHE_TTL, early_ttl=settings.CACHE_EARLY_TTL)
 async def get_believer_leaderboard(
     *,
     chain_id: int,

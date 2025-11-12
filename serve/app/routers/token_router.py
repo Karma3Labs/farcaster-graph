@@ -147,6 +147,13 @@ async def get_trader_leaderboard(
             status_code=400,
             detail="Cannot specify both `start_time` and `duration`",
         )
+    # quantize times at 10-minute boundary to make results cacheable
+    start_time = start_time.replace(
+        minute=start_time.minute // 10 * 10, second=0, microsecond=0
+    )
+    end_time = end_time.replace(
+        minute=end_time.minute // 10 * 10, second=0, microsecond=0
+    )
     leaderboard = await db_utils.get_believer_leaderboard(
         chain_id=8453,
         token_address=token.address,
