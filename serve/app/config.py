@@ -74,8 +74,8 @@ class Settings(BaseSettings):
     DB_VERSION: DBVersion = DBVersion.EIGEN2
 
     # TODO(ek): rename to FEED_CACHE_*
-    CACHE_TTL: timedelta = timedelta(minutes=5)
-    CACHE_EARLY_TTL: timedelta = timedelta(minutes=4)
+    CACHE_TTL: timedelta = timedelta(minutes=10)
+    CACHE_EARLY_TTL: timedelta = timedelta(minutes=8)
     CACHE_SLOW_QUERY_THRESHOLD: timedelta = timedelta(seconds=3)
 
     @computed_field
