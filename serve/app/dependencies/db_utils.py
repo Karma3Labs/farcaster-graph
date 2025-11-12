@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from textwrap import dedent
-from typing import Any, TypedDict
+from typing import Any, List, TypedDict
 
 import asyncpg
 import pytz
@@ -3500,6 +3500,16 @@ async def get_believer_leaderboard(
         BelieverLeaderboardRow(**row)
         for row in await fetch_rows(*args, sql_query=sql, pool=pool)
     ]
+
+
+async def get_fip2_cast_hashes(*, cast_hashes: List[str], chain_id: int, pool: Pool):
+    sql = """
+SELECT hash
+FROM neynarv3.casts
+WHERE hash = ANY($1::bytea[])
+  AND cardinality(embeds_eip155_tx_hashes(embeds, $2)) > 0;
+    """
+    return await fetch_rows(cast_hashes, chain_id, sql_query=sql, pool=pool)
 
 
 async def get_trending_fip2(

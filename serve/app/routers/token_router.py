@@ -172,6 +172,7 @@ async def get_trader_leaderboard(
 @router.get("/{token}/feed")
 async def get_feed(
     *,
+    pool: Pool = Depends(db_pool.get_db),
     token: Token = Depends(get_token),
     token_symbol: str,
     int_chain_id: int,
@@ -180,7 +181,7 @@ async def get_feed(
 ):
     try:
         return await get_token_feed(
-            int_chain_id, token.address, cursor, token_symbol, viewer_fid
+            int_chain_id, token.address, cursor, token_symbol, viewer_fid, pool
         )
     except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
         raise HTTPException(status_code=500, detail=str(exc)) from exc
