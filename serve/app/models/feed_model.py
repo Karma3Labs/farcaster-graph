@@ -146,7 +146,7 @@ class TrendingFeed(BaseModel):
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
-    session_id: SessionIdField = None
+    session_id: SessionIdField | None = None
     channels: list[str] | None = None
 
 
@@ -161,8 +161,8 @@ class PopularFeed(BaseModel):
     time_decay: TimeDecayField = CastsTimeDecay.NEVER
     normalize: bool = True
     timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
-    session_id: SessionIdField = None
-    channels: list[str] = None
+    session_id: SessionIdField | None = None
+    channels: list[str] | None = None
 
 
 class FarconFeed(BaseModel):
@@ -178,7 +178,7 @@ class FarconFeed(BaseModel):
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
-    session_id: SessionIdField = None
+    session_id: SessionIdField | None = None
     channels: list[str] | None = ["farcon", "farcon-nyc"]
 
 
@@ -194,13 +194,13 @@ class TokenFeed(BaseModel):
     weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.DAY
     time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
-    limit_casts: LimitCastsField = None
+    limit_casts: LimitCastsField | None = None
     time_decay_base: TimeDecayBaseField = 0.9
     time_decay_period: TimeDecayPeriodField = timedelta(days=1)
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
-    session_id: SessionIdField = None
+    session_id: SessionIdField | None = None
     channels: list[str] | None = None
 
 
@@ -215,14 +215,14 @@ class NewUsersFeed(BaseModel):
     weights: str = "L1C1R1Y1"
     sorting_order: SortingOrderField = SortingOrder.RECENT
     time_bucket_length: TimeBucketLengthField = timedelta(hours=8)
-    limit_casts: LimitCastsField = None
+    limit_casts: LimitCastsField | None = None
     time_decay_base: TimeDecayBaseField = 0.9
     time_decay_period: TimeDecayPeriodField = timedelta(days=1)
     normalize: bool = True
     shuffle: bool = False
     timeout_secs: TimeoutSecsField = settings.FEED_TIMEOUT_SECS
     # TODO(ek): needed? find out by logging
-    session_id: SessionIdField = None
+    session_id: SessionIdField | None = None
 
 
 class SearchScores(BaseModel):
