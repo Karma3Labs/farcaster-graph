@@ -14,6 +14,7 @@ import pytz
 from asyncpg.pool import Pool
 from cashews import cache
 from eth_typing import ChecksumAddress
+from eth_utils import to_bytes
 from loguru import logger
 from memoize.configuration import (
     DefaultInMemoryCacheConfiguration,
@@ -3480,8 +3481,11 @@ async def get_believer_leaderboard(
             casts AS (
                 SELECT hash, fid
                 FROM neynarv3.casts
-                WHERE root_parent_url = 'eip155:' || %(chain_id)s || '/erc20:' || %(token_address)s
-                AND parent_hash IS NULL
+                WHERE
+                    is_eip155_erc20_url(parent_url)
+                    AND eip155_chain(parent_url) = %(chain_id)s::bigint
+                    AND eip155_erc20_token(parent_url) = %(token_address)s::bytea
+                    AND parent_hash IS NULL
             ),
             actions AS (
                 SELECT *
@@ -3533,8 +3537,8 @@ async def get_believer_leaderboard(
         WHERE points > 0
         ORDER BY points DESC;
         """,
-        chain_id=str(chain_id),
-        token_address=token_address.lower(),
+        chain_id=chain_id,
+        token_address=to_bytes(hexstr=token_address),
         start_time=start_time,
         end_time=end_time,
         global_trust_strategy_id=global_trust_strategy_id,
@@ -3583,7 +3587,8 @@ async def get_trending_fip2(
                 JOIN k3l_cast_action ca ON c.hash = ca.cast_hash
                 JOIN k3l_rank r ON ca.fid = r.profile_id
                 WHERE
-                    c.root_parent_url SIMILAR TO 'eip155:' || %(chain_id)s || '/erc20:0x[0-9a-f]{40}'
+                    is_eip155_erc20_url(c.parent_url)
+                    AND eip155_chain(c.parent_url) = %(chain_id)s::bigint
                     AND c.parent_hash IS NULL
                     AND COALESCE(ca.action_ts >= %(start_time)s, TRUE)
                     AND ca.action_ts < %(end_time)s
@@ -3602,7 +3607,7 @@ async def get_trending_fip2(
         recast_weight=weights.recast,
         reply_weight=weights.reply,
         decay_rate=decay_rate,
-        chain_id=str(chain_id),
+        chain_id=chain_id,
         offset=offset,
         limit=limit,
     )
