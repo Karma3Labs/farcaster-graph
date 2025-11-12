@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
+from textwrap import dedent
 from typing import Any, TypedDict
 
 import asyncpg
@@ -121,7 +122,7 @@ def _last_dow_utc_timestamp_str(dow: DOW):
 
 async def fetch_rows(*args, sql_query: str, pool: Pool) -> list[asyncpg.Record]:
     start_time = time.perf_counter()
-    logger.debug(f"Execute query: {sql_query} with args: {args}")
+    logger.debug(f"Execute query: {dedent(sql_query)} with args: {args}")
     # Take a connection from the pool.
     async with pool.acquire() as connection:
         logger.info(
