@@ -1932,16 +1932,17 @@ async def _get_new_user_casts_all(
                 ),
                 c AS (
                     SELECT
-                        hash,
+                        c.hash,
                         fid,
-                        timestamp,
-                        floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}) AS time_bucket,
-                        row_number() OVER (PARTITION BY floor(extract(epoch from $4 - timestamp) / {time_bucket_length.total_seconds()}), fid ORDER BY timestamp DESC) AS rn
-                    FROM k3l_recent_parent_casts
+                        c.timestamp,
+                        floor(extract(epoch from $4 - c.timestamp) / {time_bucket_length.total_seconds()}) AS time_bucket,
+                        row_number() OVER (PARTITION BY floor(extract(epoch from $4 - c.timestamp) / {time_bucket_length.total_seconds()}), fid ORDER BY c.timestamp DESC) AS rn
+                    FROM k3l_recent_parent_casts c
                     JOIN new_users USING (fid)
+                    JOIN neynarv3.channels ch ON c.root_parent_url = ch.url
                     WHERE
-                        timestamp BETWEEN $2::timestamp AND $3::timestamp AND
-                        channel_id = $1
+                        c.timestamp BETWEEN $2::timestamp AND $3::timestamp AND
+                        ch.channel_id = $1
                 )
                 SELECT
                     '0x' || encode(hash, 'hex') AS cast_hash,
