@@ -6,7 +6,7 @@ from typing import Annotated, Optional, Self
 from asyncpg import Pool
 from eth_typing import ChecksumAddress
 from eth_utils import to_bytes, to_checksum_address
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from pydantic import BaseModel, ValidationError, field_validator
 
 from ..dependencies import db_pool, db_utils
@@ -135,6 +135,7 @@ async def get_trader_leaderboard(
         ),
     ] = "L1C0R1Y1",
     pool: Pool = Depends(db_pool.get_db),
+    response: Response,
 ) -> BelieverLeaderboardResponse:
     if end_time is None:
         end_time = datetime.now(tz=UTC)
@@ -164,6 +165,7 @@ async def get_trader_leaderboard(
         weights=weights,
         pool=pool,
     )
+    response.headers["Cache-Control"] = "public, max-age=60"
     return BelieverLeaderboardResponse(result=leaderboard)
 
 
