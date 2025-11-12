@@ -3573,9 +3573,20 @@ async def get_trending_fip2(
         end_time = end_time.astimezone(UTC).replace(tzinfo=None)
     sql, args = pyformat2dollar(
         """
-            WITH raw AS (
+            WITH
+            c AS (
+                SELECT hash, fid, timestamp, eip155_erc20_token(parent_url) AS token
+                FROM neynarv3.casts
+                WHERE
+                    is_eip155_erc20_url(parent_url)
+                    AND eip155_chain(parent_url) = %(chain_id)s::bigint
+                    AND CASE WHEN %(tx_only)s::bool THEN (embeds_eip155_tx_hashes(embeds, %(chain_id)s::bigint))[1] IS NOT NULL ELSE TRUE END
+                    AND parent_hash IS NULL
+                    AND deleted_at IS NULL
+            ),
+            raw AS (
                 SELECT
-                    REGEXP_REPLACE(root_parent_url, '.*:', '') AS token,
+                    '0x' || encode(token, 'hex') AS token,
                     sum(
                         %(decay_rate)s ^ (EXTRACT(EPOCH FROM (%(end_time)s - c."timestamp")) / 86400) *
                         (
@@ -3588,17 +3599,13 @@ async def get_trending_fip2(
                     ) AS score,
                     count(DISTINCT c.hash) AS num_casts,
                     count(*) FILTER (WHERE ca.liked + ca.recasted + ca.replied > 0) AS num_reactions
-                FROM neynarv3.casts c
+                FROM c
                 JOIN k3l_cast_action ca ON c.hash = ca.cast_hash
                 JOIN k3l_rank r ON ca.fid = r.profile_id
                 WHERE
-                    is_eip155_erc20_url(c.parent_url)
-                    AND eip155_chain(c.parent_url) = %(chain_id)s::bigint
-                    AND CASE WHEN %(tx_only)s::bool THEN (embeds_eip155_tx_hashes(embeds, %(chain_id)s::bigint))[1] IS NOT NULL ELSE TRUE END
-                    AND c.parent_hash IS NULL
-                    AND COALESCE(ca.action_ts >= %(start_time)s, TRUE)
+                    COALESCE(ca.action_ts >= %(start_time)s, TRUE)
                     AND ca.action_ts < %(end_time)s
-                GROUP BY c.root_parent_url
+                GROUP BY c.token
             )
             SELECT *
             FROM raw
