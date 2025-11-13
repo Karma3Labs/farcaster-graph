@@ -41,7 +41,7 @@ async def get_token_feed(
         f"${token_symbol}", viewer_fid, before_ts, after_ts
     )
 
-    all_casts = search_casts + fip2_casts
+    all_casts = remove_duplicates(search_casts + fip2_casts)
 
     await flag_fip2_casts(all_casts, pool)
 
@@ -78,6 +78,19 @@ async def get_token_feed(
         "casts": all_casts,
         "next": {"cursor": fip2_casts_next_cursor or search_casts_next_cursor},
     }
+
+
+async def remove_duplicates(casts: List[dict]):
+    all_casts = []
+    seen_hahes = set()
+    for cast in casts:
+        if cast["hash"] in seen_hahes:
+            continue
+
+        all_casts.append(cast)
+        seen_hahes.add(cast["hash"])
+
+    return all_casts
 
 
 async def flag_fip2_casts(casts: List[dict], pool: Pool):
