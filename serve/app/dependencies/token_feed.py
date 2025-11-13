@@ -80,7 +80,7 @@ async def get_token_feed(
     }
 
 
-async def remove_duplicates(casts: List[dict]):
+def remove_duplicates(casts: List[dict]):
     all_casts = []
     seen_hahes = set()
     for cast in casts:
