@@ -3357,8 +3357,8 @@ async def get_top_channel_casts(
 class BelieverLeaderboardRow(BaseModel):
     order_rank: int
     fid: int
-    pfp: str
-    username: str
+    pfp: str | None
+    username: str | None
     score: int
     cast_hashes: list[str]
 
