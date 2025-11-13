@@ -30,7 +30,6 @@ async def get_token_feed(
     result = neynar_get(url).json()
     fip2_casts_next_cursor = result["next"]["cursor"]
     fip2_casts = result["casts"]
-    add_cast_type(fip2_casts, "fip2")
     after_ts = None
     if fip2_casts_next_cursor:
         after_ts = get_ts_in_search_query_format(
@@ -41,7 +40,6 @@ async def get_token_feed(
     search_casts, search_casts_next_cursor = get_search_casts(
         f"${token_symbol}", viewer_fid, before_ts, after_ts
     )
-    add_cast_type(search_casts, "search")
 
     all_casts = search_casts + fip2_casts
 
@@ -82,11 +80,6 @@ async def get_token_feed(
     }
 
 
-def add_cast_type(casts: List[dict], cast_type: str):
-    for cast in casts:
-        cast["cast_type"] = cast_type
-
-
 async def flag_fip2_casts(casts: List[dict], pool: Pool):
     cast_hashes = list(set(cast["hash"] for cast in casts))
 
@@ -96,7 +89,11 @@ async def flag_fip2_casts(casts: List[dict], pool: Pool):
         cast_hashes=cast_hashes, chain_id=8453, pool=pool
     )
 
-    logger.info(f"fip2_cast_hashes {fip2_cast_hashes}")
+    fip2_hashes_set = {record["hash"] for record in fip2_cast_hashes}
+
+    for cast in casts:
+        if cast["hash"] in fip2_hashes_set:
+            cast["cast_type"] = "fip2"
 
 
 def get_search_casts(

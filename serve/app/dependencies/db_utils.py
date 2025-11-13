@@ -3504,22 +3504,15 @@ async def get_believer_leaderboard(
 
 async def get_fip2_cast_hashes(*, cast_hashes: list[str], chain_id: int, pool: Pool):
     # Strip 0x and normalize
-    hexes = [(h[2:] if h.startswith("0x") else h).lower() for h in cast_hashes]
-
-    logger.info(f"hexes {hexes}")
+    cast_hashes_bytes = [bytes.fromhex(h[2:]) for h in cast_hashes]
 
     sql = """
-    SELECT hash
+    SELECT '0x' || encode(hash, 'hex') as hash
     FROM neynarv3.casts
-    WHERE hash = ANY (
-        ARRAY(
-            SELECT decode(x, 'hex')::bytea
-            FROM unnest($1::text[]) AS t(x)
-        )
-    )
-      AND cardinality(embeds_eip155_tx_hashes(embeds, $2)) > 0;
+    WHERE hash = ANY($1::bytea[])
+    AND cardinality(embeds_eip155_tx_hashes(embeds, $2)) > 0;
     """
-    return await fetch_rows(hexes, chain_id, sql_query=sql, pool=pool)
+    return await fetch_rows(cast_hashes_bytes, chain_id, sql_query=sql, pool=pool)
 
 
 async def get_trending_fip2(
