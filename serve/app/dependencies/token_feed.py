@@ -83,8 +83,6 @@ async def get_token_feed(
 async def flag_fip2_casts(casts: List[dict], pool: Pool):
     cast_hashes = list(set(cast["hash"] for cast in casts))
 
-    logger.info(f"cast hashes {cast_hashes}")
-
     fip2_cast_hashes = await get_fip2_cast_hashes(
         cast_hashes=cast_hashes, chain_id=8453, pool=pool
     )
