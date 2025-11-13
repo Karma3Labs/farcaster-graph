@@ -122,6 +122,8 @@ class Settings(BaseSettings):
     CURA_FE_API_KEY: str = "changeme"
     CURA_NOTIFY_CHUNK_SIZE: int = 100
 
+    FCGRAPH_API_URL: str = "https://graph.cast.k3l.io"
+
     SUPABASE_URL: str = "changeme"
     SUPABASE_SERVICE_ROLE_KEY: SecretStr = "changeme"
     SUPABASE_DB_HOST: str
@@ -134,12 +136,11 @@ class Settings(BaseSettings):
     FCM_WEBHOOK_TIMEOUT_SECS: int = 30
     NEYNAR_API_KEY: str = "changeme"
 
-    CURA_TOKEN_DISTRIBUTION_WALLET_ADDRESS: str
     CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY: SecretStr
 
-    # Web3/Blockchain configuration for token distribution
-    ETH_RPC_URL: str = "https://mainnet.base.org"
-    CHAIN_ID: int = 8453  # Base mainnet
+    # Web3/Blockchain configuration for token distribution, keyed by chain ID
+    # (default: use public RPCs from chain_index)
+    ETH_RPC_URLS: dict[int, str] = {}
 
     # Token metadata fetching configuration
     TOKEN_QUERY_BATCH_SIZE: int = 100  # Number of tokens to query per batch

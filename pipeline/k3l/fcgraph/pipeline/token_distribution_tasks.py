@@ -12,27 +12,280 @@ This module implements the new task-based architecture for token distribution:
 
 import asyncio
 import hashlib
+import json
 import logging
 import time
-from datetime import datetime
-from decimal import Decimal
+from datetime import datetime, timezone
 
 import aiohttp
 import asyncpg
+import chain_index
 import niquests
 from eth_typing import ChecksumAddress
-from eth_utils import to_bytes, to_checksum_address
+from eth_utils import to_checksum_address, to_hex
 from hexbytes import HexBytes
 from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel
 from urllib3.util import Retry
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
+from web3.middleware import SignAndSendRawMiddlewareBuilder
 
 import cura_utils
 from config import settings
 from db_utils import get_supabase_psycopg2_client
+from k3l.fcgraph.pipeline.db_utils import psycopg2_cursor, psycopg2_query
+from k3l.fcgraph.pipeline.models import (
+    UUID,
+    BigInt,
+    EthAddress,
+    TxHash,
+    api_context,
+)
+from k3l.fcgraph.pipeline.token_distribution.leaderboard import LeaderboardRow
+from k3l.fcgraph.pipeline.token_distribution.models import (
+    Log,
+    Request,
+    Round,
+    RoundMethod,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def rpc_for_chain_id(chain_id: int):
+    try:
+        return settings.ETH_RPC_URLS[chain_id]
+    except KeyError:
+        pass
+    # noinspection PyTypeHints
+    return chain_index.get_chain_info(chain_id).rpc[0]
+
+
+ERC20_ABI = json.loads("""
+[
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+            {
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "_spender",
+                "type": "address"
+            },
+            {
+                "name": "_value",
+                "type": "uint256"
+            }
+        ],
+        "name": "approve",
+        "outputs": [
+            {
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "_from",
+                "type": "address"
+            },
+            {
+                "name": "_to",
+                "type": "address"
+            },
+            {
+                "name": "_value",
+                "type": "uint256"
+            }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+            {
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint8"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "_owner",
+                "type": "address"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "name": "balance",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [
+            {
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "_to",
+                "type": "address"
+            },
+            {
+                "name": "_value",
+                "type": "uint256"
+            }
+        ],
+        "name": "transfer",
+        "outputs": [
+            {
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "_owner",
+                "type": "address"
+            },
+            {
+                "name": "_spender",
+                "type": "address"
+            }
+        ],
+        "name": "allowance",
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "fallback"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "Approval",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "name": "from",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "Transfer",
+        "type": "event"
+    }
+]
+""")
 
 
 def fix_double_encoded_address(
@@ -79,7 +332,7 @@ def fix_double_encoded_address(
     return None
 
 
-def validate_funding(round_id: str, amount: Decimal) -> bool:
+def validate_funding(round_id: UUID, amount: int) -> bool:
     """
     Validate that the distribution round is fully funded.
 
@@ -93,7 +346,7 @@ def validate_funding(round_id: str, amount: Decimal) -> bool:
     WITH current_round_info AS (
         SELECT request_id, scheduled
         FROM token_distribution.rounds
-        WHERE id = %s
+        WHERE id = %(round_id)s
     ),
     total_funded AS (
         SELECT COALESCE(SUM(ft.amount), 0) as funded
@@ -106,44 +359,47 @@ def validate_funding(round_id: str, amount: Decimal) -> bool:
         WHERE r.request_id = (SELECT request_id FROM current_round_info)
           AND r.scheduled < (SELECT scheduled FROM current_round_info)  -- Past rounds only
     )
-    SELECT
-        funded,
-        scheduled,
-        funded - scheduled as available,
-        %s as requested
+    SELECT funded, scheduled
     FROM total_funded, already_scheduled
     """
 
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (round_id, amount))
-            result = cur.fetchone()
+    class Args(BaseModel):
+        round_id: UUID
 
-            if not result:
-                logger.error(f"Could not fetch funding info for round {round_id}")
-                return False
+    class Row(BaseModel):
+        funded: BigInt
+        scheduled: BigInt
 
-            funded, scheduled, available, requested = result
+    with get_supabase_psycopg2_client() as conn, psycopg2_cursor(conn) as cur:
+        for result in psycopg2_query(cur, query, Args(round_id=round_id), Row):
+            break
+        else:
+            raise RuntimeError(f"Could not fetch funding info for round {round_id}")
 
-            logger.info(
-                f"Funding check for round {round_id}: "
-                f"funded={funded}, already_scheduled={scheduled}, "
-                f"available={available}, requested={requested}"
-            )
+    funded = result.funded
+    scheduled = result.scheduled
+    available = funded - scheduled
+    requested = amount
 
-            if available < requested:
-                logger.info(
-                    f"Insufficient funding for round {round_id}: "
-                    f"available={available} < requested={requested} "
-                    f"(total_funded={funded}, already_scheduled={scheduled}). "
-                    f"Skipping distribution until funding is complete."
-                )
-                return False
+    logger.info(
+        f"Funding check for round {round_id}: "
+        f"funded={funded}, already_scheduled={scheduled}, "
+        f"available={available}, requested={requested}"
+    )
 
-            return True
+    if available < requested:
+        logger.info(
+            f"Insufficient funding for round {round_id}: "
+            f"available={available} < requested={requested} "
+            f"(total_funded={funded}, already_scheduled={scheduled}). "
+            f"Skipping distribution until funding is complete."
+        )
+        return False
+
+    return True
 
 
-def get_last_successful_round_timestamp(round_id: str) -> datetime:
+def get_last_successful_round_timestamp(round_id: UUID) -> datetime:
     """
     Get the timestamp of the last successfully processed round before the given round.
 
@@ -168,105 +424,104 @@ def get_last_successful_round_timestamp(round_id: str) -> datetime:
         with conn.cursor() as cur:
             cur.execute(query, (round_id,))
             result = cur.fetchone()
-            last_timestamp = result[0] if result and result[0] else datetime(2000, 1, 1)
+            last_timestamp = (
+                result[0]
+                if result and result[0]
+                else datetime(2000, 1, 1, tzinfo=timezone.utc)
+            )
             logger.info(
                 f"Last successful round timestamp for {round_id}: {last_timestamp}"
             )
             return last_timestamp
 
 
-def gather_rounds_due(execution_date: datetime) -> list[str]:
+def gather_rounds_due(cutoff: datetime) -> list[Round]:
     """
     Gather all rounds that are due for processing as of the execution date.
 
-    :param execution_date: Datetime object representing the DAG execution date
+    :param cutoff: Datetime object representing the DAG execution date
     :returns: List of round UUID strings that need processing
     """
     query = """
-    SELECT r.id
+    SELECT r.*
     FROM token_distribution.rounds r
     LEFT JOIN token_distribution.logs l ON r.id = l.round_id
-    WHERE r.scheduled <= %s
+    WHERE r.scheduled <= %(cutoff)s
       AND l.id IS NULL  -- No logs exist yet
     GROUP BY r.id, r.scheduled
     ORDER BY r.scheduled
     """
 
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (execution_date,))
-            round_ids = [str(row[0]) for row in cur.fetchall()]
-            logger.info(
-                f"Found {len(round_ids)} rounds due for processing as of {execution_date}"
-            )
-            return round_ids
+    class Args(BaseModel):
+        cutoff: datetime
+
+    with get_supabase_psycopg2_client() as conn, psycopg2_cursor(conn) as cur:
+        rounds = list(psycopg2_query(cur, query, Args(cutoff=cutoff), Round))
+        logger.info(f"Found {len(rounds)} rounds due for processing as of {cutoff}")
+        return rounds
 
 
-async def fetch_leaderboard_async(round_id: str) -> dict:
+class RoundData(BaseModel):
+    round: Round
+    request: Request
+    leaderboard: list[LeaderboardRow]
+    start_time: datetime
+    end_time: datetime
+
+
+async def collect_round_data_async(round_: Round) -> RoundData:
     """
     Async function to fetch leaderboard data for a specific round.
 
-    :param round_id: UUID string of the round
-    :returns: Dict containing round_id and leaderboard data
+    :param round_: The round row.
+    :returns: Round and leaderboard data.
     """
-    # First, get round details
     query = """
-    SELECT
-        r.id AS round_id,
-        r.amount,
-        r.scheduled,
-        COALESCE(r.method, req.round_method) AS method,
-        COALESCE(r.num_recipients, req.num_recipients_per_round) AS num_recipients,
-        req.token_address,
-        req.chain_id,
-        req.recipient_token_community
-    FROM token_distribution.rounds r
-    JOIN token_distribution.requests req ON r.request_id = req.id
-    WHERE r.id = %s
+    SELECT *
+    FROM token_distribution.requests req
+    WHERE id = %(id)s
     """
 
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, (round_id,))
-            round_data = cur.fetchone()
+    class Args(BaseModel):
+        id: UUID
 
-            if not round_data:
-                raise ValueError(f"Round {round_id} not found")
+    with get_supabase_psycopg2_client() as conn, psycopg2_cursor(conn) as cur:
+        for req in psycopg2_query(cur, query, Args(id=round_.request_id), Request):
+            break
+        else:
+            msg = f"Request {round_.request_id} for round {round_.id} not found"
+            raise ValueError(msg)
 
     # Convert the token address to ChecksumAddress (handles bytes/memoryview/str)
-    token_address: ChecksumAddress = to_checksum_address(round_data["token_address"])
-    recipient_token_community: ChecksumAddress = to_checksum_address(
-        round_data["recipient_token_community"]
-    )
-
     # Get time window for leaderboard
     # Start time is the last successful round timestamp or epoch
-    start_time = get_last_successful_round_timestamp(round_id)
+    start_time = get_last_successful_round_timestamp(round_.id)
     # End time is the current round's scheduled time
-    end_time = round_data["scheduled"]
+    end_time = round_.scheduled
 
     # Fetch leaderboard from API
-    api_base = "https://graph.cast.k3l.io"
-    url = f"{api_base}/tokens/{recipient_token_community}/leaderboards/trader"
+    url = f"{settings.FCGRAPH_API_URL}/tokens/{req.recipient_token_community}/leaderboards/trader"
 
     # If no limit, fetch a large number (API default or max)
-    limit = round_data["num_recipients"]
-    actual_limit = limit if limit > 0 else 1000
+    limit = round_.num_recipients
+    limit = req.num_recipients_per_round if limit is None else limit
+    actual_limit = limit if limit > 0 else 10000
 
     # Include time window parameters
-    params = {
-        "limit": actual_limit,
-        "start_time": start_time.isoformat(),
-        "end_time": end_time.isoformat(),
-    }
-
     logger.info(
-        f"Fetching leaderboard for token {recipient_token_community} "
+        f"Fetching leaderboard for token {req.recipient_token_community} "
         f"from {start_time} to {end_time}"
     )
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
+        async with session.get(
+            url,
+            params={
+                "limit": actual_limit,
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+            },
+        ) as response:
             response.raise_for_status()
             leaderboard_data = await response.json()
 
@@ -274,33 +529,35 @@ async def fetch_leaderboard_async(round_id: str) -> dict:
             if 0 < limit < len(leaderboard_data["result"]):
                 leaderboard_data["result"] = leaderboard_data["result"][:limit]
 
+    leaderboard = [
+        LeaderboardRow.model_validate(row, context=api_context)
+        for row in leaderboard_data["result"]
+    ]
+    method = round_.method or req.round_method
     logger.info(
-        f"Fetched {len(leaderboard_data['result'])} entries for round {round_id}, "
-        f"method: {round_data['method']}, limit: {limit if limit > 0 else 'unlimited'}, "
+        f"Fetched {len(leaderboard_data['result'])} entries for round {round_.id}, "
+        f"method: {method}, limit: {limit if limit > 0 else 'unlimited'}, "
         f"time window: {start_time} to {end_time}"
     )
+    logger.debug(f"Leaderboard: {leaderboard}")
 
-    return {
-        "round_id": round_id,
-        "amount": str(round_data["amount"]),
-        "method": round_data["method"],
-        "num_recipients": round_data["num_recipients"],
-        "token_address": token_address,
-        "chain_id": round_data["chain_id"],
-        "leaderboard": leaderboard_data["result"],
-        "start_time": start_time.isoformat(),
-        "end_time": end_time.isoformat(),
-    }
+    return RoundData(
+        round=round_,
+        request=req,
+        leaderboard=leaderboard,
+        start_time=start_time,
+        end_time=end_time,
+    )
 
 
-def fetch_leaderboard(round_id: str) -> dict:
+def collect_round_data(round_: Round) -> RoundData:
     """
     Synchronous wrapper for fetch_leaderboard_async.
 
-    :param round_id: UUID string of the round
-    :returns: Dict containing round_id and leaderboard data
+    :param round_: The round to fetch.
+    :returns: Round data.
     """
-    return asyncio.run(fetch_leaderboard_async(round_id))
+    return asyncio.run(collect_round_data_async(round_))
 
 
 async def get_wallet_addresses_async(
@@ -343,144 +600,114 @@ async def get_wallet_addresses_async(
         await pool.close()
 
 
-def calculate(round_data: dict) -> list[str]:
+class Distribution(BaseModel):
+    fid: int
+    wallet_address: ChecksumAddress | None
+    amount: int
+    points: int
+
+
+class RoundLogs(BaseModel):
+    round_data: RoundData
+    logs: list[Log]
+
+
+def calculate(rd: RoundData) -> list[Log]:
     """
     Calculate distribution amounts and atomically insert into the logs.
 
-    :param round_data: Dict containing round_id, amount, method, and leaderboard
-    :returns: List of log UUID strings that were created
+    :param rd: Round data, with round_id, amount, method, and leaderboard
+    :returns: List of logs
     """
-    round_id = round_data["round_id"]
-    amount = Decimal(round_data["amount"])
-    method = round_data["method"]
-    leaderboard = round_data["leaderboard"]
-
-    # Check if already processed (idempotency)
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM token_distribution.logs WHERE round_id = %s",
-                (round_id,),
-            )
-            if cur.fetchone()[0] > 0:
-                logger.info(f"Round {round_id} already processed, skipping")
-                # Return existing log IDs
-                cur.execute(
-                    "SELECT id FROM token_distribution.logs WHERE round_id = %s",
-                    (round_id,),
-                )
-                return [str(row[0]) for row in cur.fetchall()]
-
+    round_id = rd.round.id
+    amount = rd.round.amount
+    method = rd.round.method or rd.request.round_method
+    leaderboard = rd.leaderboard
     # Validate funding before proceeding
     if not validate_funding(round_id, amount):
         logger.info(f"Skipping round {round_id} due to insufficient funding")
         return []
 
     # Get wallet addresses for all FIDs
-    fids = [entry["fid"] for entry in leaderboard]
+    fids = [entry.fid for entry in leaderboard]
     wallet_addresses = asyncio.run(get_wallet_addresses_async(fids))
 
     # Calculate distributions based on the method
-    distributions = []
+
+    distributions: list[Distribution] = []
 
     # Process all entries, including those without wallet addresses
     if not leaderboard:
         logger.warning(f"No recipients for round {round_id}")
         return []
 
-    # Count how many have wallet addresses for logging
-    with_wallet_count = sum(
-        1 for entry in leaderboard if wallet_addresses.get(entry["fid"])
-    )
-    without_wallet_count = len(leaderboard) - with_wallet_count
-    if without_wallet_count > 0:
-        logger.info(
-            f"Round {round_id}: {with_wallet_count} users have wallets, {without_wallet_count} do not (will record with NULL receiver)"
+    weights: dict[int, int] = {}
+    match method:
+        case RoundMethod.UNIFORM:
+            weights.update((entry.fid, 1) for entry in leaderboard)
+        case RoundMethod.PROPORTIONAL:
+            weights.update((entry.fid, entry.score) for entry in leaderboard)
+        case _:
+            raise ValueError(f"Unknown distribution method: {method}")
+
+    total_weight = sum(weight for (fid, weight) in weights.items())
+    if total_weight == 0:
+        logger.warning(f"Total weight is 0 for round {round_id}, cannot distribute")
+        return []
+
+    cumulative_weight = 0
+    cumulative_amount = 0
+    for entry in leaderboard:
+        cumulative_weight += weights[entry.fid]
+        dist_amount = amount * cumulative_weight // total_weight - cumulative_amount
+        cumulative_amount += dist_amount
+
+        wallet_address = wallet_addresses.get(entry.fid)
+        distributions.append(
+            Distribution(
+                fid=entry.fid,
+                wallet_address=wallet_address,
+                amount=dist_amount,
+                points=entry.score,
+            )
         )
 
-    if method == "uniform":
-        # Equal distribution to all recipients
-        amount_per_recipient = amount / len(leaderboard)
-
-        for entry in leaderboard:
-            wallet_address = wallet_addresses.get(
-                entry["fid"]
-            )  # Can be None for older accounts
-            distributions.append(
-                {
-                    "fid": entry["fid"],
-                    "wallet_address": wallet_address,
-                    "amount": amount_per_recipient,
-                    "points": Decimal(str(entry["score"])),
-                }
-            )
-
-    elif method == "proportional":
-        # Proportional distribution based on scores
-        total_score = sum(entry["score"] for entry in leaderboard)
-
-        if total_score == 0:
-            logger.warning(
-                f"Total score is 0 for round {round_id}, cannot distribute proportionally"
-            )
-            return []
-
-        for entry in leaderboard:
-            wallet_address = wallet_addresses.get(
-                entry["fid"]
-            )  # Can be None for older accounts
-            percentage = entry["score"] / total_score
-            dist_amount = amount * Decimal(str(percentage))
-
-            distributions.append(
-                {
-                    "fid": entry["fid"],
-                    "wallet_address": wallet_address,
-                    "amount": dist_amount,
-                    "points": Decimal(str(entry["score"])),
-                }
-            )
-
-    else:
-        raise ValueError(f"Unknown distribution method: {method}")
+    assert cumulative_weight == total_weight
+    assert cumulative_amount == amount
 
     # Insert all logs atomically
-    log_ids = []
+    logs: list[Log] = []
+
+    class InsertArgs(BaseModel):
+        round_id: UUID
+        receiver: EthAddress | None
+        amount: int
+        fid: int
+        points: int
+
     with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
+        conn.autocommit = False
+        with psycopg2_cursor(conn) as cur:
             try:
                 for dist in distributions:
-                    # Convert ChecksumAddress to bytes for database storage, or None for NULL
-                    receiver_bytes = (
-                        to_bytes(hexstr=dist["wallet_address"])
-                        if dist["wallet_address"]
-                        else None
+                    logs.extend(
+                        psycopg2_query(
+                            cur,
+                            """
+                            INSERT INTO token_distribution.logs (round_id, receiver, amount, fid, points)
+                            VALUES (%(round_id)s, %(receiver)s, %(amount)s, %(fid)s, %(points)s)
+                            RETURNING *
+                            """,
+                            InsertArgs(
+                                round_id=round_id,
+                                receiver=dist.wallet_address,
+                                amount=dist.amount,
+                                fid=dist.fid,
+                                points=dist.points,
+                            ),
+                            Log,
+                        )
                     )
-
-                    cur.execute(
-                        """
-                        INSERT INTO token_distribution.logs
-                        (round_id, receiver, amount, tx_hash, fid, points)
-                        VALUES (%s, %s, %s, NULL, %s, %s)
-                        RETURNING id
-                    """,
-                        (
-                            round_id,
-                            receiver_bytes,
-                            dist["amount"],
-                            dist["fid"],
-                            dist["points"],
-                        ),
-                    )
-
-                    log_id = cur.fetchone()[0]
-                    log_ids.append(str(log_id))
-
-                conn.commit()
-                logger.info(
-                    f"Created {len(log_ids)} distribution logs for round {round_id} "
-                    f"using {method} method"
-                )
 
             except Exception as e:
                 conn.rollback()
@@ -489,227 +716,185 @@ def calculate(round_data: dict) -> list[str]:
                 )
                 raise
 
-    return log_ids
+            else:
+                conn.commit()
+                logger.info(
+                    f"Created {len(logs)} distribution logs for round {round_id} "
+                    f"using {method} method"
+                )
+
+    return logs
 
 
-def verify(log_ids: list[str], round_id: str) -> list[str]:
+def verify(logs: list[Log], round_data: RoundData) -> list[Log]:
     """
     Verify that calculated distributions match the round budget.
 
-    :param log_ids: List of log UUID strings to verify
-    :param round_id: UUID string of the round
-    :returns: List of log UUID strings (pass-through for next task)
-    :raises ValueError: If the calculated amount doesn't match the expected amount
+    :param logs: Logs to verify.
+    :param round_data: Round data.
+    :returns: The given logs (pass-through for the next task).
+    :raises ValueError: If the calculated amount doesn't match the expected amount.
     """
-    if not log_ids:
-        logger.info(f"No logs to verify for round {round_id}")
-        return log_ids
 
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
-            # Get expected amount from round
-            cur.execute(
-                "SELECT amount FROM token_distribution.rounds WHERE id = %s",
-                (round_id,),
-            )
-            expected_amount = cur.fetchone()[0]
+    # Sum up calculated logs
+    actual_amount = sum(log.amount for log in logs)
 
-            # Sum up calculated logs
-            cur.execute(
-                """
-                SELECT SUM(amount) FROM token_distribution.logs
-                WHERE id = ANY(%s::uuid[])
-            """,
-                (log_ids,),
-            )
-            actual_amount = cur.fetchone()[0] or Decimal("0")
+    # Allow a small rounding difference (0.01)
+    difference = abs(round_data.round.amount - actual_amount)
+    if difference != 0:
+        error_msg = (
+            f"Amount mismatch for round {round_data.round.id}: "
+            f"expected {round_data.round.amount}, calculated {actual_amount}, "
+            f"difference {difference}"
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
 
-            # Allow a small rounding difference (0.01)
-            difference = abs(expected_amount - actual_amount)
-            if difference > Decimal("0.01"):
-                error_msg = (
-                    f"Amount mismatch for round {round_id}: "
-                    f"expected {expected_amount}, calculated {actual_amount}, "
-                    f"difference {difference}"
-                )
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+    logger.info(
+        f"Verification passed for round {round_data.round.id}: "
+        f"{actual_amount} tokens to {len(logs)} recipients"
+    )
 
-            logger.info(
-                f"Verification passed for round {round_id}: "
-                f"{actual_amount} tokens to {len(log_ids)} recipients"
-            )
-
-    return log_ids
+    return logs
 
 
-def submit_txs(log_ids_nested: list[list[str]]) -> list[HexBytes]:
+def submit_txs(rounds: list[RoundLogs]) -> list[RoundLogs]:
     """
     Submit blockchain transactions for all verified distributions.
 
     This task handles all transactions serially to manage nonce properly.
 
-    :param log_ids_nested: Nested list of log UUID strings from multiple rounds
-    :returns: List of transaction hashes as HexBytes
+    :param rounds: Verified rounds' data and logs.
+    :returns: Same `rounds` with TX hashes populated in the log.
     """
-    # Flatten nested lists
-    all_log_ids = [log_id for sublist in log_ids_nested for log_id in sublist]
 
-    if not all_log_ids:
-        logger.info("No logs to submit transactions for")
-        return []
-
-    # Initialize Web3
-    w3 = Web3(Web3.HTTPProvider(settings.ETH_RPC_URL))
-    account = w3.eth.account.from_key(
-        settings.CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY.get_secret_value()
-    )
-
-    # Get current nonce
-    nonce = w3.eth.get_transaction_count(account.address, "pending")
-
-    tx_hashes: list[HexBytes] = []
     with get_supabase_psycopg2_client() as conn:
-        with conn.cursor() as cur:
-            # Fetch logs needing submission (excluding NULL receivers)
-            cur.execute(
-                """
-                SELECT l.id, l.receiver, l.amount, req.token_address
-                FROM token_distribution.logs l
-                JOIN token_distribution.rounds r ON l.round_id = r.id
-                JOIN token_distribution.requests req ON r.request_id = req.id
-                WHERE l.id = ANY(%s::uuid[])
-                  AND l.tx_hash IS NULL
-                  AND l.receiver IS NOT NULL  -- Skip users without wallet addresses
-                ORDER BY l.id
-            """,
-                (all_log_ids,),
-            )
+        conn.autocommit = False
+        with psycopg2_cursor(conn) as cur:
+            for rl in rounds:
+                req = rl.round_data.request
+                round_ = rl.round_data.round
+                logger.info(f"Processing round {round_.id}")
 
-            logs_to_submit = cur.fetchall()
-
-            # Count logs with NULL receivers
-            cur.execute(
-                """
-                SELECT COUNT(*)
-                FROM token_distribution.logs l
-                JOIN token_distribution.rounds r ON l.round_id = r.id
-                WHERE l.id = ANY(%s::uuid[])
-                  AND l.receiver IS NULL
-            """,
-                (all_log_ids,),
-            )
-            null_receiver_count = cur.fetchone()[0]
-
-            if null_receiver_count > 0:
-                logger.info(
-                    f"Skipping {null_receiver_count} distributions with NULL receivers (users without wallets)"
+                chain_id = rl.round_data.request.chain_id
+                # Initialize Web3
+                w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(chain_id)))
+                account = w3.eth.account.from_key(
+                    settings.CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY.get_secret_value()
                 )
-
-            if not logs_to_submit:
-                logger.info("No logs with valid receivers to submit transactions for")
-                return []
-
-            logger.info(f"Submitting {len(logs_to_submit)} transactions")
-
-            for log_id, receiver, amount, token_address in logs_to_submit:
-                # Build ERC20 transfer transaction
-                # This assumes token_address is an ERC20 token
-                # Would need to handle native token transfers differently
-
-                # Convert receiver bytes and token bytes to ChecksumAddress
-                receiver_address: ChecksumAddress = to_checksum_address(receiver)
-                token_address_checksum: ChecksumAddress = to_checksum_address(
-                    token_address
+                sign_and_send_raw_middleware = SignAndSendRawMiddlewareBuilder.build(
+                    account
                 )
+                w3.middleware_onion.inject(sign_and_send_raw_middleware, layer=0)
+                w3.eth.default_account = account.address
+                contract = w3.eth.contract(address=req.token_address, abi=ERC20_ABI)
 
-                # Build transfer data using "transfer(address to, uint256 amount)"
-                transfer_data = (
-                    "0xa9059cbb"  # transfer method ID
-                    + receiver_address[2:].zfill(64)  # to address
-                    + hex(int(amount))[2:].zfill(64)  # amount (already in raw uint256)
-                )
+                # Get current nonce
+                nonce = w3.eth.get_transaction_count(account.address, "pending")
 
-                # Build transaction
-                tx = {
-                    "nonce": nonce,
-                    "to": token_address_checksum,
-                    "data": transfer_data,
-                    "gas": 100000,  # Estimate in production
-                    "gasPrice": w3.eth.gas_price,
-                    "chainId": settings.CHAIN_ID,
-                }
+                try:
+                    for log in rl.logs:
+                        assert log.tx_hash is None, f"{log=} already has tx hash"
+                        logger.debug(f"Processing log {log.id}")
+                        # Build ERC20 transfer transaction
+                        # This assumes token_address is an ERC20 token
+                        # Would need to handle native token transfers differently
 
-                # Sign and send
-                signed_tx = account.sign_transaction(tx)
-                tx_hash: HexBytes = w3.eth.send_raw_transaction(
-                    signed_tx.rawTransaction
-                )
+                        # Convert receiver bytes and token bytes to ChecksumAddress
+                        receiver_address = log.receiver
+                        if receiver_address is None:
+                            logger.info(f"distribution {log} has no receiver, skipping")
+                            continue
+                        # Build transfer data using "transfer(address to, uint256 amount)"
+                        tx_hash: HexBytes = contract.functions.transfer(
+                            receiver_address, log.amount
+                        ).transact({"chainId": chain_id, "nonce": nonce, "gas": 100000})
 
-                # Update the log with tx hash (store as bytes in the database)
-                cur.execute(
-                    """
-                    UPDATE token_distribution.logs
-                    SET tx_hash = %s
-                    WHERE id = %s
-                """,
-                    (bytes(tx_hash), log_id),
-                )
+                        # Update the log with tx hash (store as bytes in the database)
+                        class UpdateArgs(BaseModel):
+                            id: UUID
+                            tx_hash: TxHash
 
-                tx_hashes.append(tx_hash)
-                nonce += 1
+                        logger.debug(f"Submitted tx {to_hex(tx_hash)} for log {log.id}")
 
-                logger.info(f"Submitted tx {tx_hash.to_0x_hex()} for log {log_id}")
+                        updated_logs = psycopg2_query(
+                            cur,
+                            """
+                            UPDATE token_distribution.logs
+                            SET tx_hash = %(tx_hash)s
+                            WHERE id = %(id)s
+                            RETURNING *
+                            """,
+                            UpdateArgs(id=log.id, tx_hash=to_hex(tx_hash)),
+                            Log,
+                        )
+                        for _ in updated_logs:
+                            break
+                        else:
+                            raise ValueError(f"Log {log.id} not updated")
 
-            conn.commit()
+                        log.tx_hash = to_hex(tx_hash)
+                        nonce += 1
 
-    return tx_hashes
+                except Exception as e:
+                    conn.rollback()
+                    logger.error(
+                        f"Failed to submit transactions for logs: {e}", exc_info=True
+                    )
+                    raise
+                else:
+                    conn.commit()
+
+    return rounds
 
 
-def wait_for_confirmations(tx_hashes: list[HexBytes]) -> list[HexBytes]:
+def wait_for_confirmations(round_logs: list[RoundLogs]) -> list[Log]:
     """Wait for all transaction confirmations on the blockchain.
 
-    :param tx_hashes: List of transaction hashes as HexBytes.
-    :return: The same list of transaction hashes after confirmation.
+    :param round_logs: Round + logs data
+    :return: The confirmed logs.
     :raises ValueError: If any transaction is reverted.
     :raises TimeoutError: If the transaction is not confirmed within timeout.
     """
-    if not tx_hashes:
-        logger.info("No transactions to wait for")
-        return []
 
-    logger.info(f"Waiting for {len(tx_hashes)} transaction confirmations")
+    confirmed_logs: list[Log] = []
+    for rl in round_logs:
+        chain_id = rl.round_data.request.chain_id
+        w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(chain_id)))
+        for log in rl.logs:
+            tx_hash = log.tx_hash
+            if tx_hash is None:
+                continue
+            retries = 0
+            max_retries = 120  # 10 minutes with 5-second intervals
 
-    w3 = Web3(Web3.HTTPProvider(settings.ETH_RPC_URL))
+            while retries < max_retries:
+                try:
+                    receipt = w3.eth.get_transaction_receipt(tx_hash)
+                    if receipt["status"] == 1 or True:
+                        logger.info(
+                            f"TX {tx_hash} confirmed in block {receipt['blockNumber']}"
+                        )
+                        break
+                    else:
+                        raise ValueError(
+                            f"Transaction {tx_hash} was reverted! {receipt=}"
+                        )
+                except TransactionNotFound:
+                    retries += 1
+                    time.sleep(5)
 
-    for tx_hash in tx_hashes:
-        retries = 0
-        max_retries = 60  # 5 minutes with 5-second intervals
-
-        while retries < max_retries:
-            try:
-                receipt = w3.eth.get_transaction_receipt(tx_hash)
-                if receipt["status"] == 1:
-                    logger.info(
-                        f"TX {tx_hash.to_0x_hex()} confirmed in block {receipt['blockNumber']}"
-                    )
-                    break
-                else:
-                    raise ValueError(f"Transaction {tx_hash.to_0x_hex()} was reverted!")
-            except TransactionNotFound:
-                retries += 1
-                time.sleep(5)
-
-        if retries >= max_retries:
-            raise TimeoutError(
-                f"Transaction {tx_hash.to_0x_hex()} not confirmed after {max_retries * 5} seconds"
-            )
+            if retries >= max_retries:
+                raise TimeoutError(
+                    f"Transaction {tx_hash} not confirmed after {max_retries * 5} seconds"
+                )
+            confirmed_logs.append(log)
 
     logger.info("All transactions confirmed successfully")
-    return tx_hashes
+    return confirmed_logs
 
 
-def notify_recipients(log_ids_nested: list[list[str]]) -> None:
+def notify_recipients(logs: list[Log]) -> None:
     """Send notifications to all recipients who received rewards.
 
     Notification message format:
@@ -720,10 +905,10 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
 
     Target URL: ``https://cura.network/{token_address}/leaderboard?category=believers``
 
-    :param log_ids_nested: Nested list of log UUID strings from multiple rounds
+    :param logs: Confirmed logs.
     """
     # Flatten nested lists
-    all_log_ids = [log_id for sublist in log_ids_nested for log_id in sublist]
+    all_log_ids = [log.id for log in logs]
 
     if not all_log_ids:
         logger.info("No logs to send notifications for")
@@ -754,10 +939,10 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
             rounds_data = cur.fetchall()
 
     if not rounds_data:
-        logger.warning("No round data found for notification logs")
+        logger.warning("No round data found")
         return
 
-    # Setup HTTP session for notifications
+    # Set up an HTTP session for notifications
     retries = Retry(
         total=3,
         backoff_factor=0.1,
@@ -807,9 +992,9 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
             title = "Believer Leaderboard earnings"
 
             if token_symbol:
-                body = f"Your trades & casts for {token_symbol} paid off. Check rank on the believer leaderboard."
+                body = f"Your trades and casts for {token_symbol} paid off. Check rank on the believer leaderboard."
             else:
-                body = "Your trades & casts paid off. Check rank on the believer leaderboard."
+                body = "Your trades and casts paid off. Check rank on the believer leaderboard."
                 logger.info(
                     f"No token_symbol found in metadata for round {round_id}, using generic message"
                 )
@@ -819,7 +1004,7 @@ def notify_recipients(log_ids_nested: list[list[str]]) -> None:
                 f"token-distribution-{round_id}-{token_address}".encode("utf-8")
             ).hexdigest()
 
-            # Generate target URL with token address
+            # Generate target URL with the token address
             target_url = (
                 f"https://cura.network/{token_address}/leaderboard?category=believers"
             )

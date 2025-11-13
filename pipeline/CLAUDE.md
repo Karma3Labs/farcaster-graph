@@ -85,3 +85,4 @@ The codebase uses pytest but specific test commands should be discovered from ex
 - When using databases, convert on-database types to/from Python-native types at the edge, i.e., right before/after the DB query.  Use native types for business logic.  For example, Ethereum addresses should be passed around as `eth_typing.ChecksumAddress`, and be converted right before/after the query using `eth_utils.to_checksum_address()` and friends.  See `dags/dag_token_distribution.py` for examples.
 - Do document classes and methods/functions using Sphinx/reStructuredText syntax.  When documenting, omit type definitions so that Sphinx can infer those from type annotations.
 - Avoid using Napoleon-style docstrings.  Use Sphinx-style syntax instead, e.g. `:param xyz: ...` and `:return: ...`.
+- When running Airflow DAG code, simulate Airflow's behavior by adding the DAGs and plugins folder.  In the development setup, they are the `dags` and `plugins` folders.

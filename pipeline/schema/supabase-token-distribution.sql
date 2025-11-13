@@ -50,12 +50,11 @@ CREATE TABLE logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     round_id uuid NOT NULL REFERENCES rounds (id),
     timestamp timestamp with time zone NOT NULL DEFAULT current_timestamp,
-    receiver ethereum_address NOT NULL,
+    receiver ethereum_address,
     amount decimal NOT NULL CHECK (amount > 0),
     tx_hash bytea,
     fid bigint NOT NULL CHECK (fid > 0),
-    points numeric NOT NULL CHECK (points > 0),
-    UNIQUE (round_id, receiver)
+    points numeric NOT NULL CHECK (points > 0)
 );
 
 CREATE VIEW funding_totals AS

@@ -9,24 +9,28 @@ This DAG implements a scalable architecture with:
 - Notification to reward recipients after confirmation
 
 Task Flow:
-1. gather_rounds_due() → [round_ids]
-2. fetch_leaderboard.expand(round_id) → [round_data]
-3. calculate.expand(round_data) → [log_ids]
-4. verify.expand(log_ids, round_id) → [log_ids]
-5. submit_txs([log_ids]) → [tx_hashes]
-6. wait_for_confirmations(tx_hashes) → complete
-7. notify_recipients([log_ids]) → complete
+1. `gather_rounds_due()` → [round_ids]
+2. `fetch_leaderboard.expand(round_id)` → [round_data]
+3. `calculate.expand(round_data)` → [log_ids]
+4. `verify.expand(log_ids, round_id)` → [log_ids]
+5. `submit_txs([log_ids])` → [tx_hashes]
+6. `wait_for_confirmations(tx_hashes)` → complete
+7. `notify_recipients([log_ids])` → complete
 """
 
+import json
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.decorators import task, task_group
-from airflow.operators.empty import EmptyOperator
+from airflow.exceptions import AirflowSkipException
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
 from k3l.fcgraph.pipeline import token_distribution_tasks as td_tasks
+from k3l.fcgraph.pipeline.token_distribution.models import Log, Round
+from k3l.fcgraph.pipeline.token_distribution_tasks import RoundData, RoundLogs
 
 default_args = {
     "owner": "karma3labs",
@@ -46,120 +50,84 @@ with DAG(
     max_active_runs=1,
     catchup=False,
 ) as dag:
-    # Task to gather rounds that are due
+
     @task
-    def gather_rounds(**context) -> list[str]:
-        """
-        Airflow task wrapper to gather rounds due for processing.
-        Extracts execution date from Airflow context and passes to business logic.
-        """
+    def gather_rounds(**context) -> list[dict]:
         data_interval_end = context["data_interval_end"]
         assert isinstance(data_interval_end, datetime)
-        return td_tasks.gather_rounds_due(data_interval_end)
+        return [
+            round_.model_dump(mode="json")
+            for round_ in td_tasks.gather_rounds_due(data_interval_end)
+        ]
 
-    # Task to fetch leaderboard for a specific round
-    @task(map_index_template="{{ task.op_kwargs['round_id'] }}")
-    def fetch_round_leaderboard(round_id: str) -> dict:
-        """Airflow task wrapper to fetch leaderboard data."""
-        return td_tasks.fetch_leaderboard(round_id)
+    @task
+    def collect_round_data(round_: dict) -> dict:
+        return td_tasks.collect_round_data(
+            Round.model_validate_json(json.dumps(round_))
+        ).model_dump(mode="json")
 
-    # Task to calculate distributions
-    @task(map_index_template="{{ task.op_kwargs['round_data']['round_id'] }}")
-    def calculate_distributions(round_data: dict) -> list[str]:
-        """Airflow task wrapper to calculate and insert distribution logs."""
-        return td_tasks.calculate(round_data)
+    @task
+    def calculate_distributions(round_data: dict) -> list[dict]:
+        logs = td_tasks.calculate(RoundData.model_validate_json(json.dumps(round_data)))
+        if not logs:
+            raise AirflowSkipException("No logs to submit.")
+        return [log.model_dump(mode="json") for log in logs]
 
-    # Task to verify calculations
-    @task(map_index_template="{{ task.op_kwargs['round_data']['round_id'] }}")
-    def verify_calculations(log_ids: list[str], round_data: dict) -> list[str]:
+    @task
+    def verify_calculations(logs: list[dict], round_data: dict) -> dict:
         """Airflow task wrapper to verify distributions match budget."""
-        return td_tasks.verify(log_ids, round_data["round_id"])
+        round_ = RoundData.model_validate_json(json.dumps(round_data))
+        verified_logs = td_tasks.verify(
+            [Log.model_validate_json(json.dumps(log)) for log in logs],
+            round_,
+        )
+        return RoundLogs(round_data=round_, logs=verified_logs).model_dump(mode="json")
 
     # Task to submit transactions
-    @task(max_active_tis_per_dag=1)  # Ensure only one instance runs at a time
-    def submit_transactions(log_ids_nested: list[list[str]]) -> list:
-        """Airflow task wrapper to submit blockchain transactions."""
-        # Returns list[HexBytes] but Airflow serializes it as list
-        return td_tasks.submit_txs(log_ids_nested)
+    @task(trigger_rule="none_failed")
+    def submit_transactions(round_logs: Iterable[dict]) -> list[dict]:
+        rls = [
+            RoundLogs.model_validate_json(json.dumps(rl))
+            for rl in round_logs or []
+            if rl is not None  # filter skipped rounds
+        ]
+        rls = td_tasks.submit_txs(rls)
+        return [rl.model_dump(mode="json") for rl in rls]
 
     # Task to wait for confirmations
     @task
-    def wait_for_tx_confirmations(tx_hashes: list) -> list:
-        """Airflow task wrapper to wait for blockchain confirmations."""
-        # tx_hashes is list[HexBytes] from submit_transactions
-        return td_tasks.wait_for_confirmations(tx_hashes)
+    def wait_for_tx_confirmations(round_logs: list[dict]) -> list[dict]:
+        rls = [RoundLogs.model_validate_json(json.dumps(rl)) for rl in round_logs]
+        logs = td_tasks.wait_for_confirmations(rls)
+        return [log.model_dump(mode="json") for log in logs]
 
     # Task to notify recipients
     @task
-    def notify_reward_recipients(
-        log_ids_nested: list[list[str]], tx_hashes_confirmed: list
-    ) -> None:
-        """Airflow task wrapper to notify recipients of their rewards.
-
-        The tx_hashes_confirmed parameter creates an explicit dependency on transaction
-        confirmation, ensuring notifications are only sent after confirmations complete.
-        """
-        # tx_hashes_confirmed is used for dependency only, not in the function logic
-        td_tasks.notify_recipients(log_ids_nested)
+    def notify_reward_recipients(logs: list[dict]) -> None:
+        td_tasks.notify_recipients(
+            [Log.model_validate_json(json.dumps(log)) for log in logs]
+        )
 
     # Task group for per-round processing
     @task_group(group_id="process_rounds")
-    def process_rounds_group(round_ids: list[str]) -> list[list[str]]:
-        """Process each round in parallel."""
-
-        # Fetch leaderboards in parallel
-        leaderboards = fetch_round_leaderboard.expand(round_id=round_ids)
-
-        # Calculate distributions in parallel
-        log_ids_per_round = calculate_distributions.expand(round_data=leaderboards)
-
-        # Verify calculations in parallel
-        # We need to pair log_ids with round_data for verification
-        verified_log_ids = verify_calculations.partial().expand(
-            log_ids=log_ids_per_round, round_data=leaderboards
-        )
-
-        return verified_log_ids
-
-    # Start and end markers
-    start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end")
+    def process_rounds_group(round_: dict) -> dict:
+        round_data = collect_round_data(round_)
+        logs = calculate_distributions(round_data=round_data)
+        verified_logs = verify_calculations(logs=logs, round_data=round_data)
+        return verified_logs
 
     # Main flow
     rounds = gather_rounds()
 
-    # Process rounds in parallel if any exist
-    # We use a branch to handle the case where no rounds are due
-    @task.branch
-    def check_rounds(round_ids: list[str]) -> str:
-        """Check if there are rounds to process."""
-        if round_ids:
-            return "process_rounds_wrapper"
-        else:
-            return "no_rounds"
+    # Process all rounds in parallel
+    verified_rounds = process_rounds_group.expand(round_=rounds)
 
-    no_rounds = EmptyOperator(task_id="no_rounds")
+    # Submit all transactions serially (for nonce management)
+    submitted_rounds = submit_transactions(verified_rounds)
 
-    @task_group(group_id="process_rounds_wrapper")
-    def process_rounds_wrapper(round_ids: list[str]) -> None:
-        """Wrapper for processing rounds."""
-        # Process all rounds in parallel
-        verified_logs = process_rounds_group(round_ids)
+    # Wait for all confirmations
+    logs_confirmed = wait_for_tx_confirmations(submitted_rounds)
 
-        # Submit all transactions serially (for nonce management)
-        tx_hashes = submit_transactions(verified_logs)
-
-        # Wait for all confirmations
-        tx_hashes_confirmed = wait_for_tx_confirmations(tx_hashes)
-
-        # Notify all recipients after confirmations
-        # tx_hashes_confirmed creates explicit dependency: notifications only after confirmations
-        notify_reward_recipients(verified_logs, tx_hashes_confirmed)
-
-    # Build the DAG flow
-    branch_result = check_rounds(rounds)
-
-    (start >> rounds >> branch_result)
-
-    branch_result >> no_rounds >> end
-    branch_result >> process_rounds_wrapper(rounds) >> end
+    # Notify all recipients after confirmations
+    # logs_confirmed creates explicit dependency: notifications only after confirmations
+    notify_reward_recipients(logs_confirmed)

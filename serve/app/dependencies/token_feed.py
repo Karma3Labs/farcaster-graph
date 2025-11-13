@@ -2,14 +2,14 @@ import base64
 import datetime
 import json
 import urllib.parse
-from asyncpg.pool import Pool
 from typing import Dict, List, Optional
 
 import requests
+from asyncpg.pool import Pool
 from loguru import logger
 
-from .db_utils import get_fip2_cast_hashes
 from ..config import settings
+from .db_utils import get_fip2_cast_hashes
 
 
 async def get_token_feed(

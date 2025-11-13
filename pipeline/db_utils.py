@@ -216,7 +216,7 @@ def get_supabase_client():
     )
 
 
-def get_supabase_psycopg2_client() -> psycopg2.extensions.connection:
+def get_supabase_psycopg2_client(**kwargs) -> psycopg2.extensions.connection:
     """Get Supabase sync (psycopg2) client."""
     return psycopg2.connect(
         host=settings.SUPABASE_DB_HOST,
@@ -224,6 +224,7 @@ def get_supabase_psycopg2_client() -> psycopg2.extensions.connection:
         user=settings.SUPABASE_DB_USER,
         password=settings.SUPABASE_DB_PASSWORD.get_secret_value(),
         dbname=settings.SUPABASE_DB_NAME,
+        **kwargs,
     )
 
 
