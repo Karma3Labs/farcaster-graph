@@ -2,11 +2,13 @@ import base64
 import datetime
 import json
 import urllib.parse
+from asyncpg.pool import Pool
 from typing import Dict, List, Optional
 
 import requests
 from loguru import logger
 
+from .db_utils import get_fip2_cast_hashes
 from ..config import settings
 
 
@@ -16,6 +18,7 @@ async def get_token_feed(
     cursor: str,
     token_symbol: str,
     viewer_fid: str,
+    pool: Pool,
 ):
     # get neynar FIP 2 feed.
     url = f"feed/parent_urls/?with_recasts=true&limit=25&parent_urls=eip155%3A{int_chain_id}%2Ferc20%3A{token_address.lower()}"
@@ -27,7 +30,6 @@ async def get_token_feed(
     result = neynar_get(url).json()
     fip2_casts_next_cursor = result["next"]["cursor"]
     fip2_casts = result["casts"]
-    add_cast_type(fip2_casts, "fip2")
     after_ts = None
     if fip2_casts_next_cursor:
         after_ts = get_ts_in_search_query_format(
@@ -38,9 +40,11 @@ async def get_token_feed(
     search_casts, search_casts_next_cursor = get_search_casts(
         f"${token_symbol}", viewer_fid, before_ts, after_ts
     )
-    add_cast_type(search_casts, "search")
 
     all_casts = search_casts + fip2_casts
+
+    await flag_fip2_casts(all_casts, pool)
+
     # sort the casts
     all_casts.sort(key=lambda x: x["timestamp"], reverse=True)
 
@@ -76,9 +80,18 @@ async def get_token_feed(
     }
 
 
-def add_cast_type(casts: List[dict], cast_type: str):
+async def flag_fip2_casts(casts: List[dict], pool: Pool):
+    cast_hashes = list(set(cast["hash"] for cast in casts))
+
+    fip2_cast_hashes = await get_fip2_cast_hashes(
+        cast_hashes=cast_hashes, chain_id=8453, pool=pool
+    )
+
+    fip2_hashes_set = {record["hash"] for record in fip2_cast_hashes}
+
     for cast in casts:
-        cast["cast_type"] = cast_type
+        if cast["hash"] in fip2_hashes_set:
+            cast["cast_type"] = "fip2"
 
 
 def get_search_casts(
