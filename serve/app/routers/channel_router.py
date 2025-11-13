@@ -115,7 +115,7 @@ async def get_token_claim(channel: str, fid: int, pool: Pool = Depends(db_pool.g
         channel_id=channel, fid=fid, pool=pool
     )
     if not balance:
-        logger.error(f"No entry in token balance table for {channel} {fid}")
+        logger.debug(f"No entry in token balance table for {channel} {fid}")
         raise HTTPException(status_code=404, detail="No tokens to claim.")
     channel_token = await utils.fetch_channel_token(channel_id=channel)
     if not channel_token:
@@ -343,7 +343,7 @@ async def filter_channel_fids(
     results = []
     i = 0
     for batch in batched(fids, settings.FID_BATCH_SIZE):
-        logger.info(f"Processing batch {i}")
+        logger.debug(f"Processing batch {i}")
         filtered_fids = await db_utils.filter_channel_fids(
             channel_id=channel, fids=list(batch), filter_=filter_, pool=pool
         )
@@ -477,7 +477,6 @@ async def get_popular_channel_casts(
     By default, offset=0, limit=25, and lite=true,
       i.e., for returning recent 25 **Trending** casts.
     """
-    logger.info(f"get_popular_channel_casts: channel={channel}")
     metadata = parse_provider_metadata(provider_metadata, FeedMetadata, TrendingFeed())
 
     try:
@@ -486,8 +485,6 @@ async def get_popular_channel_casts(
         raise HTTPException(
             status_code=400, detail="Weights should be of the form 'LxxCxxRxx'"
         )
-
-    logger.info(f"Feed params: {metadata}")
 
     channel_urls = await db_utils.get_channel_url_for_channel_id(
         channel_id=channel, pool=pool
@@ -607,7 +604,6 @@ def parse_provider_metadata[T](
         return default
     # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
     md_str = urllib.parse.unquote(provider_metadata)
-    logger.info(f"Provider metadata: {md_str}")
     try:
         return base_model.validate_json(md_str)
     except ValidationError as e:
@@ -701,7 +697,6 @@ async def get_channel_casts_scores(
         provider_metadata, ScoresMetadata, SearchScores()
     )
 
-    logger.info(f"Feed params: {metadata}")
     cast_hashes = [bytes.fromhex(cast_hash[2:]) for cast_hash in cast_hashes]
 
     casts = await db_utils.get_channel_casts_scores_lite(

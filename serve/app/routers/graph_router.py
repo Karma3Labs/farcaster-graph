@@ -42,8 +42,6 @@ async def get_neighbors_engagement(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(addresses)
-    logger.debug(timeframe)
     res = await _get_neighbors_list_for_addresses(
         addresses,
         k,
@@ -51,7 +49,6 @@ async def get_neighbors_engagement(
         pool,
         ninetyday_model,
     )
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -86,12 +83,10 @@ async def get_neighbors_following(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(addresses)
 
     res = await _get_neighbors_list_for_addresses(
         addresses, k, limit, pool, lifetime_model
     )
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -156,8 +151,6 @@ async def get_neighbors_engagement_for_handles(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(handles)
-    logger.debug(timeframe)
     res = await _get_neighbors_list_for_handles(
         handles,
         k,
@@ -165,7 +158,6 @@ async def get_neighbors_engagement_for_handles(
         pool,
         ninetyday_model,
     )
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -195,9 +187,7 @@ async def get_neighbors_following_for_handles(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(handles)
     res = await _get_neighbors_list_for_handles(handles, k, limit, pool, lifetime_model)
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -260,8 +250,6 @@ async def get_neighbors_engagement_for_fids(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(fids)
-    logger.debug(timeframe)
     res = await _get_neighbors_list_for_fids(
         fids,
         k,
@@ -270,7 +258,6 @@ async def get_neighbors_engagement_for_fids(
         pool,
         ninetyday_model,
     )
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -301,9 +288,7 @@ async def get_neighbors_following_for_fids(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(fids)
     res = await _get_neighbors_list_for_fids(fids, k, limit, lite, pool, lifetime_model)
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 

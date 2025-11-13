@@ -75,10 +75,7 @@ async def go_eigentrust(
         headers={"Accept": "application/json", "Content-Type": "application/json"},
         timeout=settings.GO_EIGENTRUST_TIMEOUT_MS,
     )
-
-    if response.status_code != 200:
-        logger.error(f"Server error: {response.status_code}:{response.reason}")
-        raise HTTPException(status_code=500, detail="Unknown error")
+    response.raise_for_status()
     trust_scores = response.json()["entries"]
     logger.info(
         f"eigentrust took {time.perf_counter() - start_time} secs for {len(trust_scores)} scores"
@@ -96,7 +93,7 @@ async def get_neighbors_scores(
     df = await _get_neighbors_edges(fids, graph, max_degree, max_neighbors)
     # Filter out entries where i == j
     df = df[df["i"] != df["j"]]
-    logger.info(
+    logger.debug(
         f"dataframe took {time.perf_counter() - start_time} secs for {len(df)} edges"
     )
 
@@ -134,7 +131,7 @@ async def get_neighbors_scores(
     # max_lt_id = max(df['i'].max(), df['j'].max())
     max_lt_id = len(orig_id)
 
-    logger.info(
+    logger.debug(
         f"max_lt_id:{max_lt_id}, localtrust size:{len(localtrust)},"
         f" max_pt_id:{max_pt_id}, pretrust size:{len(pretrust)}"
     )
@@ -184,7 +181,7 @@ async def _get_neighbors_edges(
 ) -> pandas.DataFrame:
     start_time = time.perf_counter()
     neighbors_df = await _get_direct_edges_df(fids, graph, max_neighbors)
-    logger.info(
+    logger.debug(
         f"direct_edges_df took {time.perf_counter() - start_time} secs for {len(neighbors_df)} first degree edges"
     )
     k_neighbors_set = set(neighbors_df["j"]) - set(fids)
@@ -194,7 +191,7 @@ async def _get_neighbors_edges(
         k_set_next = await _fetch_k_order_neighbors(
             fids, graph, max_degree, max_neighbors, min_degree=2
         )
-        logger.info(
+        logger.debug(
             f"{graph.type} took {time.perf_counter() - start_time} secs for {len(k_set_next)} neighbors"
         )
 
@@ -214,13 +211,13 @@ async def _get_neighbors_edges(
         # .loc will throw KeyError when fids have no outgoing actions
         ### in other words, some neighbor fids may not be present in 'i'
         # k_df = graph.df.loc[(k_neighbors_list, k_neighbors_list)]
-        logger.info(
+        logger.debug(
             f"k_df took {time.perf_counter() - start_time} secs for {len(k_df)} edges"
         )
 
         start_time = time.perf_counter()
         neighbors_df = pandas.concat([neighbors_df, k_df])
-        logger.info(
+        logger.debug(
             f"neighbors_df concat took {time.perf_counter() - start_time} secs for {len(neighbors_df)} edges"
         )
 
@@ -286,7 +283,7 @@ async def get_direct_edges_list(
 ) -> pandas.DataFrame:
     start_time = time.perf_counter()
     out_df = await _get_direct_edges_df(fids, graph, max_neighbors)
-    logger.info(
+    logger.debug(
         f"dataframe took {time.perf_counter() - start_time} secs for {len(out_df)} direct edges"
     )
     return out_df[["j", "v"]].to_dict("records")

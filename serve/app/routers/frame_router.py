@@ -108,7 +108,6 @@ async def get_personalized_frames_for_fids(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(fids)
 
     try:
         weights = Weights.from_str(weights)
@@ -169,7 +168,6 @@ async def get_personalized_frames_for_handles(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(handles)
 
     try:
         weights = Weights.from_str(weights)

@@ -40,15 +40,12 @@ def fetch_channel(channel_id: str) -> str:
     )
     http_session = niquests.Session(retries=retries)
     url = f"https://api.warpcast.com/v1/channel?channelId={channel_id}"
-    logger.info(url)
     response = http_session.get(
         url,
         headers={"Accept": "application/json", "Content-Type": "application/json"},
         timeout=5,
     )
-    if response.status_code != 200:
-        logger.error(f"Server error: {response.status_code}:{response.reason}")
-        raise Exception(f"Server error: {response.status_code}:{response.reason}")
+    response.raise_for_status()
     data = response.json()["result"]["channel"]
     return data.get("url")
 
@@ -73,15 +70,11 @@ async def fetch_channel_token(channel_id: str) -> dict | None:
             headers={"Accept": "application/json", "Content-Type": "application/json"},
             timeout=(connect_timeout_s, read_timeout_s),
         )
-        if response.status_code == 200:
-            logger.info(f"Channel '{channel_id}' has token.")
-            channel_token = response.json()
-            return channel_token
-        elif response.status_code == 404:
-            logger.warning(
+        if response.status_code == 404:
+            logger.debug(
                 f"404 Error: No tokens for Channel {channel_id} :{response.reason}"
             )
             return None
-        else:
-            logger.error(f"Server error: {response.status_code}:{response.reason}")
-            raise Exception(f"Server error: {response.status_code}:{response.reason}")
+        response.raise_for_status()
+        logger.debug(f"Channel '{channel_id}' has token.")
+        return response.json()

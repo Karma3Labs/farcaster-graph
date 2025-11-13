@@ -109,10 +109,10 @@ async def _check_and_reload_models(loader: GraphLoader):
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Automatically called by FastAPI when the server is started"""
-    logger.warning(f"{settings}")
+    logger.debug(f"{settings}")
 
     # create a DB connection pool
-    logger.info("Creating DB pool")
+    logger.debug("Creating DB pool")
     pool = asyncpg.create_pool(
         settings.postgres_uri.get_secret_value(),
         min_size=1,
@@ -122,7 +122,7 @@ async def lifespan(_: FastAPI):
     logger.info("DB pool created")
 
     if settings.CACHE_DB_ENABLED:
-        logger.info("Creating a Cache DB pool")
+        logger.debug("Creating a Cache DB pool")
         pool = asyncpg.create_pool(
             settings.cache_postgres_uri.get_secret_value(),
             min_size=1,
@@ -133,7 +133,7 @@ async def lifespan(_: FastAPI):
     else:
         app_state["cache_db_pool"] = None
 
-    logger.info("Loading graphs")
+    logger.debug("Loading graphs")
     # Create a singleton instance of GraphLoader
     # ... load graphs from the disk immediately
     # ... set the loader into the global state
@@ -148,14 +148,14 @@ async def lifespan(_: FastAPI):
 
     yield
     """Execute when the server is shutdown"""
-    logger.info("Closing DB pool")
+    logger.debug("Closing DB pool")
     await app_state["db_pool"].close()
 
     if settings.CACHE_DB_ENABLED:
         logger.info("Closing the Cache DB pool")
         await app_state["cache_db_pool"].close()
 
-    logger.info("Closing graph loader")
+    logger.debug("Closing graph loader")
     app_state["graph_loader_task"].cancel()
 
 
@@ -205,21 +205,20 @@ app.add_route("/metrics", metrics)
 async def session_middleware(request: Request, call_next):
     """FastAPI automatically invokes this function for every http call"""
     start_time = time.perf_counter()
-    logger.info(f"{request.method} {request.url}")
     request.state.graphs = app_state["graph_loader"].get_graphs()
     request.state.db_pool = app_state["db_pool"]
     request.state.cache_db_pool = app_state["cache_db_pool"]
     # call_next is a built-in FastAPI function that calls the actual API
     response = await call_next(request)
     elapsed_time = time.perf_counter() - start_time
-    logger.info(f"{request.url} took {elapsed_time} secs")
+    logger.debug(f"{request.url} took {elapsed_time} secs")
     return response
 
 
 @app.get("/_health", include_in_schema=False)
 def get_health(response: Response):
     app_status = server_status.status
-    logger.info(f"health: {app_status}")
+    logger.debug(f"health: {app_status}")
     if app_status != "accept":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         response.headers["Retry-After"] = "300"  # retry after 5 mins

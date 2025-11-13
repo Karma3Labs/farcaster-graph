@@ -31,10 +31,9 @@ async def get_handles_for_addresses(
     Given a list of addresses, this API returns a list of handles. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     """
-    logger.debug(addresses)
     start_time = time.perf_counter()
     rows = await db_utils.get_handle_fid_for_addresses(addresses, pool)
-    logger.info(f"query took {time.perf_counter() - start_time} secs")
+    logger.debug(f"query took {time.perf_counter() - start_time} secs")
     return {"result": rows}
 
 
@@ -59,10 +58,9 @@ async def get_fids_for_addresses(
     Given a list of addresses, this API returns a list of fids. \n
     Example: ["0x4114e33eb831858649ea3702e1c9a2db3f626446", "0x8773442740c17c9d0f0b87022c722f9a136206ed"] \n
     """
-    logger.debug(addresses)
     start_time = time.perf_counter()
     rows = await db_utils.get_handle_fid_for_addresses(addresses, pool)
-    logger.info(f"query took {time.perf_counter() - start_time} secs")
+    logger.debug(f"query took {time.perf_counter() - start_time} secs")
     return {"result": rows}
 
 
@@ -81,7 +79,6 @@ async def get_addresses_for_fids(
     Given a list of handles, this API returns a list of addresses. \n
     Example: [2,3] \n
     """
-    logger.debug(fids)
     start_time = time.perf_counter()
     if verified_only:
         rows = await db_utils.get_verified_addresses_for_fids(
@@ -91,7 +88,7 @@ async def get_addresses_for_fids(
         rows = await db_utils.get_all_handle_addresses_for_fids(
             [str(fid) for fid in fids], pool
         )
-    logger.info(f"query took {time.perf_counter() - start_time} secs")
+    logger.debug(f"query took {time.perf_counter() - start_time} secs")
     return {"result": rows}
 
 
@@ -112,8 +109,7 @@ async def get_addresses_for_handles(
     Given a list of handles, this API returns a list of addresses. \n
     Example: ["vitalik.eth", "dwr.eth"] \n
     """
-    logger.debug(handles)
     start_time = time.perf_counter()
     rows = await db_utils.get_all_fid_addresses_for_handles(handles, pool)
-    logger.info(f"query took {time.perf_counter() - start_time} secs")
+    logger.debug(f"query took {time.perf_counter() - start_time} secs")
     return {"result": rows}

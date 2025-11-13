@@ -55,9 +55,7 @@ async def get_direct_following_for_handles(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(handles)
     res = await _get_direct_list_for_handles(handles, limit, pool, graph_model)
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 
@@ -117,9 +115,7 @@ async def get_direct_following_for_fids(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 100 entries"
         )
-    logger.debug(fids)
     res = await _get_direct_list_for_fids(fids, limit, pool, graph_model)
-    logger.debug(f"Result has {len(res)} rows")
     return {"result": res}
 
 

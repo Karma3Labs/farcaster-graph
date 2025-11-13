@@ -32,7 +32,7 @@ router = APIRouter(tags=["Casts"])
 
 async def get_user_pinned_channels(fid: int) -> list[str]:
     endpoint = f"{settings.CURA_API_ENDPOINT}/internal/user-pinned-channels"
-    logger.info(f"Getting pinned channels for fid {fid}")
+    logger.debug(f"Getting pinned channels for fid {fid}")
     resp = await niquests.apost(
         endpoint,
         headers={"Authorization": f"Bearer {settings.CURA_API_KEY}"},
@@ -115,7 +115,7 @@ async def get_popular_casts_for_fid(
         logger.info(f"Ignoring parameters and using metadata {provider_metadata}")
         # Example: %7B%22feedType%22%3A%22popular%22%2C%22timeframe%22%3A%22month%22%7D
         md_str = urllib.parse.unquote(provider_metadata)
-        logger.info(f"Provider metadata: {md_str}")
+        logger.debug(f"Provider metadata: {md_str}")
         try:
             metadata = FeedMetadata.validate_json(md_str)
         except ValidationError as e:
@@ -140,11 +140,11 @@ async def get_popular_casts_for_fid(
             )
             channel_ids = {row["channel_id"] for row in rows}
             pinned_channels = set(await get_user_pinned_channels(fid))
-            logger.info(f"Pinned channel_ids for fid {fid}: {pinned_channels}")
+            logger.debug(f"Pinned channel_ids for fid {fid}: {pinned_channels}")
             channel_ids |= pinned_channels
-        logger.info(f"channel_ids for fid {fid}: {channel_ids}")
+        logger.debug(f"channel_ids for fid {fid}: {channel_ids}")
         if len(channel_ids) == 0:
-            logger.info(f"No channels found for fid: {fid}")
+            logger.debug(f"No channels found for fid: {fid}")
             return {"result": []}
 
         channel_tasks = []
@@ -328,7 +328,6 @@ async def get_curated_casts_for_fid(
         raise HTTPException(
             status_code=400, detail="Input should have between 1 and 150 entries"
         )
-    logger.debug(fids)
 
     casts = await db_utils.get_recent_casts_by_fids(
         fids=fids, offset=offset, limit=limit, pool=pool

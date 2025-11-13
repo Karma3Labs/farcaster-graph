@@ -155,14 +155,16 @@ async def fetch_rows(*args, sql_query: str, pool: Pool) -> list[asyncpg.Record]:
     )
     # Take a connection from the pool.
     async with pool.acquire() as connection:
-        logger.info(
+        logger.debug(
             f"db took {time.perf_counter() - start_time} secs for acquiring connection"
         )
         # Run the query passing the request argument.
         rows = await connection.fetch(
             sql_query, *args, timeout=settings.POSTGRES_TIMEOUT_SECS
         )
-    logger.info(f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows")
+    logger.debug(
+        f"db took {time.perf_counter() - start_time} secs for {len(rows)} rows"
+    )
     return rows
 
 
@@ -2051,8 +2053,6 @@ async def get_popular_channel_casts_lite(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-    logger.info("get_popular_channel_casts_lite")
-
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     order_sql = "cast_score DESC"
@@ -2155,7 +2155,6 @@ async def get_popular_channel_casts_heavy(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-    logger.info("get_popular_channel_casts_heavy")
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     order_sql = "cast_score DESC"
@@ -2799,7 +2798,6 @@ async def get_trending_channel_casts_heavy(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-    logger.info("get_trending_channel_casts_heavy")
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
@@ -2995,8 +2993,6 @@ async def get_trending_channel_casts_lite(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-    logger.info("get_trending_channel_casts_lite")
-
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
@@ -3108,7 +3104,6 @@ async def get_channel_casts_scores_lite(
     sorting_order: SortingOrder,
     pool: Pool,
 ):
-    logger.info("get_channel_casts_scores_lite")
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
 
     decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
@@ -3188,8 +3183,6 @@ async def get_channel_casts_scores_lite(
 async def get_trending_channels(
     max_cast_age: str, rank_threshold: int, offset: int, limit: int, pool: Pool
 ):
-    logger.info("get_trending_channels")
-
     sql_query = f"""
     WITH top_fids AS (
         SELECT
@@ -3295,9 +3288,6 @@ async def get_top_channel_casts(
     strategy_name: str,
     pool: Pool,
 ):
-    logger.debug(
-        f"{channel_id=} {cast_at_or_after=} {cast_before=} {reaction_window=} {weights=} {strategy_name=}"
-    )
     # Ensure that timestamps are zone-aware.
     if cast_at_or_after.tzinfo is None:
         cast_at_or_after = cast_at_or_after.astimezone()

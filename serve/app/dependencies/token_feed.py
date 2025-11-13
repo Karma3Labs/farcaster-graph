@@ -92,13 +92,12 @@ def get_search_casts(
     if before_ts:
         final_search_str += f" + before:{before_ts}"
 
-    neynar_resp = neynar_get(
-        f"cast/search?q={final_search_str}&mode=literal&sort_type=algorithmic&viewer_fid={viewer_fid}"
-    )
+    url = f"cast/search?q={final_search_str}&mode=literal&sort_type=algorithmic&viewer_fid={viewer_fid}"
+    neynar_resp = neynar_get(url)
     if neynar_resp.ok:
         data = neynar_resp.json()["result"]
     else:
-        logger.warning(f"failed to fetch search casts {neynar_resp.text}")
+        logger.warning(f"failed to fetch search casts {neynar_resp.text} ({url=}")
         return []
 
     return data["casts"], data["next"]["cursor"]

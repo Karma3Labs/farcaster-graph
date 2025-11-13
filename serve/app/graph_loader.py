@@ -30,14 +30,14 @@ class GraphLoader:
         utils.log_memusage(logger)
         logger.info(f"unpickling {d_file}")
         df = pandas.read_pickle(d_file)
-        logger.info(utils.df_info_to_string(df, with_sample=True))
+        logger.debug(utils.df_info_to_string(df, with_sample=True))
         utils.log_memusage(logger)
 
-        # logger.info(f"creating graph from dataframe ")
+        # logger.debug(f"creating graph from dataframe ")
         # g = igraph.Graph.DataFrame(df, directed=True, use_vids=False)
-        # logger.info(g.summary())
+        # logger.debug(g.summary())
         g_file = f"{path_prefix}_ig.pkl"
-        # logger.info(f"reading {g_file}")
+        # logger.debug(f"reading {g_file}")
         # with open(g_file, 'rb') as pickle_file:
         #   pickled_data = bytearray(pickle_file.read())
         logger.info(f"unpickling {g_file}")
@@ -75,7 +75,8 @@ class GraphLoader:
         return graphs
 
     def reload_if_required(self):
-        logger.info("checking graphs mtime")
+        logger.debug("checking graphs mtime")
+        # noinspection PyBroadException
         try:
             for _, model in self.graphs.items():
                 is_graph_modified = not math.isclose(
@@ -98,6 +99,6 @@ class GraphLoader:
                     self.graphs = self.load_graphs()
                     self.server_status.resume()  # start accepting new requests
                     break
-        except Exception as e:
-            logger.error(e)
+        except Exception:
+            logger.error("cannot check/reload graphs", exc_info=True)
         return
