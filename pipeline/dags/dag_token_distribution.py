@@ -32,6 +32,7 @@ default_args = {
     "owner": "karma3labs",
     "retries": 3,
     "retry_delay": timedelta(minutes=5),
+    "max_active_tis_per_dagrun": 3,  # Limit concurrent tasks to prevent DB connection exhaustion
     "on_failure_callback": [send_alert_discord, send_alert_pagerduty],
 }
 
