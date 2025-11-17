@@ -871,7 +871,7 @@ def wait_for_confirmations(round_logs: list[RoundLogs]) -> list[Log]:
             while retries < max_retries:
                 try:
                     receipt = w3.eth.get_transaction_receipt(tx_hash)
-                    if receipt["status"] == 1 or True:
+                    if receipt["status"] == 1:
                         logger.info(
                             f"TX {tx_hash} confirmed in block {receipt['blockNumber']}"
                         )
