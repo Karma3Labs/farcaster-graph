@@ -739,7 +739,6 @@ def verify(logs: list[Log], round_data: RoundData) -> list[Log]:
     # Sum up calculated logs
     actual_amount = sum(log.amount for log in logs)
 
-    # Allow a small rounding difference (0.01)
     difference = abs(round_data.round.amount - actual_amount)
     if difference != 0:
         error_msg = (
