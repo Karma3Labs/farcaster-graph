@@ -20,7 +20,8 @@ CREATE TABLE requests (
         num_recipients_per_round >= 0
     ),
     metadata jsonb NOT NULL DEFAULT '{}',
-    recipient_token_community ethereum_address NOT NULL
+    recipient_token_community ethereum_address NOT NULL,
+    period interval NOT NULL DEFAULT '1 day'::interval
 );
 
 CREATE TABLE funding_txs (
