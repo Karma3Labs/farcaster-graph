@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import Enum
 from functools import cached_property
 
@@ -141,6 +142,10 @@ class Settings(BaseSettings):
     # Web3/Blockchain configuration for token distribution, keyed by chain ID
     # (default: use public RPCs from chain_index)
     ETH_RPC_URLS: dict[int, str] = {}
+
+    # Transaction confirmation timeout and retry interval
+    TX_CONFIRMATION_TIMEOUT: timedelta = timedelta(minutes=10)
+    TX_CONFIRMATION_INTERVAL: timedelta = timedelta(seconds=5)
 
     # Token metadata fetching configuration
     TOKEN_QUERY_BATCH_SIZE: int = 100  # Number of tokens to query per batch

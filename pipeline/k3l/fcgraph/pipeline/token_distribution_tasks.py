@@ -49,6 +49,7 @@ from k3l.fcgraph.pipeline.token_distribution.models import (
     Round,
     RoundMethod,
 )
+from k3l.fcgraph.pipeline.utils import ticks_until_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -864,10 +865,15 @@ def wait_for_confirmations(round_logs: list[RoundLogs]) -> list[Log]:
             tx_hash = log.tx_hash
             if tx_hash is None:
                 continue
-            retries = 0
-            max_retries = 120  # 10 minutes with 5-second intervals
-
-            while retries < max_retries:
+            for attempt, tick in enumerate(
+                ticks_until_timeout(
+                    settings.TX_CONFIRMATION_TIMEOUT,
+                    settings.TX_CONFIRMATION_INTERVAL,
+                    delay_start=True,
+                    skip_clumped=True,
+                )
+            ):
+                logger.debug(f"checking {tx_hash} ({attempt=} scheduled at {tick=})")
                 try:
                     receipt = w3.eth.get_transaction_receipt(tx_hash)
                     if receipt["status"] == 1:
@@ -880,12 +886,10 @@ def wait_for_confirmations(round_logs: list[RoundLogs]) -> list[Log]:
                             f"Transaction {tx_hash} was reverted! {receipt=}"
                         )
                 except TransactionNotFound:
-                    retries += 1
-                    time.sleep(5)
-
-            if retries >= max_retries:
+                    pass
+            else:
                 raise TimeoutError(
-                    f"Transaction {tx_hash} not confirmed after {max_retries * 5} seconds"
+                    f"Transaction {tx_hash} not confirmed in {settings.TX_CONFIRMATION_TIMEOUT}"
                 )
             confirmed_logs.append(log)
 
