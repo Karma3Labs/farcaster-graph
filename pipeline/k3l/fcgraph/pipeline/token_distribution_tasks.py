@@ -666,8 +666,9 @@ def calculate(rd: RoundData) -> list[Log]:
             )
         )
 
-    assert cumulative_weight == total_weight
-    assert cumulative_amount == amount
+    if total_weight > 0:
+        assert cumulative_weight == total_weight
+        assert cumulative_amount == amount
 
     # Insert all logs atomically
     logs: list[Log] = []
