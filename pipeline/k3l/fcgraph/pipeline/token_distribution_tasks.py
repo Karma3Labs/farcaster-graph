@@ -446,10 +446,8 @@ def gather_rounds_due(cutoff: datetime) -> list[Round]:
     query = """
     SELECT r.*
     FROM token_distribution.rounds r
-    LEFT JOIN token_distribution.logs l ON r.id = l.round_id
     WHERE r.scheduled <= %(cutoff)s
-      AND l.id IS NULL  -- No logs exist yet
-    GROUP BY r.id, r.scheduled
+      AND r.fulfilled_at IS NULL
     ORDER BY r.scheduled
     """
 
@@ -709,6 +707,20 @@ def calculate(rd: RoundData) -> list[Log]:
                             Log,
                         )
                     )
+
+                # Mark round as fulfilled
+                class UpdateRoundArgs(BaseModel):
+                    round_id: UUID
+
+                psycopg2_query(
+                    cur,
+                    """
+                    UPDATE token_distribution.rounds
+                    SET fulfilled_at = CURRENT_TIMESTAMP
+                    WHERE id = %(round_id)s
+                    """,
+                    UpdateRoundArgs(round_id=round_id),
+                )
 
             except Exception as e:
                 conn.rollback()
