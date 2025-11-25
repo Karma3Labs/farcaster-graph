@@ -645,14 +645,15 @@ def calculate(rd: RoundData) -> list[Log]:
             raise ValueError(f"Unknown distribution method: {method}")
 
     total_weight = sum(weight for (fid, weight) in weights.items())
-    if total_weight == 0:
-        total_weight = 1  # all weights are zero, no recipients; avoid division by zero.
 
     cumulative_weight = 0
     cumulative_amount = 0
     for entry in leaderboard:
         cumulative_weight += weights[entry.fid]
-        dist_amount = amount * cumulative_weight // total_weight - cumulative_amount
+        # If total_weight is 0, all weights are 0; avoid division by zero.
+        dist_amount = (
+            amount * cumulative_weight // (total_weight or 1) - cumulative_amount
+        )
         cumulative_amount += dist_amount
 
         wallet_address = wallet_addresses.get(entry.fid)
