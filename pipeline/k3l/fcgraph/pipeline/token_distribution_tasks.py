@@ -635,11 +635,6 @@ def calculate(rd: RoundData) -> list[Log]:
 
     distributions: list[Distribution] = []
 
-    # Process all entries, including those without wallet addresses
-    if not leaderboard:
-        logger.warning(f"No recipients for round {round_id}")
-        return []
-
     weights: dict[int, int] = {}
     match method:
         case RoundMethod.UNIFORM:
@@ -651,8 +646,7 @@ def calculate(rd: RoundData) -> list[Log]:
 
     total_weight = sum(weight for (fid, weight) in weights.items())
     if total_weight == 0:
-        logger.warning(f"Total weight is 0 for round {round_id}, cannot distribute")
-        return []
+        total_weight = 1  # all weights are zero, no recipients; avoid division by zero.
 
     cumulative_weight = 0
     cumulative_amount = 0
