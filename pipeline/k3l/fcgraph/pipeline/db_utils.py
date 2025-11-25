@@ -39,9 +39,8 @@ def psycopg2_query[P: BaseModel, R: BaseModel](
     logging.info(f"{query=}, {args=}")
     cur.execute(query, args.model_dump(context=psycopg2_context))
     if model is None:
-        return
-    for row in cur:
-        yield model.model_validate(row, context=psycopg2_context)
+        return []
+    return (model.model_validate(row, context=psycopg2_context) for row in cur)
 
 
 @contextmanager
