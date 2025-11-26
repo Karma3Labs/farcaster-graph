@@ -3748,7 +3748,7 @@ async def get_top_token_casts(
             GROUP BY cast_hash
         )
         SELECT
-            '0x' || encode(c.hash, 'hex') as cast_hash,
+            '0x' || encode(c.hash, 'hex') as cast_hash
         FROM k3l_recent_parent_casts c
         JOIN scores s ON c.hash = s.cast_hash
         WHERE s.cast_score >= $4
