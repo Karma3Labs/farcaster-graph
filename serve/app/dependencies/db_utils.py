@@ -3674,3 +3674,96 @@ def record2dict(record: asyncpg.Record) -> dict[str, Any]:
 
 def records2dicts(records: list[asyncpg.Record]) -> list[dict[str, Any]]:
     return [record2dict(record) for record in records]
+
+async def get_top_token_casts(
+    chain_id: int,
+    token_address: str,
+    token_symbol: str,
+    agg: ScoreAgg,
+    weights: Weights,
+    score_threshold: float,
+    max_cast_age: timedelta,
+    time_decay: CastsTimeDecay,
+    offset: int,
+    limit: int,
+    pool: Pool,
+):    
+    agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
+  
+    # FIP-2 URL construction
+    # https://github.com/farcasterxyz/protocol/blob/main/FIPs/FIP-2.md
+    # chain://eip155:<chain_id>/erc20:<token_address>
+    fip2_url = f"chain://eip155:{chain_id}/erc20:{token_address.lower()}"
+    
+    # We need to handle the case where token_symbol might need escaping for SQL LIKE
+    # But we use parameter binding so it's safe.
+    # We want text ILIKE '%$SYMBOL%'
+    
+    sql_query = f"""
+        WITH candidate_casts AS (
+            SELECT
+                hash,
+                timestamp
+            FROM k3l_recent_parent_casts
+            WHERE
+                timestamp >= now() - $3::interval
+                AND (
+                    root_parent_url = $1
+                    OR
+                    text ILIKE $2
+                )
+        ),
+        latest_global_rank as (
+            select profile_id as fid, score 
+            from k3l_rank 
+            where strategy_id=9
+            and date in (select max(date) from k3l_rank)
+        ),
+        fid_cast_scores AS (
+            SELECT
+                c.hash as cast_hash,
+                SUM(
+                    (
+                        ({weights.cast} * COALESCE(fids.score, 0.00001) * ci.casted)
+                        + ({weights.reply} * COALESCE(fids.score, 0.00001) * ci.replied)
+                        + ({weights.recast} * COALESCE(fids.score, 0.00001) * ci.recasted)
+                        + ({weights.like} * COALESCE(fids.score, 0.00001) * ci.liked)
+                    )
+                    *
+                    {decay_sql}
+                ) as cast_score
+            FROM candidate_casts c
+            INNER JOIN k3l_cast_action as ci
+                ON (ci.cast_hash = c.hash
+                    AND ci.action_ts >= now() - $3::interval)
+            LEFT JOIN latest_global_rank as fids ON (fids.fid = ci.fid)
+            GROUP BY c.hash
+        ),
+        scores AS (
+            SELECT
+                cast_hash,
+                {agg_sql} as cast_score
+            FROM fid_cast_scores
+            GROUP BY cast_hash
+        )
+        SELECT
+            '0x' || encode(c.hash, 'hex') as cast_hash,
+        FROM k3l_recent_parent_casts c
+        JOIN scores s ON c.hash = s.cast_hash
+        WHERE s.cast_score >= $4
+        ORDER BY s.cast_score DESC
+        OFFSET $5
+        LIMIT $6
+    """
+
+    return await fetch_rows(
+        fip2_url,
+        f"%${token_symbol}%",
+        max_cast_age,
+        score_threshold,
+        offset,
+        limit,
+        sql_query=sql_query,
+        pool=pool,
+    )
