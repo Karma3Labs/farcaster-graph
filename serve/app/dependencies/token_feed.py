@@ -9,7 +9,9 @@ from asyncpg.pool import Pool
 from loguru import logger
 
 from ..config import settings
-from .db_utils import get_fip2_cast_hashes
+from datetime import timedelta
+from ..models.feed_model import SortingOrder, ScoreAgg, Weights, CastsTimeDecay
+from .db_utils import get_fip2_cast_hashes, get_top_token_casts
 
 
 async def get_token_feed(
@@ -19,7 +21,72 @@ async def get_token_feed(
     token_symbol: str,
     viewer_fid: str,
     pool: Pool,
+    sorting_order: SortingOrder = SortingOrder.RECENT,
 ):
+    if sorting_order == SortingOrder.POPULAR or sorting_order == SortingOrder.SCORE:
+        offset = 0
+        if cursor:
+            try:
+                offset = int(cursor)
+            except ValueError:
+                pass  # invalid cursor, start from 0
+
+        limit = 25
+        # Default settings for top feed
+        # TODO: Make these configurable via query params if needed
+        rows = await get_top_token_casts(
+            chain_id=int_chain_id,
+            token_address=token_address,
+            token_symbol=token_symbol,
+            agg=ScoreAgg.SUM,
+            weights=Weights.from_str("L1C1R1Y1"),
+            score_threshold=0.000000001,
+            max_cast_age=timedelta(days=7), # 7 days lookback as discussed
+            time_decay=CastsTimeDecay.NEVER, # No decay for "top" in window? Or maybe HOUR? Let's stick to raw score for "Top".
+            offset=offset,
+            limit=limit,
+            pool=pool,
+        )
+
+        # Extract hashes
+        cast_hashes = [row["cast_hash"] for row in rows]
+        
+        if not cast_hashes:
+            return {
+                "casts": [],
+                "next": {"cursor": None},
+            }
+
+        # Fetch full casts from Neynar to get consistent schema
+        hashes_str = ",".join(cast_hashes)
+        neynar_url = f"casts?casts={hashes_str}&viewer_fid={viewer_fid}"
+        neynar_resp = neynar_get(neynar_url)
+        
+        final_casts = []
+        if neynar_resp.ok:
+            neynar_data = neynar_resp.json()            
+            fetched_casts = neynar_data.get("result", {}).get("casts", [])
+            
+            # Create a dict for O(1) lookup
+            casts_map = {c["hash"]: c for c in fetched_casts}
+            
+            # Reconstruct list in the original sorted order
+            for h in cast_hashes:
+                if h in casts_map:
+                    final_casts.append(casts_map[h])
+        else:
+            logger.error(f"Failed to fetch casts from Neynar: {neynar_resp.text}")
+            pass
+
+        next_cursor = None
+        if len(rows) == limit:
+            next_cursor = str(offset + limit)
+
+        return {
+            "casts": final_casts,
+            "next": {"cursor": next_cursor},
+        }
+
     # get neynar FIP 2 feed.
     url = f"feed/parent_urls/?with_recasts=true&limit=25&parent_urls=eip155%3A{int_chain_id}%2Ferc20%3A{token_address.lower()}"
     before_ts = None
