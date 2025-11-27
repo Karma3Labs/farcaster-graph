@@ -14,8 +14,8 @@ import asyncio
 import hashlib
 import json
 import logging
-import time
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import aiohttp
 import asyncpg
@@ -24,7 +24,6 @@ import niquests
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address, to_hex
 from hexbytes import HexBytes
-from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 from urllib3.util import Retry
 from web3 import Web3
@@ -36,6 +35,7 @@ from config import settings
 from db_utils import get_supabase_psycopg2_client
 from k3l.fcgraph.pipeline.db_utils import psycopg2_cursor, psycopg2_query
 from k3l.fcgraph.pipeline.models import (
+    JSON,
     UUID,
     BigInt,
     EthAddress,
@@ -549,14 +549,111 @@ async def collect_round_data_async(round_: Round) -> RoundData:
     )
 
 
-def collect_round_data(round_: Round) -> RoundData:
+def collect_round_data(round_: Round) -> UUID:
     """
-    Synchronous wrapper for fetch_leaderboard_async.
+    Fetch leaderboard and insert into logs table atomically.
+
+    This declares "these and only these people will be rewarded for this round"
+    by inserting log entries with round_id, fid, and points. The receiver and
+    amount fields are populated later by calculate().
 
     :param round_: The round to fetch.
-    :returns: Round data.
+    :returns: Round ID.
     """
-    return asyncio.run(collect_round_data_async(round_))
+    round_data = asyncio.run(collect_round_data_async(round_))
+    round_id = round_data.round.id
+
+    class InsertArgs(BaseModel):
+        round_id: UUID
+        fid: int
+        points: int
+
+    # Insert leaderboard entries into logs atomically
+    with (
+        get_supabase_psycopg2_client() as conn,
+        psycopg2_cursor(conn, commit="on_success") as cur,
+    ):
+
+        class RoundArg(BaseModel):
+            round_id: UUID
+
+        class RoundResult(BaseModel):
+            recipients_selected_at: datetime | None
+
+        result = list(
+            psycopg2_query(
+                cur,
+                """
+                SELECT recipients_selected_at
+                FROM token_distribution.rounds
+                WHERE id = %(round_id)s
+                FOR UPDATE -- this prevents SELECT-SELECT-UPDATE-UPDATE races
+                """,
+                RoundArg(round_id=round_id),
+                RoundResult,
+            )
+        )
+        if not result:
+            msg = f"Round {round_id} not found"
+            raise RuntimeError(msg)
+        if result[0].recipients_selected_at is not None:
+            msg = f"Round {round_id} already has recipients selected, skipping"
+            logger.info(msg)
+            return round_id
+
+        class CountResult(BaseModel):
+            count: int
+
+        count_result = list(
+            psycopg2_query(
+                cur,
+                """
+                SELECT count(*) AS count
+                FROM token_distribution.logs
+                WHERE round_id = %(round_id)s
+                """,
+                RoundArg(round_id=round_id),
+                CountResult,
+            )
+        )
+        if not count_result:
+            msg = f"Could not fetch logs count for round {round_id}"
+            raise RuntimeError(msg)
+        if count_result[0].count > 0:
+            msg = f"Round {round_id} already has recipients determined, yet its recipients_selected_at is NULL"
+            raise RuntimeError(msg)
+
+        for entry in round_data.leaderboard:
+            psycopg2_query(
+                cur,
+                """
+                INSERT INTO token_distribution.logs (round_id, fid, points)
+                VALUES (%(round_id)s, %(fid)s, %(points)s)
+                """,
+                InsertArgs(
+                    round_id=round_id,
+                    fid=entry.fid,
+                    points=entry.score,
+                ),
+            )
+
+        # Mark recipients as selected
+        psycopg2_query(
+            cur,
+            """
+            UPDATE token_distribution.rounds
+            SET recipients_selected_at = CURRENT_TIMESTAMP
+            WHERE id = %(round_id)s
+            """,
+            RoundArg(round_id=round_id),
+        )
+
+        logger.info(
+            f"Inserted {len(round_data.leaderboard)} leaderboard entries "
+            f"for round {round_id}"
+        )
+
+    return round_data.round.id
 
 
 async def get_wallet_addresses_async(
@@ -611,301 +708,561 @@ class RoundLogs(BaseModel):
     logs: list[Log]
 
 
-def calculate(rd: RoundData) -> list[Log]:
+def calculate(round_id: UUID) -> UUID:
     """
-    Calculate distribution amounts and atomically insert into the logs.
+    Calculate distribution amounts and update existing log entries.
 
-    :param rd: Round data, with round_id, amount, method, and leaderboard
-    :returns: List of logs
+    Queries logs from the database (inserted by collect_round_data), calculates
+    amounts based on the distribution method, then updates the logs atomically.
+    Receiver addresses are looked up later in submit_txs().
+
+    :param round_id: Round ID to calculate distributions for.
+    :returns: Round ID.
     """
-    round_id = rd.round.id
-    amount = rd.round.amount
-    method = rd.round.method or rd.request.round_method
-    leaderboard = rd.leaderboard
-    # Validate funding before proceeding
-    if not validate_funding(round_id, amount):
-        logger.info(f"Skipping round {round_id} due to insufficient funding")
-        return []
 
-    # Get wallet addresses for all FIDs
-    fids = [entry.fid for entry in leaderboard]
-    wallet_addresses = asyncio.run(get_wallet_addresses_async(fids))
-
-    # Calculate distributions based on the method
-
-    distributions: list[Distribution] = []
-
-    weights: dict[int, int] = {}
-    match method:
-        case RoundMethod.UNIFORM:
-            weights.update((entry.fid, 1) for entry in leaderboard)
-        case RoundMethod.PROPORTIONAL:
-            weights.update((entry.fid, entry.score) for entry in leaderboard)
-        case _:
-            raise ValueError(f"Unknown distribution method: {method}")
-
-    total_weight = sum(weight for (fid, weight) in weights.items())
-
-    cumulative_weight = 0
-    cumulative_amount = 0
-    for entry in leaderboard:
-        cumulative_weight += weights[entry.fid]
-        # If total_weight is 0, all weights are 0; avoid division by zero.
-        dist_amount = (
-            amount * cumulative_weight // (total_weight or 1) - cumulative_amount
-        )
-        cumulative_amount += dist_amount
-
-        wallet_address = wallet_addresses.get(entry.fid)
-        distributions.append(
-            Distribution(
-                fid=entry.fid,
-                wallet_address=wallet_address,
-                amount=dist_amount,
-                points=entry.score,
-            )
-        )
-
-    if total_weight > 0:
-        assert cumulative_weight == total_weight
-        assert cumulative_amount == amount
-
-    # Insert all logs atomically
-    logs: list[Log] = []
-
-    class InsertArgs(BaseModel):
+    # Fetch round and request info
+    class RoundQueryArgs(BaseModel):
         round_id: UUID
-        receiver: EthAddress | None
-        amount: int
-        fid: int
-        points: int
 
-    with get_supabase_psycopg2_client() as conn:
-        conn.autocommit = False
-        with psycopg2_cursor(conn) as cur:
-            try:
-                for dist in distributions:
-                    logs.extend(
-                        psycopg2_query(
-                            cur,
-                            """
-                            INSERT INTO token_distribution.logs (round_id, receiver, amount, fid, points)
-                            VALUES (%(round_id)s, %(receiver)s, %(amount)s, %(fid)s, %(points)s)
-                            RETURNING *
-                            """,
-                            InsertArgs(
-                                round_id=round_id,
-                                receiver=dist.wallet_address,
-                                amount=dist.amount,
-                                fid=dist.fid,
-                                points=dist.points,
-                            ),
-                            Log,
-                        )
-                    )
+    with (
+        get_supabase_psycopg2_client() as conn,
+        psycopg2_cursor(conn, commit="on_success") as cur,
+    ):
+        round_query = """
+        SELECT r.id, r.amount, r.method, req.round_method
+        FROM token_distribution.rounds r
+        JOIN token_distribution.requests req ON r.request_id = req.id
+        WHERE r.id = %(round_id)s
+        FOR UPDATE -- this prevents SELECT-SELECT-UPDATE-UPDATE races
+        """
 
-                # Mark round as fulfilled
-                class UpdateRoundArgs(BaseModel):
-                    round_id: UUID
+        class RoundInfo(BaseModel):
+            id: UUID
+            amount: int
+            method: RoundMethod | None
+            round_method: RoundMethod
 
-                psycopg2_query(
-                    cur,
-                    """
-                    UPDATE token_distribution.rounds
-                    SET fulfilled_at = CURRENT_TIMESTAMP
-                    WHERE id = %(round_id)s
-                    """,
-                    UpdateRoundArgs(round_id=round_id),
-                )
+        for round_info in psycopg2_query(
+            cur, round_query, RoundQueryArgs(round_id=round_id), RoundInfo
+        ):
+            break
+        else:
+            raise ValueError(f"Round {round_id} not found")
 
-            except Exception as e:
-                conn.rollback()
-                logger.error(
-                    f"Failed to insert logs for round {round_id}: {e}", exc_info=True
-                )
-                raise
+        amount = round_info.amount
+        method = round_info.method or round_info.round_method
 
-            else:
-                conn.commit()
-                logger.info(
-                    f"Created {len(logs)} distribution logs for round {round_id} "
-                    f"using {method} method"
-                )
+        # Fetch existing logs (fid + points) from database
+        log_query = """
+        SELECT id, fid, points, amount
+        FROM token_distribution.logs
+        WHERE round_id = %(round_id)s
+        ORDER BY id
+        FOR UPDATE -- lock rows so their amounts can't be changed by other tasks
+        """
 
-    return logs
+        class LogEntry(BaseModel):
+            id: UUID
+            fid: int
+            points: int
+            amount: Decimal | None
+
+        log_entries = list(
+            psycopg2_query(cur, log_query, RoundQueryArgs(round_id=round_id), LogEntry)
+        )
+
+        if not log_entries:
+            logger.info(f"No log entries for round {round_id}, nothing to calculate")
+            return round_id
+
+        num_filled = sum(1 for entry in log_entries if entry.amount is not None)
+        if num_filled == len(log_entries):
+            logger.info(f"Round {round_id} has all logs filled, skipping")
+            return round_id
+        elif num_filled > 0:
+            # breaks all-or-none invariant
+            msg = f"Round {round_id} has partially filled logs"
+            raise RuntimeError(msg)
+
+        # Define weight function based on method
+        match method:
+            case RoundMethod.PROPORTIONAL:
+
+                def get_weight(entry: LogEntry) -> int:
+                    return entry.points
+            case RoundMethod.UNIFORM:
+
+                def get_weight(_entry: LogEntry) -> int:
+                    return 1
+            case _:
+                raise ValueError(f"Unknown distribution method: {method}")
+
+        total_weight = sum(get_weight(entry) for entry in log_entries)
+
+        # Calculate distribution amounts
+        class UpdateArgs(BaseModel):
+            id: UUID
+            amount: int
+
+        distributions: list[UpdateArgs] = []
+        cumulative_weight = 0
+        cumulative_amount = 0
+
+        for entry in log_entries:
+            cumulative_weight += get_weight(entry)
+            dist_amount = (
+                amount * cumulative_weight // (total_weight or 1) - cumulative_amount
+            )
+            cumulative_amount += dist_amount
+            distributions.append(UpdateArgs(id=entry.id, amount=dist_amount))
+
+        if total_weight > 0:
+            assert cumulative_weight == total_weight
+            assert cumulative_amount == amount
+
+        for dist in distributions:
+            psycopg2_query(
+                cur,
+                """
+                UPDATE token_distribution.logs
+                SET amount = %(amount)s
+                WHERE id = %(id)s
+                """,
+                dist,
+            )
+
+        logger.info(
+            f"Updated {len(distributions)} distribution amounts for round {round_id} "
+            f"using {method} method"
+        )
+
+    return round_id
 
 
-def verify(logs: list[Log], round_data: RoundData) -> list[Log]:
+def verify(round_id: UUID) -> UUID:
     """
     Verify that calculated distributions match the round budget.
 
-    :param logs: Logs to verify.
-    :param round_data: Round data.
-    :returns: The given logs (pass-through for the next task).
-    :raises ValueError: If the calculated amount doesn't match the expected amount.
+    Queries logs from the database and verifies:
+    1. Sum of amounts matches the round amount (or is NULL for empty rounds)
+    2. Number of recipients doesn't exceed the configured maximum
+
+    :param round_id: Round ID to verify.
+    :returns: Round ID.
+    :raises ValueError: If validation fails.
     """
 
-    # Sum up calculated logs
-    actual_amount = sum(log.amount for log in logs)
+    class RoundQueryArgs(BaseModel):
+        round_id: UUID
 
-    difference = abs(round_data.round.amount - actual_amount)
-    if difference != 0:
+    with get_supabase_psycopg2_client() as conn, psycopg2_cursor(conn) as cur:
+        query = """
+        WITH
+            computed AS (
+                SELECT
+                    sum(amount) AS amount,
+                    count(*) AS count
+                FROM token_distribution.logs
+                WHERE round_id = %(round_id)s
+            ), configured AS (
+                SELECT
+                    r.amount,
+                    COALESCE(r.num_recipients, req.num_recipients_per_round) AS max_count
+                FROM token_distribution.rounds AS r
+                JOIN token_distribution.requests AS req ON r.request_id = req.id
+                WHERE r.id = %(round_id)s
+            )
+        SELECT
+            computed.amount AS computed_amount,
+            configured.amount AS configured_amount,
+            computed.count AS num_recipients,
+            configured.max_count AS max_recipients
+        FROM computed, configured
+        """
+
+        class VerificationResult(BaseModel):
+            computed_amount: int | None
+            configured_amount: int
+            num_recipients: int
+            max_recipients: int
+
+        for result in psycopg2_query(
+            cur, query, RoundQueryArgs(round_id=round_id), VerificationResult
+        ):
+            break
+        else:
+            raise ValueError(f"Round {round_id} not found")
+
+    # Check amount match (NULL is OK for empty rounds)
+    if (
+        result.computed_amount is not None
+        and result.computed_amount != result.configured_amount
+    ):
         error_msg = (
-            f"Amount mismatch for round {round_data.round.id}: "
-            f"expected {round_data.round.amount}, calculated {actual_amount}, "
-            f"difference {difference}"
+            f"Amount mismatch for round {round_id}: "
+            f"expected {result.configured_amount}, computed {result.computed_amount}"
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    # Check recipient count
+    if result.num_recipients > result.max_recipients:
+        error_msg = (
+            f"Recipient count exceeds limit for round {round_id}: "
+            f"{result.num_recipients} > {result.max_recipients}"
         )
         logger.error(error_msg)
         raise ValueError(error_msg)
 
     logger.info(
-        f"Verification passed for round {round_data.round.id}: "
-        f"{actual_amount} tokens to {len(logs)} recipients"
+        f"Verification passed for round {round_id}: "
+        f"{result.computed_amount or 0} tokens to {result.num_recipients} recipients "
+        f"(max {result.max_recipients})"
     )
 
-    return logs
+    return round_id
 
 
-def submit_txs(rounds: list[RoundLogs]) -> list[RoundLogs]:
+def submit_txs(round_ids: list[UUID]) -> list[UUID]:
     """
     Submit blockchain transactions for all verified distributions.
 
+    Validates funding, looks up receiver addresses, and submits transactions.
     This task handles all transactions serially to manage nonce properly.
+    Each receiver address and TX hash is committed independently for idempotency.
 
-    :param rounds: Verified rounds' data and logs.
-    :returns: Same `rounds` with TX hashes populated in the log.
+    :param round_ids: List of round IDs to submit transactions for.
+    :returns: List of round IDs that were processed.
     """
 
-    with get_supabase_psycopg2_client() as conn:
-        conn.autocommit = False
-        with psycopg2_cursor(conn) as cur:
-            for rl in rounds:
-                req = rl.round_data.request
-                round_ = rl.round_data.round
-                logger.info(f"Processing round {round_.id}")
+    for round_id in round_ids:
+        # Fetch round and request data from DB
+        class RoundQueryArgs(BaseModel):
+            round_id: UUID
 
-                chain_id = rl.round_data.request.chain_id
-                # Initialize Web3
-                w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(chain_id)))
-                account = w3.eth.account.from_key(
-                    settings.CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY.get_secret_value()
-                )
-                sign_and_send_raw_middleware = SignAndSendRawMiddlewareBuilder.build(
-                    account
-                )
-                w3.middleware_onion.inject(sign_and_send_raw_middleware, layer=0)
-                w3.eth.default_account = account.address
-                contract = w3.eth.contract(address=req.token_address, abi=ERC20_ABI)
+        with (
+            get_supabase_psycopg2_client() as conn,
+            psycopg2_cursor(conn) as cur,
+        ):
+            query = """
+            SELECT r.id, r.amount, req.chain_id, req.token_address
+            FROM token_distribution.rounds r
+            JOIN token_distribution.requests req ON r.request_id = req.id
+            WHERE r.id = %(round_id)s
+            """
 
-                # Get current nonce
-                nonce = w3.eth.get_transaction_count(account.address, "pending")
+            class RoundWithRequest(BaseModel):
+                id: UUID
+                amount: int
+                chain_id: int
+                token_address: EthAddress
+
+            for row in psycopg2_query(
+                cur, query, RoundQueryArgs(round_id=round_id), RoundWithRequest
+            ):
+                break
+            else:
+                logger.warning(f"Round {round_id} not found, skipping")
+                continue
+
+        # Validate funding
+        if not validate_funding(round_id, row.amount):
+            logger.info(f"Skipping round {round_id} due to insufficient funding")
+            continue
+
+        logger.info(f"Processing round {round_id}")
+
+        # Look up and update receiver addresses (auto-commit each row)
+        with (
+            get_supabase_psycopg2_client() as conn,
+            psycopg2_cursor(conn, commit="auto") as cur,
+        ):
+            log_query_for_address = """
+            SELECT id, fid
+            FROM token_distribution.logs
+            WHERE round_id = %(round_id)s
+              AND receiver IS NULL
+            ORDER BY id
+            """
+
+            class LogForAddress(BaseModel):
+                id: UUID
+                fid: int
+
+            logs_need_address = list(
+                psycopg2_query(
+                    cur,
+                    log_query_for_address,
+                    RoundQueryArgs(round_id=round_id),
+                    LogForAddress,
+                )
+            )
+
+            if logs_need_address:
+                fids = [log.fid for log in logs_need_address]
+                wallet_addresses = asyncio.run(get_wallet_addresses_async(fids))
+
+                class UpdateReceiverArgs(BaseModel):
+                    id: UUID
+                    receiver: EthAddress | None
+
+                for log in logs_need_address:
+                    receiver = wallet_addresses.get(log.fid)
+                    if receiver is None:
+                        continue  # in case of UPDATE races, avoid clobbering with None
+                    psycopg2_query(
+                        cur,
+                        """
+                        UPDATE token_distribution.logs
+                        SET receiver = %(receiver)s
+                        WHERE id = %(id)s AND receiver IS NULL
+                        """,
+                        UpdateReceiverArgs(id=log.id, receiver=receiver),
+                    )
+                    if cur.rowcount == 0:
+                        # SELECT-SELECT-UPDATE-UPDATE race - at least we have an address to use,
+                        # so this is not fatal.
+                        logger.warning(f"Log {log.id} already has a receiver address")
+
+                logger.info(
+                    f"Updated {len(logs_need_address)} receiver addresses for round {round_id}"
+                )
+
+        # Submit transactions (auto-commit each TX hash to prevent double-payment on retry)
+        with (
+            get_supabase_psycopg2_client() as conn,
+            psycopg2_cursor(conn, commit="auto") as cur,
+        ):
+            # Fetch logs that need TX submission
+            log_query = """
+            SELECT id, receiver, amount
+            FROM token_distribution.logs
+            WHERE round_id = %(round_id)s
+              AND tx_hash IS NULL
+              AND receiver IS NOT NULL
+              AND amount IS NOT NULL
+            ORDER BY id
+            """
+
+            class LogForTx(BaseModel):
+                id: UUID
+                receiver: EthAddress
+                amount: int
+
+            logs = list(
+                psycopg2_query(
+                    cur, log_query, RoundQueryArgs(round_id=round_id), LogForTx
+                )
+            )
+
+            if not logs:
+                logger.info(f"No logs to submit for round {round_id}")
+                continue
+
+            # Initialize Web3
+            w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(row.chain_id)))
+            account = w3.eth.account.from_key(
+                settings.CURA_TOKEN_DISTRIBUTION_WALLET_PRIVATE_KEY.get_secret_value()
+            )
+            sign_and_send_raw_middleware = SignAndSendRawMiddlewareBuilder.build(
+                account
+            )
+            w3.middleware_onion.inject(sign_and_send_raw_middleware, layer=0)
+            w3.eth.default_account = account.address
+            contract = w3.eth.contract(address=row.token_address, abi=ERC20_ABI)
+
+            # Get current nonce
+            nonce = w3.eth.get_transaction_count(account.address, "pending")
+
+            for log in logs:
+                logger.debug(f"Processing log {log.id}")
+
+                # Build transfer data using "transfer(address to, uint256 amount)"
+                tx_hash: HexBytes = contract.functions.transfer(
+                    log.receiver, log.amount
+                ).transact({"chainId": row.chain_id, "nonce": nonce, "gas": 100000})
 
                 try:
-                    for log in rl.logs:
-                        assert log.tx_hash is None, f"{log=} already has tx hash"
-                        logger.debug(f"Processing log {log.id}")
-                        # Build ERC20 transfer transaction
-                        # This assumes token_address is an ERC20 token
-                        # Would need to handle native token transfers differently
+                    logger.debug(f"Submitted tx {to_hex(tx_hash)} for log {log.id}")
 
-                        # Convert receiver bytes and token bytes to ChecksumAddress
-                        receiver_address = log.receiver
-                        if receiver_address is None:
-                            logger.info(f"distribution {log} has no receiver, skipping")
-                            continue
-                        # Build transfer data using "transfer(address to, uint256 amount)"
-                        tx_hash: HexBytes = contract.functions.transfer(
-                            receiver_address, log.amount
-                        ).transact({"chainId": chain_id, "nonce": nonce, "gas": 100000})
+                    # Update the log with tx hash (only if not already set - race detection)
+                    class UpdateArgs(BaseModel):
+                        id: UUID
+                        tx_hash: TxHash
 
-                        # Update the log with tx hash (store as bytes in the database)
-                        class UpdateArgs(BaseModel):
-                            id: UUID
-                            tx_hash: TxHash
+                    cur.execute(
+                        """
+                        UPDATE token_distribution.logs
+                        SET tx_hash = %(tx_hash)s
+                        WHERE id = %(id)s
+                          AND tx_hash IS NULL
+                        """,
+                        UpdateArgs(id=log.id, tx_hash=to_hex(tx_hash)).model_dump(),
+                    )
 
-                        logger.debug(f"Submitted tx {to_hex(tx_hash)} for log {log.id}")
-
-                        updated_logs = psycopg2_query(
-                            cur,
-                            """
-                            UPDATE token_distribution.logs
-                            SET tx_hash = %(tx_hash)s
-                            WHERE id = %(id)s
-                            RETURNING *
-                            """,
-                            UpdateArgs(id=log.id, tx_hash=to_hex(tx_hash)),
-                            Log,
+                    if cur.rowcount == 0:
+                        # TODO(ek) - try to supersede/cancel the duplicate TX
+                        # Send a null TX (e.g., 0 ETH self-transfer) with the same nonce and
+                        # 2x gas price to supersede the duplicate. Poll both TX receipts with timeout.
+                        # Only one will confirm (nonce conflict). If replacement confirms: another
+                        # task instance is racing us (likely ahead on subsequent logs), so abort
+                        # this instance and let the winner continue. If original confirms: double-
+                        # payment occurred, raise exception for manual intervention.
+                        raise RuntimeError(
+                            f"DOUBLE-PAYMENT RACE DETECTED: log {log.id} already has a tx_hash! "
+                            f"Would-be TX hash: {to_hex(tx_hash)}.  Please mitigate."
                         )
-                        for _ in updated_logs:
-                            break
-                        else:
-                            raise ValueError(f"Log {log.id} not updated")
 
-                        log.tx_hash = to_hex(tx_hash)
-                        nonce += 1
+                    nonce += 1
 
-                except Exception as e:
-                    conn.rollback()
-                    logger.error(
-                        f"Failed to submit transactions for logs: {e}", exc_info=True
+                except Exception:
+                    logger.warning(
+                        f"Failed to record TX hash for log {log.id}. "
+                        f"TX hash (DO NOT LOSE THIS): {to_hex(tx_hash)}"
                     )
                     raise
-                else:
-                    conn.commit()
 
-    return rounds
+            logger.info(f"Submitted {len(logs)} transactions for round {round_id}")
+
+    return round_ids
 
 
-def wait_for_confirmations(round_logs: list[RoundLogs]) -> list[Log]:
+def wait_for_confirmations(round_ids: list[UUID]) -> list[UUID]:
     """Wait for all transaction confirmations on the blockchain.
 
-    :param round_logs: Round + logs data
-    :return: The confirmed logs.
+    Queries the database for logs with pending transactions (tx_hash IS NOT NULL
+    AND tx_status IS NULL) and waits for confirmation. Updates tx_status upon
+    confirmation, then marks round as fulfilled. Idempotent - skips already-confirmed
+    transactions on retry.
+
+    :param round_ids: List of round IDs to wait for confirmations.
+    :return: List of round IDs that were processed.
     :raises ValueError: If any transaction is reverted.
     :raises TimeoutError: If the transaction is not confirmed within timeout.
     """
 
-    confirmed_logs: list[Log] = []
-    for rl in round_logs:
-        chain_id = rl.round_data.request.chain_id
-        w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(chain_id)))
-        for log in rl.logs:
-            tx_hash = log.tx_hash
-            if tx_hash is None:
-                continue
-            for attempt, tick in enumerate(
-                ticks_until_timeout(
-                    settings.TX_CONFIRMATION_TIMEOUT,
-                    settings.TX_CONFIRMATION_INTERVAL,
-                    delay_start=True,
-                    skip_clumped=True,
-                )
+    with (
+        get_supabase_psycopg2_client() as conn,
+        psycopg2_cursor(conn, commit="on_success") as cur,
+    ):
+        for round_id in round_ids:
+            # Fetch chain_id for this round
+            class RoundQueryArgs(BaseModel):
+                round_id: UUID
+
+            query = """
+            SELECT req.chain_id
+            FROM token_distribution.rounds r
+            JOIN token_distribution.requests req ON r.request_id = req.id
+            WHERE r.id = %(round_id)s
+            FOR NO KEY UPDATE OF r SKIP LOCKED -- prevent SELECT-SELECT-UPDATE-UPDATE races
+            """
+
+            class ChainInfo(BaseModel):
+                chain_id: int
+
+            for chain_info in psycopg2_query(
+                cur, query, RoundQueryArgs(round_id=round_id), ChainInfo
             ):
-                logger.debug(f"checking {tx_hash} ({attempt=} scheduled at {tick=})")
-                try:
-                    receipt = w3.eth.get_transaction_receipt(tx_hash)
-                    if receipt["status"] == 1:
-                        logger.info(
-                            f"TX {tx_hash} confirmed in block {receipt['blockNumber']}"
-                        )
-                        break
-                    else:
-                        raise ValueError(
-                            f"Transaction {tx_hash} was reverted! {receipt=}"
-                        )
-                except TransactionNotFound:
-                    pass
+                break
             else:
-                raise TimeoutError(
-                    f"Transaction {tx_hash} not confirmed in {settings.TX_CONFIRMATION_TIMEOUT}"
+                logger.warning(
+                    f"Round {round_id} not found or already being processed, skipping"
                 )
-            confirmed_logs.append(log)
+                continue
 
-    logger.info("All transactions confirmed successfully")
-    return confirmed_logs
+            # Initialize Web3
+            w3 = Web3(Web3.HTTPProvider(rpc_for_chain_id(chain_info.chain_id)))
+
+            # Fetch pending transactions (tx_hash set but tx_status null)
+            class PendingTx(BaseModel):
+                id: UUID
+                tx_hash: TxHash
+
+            for pending_tx in psycopg2_query(
+                cur,
+                """
+                SELECT id, tx_hash
+                FROM token_distribution.logs
+                WHERE round_id = %(round_id)s
+                  AND tx_hash IS NOT NULL
+                  AND tx_status IS NULL
+                ORDER BY id
+                    FOR NO KEY UPDATE SKIP LOCKED -- of tx_status later
+                """,
+                RoundQueryArgs(round_id=round_id),
+                PendingTx,
+            ):
+                tx_hash = pending_tx.tx_hash
+                log_id = pending_tx.id
+
+                for attempt, tick in enumerate(
+                    ticks_until_timeout(
+                        settings.TX_CONFIRMATION_TIMEOUT,
+                        settings.TX_CONFIRMATION_INTERVAL,
+                        # Most TXs in a batch should be available immediately, optimize for it.
+                        delay_start=False,
+                        skip_clumped=True,
+                    )
+                ):
+                    logger.debug(
+                        f"checking {tx_hash} ({attempt=} scheduled at {tick=})"
+                    )
+                    try:
+                        receipt = w3.eth.get_transaction_receipt(tx_hash)
+                    except TransactionNotFound:
+                        continue
+                    break
+                else:
+                    raise TimeoutError(
+                        f"Transaction {tx_hash} not confirmed in {settings.TX_CONFIRMATION_TIMEOUT}"
+                    )
+
+                tx_status = receipt["status"]
+                block_number = receipt["blockNumber"]
+
+                # Update tx_status in DB
+                class UpdateStatusArgs(BaseModel):
+                    id: UUID
+                    tx_status: int
+
+                psycopg2_query(
+                    cur,
+                    """
+                    UPDATE token_distribution.logs
+                    SET tx_status = %(tx_status)s
+                    WHERE id = %(id)s AND tx_status IS NULL
+                    """,
+                    UpdateStatusArgs(id=log_id, tx_status=tx_status),
+                )
+                if cur.rowcount == 0:
+                    # We had already locked the row, so this shouldn't have happened!
+                    logger.warning(
+                        f"Locked {log_id=} changed or disappeared under our nose!"
+                    )
+
+                if tx_status == 1:
+                    logger.info(f"TX {tx_hash} confirmed in block {block_number}")
+                else:
+                    logger.warning(f"TX {tx_hash} was reverted! {receipt=}")
+
+            # Mark round as fulfilled after all TXs confirmed
+            psycopg2_query(
+                cur,
+                """
+                UPDATE token_distribution.rounds
+                SET fulfilled_at = CURRENT_TIMESTAMP
+                WHERE id = %(round_id)s
+                """,
+                RoundQueryArgs(round_id=round_id),
+            )
+            logger.info(f"Round {round_id} marked as fulfilled")
+
+    logger.info(f"All transactions confirmed successfully for {len(round_ids)} rounds")
+    return round_ids
 
 
-def notify_recipients(logs: list[Log]) -> None:
+def notify_recipients(round_ids: list[UUID]) -> None:
     """Send notifications to all recipients who received rewards.
 
     Notification message format:
@@ -916,21 +1273,33 @@ def notify_recipients(logs: list[Log]) -> None:
 
     Target URL: ``https://cura.network/{token_address}/leaderboard?category=believers``
 
-    :param logs: Confirmed logs.
+    :param round_ids: List of round IDs to send notifications for.
     """
-    # Flatten nested lists
-    all_log_ids = [log.id for log in logs]
-
-    if not all_log_ids:
-        logger.info("No logs to send notifications for")
+    if not round_ids:
+        logger.info("No rounds to send notifications for")
         return
 
-    logger.info(f"Sending notifications for {len(all_log_ids)} distribution logs")
+    logger.info(f"Sending notifications for {len(round_ids)} rounds")
 
-    # Query database to get FIDs and metadata grouped by round and token
-    with get_supabase_psycopg2_client() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
+    # Query database to get FIDs and metadata for confirmed logs (tx_status = 1)
+    with (
+        get_supabase_psycopg2_client() as conn,
+        psycopg2_cursor(conn) as cur,
+    ):
+
+        class LogQueryArgs(BaseModel):
+            round_ids: list[UUID]
+
+        class LogQueryRow(BaseModel):
+            round_id: UUID
+            token_address: EthAddress
+            fids: list[int]
+            round_metadata: JSON
+            request_metadata: JSON
+
+        rounds_data = list(
+            psycopg2_query(
+                cur,
                 """
                 SELECT
                     l.round_id,
@@ -941,13 +1310,14 @@ def notify_recipients(logs: list[Log]) -> None:
                 FROM token_distribution.logs l
                 JOIN token_distribution.rounds r ON l.round_id = r.id
                 JOIN token_distribution.requests req ON r.request_id = req.id
-                WHERE l.id = ANY(%s::uuid[])
+                WHERE l.round_id = ANY(%s::uuid[])
+                  AND l.tx_status = 1
                 GROUP BY l.round_id, req.token_address, r.metadata, req.metadata
                 """,
-                (all_log_ids,),
+                LogQueryArgs(round_ids=round_ids),
+                LogQueryRow,
             )
-
-            rounds_data = cur.fetchall()
+        )
 
     if not rounds_data:
         logger.warning("No round data found")
@@ -975,29 +1345,21 @@ def notify_recipients(logs: list[Log]) -> None:
 
         # Process each round
         for round_data in rounds_data:
-            round_id = round_data["round_id"]
-            fids = round_data["fids"]
-
-            # Convert token_address from bytea to ChecksumAddress
-            token_address_raw = round_data["token_address"]
-            token_address = fix_double_encoded_address(token_address_raw)
-
-            if not token_address:
-                logger.error(
-                    f"Could not convert token_address for round {round_id}, skipping notifications"
-                )
-                continue
+            round_id = round_data.round_id
+            fids = round_data.fids
+            token_address = round_data.token_address
 
             # Extract token_symbol from metadata
             # Check round_metadata first, then request_metadata
             token_symbol = None
 
-            if round_data["round_metadata"]:
-                token_symbol = round_data["round_metadata"].get("token_symbol")
+            if isinstance(round_data.round_metadata, dict):
+                token_symbol = round_data.round_metadata.get("token_symbol")
 
-            if not token_symbol and round_data["request_metadata"]:
-                token_details = round_data["request_metadata"].get("token") or {}
-                token_symbol = token_details.get("symbol")
+            if not token_symbol and isinstance(round_data.request_metadata, dict):
+                token_symbol = round_data.request_metadata.get("token", {}).get(
+                    "symbol"
+                )
 
             # Generate notification message
             title = "Believer Leaderboard earnings"
@@ -1036,7 +1398,8 @@ def notify_recipients(logs: list[Log]) -> None:
                 target_url=target_url,
             )
 
+    total_recipients = sum(len(rd["fids"]) for rd in rounds_data)
     logger.info(
         f"Successfully sent notifications for {len(rounds_data)} rounds "
-        f"covering {len(all_log_ids)} recipients"
+        f"covering {total_recipients} recipients"
     )

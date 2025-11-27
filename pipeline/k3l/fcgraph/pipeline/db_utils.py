@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from contextlib import contextmanager
+from typing import Literal, Protocol
 
 import psycopg2.extensions
 import psycopg2.extras
@@ -46,8 +47,46 @@ def psycopg2_query[P: BaseModel, R: BaseModel](
 @contextmanager
 def psycopg2_cursor(
     conn: psycopg2.extensions.connection,
+    *,
+    commit: Literal["on_success", "always", "never", "auto"] = "auto",
 ) -> Iterable[psycopg2.extensions.cursor]:
-    """Get a cursor for the given connection."""
+    """
+    Provide a context manager that yields a psycopg2 cursor and automatically handles
+    transaction commit or rollback based on the given ``commit`` parameter.
+
+    The context manager ensures safe transaction management, committing or rolling
+    back based on the specified mode, and guarantees UUID handling for PostgreSQL
+    databases.
+
+    :param conn: The open psycopg2 database connection object to use for creating the cursor.
+    :type conn: psycopg2.extensions.connection
+
+    :param commit: Transaction commit behavior, which can take one of the following values:
+        - ``"on_success"``: Commits the transaction only if no exception occurred.
+        - ``"always"``: Commits the transaction even on exception.
+        - ``"never"``: Disables automatic commits, relying on manual transaction handling.
+        - ``"auto"``: Sets the connection auto-commit mode to ``True`` (default).
+    :type commit: Literal["on_success", "always", "never", "auto"]
+
+    :return: A psycopg2 database cursor in the provided transaction context.
+    :rtype: Iterable[psycopg2.extensions.cursor]
+
+    :raises Exception: If any exception related to database operations occurs; the
+                        transaction will be rolled back for ``"on_success"`` mode
+                        or will remain in an undefined state for others.
+    """
+    conn.autocommit = commit == "auto"
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         psycopg2.extras.register_uuid(conn_or_curs=cur)
-        yield cur
+        # noinspection PyBroadException
+        try:
+            yield cur
+            if commit == "on_success" or commit == "always":
+                conn.commit()
+        except Exception:
+            try:
+                if commit == "always":
+                    conn.commit()
+            finally:
+                if commit != "never":
+                    conn.rollback()
