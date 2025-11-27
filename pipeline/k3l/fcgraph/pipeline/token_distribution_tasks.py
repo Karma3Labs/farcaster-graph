@@ -857,44 +857,54 @@ def verify(round_id: UUID) -> UUID:
         round_id: UUID
 
     with get_supabase_psycopg2_client() as conn, psycopg2_cursor(conn) as cur:
-        query = """
-        WITH
-            computed AS (
-                SELECT
-                    sum(amount) AS amount,
-                    count(*) AS count
-                FROM token_distribution.logs
-                WHERE round_id = %(round_id)s
-            ), configured AS (
-                SELECT
-                    r.amount,
-                    COALESCE(r.num_recipients, req.num_recipients_per_round) AS max_count
-                FROM token_distribution.rounds AS r
-                JOIN token_distribution.requests AS req ON r.request_id = req.id
-                WHERE r.id = %(round_id)s
-            )
-        SELECT
-            computed.amount AS computed_amount,
-            configured.amount AS configured_amount,
-            computed.count AS num_recipients,
-            configured.max_count AS max_recipients
-        FROM computed, configured
-        """
 
         class VerificationResult(BaseModel):
             computed_amount: int | None
             configured_amount: int
             num_recipients: int
             max_recipients: int
+            num_unfilled: int
 
         for result in psycopg2_query(
-            cur, query, RoundQueryArgs(round_id=round_id), VerificationResult
+            cur,
+            """
+            WITH
+                computed AS (
+                    SELECT
+                        sum(amount) AS amount,
+                        count(amount) AS count,
+                        count(*) FILTER (WHERE amount IS NULL) AS null_count
+                    FROM token_distribution.logs
+                    WHERE round_id = %(round_id)s
+                ), configured AS (
+                    SELECT
+                        r.amount,
+                        COALESCE(r.num_recipients, req.num_recipients_per_round) AS max_count
+                    FROM token_distribution.rounds AS r
+                    JOIN token_distribution.requests AS req ON r.request_id = req.id
+                    WHERE r.id = %(round_id)s
+                )
+            SELECT
+                computed.amount AS computed_amount,
+                configured.amount AS configured_amount,
+                computed.count AS num_recipients,
+                configured.max_count AS max_recipients,
+                computed.null_count AS num_unfilled
+            FROM computed, configured
+            """,
+            RoundQueryArgs(round_id=round_id),
+            VerificationResult,
         ):
             break
         else:
             raise ValueError(f"Round {round_id} not found")
 
-    # Check amount match (NULL is OK for empty rounds)
+    if result.num_unfilled > 0:
+        error_msg = f"Round {round_id} has {result.num_unfilled} unfilled logs"
+        raise ValueError(error_msg)
+    # Check amount match.
+    # Since num_unfilled is 0 by now, sum(amount) is NULL iff there are no rows at all,
+    # i.e., the round is empty, which is OK.
     if (
         result.computed_amount is not None
         and result.computed_amount != result.configured_amount
