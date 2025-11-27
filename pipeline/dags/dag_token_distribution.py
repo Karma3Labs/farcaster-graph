@@ -22,16 +22,15 @@ Task Flow:
 """
 
 import json
-from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.decorators import task, task_group
-from airflow.exceptions import AirflowSkipException
 from hooks.discord import send_alert_discord
 from hooks.pagerduty import send_alert_pagerduty
 
 from k3l.fcgraph.pipeline import token_distribution_tasks as td_tasks
+from k3l.fcgraph.pipeline.models import UUID
 from k3l.fcgraph.pipeline.token_distribution.models import Round
 
 default_args = {
@@ -64,7 +63,7 @@ with DAG(
 
     @task
     def collect_round_data(round_: dict) -> str:
-        """Fetch leaderboard and insert into logs table."""
+        """Fetch leaderboard and insert into the `logs` table."""
         round_id = td_tasks.collect_round_data(
             Round.model_validate_json(json.dumps(round_))
         )
@@ -73,35 +72,34 @@ with DAG(
     @task
     def calculate_distributions(round_id: str) -> str:
         """Calculate distribution amounts."""
-        calculated_id = td_tasks.calculate(round_id)
+        calculated_id = td_tasks.calculate(UUID(round_id))
         return str(calculated_id)
 
     @task
     def verify_calculations(round_id: str) -> str:
         """Verify distributions match budget."""
-        verified_id = td_tasks.verify(round_id)
+        verified_id = td_tasks.verify(UUID(round_id))
         return str(verified_id)
 
     # Task to submit transactions
     @task(trigger_rule="none_failed")
-    def submit_transactions(round_ids: Iterable[str]) -> list[str]:
+    def submit_transactions(round_ids: list[str]) -> list[str]:
         """Submit transactions for all verified rounds."""
-        round_id_list = [rid for rid in round_ids if rid is not None]
-        processed_ids = td_tasks.submit_txs(round_id_list)
+        processed_ids = td_tasks.submit_txs(UUID(rid) for rid in round_ids)
         return [str(rid) for rid in processed_ids]
 
     # Task to wait for confirmations
     @task
     def wait_for_tx_confirmations(round_ids: list[str]) -> list[str]:
         """Wait for transaction confirmations."""
-        confirmed_ids = td_tasks.wait_for_confirmations(round_ids)
+        confirmed_ids = td_tasks.wait_for_confirmations(UUID(rid) for rid in round_ids)
         return [str(rid) for rid in confirmed_ids]
 
     # Task to notify recipients
     @task
     def notify_reward_recipients(round_ids: list[str]) -> None:
         """Send notifications to reward recipients."""
-        td_tasks.notify_recipients(round_ids)
+        td_tasks.notify_recipients([UUID(rid) for rid in round_ids])
 
     # Task group for per-round processing
     @task_group(group_id="process_rounds")

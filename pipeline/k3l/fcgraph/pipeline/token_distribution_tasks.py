@@ -14,6 +14,7 @@ import asyncio
 import hashlib
 import json
 import logging
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -551,7 +552,7 @@ async def collect_round_data_async(round_: Round) -> RoundData:
 
 def collect_round_data(round_: Round) -> UUID:
     """
-    Fetch leaderboard and insert into logs table atomically.
+    Fetch leaderboard and insert into the `logs` table atomically.
 
     This declares "these and only these people will be rewarded for this round"
     by inserting log entries with round_id, fid, and points. The receiver and
@@ -752,7 +753,7 @@ def calculate(round_id: UUID) -> UUID:
         amount = round_info.amount
         method = round_info.method or round_info.round_method
 
-        # Fetch existing logs (fid + points) from database
+        # Fetch existing logs (fid and points) from the database
         log_query = """
         SELECT id, fid, points, amount
         FROM token_distribution.logs
@@ -845,7 +846,7 @@ def verify(round_id: UUID) -> UUID:
 
     Queries logs from the database and verifies:
     1. Sum of amounts matches the round amount (or is NULL for empty rounds)
-    2. Number of recipients doesn't exceed the configured maximum
+    2. The number of recipients doesn't exceed the configured maximum
 
     :param round_id: Round ID to verify.
     :returns: Round ID.
@@ -905,7 +906,7 @@ def verify(round_id: UUID) -> UUID:
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    # Check recipient count
+    # Check the recipient count
     if result.num_recipients > result.max_recipients:
         error_msg = (
             f"Recipient count exceeds limit for round {round_id}: "
@@ -923,7 +924,7 @@ def verify(round_id: UUID) -> UUID:
     return round_id
 
 
-def submit_txs(round_ids: list[UUID]) -> list[UUID]:
+def submit_txs(round_ids: Iterable[UUID]) -> Iterable[UUID]:
     """
     Submit blockchain transactions for all verified distributions.
 
@@ -931,11 +932,13 @@ def submit_txs(round_ids: list[UUID]) -> list[UUID]:
     This task handles all transactions serially to manage nonce properly.
     Each receiver address and TX hash is committed independently for idempotency.
 
-    :param round_ids: List of round IDs to submit transactions for.
-    :returns: List of round IDs that were processed.
+    :param round_ids: Round IDs to submit transactions for.
+    :returns: Round IDs that were processed (passthrough).
     """
 
     for round_id in round_ids:
+        yield round_id  # passthrough
+
         # Fetch round and request data from DB
         class RoundQueryArgs(BaseModel):
             round_id: UUID
@@ -1124,19 +1127,18 @@ def submit_txs(round_ids: list[UUID]) -> list[UUID]:
 
             logger.info(f"Submitted {len(logs)} transactions for round {round_id}")
 
-    return round_ids
 
+def wait_for_confirmations(round_ids: Iterable[UUID]) -> Iterable[UUID]:
+    """
+    Wait for all transaction confirmations on the blockchain.
 
-def wait_for_confirmations(round_ids: list[UUID]) -> list[UUID]:
-    """Wait for all transaction confirmations on the blockchain.
-
-    Queries the database for logs with pending transactions (tx_hash IS NOT NULL
-    AND tx_status IS NULL) and waits for confirmation. Updates tx_status upon
-    confirmation, then marks round as fulfilled. Idempotent - skips already-confirmed
+    Query the database for logs with pending transactions (`tx_hash IS NOT NULL
+    AND tx_status IS NULL`) and wait for confirmation. Update tx_status upon
+    confirmation, then mark the round as fulfilled. Idempotent - skip already-confirmed
     transactions on retry.
 
-    :param round_ids: List of round IDs to wait for confirmations.
-    :return: List of round IDs that were processed.
+    :param round_ids: Round IDs to wait for confirmations.
+    :return: Round IDs that were processed (passthrough).
     :raises ValueError: If any transaction is reverted.
     :raises TimeoutError: If the transaction is not confirmed within timeout.
     """
@@ -1146,6 +1148,8 @@ def wait_for_confirmations(round_ids: list[UUID]) -> list[UUID]:
         psycopg2_cursor(conn, commit="on_success") as cur,
     ):
         for round_id in round_ids:
+            yield round_id  # passthrough
+
             # Fetch chain_id for this round
             class RoundQueryArgs(BaseModel):
                 round_id: UUID
@@ -1258,8 +1262,7 @@ def wait_for_confirmations(round_ids: list[UUID]) -> list[UUID]:
             )
             logger.info(f"Round {round_id} marked as fulfilled")
 
-    logger.info(f"All transactions confirmed successfully for {len(round_ids)} rounds")
-    return round_ids
+    logger.info(f"All transactions confirmed successfully")
 
 
 def notify_recipients(round_ids: list[UUID]) -> None:
