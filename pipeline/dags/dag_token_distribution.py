@@ -11,10 +11,10 @@ This DAG implements a scalable architecture with:
 
 Task Flow:
 1. `gather_rounds_due()` → [round_ids]
-2. `process_rounds_group.expand(round)` → [round_ids]
-   - fetch_leaderboard → calculate → verify
-3. `submit_txs([round_ids])` → [round_ids]
-   - Queries DB for logs to submit
+2. `process_rounds_group.expand(round)` → [round_ids] (parallel per round)
+   - collect_round_data → calculate → verify → lookup_recipients
+3. `submit_txs([round_ids])` → [round_ids] (serial for nonce management)
+   - Validates funding, queries DB for logs to submit
 4. `wait_for_confirmations([round_ids])` → [round_ids]
    - Uses tx_status field for idempotent retry
 5. `notify_recipients([round_ids])` → complete
@@ -81,6 +81,12 @@ with DAG(
         verified_id = td_tasks.verify(UUID(round_id))
         return str(verified_id)
 
+    @task
+    def lookup_recipient_addresses(round_id: str) -> str:
+        """Look up and populate receiver wallet addresses."""
+        looked_up_id = td_tasks.lookup_recipients(UUID(round_id))
+        return str(looked_up_id)
+
     # Task to submit transactions
     @task(trigger_rule="none_failed")
     def submit_transactions(round_ids: list[str]) -> list[str]:
@@ -104,10 +110,11 @@ with DAG(
     # Task group for per-round processing
     @task_group(group_id="process_rounds")
     def process_rounds_group(round_: dict) -> str:
-        """Process a single round: fetch leaderboard, calculate, verify."""
+        """Process a single round: fetch leaderboard, calculate, verify, lookup addresses."""
         round_id = collect_round_data(round_)
         round_id = calculate_distributions(round_id)
         round_id = verify_calculations(round_id)
+        round_id = lookup_recipient_addresses(round_id)
         return round_id
 
     # Main flow

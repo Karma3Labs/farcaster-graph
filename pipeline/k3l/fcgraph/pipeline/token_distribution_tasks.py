@@ -924,13 +924,91 @@ def verify(round_id: UUID) -> UUID:
     return round_id
 
 
+def lookup_recipients(round_id: UUID) -> UUID:
+    """
+    Look up and populate receiver addresses for a round's log entries.
+
+    Queries logs with NULL receiver addresses, fetches wallet addresses from
+    profiles, and updates the logs. Each row is committed independently for
+    idempotency on retry.
+
+    :param round_id: Round ID to look up recipients for.
+    :returns: Round ID.
+    """
+
+    # Look up and update receiver addresses (auto-commit each row)
+    with (
+        get_supabase_psycopg2_client() as conn,
+        psycopg2_cursor(conn, commit="auto") as cur,
+    ):
+
+        class RoundQueryArgs(BaseModel):
+            round_id: UUID
+
+        log_query_for_address = """
+        SELECT id, fid
+        FROM token_distribution.logs
+        WHERE round_id = %(round_id)s
+          AND receiver IS NULL
+        ORDER BY id
+        """
+
+        class LogForAddress(BaseModel):
+            id: UUID
+            fid: int
+
+        logs_need_address = list(
+            psycopg2_query(
+                cur,
+                log_query_for_address,
+                RoundQueryArgs(round_id=round_id),
+                LogForAddress,
+            )
+        )
+
+        if not logs_need_address:
+            logger.info(f"No addresses to look up for round {round_id}")
+            return round_id
+
+        fids = [log.fid for log in logs_need_address]
+        wallet_addresses = asyncio.run(get_wallet_addresses_async(fids))
+
+        class UpdateReceiverArgs(BaseModel):
+            id: UUID
+            receiver: EthAddress | None
+
+        for log in logs_need_address:
+            receiver = wallet_addresses.get(log.fid)
+            if receiver is None:
+                continue  # in case of UPDATE races, avoid clobbering with None
+            psycopg2_query(
+                cur,
+                """
+                UPDATE token_distribution.logs
+                SET receiver = %(receiver)s
+                WHERE id = %(id)s AND receiver IS NULL
+                """,
+                UpdateReceiverArgs(id=log.id, receiver=receiver),
+            )
+            if cur.rowcount == 0:
+                # SELECT-SELECT-UPDATE-UPDATE race - at least we have an address to use,
+                # so this is not fatal.
+                logger.warning(f"Log {log.id} already has a receiver address")
+
+        logger.info(
+            f"Updated {len(logs_need_address)} receiver addresses for round {round_id}"
+        )
+
+    return round_id
+
+
 def submit_txs(round_ids: Iterable[UUID]) -> Iterable[UUID]:
     """
     Submit blockchain transactions for all verified distributions.
 
-    Validates funding, looks up receiver addresses, and submits transactions.
-    This task handles all transactions serially to manage nonce properly.
-    Each receiver address and TX hash is committed independently for idempotency.
+    Validates funding and submits transactions. Receiver addresses should already
+    be populated by lookup_recipients(). This task handles all transactions serially
+    to manage nonce properly. Each TX hash is committed independently for idempotency.
 
     :param round_ids: Round IDs to submit transactions for.
     :returns: Round IDs that were processed (passthrough).
@@ -974,62 +1052,6 @@ def submit_txs(round_ids: Iterable[UUID]) -> Iterable[UUID]:
             continue
 
         logger.info(f"Processing round {round_id}")
-
-        # Look up and update receiver addresses (auto-commit each row)
-        with (
-            get_supabase_psycopg2_client() as conn,
-            psycopg2_cursor(conn, commit="auto") as cur,
-        ):
-            log_query_for_address = """
-            SELECT id, fid
-            FROM token_distribution.logs
-            WHERE round_id = %(round_id)s
-              AND receiver IS NULL
-            ORDER BY id
-            """
-
-            class LogForAddress(BaseModel):
-                id: UUID
-                fid: int
-
-            logs_need_address = list(
-                psycopg2_query(
-                    cur,
-                    log_query_for_address,
-                    RoundQueryArgs(round_id=round_id),
-                    LogForAddress,
-                )
-            )
-
-            if logs_need_address:
-                fids = [log.fid for log in logs_need_address]
-                wallet_addresses = asyncio.run(get_wallet_addresses_async(fids))
-
-                class UpdateReceiverArgs(BaseModel):
-                    id: UUID
-                    receiver: EthAddress | None
-
-                for log in logs_need_address:
-                    receiver = wallet_addresses.get(log.fid)
-                    if receiver is None:
-                        continue  # in case of UPDATE races, avoid clobbering with None
-                    psycopg2_query(
-                        cur,
-                        """
-                        UPDATE token_distribution.logs
-                        SET receiver = %(receiver)s
-                        WHERE id = %(id)s AND receiver IS NULL
-                        """,
-                        UpdateReceiverArgs(id=log.id, receiver=receiver),
-                    )
-                    if cur.rowcount == 0:
-                        # SELECT-SELECT-UPDATE-UPDATE race - at least we have an address to use,
-                        # so this is not fatal.
-                        logger.warning(f"Log {log.id} already has a receiver address")
-
-                logger.info(
-                    f"Updated {len(logs_need_address)} receiver addresses for round {round_id}"
-                )
 
         # Submit transactions (auto-commit each TX hash to prevent double-payment on retry)
         with (
