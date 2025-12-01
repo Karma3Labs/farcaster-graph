@@ -18,7 +18,7 @@ from ..dependencies.db_utils import (
     search_fip2_tokens,
 )
 from ..dependencies.token_feed import get_token_feed
-from ..models.feed_model import SortingOrder, WeightsField
+from ..models.feed_model import SortingOrder, WeightsField, CastsTimeDecay
 
 _logger = logging.getLogger(__name__)
 
@@ -179,6 +179,7 @@ async def get_feed(
     viewer_fid: str,
     cursor: Optional[str] = None,
     sorting_order: SortingOrder = Query(SortingOrder.RECENT),
+    time_decay: CastsTimeDecay = Query(CastsTimeDecay.NEVER),
 ):
     try:
         return await get_token_feed(
@@ -189,6 +190,7 @@ async def get_feed(
             viewer_fid,
             pool,
             sorting_order,
+            time_decay,
         )
     except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
         raise HTTPException(status_code=500, detail=str(exc)) from exc

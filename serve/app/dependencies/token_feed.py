@@ -22,6 +22,7 @@ async def get_token_feed(
     viewer_fid: str,
     pool: Pool,
     sorting_order: SortingOrder = SortingOrder.RECENT,
+    time_decay: CastsTimeDecay = CastsTimeDecay.NEVER,
 ):
     if sorting_order == SortingOrder.POPULAR or sorting_order == SortingOrder.SCORE:
         offset = 0
@@ -42,7 +43,7 @@ async def get_token_feed(
             weights=Weights.from_str("L1C1R1Y1"),
             score_threshold=0.000000001,
             max_cast_age=timedelta(days=7), # 7 days lookback as discussed
-            time_decay=CastsTimeDecay.NEVER, # No decay for "top" in window? Or maybe HOUR? Let's stick to raw score for "Top".
+            time_decay=time_decay,
             offset=offset,
             limit=limit,
             pool=pool,
