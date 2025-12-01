@@ -3687,9 +3687,10 @@ async def get_top_token_casts(
     offset: int,
     limit: int,
     pool: Pool,
+    time_decay_base: float = 1 - (1 / 365),
 ):    
     agg_sql = sql_for_agg(agg, "fid_cast_scores.cast_score")
-    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay)
+    decay_sql = sql_for_decay("CURRENT_TIMESTAMP - ci.action_ts", time_decay, base=time_decay_base)
   
     # FIP-2 URL construction
     # https://github.com/farcasterxyz/protocol/blob/main/FIPs/FIP-2.md

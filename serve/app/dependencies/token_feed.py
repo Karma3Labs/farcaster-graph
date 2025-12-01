@@ -23,6 +23,7 @@ async def get_token_feed(
     pool: Pool,
     sorting_order: SortingOrder = SortingOrder.RECENT,
     time_decay: CastsTimeDecay = CastsTimeDecay.NEVER,
+    time_decay_base: float = 1 - (1 / 365),
 ):
     if sorting_order == SortingOrder.POPULAR or sorting_order == SortingOrder.SCORE:
         offset = 0
@@ -47,6 +48,7 @@ async def get_token_feed(
             offset=offset,
             limit=limit,
             pool=pool,
+            time_decay_base=time_decay_base,
         )
 
         # Extract hashes

@@ -180,6 +180,7 @@ async def get_feed(
     cursor: Optional[str] = None,
     sorting_order: SortingOrder = Query(SortingOrder.RECENT),
     time_decay: CastsTimeDecay = Query(CastsTimeDecay.NEVER),
+    time_decay_base: float = Query(0.9, description="Decay base (e.g. 0.9)"),
 ):
     try:
         return await get_token_feed(
@@ -191,6 +192,7 @@ async def get_feed(
             pool,
             sorting_order,
             time_decay,
+            time_decay_base,
         )
     except Exception as exc:  # pragma: no cover – bubble up DB issues cleanly
         raise HTTPException(status_code=500, detail=str(exc)) from exc
