@@ -14,7 +14,7 @@ MarkupSafe==3.0.2
 mypy-extensions==1.1.0
 packaging==25.0
 pathspec==0.12.1
-pip==25.3
+pip==26.0
 platformdirs==4.3.8
 pluggy==1.6.0
 Pygments==2.19.1
